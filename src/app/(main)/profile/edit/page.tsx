@@ -120,8 +120,9 @@ export default function EditProfilePage() {
         clubId = newClub.id;
       }
 
-      // Mise à jour Profil
-      const { error: pErr } = await supabase.from('profiles').update({
+      // Mise à jour Profil (Utilisation de UPSERT pour garantir la création)
+      const { error: pErr } = await supabase.from('profiles').upsert([{
+        id: user.id,
         first_name: firstName,
         last_name: lastName,
         nickname: nickname,
@@ -131,7 +132,7 @@ export default function EditProfilePage() {
         coach_level: level,
         club_id: clubId,
         theme_preference: selectedTheme
-      }).eq('id', user.id);
+      }]);
 
       if (pErr) {
         console.error("Supabase Update Error:", pErr);
@@ -140,8 +141,9 @@ export default function EditProfilePage() {
 
       localStorage.setItem('app_theme', selectedTheme);
       await refreshData();
-      alert("✅ Profil mis à jour avec succès !");
-      router.push('/profile');
+
+      // On force le rechargement pour vider les vieux caches React
+      window.location.href = '/profile';
     } catch (err: any) {
       setErrorMessage(err.message);
       alert(err.message);

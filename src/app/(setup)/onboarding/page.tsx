@@ -139,7 +139,12 @@ export default function OnboardingPage() {
       localStorage.setItem('app_theme', selectedTheme);
 
       await refreshData();
+
+      // On force le rechargement pour initialiser proprement le cockpit
       setIsSuccess(true);
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 3000);
     } catch (err: any) {
       setErrorMessage(err.message);
       alert(err.message);
