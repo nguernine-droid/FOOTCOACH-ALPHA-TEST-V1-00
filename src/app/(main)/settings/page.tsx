@@ -383,6 +383,25 @@ export default function SettingsPage() {
             </button>
 
             <button
+              onClick={async () => {
+                if(window.confirm("⚠️ Es-tu sûr de vouloir supprimer ton compte ? Cette action est irréversible.")) {
+                  // Logique de suppression réelle Supabase à ajouter ici si besoin
+                  alert("Demande de suppression transmise.");
+                }
+              }}
+              className="w-full p-5 flex items-center gap-4 active:bg-red-500/5 transition-all"
+            >
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+                <Trash2 size={20} />
+              </div>
+              <div className="text-left flex-1">
+                <p className="text-sm font-black uppercase italic text-red-500">Supprimer mon compte</p>
+                <p className="text-[9px] font-bold text-red-500/40 uppercase tracking-widest">Action irréversible</p>
+              </div>
+              <ChevronRight size={18} className="text-red-500/20" />
+            </button>
+
+            <button
               onClick={handleLogout}
               className="w-full p-5 flex items-center gap-4 active:bg-red-500/5 transition-all"
             >

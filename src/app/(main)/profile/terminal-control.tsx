@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Lock, Calendar, Moon, Sun, Bell, Download, Trash2, ChevronRight } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
+import { supabase } from '@/lib/supabase/client';
 
 // On remplace forceCyber par hideThemeToggle (pour Parent & Supporter)
 export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?: boolean }) {
@@ -43,6 +44,12 @@ export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?
     toggleOff: 'bg-white/10',
     deleteText: 'text-red-500/60 hover:text-red-500',
     deleteBg: 'bg-red-500/10',
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    window.location.href = '/showcase';
   };
 
   return (
@@ -125,20 +132,16 @@ export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?
           <ChevronRight size={18} className="text-gray-400" />
         </button>
 
-        {/* Delete Account - MODIFICATION : Ajout d'une confirmation de sécurité */}
+        {/* LOGOUT - Remplacement de Delete par Logout sur le profil */}
         <button
-          onClick={() => {
-            if(window.confirm("⚠️ Es-tu sûr de vouloir quitter le Nexus ? Cette action est irréversible.")) {
-              alert("Compte supprimé.");
-            }
-          }}
-          className={`w-full p-4 flex items-center gap-4 ${styles.deleteText} transition-colors rounded-b-[2rem]`}
+          onClick={handleLogout}
+          className={`w-full p-4 flex items-center gap-4 text-red-500 transition-colors rounded-b-[2rem] hover:bg-red-500/5`}
         >
-          <div className={`w-10 h-10 rounded-xl ${styles.deleteBg} flex items-center justify-center`}>
+          <div className={`w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center`}>
             <Trash2 size={20} />
           </div>
           <div className="text-left">
-            <p className="text-xs font-black uppercase italic">Supprimer mon compte</p>
+            <p className="text-xs font-black uppercase italic">Me déconnecter</p>
           </div>
         </button>
       </div>

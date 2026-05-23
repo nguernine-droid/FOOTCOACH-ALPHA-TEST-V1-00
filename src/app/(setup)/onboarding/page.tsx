@@ -33,7 +33,7 @@ interface Club {
  */
 export default function OnboardingPage() {
   const router = useRouter();
-  const { refreshData } = useTeam();
+  const { refreshData, teamInfo } = useTeam();
   const [isSuccess, setIsSuccess] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<'classic' | 'nexus'>('classic');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,6 +54,17 @@ export default function OnboardingPage() {
 
   const [acceptCGU, setAcceptCGU] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
+
+  // Pré-remplissage automatique (Surtout utile pour la reconnexion)
+  useEffect(() => {
+    if (teamInfo && teamInfo.userFirstName) {
+      setFirstName(teamInfo.userFirstName);
+      setLastName(teamInfo.userLastName || '');
+      setNickname(teamInfo.coachName !== 'COACH' ? teamInfo.coachName : '');
+      setBio(teamInfo.bio || '');
+      setSelectedTheme(teamInfo.grade === 'COACH' ? 'classic' : 'nexus');
+    }
+  }, [teamInfo]);
 
   // --- LOGIQUE CLUB ---
   const [allClubs, setClubs] = useState<Club[]>([]);

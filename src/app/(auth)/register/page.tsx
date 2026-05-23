@@ -42,8 +42,8 @@ export default function RegisterPage() {
       localStorage.setItem('user_role', role);
       localStorage.setItem('is_authenticated', 'true');
 
-      // 3. Rediriger vers l'onboarding pour finaliser le profil
-      router.push('/onboarding');
+      // 3. Rediriger directement vers le dashboard (Règle des 3 clics)
+      router.push('/dashboard');
     } catch (error: any) {
       alert("Erreur d'inscription : " + error.message);
     } finally {

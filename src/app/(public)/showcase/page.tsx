@@ -116,14 +116,23 @@ export default function ShowcasePage() {
   }, []);
 
   const handleDownloadAction = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
+    // 1. Vérification de l'état de l'utilisateur
+    const hasRole = localStorage.getItem('user_role');
+
+    if (hasRole) {
+      // Utilisateur connu -> Direction le Dashboard
+      router.push('/dashboard');
+    } else {
+      // Nouvel utilisateur -> Direction le Login/Register
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setDeferredPrompt(null);
+        }
       }
+      router.push('/login');
     }
-    router.push('/login');
   };
 
   return (
@@ -236,6 +245,62 @@ export default function ShowcasePage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TUTORIEL INSTALLATION ── */}
+      <section className="py-20 lg:py-32 px-6 relative z-10">
+        <div className="max-w-4xl mx-auto text-center space-y-12">
+          <div className="flex flex-col items-center gap-6">
+             <div className="flex justify-center gap-20">
+                <ArrowRight size={80} className="text-neon-orange rotate-90 animate-bounce" strokeWidth={3} />
+                <ArrowRight size={80} className="text-neon-orange rotate-90 animate-bounce" strokeWidth={3} />
+             </div>
+             <div className="space-y-2">
+                <h2 className={`text-3xl lg:text-5xl font-black uppercase italic tracking-tighter ${activeTheme === 'nexus' ? 'text-white' : 'text-neon-orange'}`}>
+                   Télécharge l'application
+                </h2>
+                <p className="text-gray-500 font-bold uppercase tracking-[0.3em] text-xs">Protocole d'installation Nexus</p>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10">
+             {/* APPLE TUTO */}
+             <div className="bg-white/5 border-2 border-white/10 p-8 rounded-[2.5rem] space-y-6 text-left relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                   <Gamepad2 size={80} />
+                </div>
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-white text-black rounded-xl flex items-center justify-center shadow-xl">
+                      <Plus size={24} strokeWidth={3} />
+                   </div>
+                   <h3 className="text-xl font-black uppercase italic text-white">Sur Apple / iOS</h3>
+                </div>
+                <ul className="space-y-4 text-xs font-bold uppercase tracking-widest text-gray-400">
+                   <li className="flex items-start gap-3"><span className="text-neon-orange">01.</span> Ouvre Safari sur teamnexus.fr</li>
+                   <li className="flex items-start gap-3"><span className="text-neon-orange">02.</span> Appuie sur le bouton "Partager" (carré avec flèche)</li>
+                   <li className="flex items-start gap-3"><span className="text-neon-orange">03.</span> Sélectionne "Sur l'écran d'accueil"</li>
+                </ul>
+             </div>
+
+             {/* ANDROID TUTO */}
+             <div className="bg-white/5 border-2 border-white/10 p-8 rounded-[2.5rem] space-y-6 text-left relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                   <Layout size={80} />
+                </div>
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 bg-[#39FF14] text-black rounded-xl flex items-center justify-center shadow-xl">
+                      <Plus size={24} strokeWidth={3} />
+                   </div>
+                   <h3 className="text-xl font-black uppercase italic text-white">Sur Android / Chrome</h3>
+                </div>
+                <ul className="space-y-4 text-xs font-bold uppercase tracking-widest text-gray-400">
+                   <li className="flex items-start gap-3"><span className="text-neon-cyan">01.</span> Ouvre Chrome sur teamnexus.fr</li>
+                   <li className="flex items-start gap-3"><span className="text-neon-cyan">02.</span> Appuie sur les 3 points en haut à droite</li>
+                   <li className="flex items-start gap-3"><span className="text-neon-cyan">03.</span> Sélectionne "Installer l'application"</li>
+                </ul>
+             </div>
           </div>
         </div>
       </section>

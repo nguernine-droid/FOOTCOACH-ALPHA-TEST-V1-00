@@ -1,31 +1,23 @@
 {
-  "name": "FOOTCOACH ALPHA TEST V1",
-  "short_name": "FOOTCOACH",
-  "description": "Application de coaching FOOTCOACH ALPHA TEST V1 - Gérez vos équipes, événements et communications en un seul endroit",
-  "start_url": "/",
-  "scope": "/",
+  "name": "TEAM NEXUS",
+  "short_name": "NEXUS",
+  "description": "FootCoach - Gestion tactique et matchmaking de football amateur",
+  "start_url": ".",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#111319",
+  "background_color": "#000000",
   "theme_color": "#F97316",
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "https://nextjs.org/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "https://nextjs.org/favicon.ico",
+      "src": "https://img.icons8.com/color/192/soccer-ball--v1.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
-      "src": "https://nextjs.org/favicon.ico",
+      "src": "https://img.icons8.com/color/512/soccer-ball--v1.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     }
   ],
   "categories": ["sports", "productivity"]

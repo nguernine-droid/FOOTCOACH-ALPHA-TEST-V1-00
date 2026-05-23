@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 
 // ==========================================
@@ -19,6 +19,13 @@ export interface TeamInfo {
   userFirstName?: string;
   userLastName?: string;
   bio?: string;
+  // RPG Stats
+  doctrine: number;
+  synergie: number;
+  influence: number;
+  lvl: number;
+  xp: number;
+  grade: string;
 }
 
 interface TeamContextType {
@@ -31,6 +38,7 @@ interface TeamContextType {
   isPro: boolean;
   refreshData: () => Promise<void>;
   isLoading: boolean;
+  isProfileComplete: boolean;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -39,17 +47,30 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [role, setRoleState] = useState<Role>('coach');
   const [theme, setThemeState] = useState<Theme>('classic');
   const [teamInfo, setTeamInfoState] = useState<TeamInfo>({
-    clubName: 'MON CLUB',
+    clubName: 'UNITE_NEXUS',
     category: 'SÉNIORS',
     coachName: 'COACH',
+    doctrine: 0,
+    synergie: 0,
+    influence: 0,
+    lvl: 1,
+    xp: 0,
+    grade: 'NOVICE'
   });
 
-  const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileComplete, setIsProfileComplete] = useState(false);
 
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
+    setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+
+      // 1. Priorité au LocalStorage pour éviter le flash
+      const savedRole = localStorage.getItem('user_role') as Role | null;
+      const savedTheme = localStorage.getItem('app_theme') as Theme | null;
+      if (savedRole) setRoleState(savedRole);
+      if (savedTheme) setThemeState(savedTheme);
 
       if (user) {
         const { data: profile, error: pError } = await supabase
@@ -62,51 +83,51 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           setRoleState(profile.role as Role);
           setThemeState(profile.theme_preference as Theme || 'classic');
 
-          if (profile.clubs) {
-            setTeamInfoState({
-              id: profile.clubs.id,
-              clubName: profile.clubs.name,
-              category: profile.clubs.category,
-              coachName: profile.nickname || profile.first_name || 'COACH',
-              coachPhoto: profile.avatar_url,
-              clubLogo: profile.clubs.logo_url,
-              userFirstName: profile.first_name,
-              userLastName: profile.last_name,
-              bio: profile.bio
-            });
-          } else {
-            setTeamInfoState(prev => ({
-              ...prev,
-              coachName: profile.nickname || profile.first_name || 'COACH',
-              coachPhoto: profile.avatar_url,
-              userFirstName: profile.first_name,
-              userLastName: profile.last_name,
-              bio: profile.bio
-            }));
-          }
+          // Vérification si le profil est complété (nom et club présents)
+          const isComplete = !!(profile.first_name && profile.last_name && profile.club_id);
+          setIsProfileComplete(isComplete);
 
-          // Sync LocalStorage pour le Guard
+          setTeamInfoState({
+            id: profile.clubs?.id,
+            clubName: profile.clubs?.name || 'MON CLUB',
+            category: profile.clubs?.category || 'SÉNIORS',
+            coachName: profile.nickname || profile.first_name || 'COACH',
+            coachPhoto: profile.avatar_url,
+            clubLogo: profile.clubs?.logo_url,
+            userFirstName: profile.first_name,
+            userLastName: profile.last_name,
+            bio: profile.bio,
+            doctrine: profile.coach_doctrine || 0,
+            synergie: profile.coach_synergie || 0,
+            influence: profile.coach_influence || 0,
+            lvl: profile.coach_lvl || 1,
+            xp: profile.coach_xp || 0,
+            grade: profile.coach_grade || (profile.theme_preference === 'classic' ? 'COACH' : 'COMMANDANT')
+          });
+
+          // Persistance locale pour le Guard
           localStorage.setItem('user_role', profile.role);
           localStorage.setItem('app_theme', profile.theme_preference || 'classic');
+        } else {
+          // Utilisateur connecté mais sans profil en base (juste après register)
+          setIsProfileComplete(false);
+          setTeamInfoState(prev => ({
+            ...prev,
+            coachName: 'COACH',
+            grade: theme === 'classic' ? 'COACH' : 'COMMANDANT'
+          }));
         }
-      } else {
-        // Fallback local if no user
-        const savedRole = localStorage.getItem('user_role') as Role | null;
-        const savedTheme = localStorage.getItem('app_theme') as Theme | null;
-        if (savedRole) setRoleState(savedRole);
-        if (savedTheme) setThemeState(savedTheme);
       }
     } catch (err) {
-      console.error("Erreur refreshData:", err);
+      console.error("Context Sync Error:", err);
     } finally {
       setIsLoading(false);
-      setIsHydrated(true);
     }
-  };
+  }, [theme]);
 
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [refreshData]);
 
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
@@ -120,16 +141,13 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   const setTeamInfo = (info: TeamInfo) => {
     setTeamInfoState(info);
-    localStorage.setItem('team_info', JSON.stringify(info));
   };
 
   const isPro = theme === 'classic';
 
-  if (!isHydrated) return null;
-
   return (
     <TeamContext.Provider value={{
-      role, setRole, theme, setTheme, teamInfo, setTeamInfo, isPro, refreshData, isLoading
+      role, setRole, theme, setTheme, teamInfo, setTeamInfo, isPro, refreshData, isLoading, isProfileComplete
     }}>
       {children}
     </TeamContext.Provider>

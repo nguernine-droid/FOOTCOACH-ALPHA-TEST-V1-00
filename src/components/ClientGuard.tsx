@@ -1,55 +1,56 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 /**
- * CLIENT_GUARD (Maquette v4.7 - Supabase Ready)
- * Gère le routage intelligent basé sur le LocalStorage
- * Autorise l'accès à l'onboarding pour les nouveaux utilisateurs
+ * CLIENT_GUARD (Maquette v4.8 - Anti-Flash Fix)
+ * Gère le routage intelligent et empêche les déconnexions intempestives
  */
 export function ClientGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // 1. Vérification de l'état de l'utilisateur
-    const hasRole = localStorage.getItem('user_role');
+    const checkAccess = async () => {
+      // 1. Vérification de l'état local
+      const hasRole = localStorage.getItem('user_role');
 
-    // 2. Définition des zones d'accès
-    const isPublicPage = pathname?.startsWith('/showcase') || pathname === '/login' || pathname === '/register';
-    const isOnboardingPage = pathname?.startsWith('/onboarding');
+      // 2. Vérification Supabase si pas de rôle local (pour éviter les erreurs après refresh)
+      if (!hasRole) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+           const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
+           if (profile) {
+              localStorage.setItem('user_role', profile.role);
+              setIsChecking(false);
+              return;
+           }
+        }
+      }
 
-    // LOGIQUE DE SÉCURITÉ :
+      // 3. Définition des zones d'accès
+      const isPublicPage = pathname?.startsWith('/showcase') || pathname === '/login' || pathname === '/register';
+      const isOnboardingPage = pathname?.startsWith('/onboarding');
 
-    // CAS A : Utilisateur inconnu (pas de rôle) tente d'accéder à une zone protégée
-    // On le laisse passer S'IL est sur Onboarding ou Showcase
-    if (!hasRole && !isPublicPage && !isOnboardingPage) {
-      console.log('--- RESTRICED_ACCESS : REDIRECTING_TO_SHOWCASE ---');
-      router.push('/showcase');
-      return; // Important : on arrête l'exécution ici
-    }
+      // CAS A : Accès protégé sans rôle
+      if (!hasRole && !isPublicPage && !isOnboardingPage) {
+        router.replace('/showcase');
+      }
+      // CAS B : Redirection auto vers Dashboard si déjà connecté
+      else if (hasRole && isPublicPage) {
+        router.replace('/dashboard');
+      }
 
-    // CAS B : Utilisateur déjà connecté tente de retourner sur la page publique
-    if (hasRole && isPublicPage) {
-      console.log('--- UNIT_ALREADY_LINKED : REDIRECTING_TO_DASHBOARD ---');
-      router.push('/dashboard');
-      return; // Important : on arrête l'exécution ici
-    }
+      setIsChecking(false);
+    };
 
-    // CAS C : Utilisateur connecté tente de refaire l'onboarding
-    // Pour l'instant, on le laisse passer (utile pour tes tests).
-    // Quand tu voudras bloquer ça, décommente les lignes ci-dessous :
-    /*
-    if (hasRole && isOnboardingPage) {
-      console.log('--- PROFILE_EXISTS : REDIRECTING_TO_DASHBOARD ---');
-      router.push('/dashboard');
-      return;
-    }
-    */
-
+    checkAccess();
   }, [pathname, router]);
+
+  if (isChecking) return null;
 
   return <>{children}</>;
 }
-

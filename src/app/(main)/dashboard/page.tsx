@@ -13,7 +13,7 @@ import { ActionCenter, ActionType } from './components/dashboard/ActionCenter';
 import { supabase } from '@/lib/supabase/client';
 
 export default function DashboardPage() {
-  const { teamInfo, role, theme, isLoading: isContextLoading } = useTeam();
+  const { teamInfo, role, theme, isLoading: isContextLoading, isProfileComplete } = useTeam();
   const isPro = theme === 'classic';
 
   // ==========================================
@@ -156,7 +156,37 @@ export default function DashboardPage() {
   return (
     <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-8 ${styles.mainBg}`}>
 
-      {/* BANNIÈRE RAPPEL PROFIL (Règle des 3 clics) */}
+      {/* 1. COACH PROFILE WIDGET (Données Dynamiques) */}
+      {role === 'coach' && (
+        <Link href={isProfileComplete ? "/profile" : "/onboarding"} className="block">
+          <section className={`p-5 cursor-pointer active:scale-[0.98] transition-all group text-left border rounded-2xl ${styles.cardBg}`}>
+            <div className="flex items-center gap-4 mb-4">
+               <div className={`w-14 h-14 rounded-2xl border-2 overflow-hidden flex items-center justify-center flex-shrink-0 ${styles.accentBg}`}>
+                  {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} alt="Coach" className="w-full h-full object-cover" /> : <Camera size={24} className={styles.accent} />}
+               </div>
+               <div className="flex-1 min-w-0 text-left">
+                  <h3 className={`text-base font-black uppercase italic truncate leading-tight ${styles.text}`}>
+                     {teamInfo?.clubName || 'CLUB_NEXUS'}
+                  </h3>
+                  <p className={`text-[9px] font-black font-mono uppercase tracking-widest mt-1 ${styles.accent}`}>
+                     {teamInfo?.coachName || 'COACH'} // {teamInfo?.grade || 'COACH'}
+                  </p>
+               </div>
+               <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className={`w-12 h-12 rounded-xl border-2 overflow-hidden flex items-center justify-center ${styles.cardBg}`}>
+                     {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} alt="Blason" className="w-full h-full object-cover" /> : <Shield size={24} className={styles.textSub} />}
+                  </div>
+                  <ChevronRight size={20} className={`${styles.textSub} transition-colors`} />
+               </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-left">
+               <MiniCoachBar label="DOC" value={teamInfo?.doctrine || 0} color="bg-neon-orange" styles={styles} />
+               <MiniCoachBar label="SYN" value={teamInfo?.synergie || 0} color={isPro ? 'bg-blue-600' : 'bg-neon-cyan'} styles={styles} />
+               <MiniCoachBar label="INF" value={teamInfo?.influence || 0} color="bg-neon-magenta" styles={styles} />
+            </div>
+          </section>
+        </Link>
+      )}
 
       {/* 2. SQUAD OVERVIEW */}
       <SquadOverview

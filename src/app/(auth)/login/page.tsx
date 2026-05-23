@@ -26,7 +26,19 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      // 2. Succès : Redirection DIRECTE vers le Dashboard (Règle des 3 clics)
+      // 2. Récupérer le rôle pour le Guard et le Context
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, theme_preference')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profile) {
+        localStorage.setItem('user_role', profile.role);
+        localStorage.setItem('app_theme', profile.theme_preference || 'classic');
+      }
+
+      // 3. Succès : Redirection DIRECTE vers le Dashboard
       localStorage.setItem('is_authenticated', 'true');
       router.push('/dashboard');
     } catch (error: any) {

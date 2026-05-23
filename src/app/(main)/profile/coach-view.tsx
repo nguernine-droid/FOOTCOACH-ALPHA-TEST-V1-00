@@ -152,25 +152,25 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         </button>
       </div>
 
-      {/* CARTE FIFA */}
-      <div className="relative">
-        <FifaCard
-          name={teamInfo?.coachName || (isPro ? 'COACH' : 'COMMANDANT')}
-          team={`${teamInfo?.clubName || 'CLUB'} ${teamInfo?.category || ''}`}
-          score={85}
-          label={coachRPGStats.grade}
-          stats={[
-            { label: 'DOC', value: coachRPGStats.doctrine },
-            { label: 'SYN', value: coachRPGStats.synergie },
-            { label: 'INF', value: coachRPGStats.influence },
-            { label: 'LVL', value: coachRPGStats.lvl },
-            { label: 'SIG', value: 0 },
-            { label: 'PTS', value: coachRPGStats.xp }
-          ]}
-          image={teamInfo?.coachPhoto}
-          color="from-[#FF6B00] via-[#CC5500] to-black"
-          textColor="text-white"
-        />
+  // CARTE FIFA (Données Dynamiques)
+  <div className="relative">
+    <FifaCard
+      name={teamInfo?.coachName || (isPro ? 'COACH' : 'COMMANDANT')}
+      team={`${teamInfo?.clubName || 'CLUB'} ${teamInfo?.category || ''}`}
+      score={85}
+      label={teamInfo?.grade || (isPro ? 'COACH' : 'COMMANDANT')}
+      stats={[
+        { label: 'DOC', value: teamInfo?.doctrine || 0 },
+        { label: 'SYN', value: teamInfo?.synergie || 0 },
+        { label: 'INF', value: teamInfo?.influence || 0 },
+        { label: 'LVL', value: teamInfo?.lvl || 1 },
+        { label: 'SIG', value: 0 },
+        { label: 'PTS', value: teamInfo?.xp || 0 }
+      ]}
+      image={teamInfo?.coachPhoto}
+      color="from-[#FF6B00] via-[#CC5500] to-black"
+      textColor="text-white"
+    />
         <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 bg-[#39FF14]/20 text-[#39FF14]`}>
           <ShieldCheck size={10} />
           {coachStatus}

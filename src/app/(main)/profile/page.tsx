@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { CoachView } from './coach-view';
 import { ParentView } from './parent-view';
@@ -9,7 +10,15 @@ import SupporterView from './supporter-view';
 
 export default function ProfilePage() {
   // On récupère le thème en plus du rôle
-  const { role, theme } = useTeam();
+  const { role, theme, isProfileComplete } = useTeam();
+
+  // Si le profil n'est pas complété, on redirige vers l'onboarding pour forcer la saisie
+  const router = useRouter();
+  React.useEffect(() => {
+    if (!isProfileComplete) {
+      router.replace('/onboarding');
+    }
+  }, [isProfileComplete, router]);
 
   const [isAddingParent, setIsAddingParent] = useState(false);
 
