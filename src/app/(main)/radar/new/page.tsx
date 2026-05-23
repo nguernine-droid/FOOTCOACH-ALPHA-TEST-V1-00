@@ -123,18 +123,20 @@ export default function NewSignalPage() {
         <section className={`${styles.cardBg} rounded-2xl p-6 border grid grid-cols-2 gap-4 text-left`}>
             <div className="space-y-2">
               <label className={`text-[9px] font-bold uppercase flex items-center gap-1.5 ${styles.textSub}`}><Calendar size={12}/> Date</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={`w-full ${styles.inputBg} rounded-xl p-3 text-xs font-black outline-none border`} />
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required className={`w-full ${styles.inputBg} rounded-xl p-3 text-xs font-black outline-none border ${isPro ? 'text-gray-900' : 'text-white'}`} />
             </div>
             <div className="space-y-2">
               <label className={`text-[9px] font-bold uppercase flex items-center gap-1.5 ${styles.textSub}`}><Clock size={12}/> Heure</label>
-              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required className={`w-full ${styles.inputBg} rounded-xl p-3 text-xs font-black outline-none border`} />
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required className={`w-full ${styles.inputBg} rounded-xl p-3 text-xs font-black outline-none border ${isPro ? 'text-gray-900' : 'text-white'}`} />
             </div>
         </section>
 
         {/* COMMENTAIRE */}
         <section className="space-y-3 text-left">
-          <h3 className={`px-2 text-[10px] font-black uppercase tracking-widest ${styles.textSub}`}>Infos Mission</h3>
-          <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Précisez vos besoins..." className={`w-full ${styles.cardBg} border rounded-2xl p-4 text-sm font-medium outline-none min-h-[100px] resize-none transition-all`} />
+          <h3 className={`px-2 text-[10px] font-black uppercase tracking-widest ${styles.textSub}`}>
+            {isPro ? 'Informations complémentaires' : 'Infos Mission'}
+          </h3>
+          <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Précisez vos besoins..." className={`w-full ${styles.cardBg} border rounded-2xl p-4 text-sm font-medium outline-none min-h-[100px] resize-none transition-all ${isPro ? 'text-gray-900' : 'text-white'}`} />
         </section>
 
         <button type="submit" disabled={isLoading} className={`w-full ${styles.accentBg} font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 uppercase italic text-lg`}>

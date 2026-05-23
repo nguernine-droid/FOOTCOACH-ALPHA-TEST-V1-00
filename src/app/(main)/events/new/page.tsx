@@ -152,17 +152,17 @@ export default function NewEventPage() {
           <div className="space-y-6">
             <div className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-gray-100 space-y-3">
               <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest block ml-2">Intitulé</label>
-              <input type="text" placeholder="Ex: Entraînement..." value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-5 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20" />
+              <input type="text" placeholder="Ex: Entraînement..." value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-5 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20 text-gray-900" />
             </div>
 
             <div className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-gray-100 grid grid-cols-2 gap-4 text-left">
                 <div className="space-y-3">
                   <label className="text-[11px] font-black text-gray-400 uppercase block ml-2 flex items-center gap-2"><Calendar size={14} className="text-brand-orange" /> Date</label>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-base font-black outline-none" />
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-base font-black outline-none text-gray-900" />
                 </div>
                 <div className="space-y-3">
                   <label className="text-[11px] font-black text-gray-400 uppercase block ml-2 flex items-center gap-2"><Clock size={14} className="text-brand-orange" /> Heure</label>
-                  <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-base font-black outline-none" />
+                  <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-base font-black outline-none text-gray-900" />
                 </div>
             </div>
 
@@ -180,7 +180,7 @@ export default function NewEventPage() {
                     </div>
                     <div className="space-y-3">
                       <label className="text-[11px] font-black text-gray-400 uppercase block ml-2">Fin de récurrence</label>
-                      <input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-base font-black outline-none" />
+                      <input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-base font-black outline-none text-gray-900" />
                     </div>
                   </div>
                 )}
@@ -189,12 +189,12 @@ export default function NewEventPage() {
 
             <div className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-gray-100 space-y-3">
               <label className="text-[11px] font-black text-gray-400 uppercase block ml-2 flex items-center gap-2"><MapPin size={14} className="text-brand-orange" /> Localisation</label>
-              <input type="text" placeholder="Lieu..." value={location} onChange={(e) => setLocation(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-5 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20 transition-all placeholder:text-gray-300" />
+              <input type="text" placeholder="Lieu..." value={location} onChange={(e) => setLocation(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-5 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20 transition-all placeholder:text-gray-300 text-gray-900" />
             </div>
 
             <div className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-gray-100 space-y-3 text-left">
               <label className="text-[11px] font-black text-gray-400 uppercase block ml-2">Notes & Consignes</label>
-              <textarea placeholder="Détails..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-5 text-base font-medium outline-none min-h-[140px] resize-none" />
+              <textarea placeholder="Détails..." value={note} onChange={(e) => setNote(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-5 text-base font-medium outline-none min-h-[140px] resize-none text-gray-900" />
             </div>
           </div>
         </div>

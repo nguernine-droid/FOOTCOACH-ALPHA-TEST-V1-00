@@ -204,7 +204,7 @@ export default function DashboardPage() {
           <div className={`${styles.cardBg} p-8 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center text-center space-y-4`}>
              <Calendar size={32} className="opacity-20" />
              <p className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">Aucune mission programmée</p>
-             <button onClick={() => handleOpenAction('convocation')} className={`text-[9px] font-black underline uppercase ${styles.accent}`}>Planifier un match</button>
+             <button onClick={() => alert("🚧 MODULE EN DÉVELOPPEMENT\nLa planification de mission manuelle sera disponible après la phase Alpha.")} className={`text-[9px] font-black underline uppercase ${styles.accent}`}>Planifier un match</button>
           </div>
         )}
       </div>

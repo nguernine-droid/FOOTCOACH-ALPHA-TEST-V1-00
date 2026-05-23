@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Send, MessageCircle, Megaphone, Clock, MapPin, Users, UsersRound, UserCheck } from 'lucide-react';
+import { X, Send, MessageCircle, Megaphone, UserCheck } from 'lucide-react';
 
 interface ActionModalProps {
   isOpen: boolean;
@@ -15,14 +15,13 @@ const getAvatarUrl = (name: string, size = 30) =>
   `https://i.pravatar.cc/${size}?u=${encodeURIComponent(name)}`;
 
 export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionType }: ActionModalProps) {
-  // Par défaut l'application est réglée sur "parents"
   const [actionData, setActionData] = useState({
     opponent: '',
     date: '',
     time: '',
     location: '',
     message: '',
-    target: 'parents'
+    target: 'players' // Par défaut fixé sur joueurs pour l'Alpha
   });
 
   if (!isOpen) return null;
@@ -41,13 +40,13 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
     onSend(actionData);
   };
 
-  const inputClass = "w-full bg-[#111827] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-orange transition-all";
+  const inputClass = "w-full bg-[#111827] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-orange transition-all text-white";
   const quickMessages = ["⚽️ Arrivez 30 min avant", "⚠️ Match important", "🏥 Certificat médical requis"];
 
   const modalTitles: any = {
     convocation: { text: 'Convocation Match', icon: Send },
     message: { text: 'Envoyer un Message', icon: MessageCircle },
-    annonce: { text: 'Passer une Annonce', icon: Megaphone }
+    annonce: { text: 'Briefing Unité', icon: Megaphone }
   };
 
   const currentMode = modalTitles[actionType] || modalTitles.message;
@@ -109,33 +108,6 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
           )}
 
           <div className="space-y-4 pt-2 border-t border-white/5">
-            <div>
-              <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-3 flex items-center gap-1">
-                <UserCheck size={10} className="text-brand-orange" /> Cible du message
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'players', label: 'Joueurs', icon: Users },
-                  { value: 'parents', label: 'Parents', icon: UsersRound },
-                  { value: 'both', label: 'Tous', icon: MessageCircle }
-                ].map(target => (
-                  <button
-                    key={target.value}
-                    type="button"
-                    onClick={() => setActionData(prev => ({...prev, target: target.value}))}
-                    className={`p-3 rounded-2xl text-[9px] font-black uppercase flex flex-col items-center gap-1 transition-all border ${
-                      actionData.target === target.value
-                        ? 'bg-brand-orange border-brand-orange text-white shadow-lg shadow-brand-orange/20 scale-105'
-                        : 'bg-black/20 border-white/5 text-white/40 hover:border-white/20'
-                    }`}
-                  >
-                    <target.icon size={16} />
-                    {target.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div>
               <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Message</label>
               <textarea name="message" value={actionData.message} onChange={handleChange} rows={3} className={`${inputClass} resize-none min-h-[80px]`} placeholder="Écrivez ici..."></textarea>

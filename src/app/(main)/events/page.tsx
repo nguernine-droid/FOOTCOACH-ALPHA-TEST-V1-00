@@ -57,16 +57,10 @@ export default function CalendarPage() {
   const monthShort = viewDate.toLocaleDateString('fr-FR', { month: 'short' });
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Chargement des événements (Mock + LocalStorage)
+  // Chargement des événements (LocalStorage uniquement pour l'Alpha)
   useEffect(() => {
-    const defaultEvents = [
-      { id: 1, title: 'Plateau Amical Sèvres', date: '2026-05-14', time: '14h00', location: 'Stade Mun.', type: 'plateau-amical', status: 'confirmé', presents: 10, total: SQUAD_SIZE },
-      { id: 2, title: 'Match vs Versailles', date: '2026-05-16', time: '14h30', location: 'Terrain B', type: 'match-amical', status: 'convoqué', presents: 7, total: SQUAD_SIZE },
-      { id: 3, title: 'vs AS Meudon', date: '2026-05-20', time: '15h00', location: 'Stade Meudon', type: 'match-champ', status: 'en-attente', presents: 0, total: SQUAD_SIZE },
-    ];
-
     const stored = JSON.parse(localStorage.getItem('team_events') || '[]');
-    setEvents([...defaultEvents, ...stored]);
+    setEvents(stored);
   }, []);
 
   // Filtrage des événements pour le mois en cours

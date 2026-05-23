@@ -315,18 +315,14 @@ function AttendanceView({ players }: { players: any[] }) {
 }
 
 function ResultsHistoryView() {
-  const mockResults = [
-    { id: 1, opponent: 'FC Versailles', score: '3 - 1', result: 'V', type: 'MATCH', date: '12_05' },
-    { id: 2, opponent: 'AS Meudon', score: '2 - 2', result: 'N', type: 'MISSION', date: '08_05' },
-    { id: 3, opponent: 'Nanterre SC', score: '0 - 1', result: 'D', type: 'MATCH', date: '01_05' },
-  ];
+  const mockResults: any[] = [];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-3 gap-3">
-         <ResultCard label="SUCCESS" value="12" color="text-neon-green" bg="bg-neon-green/5 border-neon-green/20" />
-         <ResultCard label="NEUTRAL" value="4" color="text-neon-orange" bg="bg-neon-orange/5 border-neon-orange/20" />
-         <ResultCard label="FAILED" value="2" color="text-neon-magenta" bg="bg-neon-magenta/5 border-neon-magenta/20" />
+         <ResultCard label="SUCCESS" value="0" color="text-neon-green" bg="bg-neon-green/5 border-neon-green/20" />
+         <ResultCard label="NEUTRAL" value="0" color="text-neon-orange" bg="bg-neon-orange/5 border-neon-orange/20" />
+         <ResultCard label="FAILED" value="0" color="text-neon-magenta" bg="bg-neon-magenta/5 border-neon-magenta/20" />
       </div>
 
       <div className="card-cyber p-8 border-white/5 overflow-hidden">
@@ -335,18 +331,22 @@ function ResultsHistoryView() {
            <h3 className="text-sm font-black text-white uppercase italic tracking-tighter leading-none">Archives_Mission_Logs</h3>
         </div>
         <div className="space-y-4">
-          {mockResults.map(r => (
-            <div key={r.id} className="flex items-center justify-between p-5 bg-white/[0.03] border border-white/5 rounded-2xl group hover:border-white/10 transition-all active:scale-[0.98]">
-               <div className="flex items-center gap-5">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shadow-xl border-2 ${r.result === 'V' ? 'bg-neon-green/10 text-neon-green border-neon-green/30' : r.result === 'N' ? 'bg-neon-orange/10 text-neon-orange border-neon-orange/30' : 'bg-neon-magenta/10 text-neon-magenta border-neon-magenta/30'}`}>{r.result}</div>
-                  <div>
-                    <p className="text-sm font-black text-white uppercase italic tracking-tight group-hover:text-neon-cyan transition-colors">{r.opponent}</p>
-                    <p className="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] font-mono mt-1">{r.type} // DATA_STAMP: {r.date}</p>
-                  </div>
-               </div>
-               <span className="text-base font-black italic text-white font-mono tracking-tighter">{r.score}</span>
-            </div>
-          ))}
+          {mockResults.length > 0 ? (
+            mockResults.map(r => (
+              <div key={r.id} className="flex items-center justify-between p-5 bg-white/[0.03] border border-white/5 rounded-2xl group hover:border-white/10 transition-all active:scale-[0.98]">
+                 <div className="flex items-center gap-5">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shadow-xl border-2 ${r.result === 'V' ? 'bg-neon-green/10 text-neon-green border-neon-green/30' : r.result === 'N' ? 'bg-neon-orange/10 text-neon-orange border-neon-orange/30' : 'bg-neon-magenta/10 text-neon-magenta border-neon-magenta/30'}`}>{r.result}</div>
+                    <div>
+                      <p className="text-sm font-black text-white uppercase italic tracking-tight group-hover:text-neon-cyan transition-colors">{r.opponent}</p>
+                      <p className="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] font-mono mt-1">{r.type} // DATA_STAMP: {r.date}</p>
+                    </div>
+                 </div>
+                 <span className="text-base font-black italic text-white font-mono tracking-tighter">{r.score}</span>
+              </div>
+            ))
+          ) : (
+            <div className="py-20 text-center opacity-30 italic uppercase text-[10px]">Aucun log de mission disponible</div>
+          )}
         </div>
       </div>
     </div>

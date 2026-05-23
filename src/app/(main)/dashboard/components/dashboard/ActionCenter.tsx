@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Zap, UserCheck, MessageSquare, Megaphone } from 'lucide-react';
+import { Zap, UserCheck, MessageSquare, Megaphone, Lock } from 'lucide-react';
 
 // ==========================================
 // TYPES
@@ -14,7 +14,8 @@ interface ActionCenterProps {
 }
 
 export function ActionCenter({ isPro, onAction }: ActionCenterProps) {
-  // Configuration des 3 boutons pour éviter la répétition de code
+  // Configuration des 3 boutons
+  // AJOUT DE LOCKED: true pour brider la version Alpha
   const actions = [
     {
       type: 'convocation' as ActionType,
@@ -22,6 +23,7 @@ export function ActionCenter({ isPro, onAction }: ActionCenterProps) {
       label: 'Convoquer',
       stylePro: 'bg-orange-600 text-white hover:bg-orange-700',
       styleCyber: 'bg-neon-orange text-black shadow-[0_0_15px_#FF6B00] hover:bg-orange-500',
+      locked: true
     },
     {
       type: 'message' as ActionType,
@@ -29,6 +31,7 @@ export function ActionCenter({ isPro, onAction }: ActionCenterProps) {
       label: 'Message',
       stylePro: 'bg-blue-600 text-white hover:bg-blue-700',
       styleCyber: 'bg-neon-cyan text-black shadow-[0_0_15px_#00F0FF] hover:bg-cyan-300',
+      locked: true
     },
     {
       type: 'annonce' as ActionType,
@@ -36,8 +39,17 @@ export function ActionCenter({ isPro, onAction }: ActionCenterProps) {
       label: 'Briefing',
       stylePro: 'bg-purple-600 text-white hover:bg-purple-700',
       styleCyber: 'bg-neon-magenta text-white shadow-[0_0_15px_#FF00FF] hover:bg-pink-500',
+      locked: true
     },
   ];
+
+  const handleActionClick = (action: any) => {
+    if (action.locked) {
+      alert("🚧 MODULE EN DÉVELOPPEMENT\nLes fonctions d'interaction directe seront activées après la phase de test du Radar.");
+      return;
+    }
+    onAction(action.type);
+  };
 
   return (
     <section className="space-y-4">
@@ -54,11 +66,16 @@ export function ActionCenter({ isPro, onAction }: ActionCenterProps) {
           return (
             <button
               key={action.type}
-              onClick={() => onAction(action.type)}
-              className={`p-4 rounded-2xl flex flex-col items-center gap-2 border-2 border-transparent transition-all active:scale-95 ${
+              onClick={() => handleActionClick(action)}
+              className={`p-4 rounded-2xl flex flex-col items-center gap-2 border-2 border-transparent transition-all active:scale-95 relative overflow-hidden ${
                 isPro ? action.stylePro : action.styleCyber
-              }`}
+              } ${action.locked ? 'opacity-40 grayscale-[0.5]' : ''}`}
             >
+              {action.locked && (
+                <div className="absolute top-1 right-2">
+                  <Lock size={10} className="text-white/50" />
+                </div>
+              )}
               <Icon size={24} />
               <span className="text-[9px] font-black uppercase">{action.label}</span>
             </button>

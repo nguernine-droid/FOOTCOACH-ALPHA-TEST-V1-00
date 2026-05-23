@@ -173,12 +173,12 @@ export default function OnboardingPage() {
             <h2 className="text-[10px] font-black uppercase tracking-widest text-white/60">{isPro ? 'Identité Coach' : 'Identité Commandant'}</h2>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <input required placeholder="NOM" value={lastName} onChange={e => setLastName(e.target.value.toUpperCase())} className="bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14]" />
-            <input required placeholder="PRÉNOM" value={firstName} onChange={e => setFirstName(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14]" />
+            <input required placeholder="NOM" value={lastName} onChange={e => setLastName(e.target.value.toUpperCase())} className="bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14] text-white" />
+            <input required placeholder="PRÉNOM" value={firstName} onChange={e => setFirstName(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14] text-white" />
           </div>
-          <input required placeholder="SURNOM (Ex: Nono)" value={nickname} onChange={e => setNickname(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14]" />
-          <textarea placeholder="JE ME PRÉSENTE... (Votre philosophie, parcours)" value={bio} onChange={e => setBio(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14] min-h-[100px]" />
-          <input placeholder="TÉLÉPHONE (Optionnel)" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14]" />
+          <input required placeholder="SURNOM (Ex: Nono)" value={nickname} onChange={e => setNickname(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14] text-white" />
+          <textarea placeholder="JE ME PRÉSENTE... (Votre philosophie, parcours)" value={bio} onChange={e => setBio(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14] min-h-[100px] text-white" />
+          <input placeholder="TÉLÉPHONE (Optionnel)" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-xs font-bold text-white outline-none focus:border-[#39FF14] text-white" />
         </div>
 
         {/* CLUB */}
