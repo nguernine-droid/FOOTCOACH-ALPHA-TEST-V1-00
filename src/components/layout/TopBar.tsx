@@ -70,7 +70,7 @@ export function TopBar() {
           </div>
           {/* Box 6: SAISON */}
           <div className="text-center">
-             <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027</p>
+             <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027 // V1.1.0</p>
           </div>
         </Link>
 
