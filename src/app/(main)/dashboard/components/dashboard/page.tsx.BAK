@@ -1,0 +1,215 @@
+'use client';
+
+import React, { useState } from 'react';
+import Link from 'next/link';
+import {
+  Shield, Camera, ChevronRight, Calendar
+} from 'lucide-react';
+import { useTeam } from '@/lib/context/TeamContext';
+import { ActionModal } from '@/components/ui/ActionModal';
+import { SquadOverview, SquadPlayer } from '@/components/dashboard/SquadOverview';
+import { NextMissionCard } from '@/components/dashboard/NextMissionCard';
+import { ActionCenter, ActionType } from '@/components/dashboard/ActionCenter';
+
+// ==========================================
+// MOCK DATA
+// ==========================================
+const mockSquad: SquadPlayer[] = [
+  { id: '1', name: 'Lucas RCX', status: 'active', avatarUrl: 'https://i.pravatar.cc/40?u=lucas', poste: 'ATT' },
+  { id: '2', name: 'Mia RCX', status: 'active', avatarUrl: 'https://i.pravatar.cc/40?u=mia', poste: 'MIL' },
+  { id: '3', name: 'Hugo L.', status: 'doubt', avatarUrl: 'https://i.pravatar.cc/40?u=hugo', poste: 'DEF' },
+  { id: '4', name: 'Lina M.', status: 'inactive', avatarUrl: 'https://i.pravatar.cc/40?u=lina', poste: 'GARD' },
+  { id: '5', name: 'Yassine K.', status: 'active', avatarUrl: 'https://i.pravatar.cc/40?u=yassine', poste: 'MIL' },
+];
+
+const mockNextEvent = {
+  id: 'ev-1',
+  title: "VS FC SÈTE",
+  date: '2024-05-26',
+  time: '10:00',
+  location: 'Stade Municipal',
+  type: 'match' as const,
+  available: 12,
+  total: 16
+};
+
+export default function DashboardPage() {
+  const { teamInfo, role, theme } = useTeam();
+  const isPro = theme === 'classic';
+
+  // ==========================================
+  // GESTION DES THÊMES DYNAMIQUES
+  // ==========================================
+  const styles = isPro ? {
+    mainBg: 'bg-gray-50',
+    cardBg: 'bg-white border-gray-200 shadow-sm',
+    text: 'text-gray-900',
+    textSub: 'text-gray-500',
+    accent: 'text-orange-600',
+    accentBg: 'bg-orange-50 border-orange-200',
+    progressBg: 'bg-gray-100',
+  } : {
+    mainBg: 'bg-[#050510]',
+    cardBg: 'bg-white/5 border-white/10',
+    text: 'text-white',
+    textSub: 'text-gray-400',
+    accent: 'text-neon-orange',
+    accentBg: 'bg-neon-orange/10 border-neon-orange/30',
+    progressBg: 'bg-white/10',
+  };
+
+  // ==========================================
+  // LOGIQUE D'INTERACTION
+  // ==========================================
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [actionType, setActionType] = useState<ActionType>('message');
+
+  const coachStats = { lvl: 1, grade: 'RECUEILLEUR', doctrine: 45, synergie: 30, influence: 15 };
+
+  // Sélection multiple dans le SquadOverview
+  const handleSelectPlayer = (id: string) => {
+    setSelectedPlayerIds(prev =>
+      prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]
+    );
+  };
+
+  // Ouverture de la modale depuis l'ActionCenter
+  const handleOpenAction = (type: ActionType) => {
+    setActionType(type);
+    // Si on ouvre une convocation et que personne n'est sélectionné, on pré-sélectionne les actifs
+    if (type === 'convocation' && selectedPlayerIds.length === 0) {
+      setSelectedPlayerIds(mockSquad.filter(p => p.status !== 'inactive').map(p => p.id));
+    }
+    setIsActionModalOpen(true);
+  };
+
+  const handleSendAction = (data: any) => {
+    console.log("Action envoyée:", data);
+    setIsActionModalOpen(false);
+    setSelectedPlayerIds([]); // Reset de la sélection après l'envoi
+  };
+
+  return (
+    <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-8 ${styles.mainBg}`}>
+
+      {/* 1. COACH PROFILE WIDGET */}
+      {role === 'coach' && (
+        <Link href="/profile" className="block">
+          <section className={`p-5 cursor-pointer active:scale-[0.98] transition-all group text-left border rounded-2xl ${styles.cardBg}`}>
+            <div className="flex items-center gap-4 mb-4">
+               <div className={`w-14 h-14 rounded-2xl border-2 overflow-hidden flex items-center justify-center flex-shrink-0 ${styles.accentBg}`}>
+                  {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} alt="Coach" className="w-full h-full object-cover" /> : <Camera size={24} className={styles.accent} />}
+               </div>
+               <div className="flex-1 min-w-0 text-left">
+                  <h3 className={`text-base font-black uppercase italic truncate leading-tight ${styles.text}`}>
+                     {teamInfo?.clubName || 'CLUB_NEXUS'}
+                  </h3>
+                  <p className={`text-[9px] font-black font-mono uppercase tracking-widest mt-1 ${styles.accent}`}>
+                     {teamInfo?.coachName || 'COMMANDANT'} // {coachStats.grade}
+                  </p>
+               </div>
+               <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className={`w-12 h-12 rounded-xl border-2 overflow-hidden flex items-center justify-center ${styles.cardBg}`}>
+                     {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} alt="Blason" className="w-full h-full object-cover" /> : <Shield size={24} className={styles.textSub} />}
+                  </div>
+                  <ChevronRight size={20} className={`${styles.textSub} transition-colors`} />
+               </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-left">
+               <MiniCoachBar label="DOC" value={coachStats.doctrine} color="bg-neon-orange" styles={styles} />
+               <MiniCoachBar label="SYN" value={coachStats.synergie} color={isPro ? 'bg-blue-600' : 'bg-neon-cyan'} styles={styles} />
+               <MiniCoachBar label="INF" value={coachStats.influence} color="bg-neon-magenta" styles={styles} />
+            </div>
+          </section>
+        </Link>
+      )}
+
+      {/* 2. SQUAD OVERVIEW (Composant Extrait) */}
+      <SquadOverview
+        players={mockSquad}
+        selectedIds={selectedPlayerIds}
+        onSelect={handleSelectPlayer}
+        isPro={isPro}
+      />
+
+      {/* 3. NEXT MISSION CARD (Composant Extrait) */}
+      <div className="space-y-3 text-left">
+        <NextMissionCard
+          event={mockNextEvent}
+          isPro={isPro}
+          role={role || 'coach'}
+        />
+      </div>
+
+      {/* 4. CENTRE D'ACTION (Composant Extrait) */}
+      <ActionCenter
+        isPro={isPro}
+        onAction={handleOpenAction}
+      />
+
+      {/* 5. COMPACT PLANNING (Local) */}
+      <CompactPlanning styles={styles} isPro={isPro} />
+
+      {/* MODALE D'ACTION INTÉGRÉE */}
+      <ActionModal
+        isOpen={isActionModalOpen}
+        onClose={() => { setIsActionModalOpen(false); setSelectedPlayerIds([]); }}
+        selectedPlayers={mockSquad.filter(p => selectedPlayerIds.includes(p.id)).map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }))}
+        onSend={handleSendAction}
+        actionType={actionType}
+      />
+
+    </div>
+  );
+}
+
+// ==========================================
+// SOUS-COMPOSANTS LOCAUX (Spécifiques à la page)
+// ==========================================
+
+function MiniCoachBar({ label, value, color, styles }: { label: string, value: number, color: string, styles: any }) {
+  return (
+    <div className="space-y-1 text-left">
+       <div className="flex justify-between items-center text-[7px] font-black font-mono text-left">
+         <span className={styles.textSub}>{label}</span>
+         <span className={styles.text}>{value}%</span>
+       </div>
+       <div className={`h-1 w-full ${styles.progressBg} rounded-full overflow-hidden text-left`}>
+         <div className={`h-full ${color} transition-all duration-1000`} style={{ width: `${value}%` }} />
+       </div>
+    </div>
+  );
+}
+
+function CompactPlanning({ styles, isPro }: { styles: any, isPro: boolean }) {
+  const items = [
+    { day: 'Mer 17', time: '18:00', label: 'SESSION_ENTRAINEMENT', color: isPro ? 'bg-blue-600' : 'bg-neon-cyan shadow-[0_0_8px_#00F0FF]' },
+    { day: 'Sam 20', time: '14:30', label: 'OBJECTIF_MATCH', color: 'bg-neon-orange shadow-[0_0_8px_#FF6B00]' }
+  ];
+
+  return (
+    <section className="space-y-4 text-left">
+      <div className="flex items-center gap-2 px-1 text-left">
+        <Calendar size={14} className={styles.accent} />
+        <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${styles.accent}`}>
+          {isPro ? 'PLANNING_SAISON' : 'CALENDRIER_MISSION'}
+        </h3>
+      </div>
+      <div className={`${isPro ? 'bg-white border-gray-200' : 'bg-white/[0.03] border-white/5'} border rounded-2xl p-2 space-y-1 text-left`}>
+        {items.map((item, i) => (
+          <div key={i} className={`flex items-center justify-between p-5 border border-transparent ${isPro ? 'hover:bg-gray-50' : 'hover:bg-white/[0.06]'} rounded-xl transition-all cursor-pointer group text-left`}>
+            <div className="flex items-center gap-5 text-left">
+              <div className={`w-1 h-10 rounded-full ${item.color}`} />
+              <div className="text-left">
+                <p className={`text-xs font-black uppercase italic tracking-tight ${styles.text}`}>{item.label}</p>
+                <p className={`text-[9px] font-bold uppercase tracking-widest font-mono mt-1 ${styles.textSub}`}>{item.day} @ {item.time}</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className={`${styles.textSub} transition-colors`} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
