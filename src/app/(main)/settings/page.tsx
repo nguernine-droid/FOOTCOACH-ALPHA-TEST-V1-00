@@ -147,6 +147,29 @@ export default function SettingsPage() {
       }]);
 
       if (error) throw error;
+
+      // 2. ENVOI DIRECT À DISCORD (Plan de secours 100% stable)
+      try {
+        await fetch('https://discord.com/api/webhooks/1507782001091022868/iuP7yhqy4DEF6wtCxg5JSBKsjoJATiECQSPx2z3jBdPG7vzICDFKF7VhQGK2J7CqnyIN', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            embeds: [{
+              title: `🚀 NOUVEAU SIGNALEMENT : ${feedbackType.toUpperCase()}`,
+              color: feedbackType === 'bug' ? 15548997 : 3066993,
+              fields: [
+                { name: '👤 Coach', value: teamInfo?.coachName || 'Inconnu', inline: true },
+                { name: '⚽️ Club', value: teamInfo?.clubName || 'Sans club', inline: true },
+                { name: '📝 Message', value: feedback.trim() }
+              ],
+              timestamp: new Date().toISOString()
+            }]
+          })
+        });
+      } catch (discordErr) {
+        console.error("Discord sync failed, but data is saved in DB");
+      }
+
       setFeedback('');
       alert("🚀 Merci ! Votre signalement a été transmis à l'administrateur.");
       fetchFeedbacks();
