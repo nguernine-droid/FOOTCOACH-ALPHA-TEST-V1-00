@@ -1,66 +1,71 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { CoachView } from './coach-view';
 import { ParentView } from './parent-view';
 import { PlayerView } from './player-view';
 import SupporterView from './supporter-view';
+import OnboardingPage from '@/app/(setup)/onboarding/page';
 
 export default function ProfilePage() {
-  // On récupère le thème en plus du rôle
-  const { role, theme, isProfileComplete } = useTeam();
-
-  // Si le profil n'est pas complété, on redirige vers l'onboarding pour forcer la saisie
+  const { role, theme, isProfileComplete, hasSeenWelcome, setHasSeenWelcome } = useTeam();
   const router = useRouter();
-  React.useEffect(() => {
-    if (!isProfileComplete) {
-      router.replace('/onboarding');
-    }
-  }, [isProfileComplete, router]);
-
   const [isAddingParent, setIsAddingParent] = useState(false);
 
-  // LOGIQUE DE THÈME SELON LE CDCF (Mis à jour pour le choix du Joueur)
+  // Aiguillage Intelligent
+  // Si première visite et profil pas complet -> On affiche l'onboarding au sein de la page profil
+  const showWelcome = !hasSeenWelcome && !isProfileComplete;
+
+  useEffect(() => {
+    // Si l'utilisateur a fini l'onboarding (isProfileComplete passe à true),
+    // on marque hasSeenWelcome à true pour ne plus jamais revenir.
+    if (isProfileComplete && !hasSeenWelcome) {
+      setHasSeenWelcome(true);
+    }
+  }, [isProfileComplete, hasSeenWelcome, setHasSeenWelcome]);
+
   const getBackgroundClass = () => {
-    // 1. Le Joueur a le choix du thème (comme le Coach)
-    if (role === 'player') {
-      return theme === 'nexus' ? 'bg-black text-white' : 'bg-gray-50 text-gray-900';
-    }
-
-    // 2. Le Parent et le Supporter ont le thème Classique forcé (fond clair)
+    if (showWelcome) return 'bg-black text-white';
     if (role === 'parent' || role === 'supporter') return 'bg-gray-50 text-gray-900';
+    return theme === 'nexus' ? 'bg-black text-white' : 'bg-gray-50 text-gray-900';
+  };
 
-    // 3. Le Coach dépend de son choix de thème
-    if (role === 'coach') {
-      return theme === 'nexus' ? 'bg-black text-white' : 'bg-gray-50 text-gray-900';
-    }
-
-    return 'bg-gray-50 text-gray-900'; // Fallback sécurisé (Classique)
+  // Bouton pour ignorer l'invitation (Optionnel, permet de voir sa carte vide)
+  const handleSkipWelcome = () => {
+    setHasSeenWelcome(true);
   };
 
   return (
     <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 ${getBackgroundClass()}`}>
 
-      {/* COACH : Dossier Commandant / Outil Pro */}
-      {role === 'coach' && !isAddingParent && (
+      {/* 1. ÉCRAN DE BIENVENUE (Proposition non bloquante) */}
+      {showWelcome && (
+        <div className="space-y-6">
+          <div className="flex justify-end px-2">
+             <button
+               onClick={handleSkipWelcome}
+               className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 hover:text-white transition-colors border border-white/10 px-4 py-2 rounded-full"
+             >
+               Ignorer pour l'instant
+             </button>
+          </div>
+          <OnboardingPage />
+        </div>
+      )}
+
+      {/* 2. VUE COACH (Carte FIFA) */}
+      {!showWelcome && role === 'coach' && !isAddingParent && (
         <CoachView onActivateParent={() => setIsAddingParent(true)} />
       )}
 
-      {/* PARENT : Suivi multi-enfants et cagnottes */}
-      {(role === 'parent' || isAddingParent) && (
-        <ParentView
-          showBackButton={isAddingParent}
-          onBackToCoach={() => setIsAddingParent(false)}
-        />
+      {/* PARENT / JOUEUR / SUPPORTER */}
+      {!showWelcome && (role === 'parent' || isAddingParent) && (
+        <ParentView showBackButton={isAddingParent} onBackToCoach={() => setIsAddingParent(false)} />
       )}
-
-      {/* JOUEUR : Carte FIFA personnelle et Sync Engine */}
-      {role === 'player' && <PlayerView />}
-
-      {/* SUPPORTER : Fan Zone et visualisation des cartes enfants */}
-      {role === 'supporter' && <SupporterView />}
+      {!showWelcome && role === 'player' && <PlayerView />}
+      {!showWelcome && role === 'supporter' && <SupporterView />}
 
     </div>
   );

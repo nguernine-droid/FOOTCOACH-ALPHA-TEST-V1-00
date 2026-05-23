@@ -54,11 +54,11 @@ export function TopBar() {
         </div>
 
         {/* COLONNE CENTRE : NOM CLUB | NOM COACH | SAISON */}
-        <Link href={isProfileComplete ? "/profile" : "/onboarding"} className="flex flex-col gap-1 justify-center cursor-pointer">
+        <Link href="/profile" className="flex flex-col gap-1 justify-center cursor-pointer">
           {/* Box 4: ID CLUB */}
           <div className="text-center">
             <GlitchText
-              text={teamInfo?.clubName || 'COMPLETER_PROFIL'}
+              text={teamInfo?.clubName || 'MON_UNITÉ'}
               className={`text-sm font-black italic tracking-tighter uppercase ${accentColor} leading-none line-clamp-1`}
             />
           </div>
@@ -77,7 +77,7 @@ export function TopBar() {
         {/* COLONNE DROITE : PHOTO PROFIL */}
         <div className="flex flex-col items-center">
           {/* Box 7: PHOTO */}
-          <Link href={isProfileComplete ? "/profile" : "/onboarding"} className="block group w-full">
+          <Link href="/profile" className="block group w-full">
             <div className={`aspect-square w-full rounded-xl border-2 transition-all group-hover:scale-105 active:scale-95 ${getStatusBorder()} bg-black/40 shadow-lg relative overflow-hidden`}>
               {teamInfo?.coachPhoto ? (
                 <img src={teamInfo.coachPhoto} alt="Coach" className="w-full h-full object-cover" />

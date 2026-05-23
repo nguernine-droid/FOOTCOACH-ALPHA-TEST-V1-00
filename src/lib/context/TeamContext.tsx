@@ -41,6 +41,8 @@ interface TeamContextType {
   refreshData: () => Promise<void>;
   isLoading: boolean;
   isProfileComplete: boolean;
+  hasSeenWelcome: boolean;
+  setHasSeenWelcome: (seen: boolean) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
@@ -48,6 +50,7 @@ const TeamContext = createContext<TeamContextType | undefined>(undefined);
 export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [role, setRoleState] = useState<Role>('coach');
   const [theme, setThemeState] = useState<Theme>('classic');
+  const [hasSeenWelcome, setHasSeenWelcomeState] = useState(false);
   const [teamInfo, setTeamInfoState] = useState<TeamInfo>({
     clubName: 'UNITE_NEXUS',
     category: 'SÉNIORS',
@@ -69,11 +72,13 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1. Priorité au LocalStorage pour éviter le flash
+      // 1. Priorité au LocalStorage
       const savedRole = localStorage.getItem('user_role') as Role | null;
       const savedTheme = localStorage.getItem('app_theme') as Theme | null;
+      const savedSeen = localStorage.getItem('has_seen_welcome') === 'true';
       if (savedRole) setRoleState(savedRole);
       if (savedTheme) setThemeState(savedTheme);
+      setHasSeenWelcomeState(savedSeen);
 
       if (user) {
         const { data: profile, error: pError } = await supabase
@@ -86,7 +91,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           setRoleState(profile.role as Role);
           setThemeState(profile.theme_preference as Theme || 'classic');
 
-          // Vérification si le profil est complété (nom et club présents)
+          // Statut du profil
           const isComplete = !!(profile.first_name && profile.last_name && profile.club_id);
           setIsProfileComplete(isComplete);
 
@@ -109,32 +114,19 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             xp: profile.coach_xp || 0,
             grade: profile.coach_grade || (profile.theme_preference === 'classic' ? 'COACH' : 'COMMANDANT')
           });
-
-          // Persistance locale pour le Guard
-          localStorage.setItem('user_role', profile.role);
-          localStorage.setItem('app_theme', profile.theme_preference || 'classic');
-        } else {
-          // Utilisateur connecté mais sans profil en base (juste après register)
-          setIsProfileComplete(false);
-          setTeamInfoState(prev => ({
-            ...prev,
-            coachName: 'COACH',
-            grade: theme === 'classic' ? 'COACH' : 'COMMANDANT'
-          }));
         }
-      } else {
-        // Pas de session utilisateur -> Sécurité : on nettoie les résidus locaux
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('app_theme');
-        localStorage.removeItem('is_authenticated');
-        localStorage.removeItem('team_info');
       }
     } catch (err) {
       console.error("Context Sync Error:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [theme]);
+  }, []);
+
+  const setHasSeenWelcome = (seen: boolean) => {
+    setHasSeenWelcomeState(seen);
+    localStorage.setItem('has_seen_welcome', seen ? 'true' : 'false');
+  };
 
   useEffect(() => {
     refreshData();
@@ -167,7 +159,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <TeamContext.Provider value={{
-      role, setRole, theme, setTheme, teamInfo, setTeamInfo, isPro, refreshData, isLoading, isProfileComplete
+      role, setRole, theme, setTheme, teamInfo, setTeamInfo, isPro, refreshData, isLoading, isProfileComplete,
+      hasSeenWelcome, setHasSeenWelcome
     }}>
       {children}
     </TeamContext.Provider>
