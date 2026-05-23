@@ -5,28 +5,28 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 
 /**
- * ROOT_PAGE : L'AIGUILLAGE INTELLIGENT
- * Vérifie la session réelle pour éviter les résidus de LocalStorage.
+ * ROOT_PAGE : L'AIGUILLAGE MAÎTRE
+ * Force le nettoyage et la redirection stricte.
  */
 export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const checkAccess = async () => {
+      // 1. On vérifie l'utilisateur réel Supabase
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (session) {
-        // Session valide -> Dashboard
-        router.replace('/dashboard');
-      } else {
-        // Pas de session -> On nettoie le local et direction Showcase
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('is_authenticated');
+      if (!user) {
+        // AUCUN COMPTE -> Nettoyage radical et Vitrine
+        localStorage.clear();
         router.replace('/showcase');
+      } else {
+        // COMPTE EXISTE -> Dashboard
+        router.replace('/dashboard');
       }
     };
 
-    checkSession();
+    checkAccess();
   }, [router]);
 
   return (
