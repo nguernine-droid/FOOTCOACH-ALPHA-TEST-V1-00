@@ -11,6 +11,7 @@ interface FifaCardProps {
   color?: string;
   textColor?: string;
   image?: string;
+  clubLogo?: string;
   stats: { label: string; value: string | number }[];
   onClose?: () => void;
   variant?: 'classic' | 'cyber';
@@ -24,6 +25,7 @@ export function FifaCard({
   color = "from-[#FFD700] via-[#FDB931] to-[#D4AF37]",
   textColor = "text-[#4D3319]",
   image,
+  clubLogo,
   stats,
   onClose,
   variant = 'classic'
@@ -48,7 +50,14 @@ export function FifaCard({
               <div className={`text-6xl font-black ${textColor} leading-none`}>{score}</div>
               <div className={`text-[10px] font-black ${textColor} tracking-[0.3em] mt-1 uppercase opacity-70`}>{label}</div>
             </div>
-            <Shield className={`w-10 h-10 ${textColor} opacity-20`} />
+
+            <div className={`w-12 h-12 rounded-xl overflow-hidden border-2 border-white/30 flex items-center justify-center bg-black/20`}>
+              {clubLogo ? (
+                <img src={clubLogo} alt="Club" className="w-full h-full object-contain p-1" />
+              ) : (
+                <Shield className={`w-8 h-8 ${textColor} opacity-20`} />
+              )}
+            </div>
           </div>
 
           <div className="relative mt-2">

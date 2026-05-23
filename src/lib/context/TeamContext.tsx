@@ -19,6 +19,7 @@ export interface TeamInfo {
   userFirstName?: string;
   userLastName?: string;
   bio?: string;
+  phone?: string;
   // RPG Stats
   doctrine: number;
   synergie: number;
@@ -97,6 +98,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             userFirstName: profile.first_name,
             userLastName: profile.last_name,
             bio: profile.bio,
+            phone: profile.phone,
             doctrine: profile.coach_doctrine || 0,
             synergie: profile.coach_synergie || 0,
             influence: profile.coach_influence || 0,
@@ -134,9 +136,18 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user_role', newRole);
   };
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = async (newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem('app_theme', newTheme);
+
+    // Mise à jour réelle dans Supabase pour la persistance
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('profiles')
+        .update({ theme_preference: newTheme })
+        .eq('id', user.id);
+    }
   };
 
   const setTeamInfo = (info: TeamInfo) => {

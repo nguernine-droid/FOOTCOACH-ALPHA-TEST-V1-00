@@ -88,8 +88,9 @@ export default function RadarPage() {
         respondentId: item.respondent_id,
         respondentName: item.respondent ? `${item.respondent.first_name} ${item.respondent.last_name}` : undefined,
         respondentLogo: item.respondent?.clubs?.logo_url,
-        x: 20 + (Math.abs(item.id.charCodeAt(0)) % 60),
-        y: 20 + (Math.abs(item.id.charCodeAt(1)) % 60),
+        // Coordonnées réalistes autour du centre (50,50)
+        x: 50 + (Math.cos(item.id.charCodeAt(0)) * (15 + (item.id.charCodeAt(1) % 30))),
+        y: 50 + (Math.sin(item.id.charCodeAt(2)) * (15 + (item.id.charCodeAt(3) % 30))),
       }));
 
       setRequests(formatted);
@@ -186,7 +187,7 @@ export default function RadarPage() {
                <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
              </div>
            ) : (
-             <RadarSonar signals={requests} onSignalClick={() => setViewMode('list')} isScanning={isScanning} theme={theme} />
+             <RadarSonar signals={requests} onSignalClick={(req) => { setViewMode('list'); /* Scroll to req could be added */ }} isScanning={isScanning} theme={theme} />
            )}
         </section>
       ) : (

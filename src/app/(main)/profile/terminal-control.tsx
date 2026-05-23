@@ -69,16 +69,9 @@ export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?
             </div>
             <p className={`text-xs font-black ${styles.textMain} uppercase italic`}>Saison Active</p>
           </div>
-          <select
-            value={selectedSeason}
-            onChange={(e) => setSelectedSeason(e.target.value)}
-            className={`${styles.selectBg} rounded-xl p-2 text-xs font-black outline-none appearance-none cursor-pointer border`}
-          >
-            <option value="2026/2027">2026/2027</option>
-            <option value="2025/2026">2025/2026</option>
-            <option value="2024/2025">2024/2025</option>
-            <option value="2023/2024">2023/2024</option>
-          </select>
+          <div className={`${styles.selectBg} rounded-xl px-4 py-2 text-[10px] font-black border opacity-60`}>
+            2026-2027
+          </div>
         </div>
 
         {/* Thème (Masqué si hideThemeToggle est true) */}
@@ -95,9 +88,9 @@ export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?
             </div>
             <button
               onClick={() => setTheme(theme === 'nexus' ? 'classic' : 'nexus')}
-              className={`w-10 h-5 rounded-full relative transition-all ${isPro ? styles.toggleOn : styles.toggleOff}`}
+              className={`w-12 h-6 rounded-full relative transition-all border border-white/10 ${!isPro ? 'bg-neon-cyan' : 'bg-orange-600'}`}
             >
-              <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${isPro ? 'left-1' : 'left-6'}`} />
+              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg transition-all ${isPro ? 'left-1' : 'left-6'}`} />
             </button>
           </div>
         )}

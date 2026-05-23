@@ -62,6 +62,7 @@ export default function OnboardingPage() {
       setLastName(teamInfo.userLastName || '');
       setNickname(teamInfo.coachName !== 'COACH' ? teamInfo.coachName : '');
       setBio(teamInfo.bio || '');
+      setPhone(teamInfo.phone || '');
       setSelectedTheme(teamInfo.grade === 'COACH' ? 'classic' : 'nexus');
     }
   }, [teamInfo]);
