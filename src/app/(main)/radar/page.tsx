@@ -14,6 +14,7 @@ export interface MatchRequest {
   coachId: string;
   coachClub: string;
   coachName: string;
+  coachLogo?: string;
   type: string;
   category: string;
   status: 'OPEN' | 'PENDING' | 'MATCHED' | 'EXPIRED';
@@ -24,6 +25,7 @@ export interface MatchRequest {
   comment?: string;
   respondentId?: string;
   respondentName?: string;
+  respondentLogo?: string;
   x?: number;
   y?: number;
 }
@@ -44,7 +46,10 @@ export default function RadarPage() {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
       setCurrentUserId(user.id);
 
       const { data, error } = await supabase
@@ -54,9 +59,13 @@ export default function RadarPage() {
           profiles:coach_id (
             first_name,
             last_name,
-            clubs:club_id (name)
+            clubs:club_id (name, logo_url)
           ),
-          respondent:respondent_id (first_name, last_name)
+          respondent:respondent_id (
+            first_name,
+            last_name,
+            clubs:club_id (name, logo_url)
+          )
         `)
         .neq('status', 'EXPIRED')
         .order('created_at', { ascending: false });
@@ -68,6 +77,7 @@ export default function RadarPage() {
         coachId: item.coach_id,
         coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
         coachName: item.profiles ? `${item.profiles.first_name} ${item.profiles.last_name}` : 'Coach Inconnu',
+        coachLogo: item.profiles?.clubs?.logo_url,
         type: item.type,
         category: item.category,
         status: item.status,
@@ -77,6 +87,7 @@ export default function RadarPage() {
         comment: item.comment,
         respondentId: item.respondent_id,
         respondentName: item.respondent ? `${item.respondent.first_name} ${item.respondent.last_name}` : undefined,
+        respondentLogo: item.respondent?.clubs?.logo_url,
         x: 20 + (Math.abs(item.id.charCodeAt(0)) % 60),
         y: 20 + (Math.abs(item.id.charCodeAt(1)) % 60),
       }));
@@ -97,17 +108,10 @@ export default function RadarPage() {
     try {
       const { error } = await supabase
         .from('match_requests')
-        .update({
-          status: 'PENDING',
-          respondent_id: currentUserId
-        })
+        .update({ status: 'PENDING', respondent_id: currentUserId })
         .eq('id', requestId);
-
-      if (error) throw error;
-      fetchRadarData();
-    } catch (err: any) {
-      alert("Erreur : " + err.message);
-    }
+      if (!error) fetchRadarData();
+    } catch (err) {}
   };
 
   const handleAccept = async (request: MatchRequest) => {
@@ -132,33 +136,22 @@ export default function RadarPage() {
           away_club_id: request.respondentId
         }]);
 
-      if (eventErr) throw eventErr;
-      fetchRadarData();
-    } catch (err: any) {
-      alert("Erreur validation : " + err.message);
-    }
-  };
-
-  const handleRefuse = async (requestId: string) => {
-    const { error } = await supabase
-      .from('match_requests')
-      .update({ status: 'OPEN', respondent_id: null })
-      .eq('id', requestId);
-
-    if (!error) fetchRadarData();
+      if (!eventErr) {
+        alert("MATCH_VALIDÉ ! Calendrier mis à jour.");
+        fetchRadarData();
+      }
+    } catch (err) {}
   };
 
   const styles = isPro ? {
     accent: 'text-blue-600',
     btnPrimary: 'bg-blue-600 text-white shadow-lg',
-    cardBg: 'bg-white border-gray-200',
     tabActive: 'bg-blue-600 text-white',
     tabInactive: 'bg-gray-100 text-gray-500',
     textSub: 'text-gray-500'
   } : {
     accent: 'text-neon-cyan',
     btnPrimary: 'bg-neon-cyan text-black shadow-[0_0_20px_#00F0FF33]',
-    cardBg: 'bg-white/5 border-white/10',
     tabActive: 'bg-neon-cyan text-black',
     tabInactive: 'bg-white/5 text-gray-500',
     textSub: 'text-gray-400'
@@ -166,26 +159,16 @@ export default function RadarPage() {
 
   return (
     <main className={`min-h-screen pb-32 max-w-md mx-auto p-4 space-y-6 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
-
       <div className="flex justify-between items-center gap-4">
         <div className={`flex-1 p-1 rounded-2xl flex border ${isPro ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
-          <button
-            onClick={() => setViewMode('sonar')}
-            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${viewMode === 'sonar' ? styles.tabActive : styles.tabInactive}`}
-          >
+          <button onClick={() => setViewMode('sonar')} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${viewMode === 'sonar' ? styles.tabActive : styles.tabInactive}`}>
             <RadarIcon size={16} /> <span className="text-[10px] font-black uppercase italic">Radar</span>
           </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${viewMode === 'list' ? styles.tabActive : styles.tabInactive}`}
-          >
+          <button onClick={() => setViewMode('list')} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${viewMode === 'list' ? styles.tabActive : styles.tabInactive}`}>
             <List size={16} /> <span className="text-[10px] font-black uppercase italic">Annonces</span>
           </button>
         </div>
-        <button
-          onClick={() => router.push('/radar/new')}
-          className={`p-4 rounded-2xl transition-all active:scale-90 ${styles.btnPrimary}`}
-        >
+        <button onClick={() => router.push('/radar/new')} className={`p-4 rounded-2xl transition-all active:scale-90 ${styles.btnPrimary}`}>
           <Plus size={24} strokeWidth={4} />
         </button>
       </div>
@@ -198,19 +181,12 @@ export default function RadarPage() {
                 <Wifi size={16} className={isScanning ? 'animate-pulse' : ''} />
               </button>
            </div>
-
            {isLoading ? (
              <div className="aspect-square flex flex-col items-center justify-center space-y-4">
                <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
-               <p className="text-[10px] font-black uppercase opacity-40 italic">Sync Radar...</p>
              </div>
            ) : (
-             <RadarSonar
-               signals={requests}
-               onSignalClick={() => setViewMode('list')}
-               isScanning={isScanning}
-               theme={theme}
-             />
+             <RadarSonar signals={requests} onSignalClick={() => setViewMode('list')} isScanning={isScanning} theme={theme} />
            )}
         </section>
       ) : (
@@ -218,13 +194,11 @@ export default function RadarPage() {
            {requests.map(req => (
              <MatchRequestCard
                key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId}
-               onInterested={handleInterest} onAccept={() => handleAccept(req)} onRefuse={handleRefuse}
+               onInterested={handleInterest} onAccept={() => handleAccept(req)} onRefuse={()=>{}}
                onChat={(r) => setSelectedChatRequest(r)}
              />
            ))}
-           {requests.length === 0 && (
-              <div className="py-20 text-center opacity-30 italic uppercase text-[10px]">Aucun signal détecté</div>
-           )}
+           {requests.length === 0 && <div className="py-20 text-center opacity-30 italic uppercase text-[10px]">Aucun signal détecté</div>}
         </div>
       )}
 
@@ -235,6 +209,8 @@ export default function RadarPage() {
           matchRequestId={selectedChatRequest.id}
           currentUserId={currentUserId}
           otherCoachName={selectedChatRequest.coachName}
+          otherCoachLogo={selectedChatRequest.coachId === currentUserId ? selectedChatRequest.respondentLogo : selectedChatRequest.coachLogo}
+          myLogo={teamInfo?.clubLogo}
           theme={theme as any}
         />
       )}
