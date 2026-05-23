@@ -92,7 +92,7 @@ export default function DashboardPage() {
         });
       }
 
-      // 4. Fetch Activités Récentes (Briefing + Matchs)
+      // 4. Fetch Activités Récentes (Briefing + Matchs + Calendrier)
       const localBriefings = JSON.parse(localStorage.getItem('team_messages') || '[]');
 
       const { data: matches } = await supabase
@@ -103,18 +103,38 @@ export default function DashboardPage() {
         .order('created_at', { ascending: false })
         .limit(3);
 
+      const { data: calendarEvents } = await supabase
+        .from('events')
+        .select('*')
+        .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`)
+        .order('date', { ascending: true })
+        .limit(3);
+
       const formattedMatches = (matches || []).map(m => ({
         id: m.id,
         type: 'match',
-        title: `Match Validé : ${m.type}`,
-        desc: `Contre Coach ${m.respondent?.nickname || m.respondent?.first_name || 'Nexus'}`,
+        title: `Match Confirmé : ${m.type}`,
+        desc: `Vs Coach ${m.respondent?.nickname || m.respondent?.first_name || 'Nexus'}`,
         date: new Date(m.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      }));
+
+      const formattedEvents = (calendarEvents || []).map(e => ({
+        id: e.id,
+        type: 'calendar',
+        title: `Calendrier : ${e.title}`,
+        desc: `${e.date} à ${e.time} - ${e.location}`,
+        date: new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
       }));
 
       const combined = [
         ...localBriefings.map((b: any) => ({ id: b.id, type: b.type || 'info', title: b.title, desc: b.lastMessage, date: b.date })),
-        ...formattedMatches
-      ].slice(0, 5);
+        ...formattedMatches,
+        ...formattedEvents
+      ].sort((a, b) => {
+         const dateA = a.date.includes('/') ? new Date(a.date.split('/').reverse().join('-')) : new Date();
+         const dateB = b.date.includes('/') ? new Date(b.date.split('/').reverse().join('-')) : new Date();
+         return dateB.getTime() - dateA.getTime();
+      }).slice(0, 6);
 
       setActivities(combined);
 
@@ -271,14 +291,21 @@ function RecentActivity({ styles, isPro, activities }: { styles: any, isPro: boo
   const getIcon = (type: string) => {
     switch (type) {
       case 'match': return <Trophy size={16} />;
+      case 'calendar': return <Calendar size={16} />;
       case 'message': return <MessageSquare size={16} />;
       default: return <Megaphone size={16} />;
     }
   };
 
   const getColor = (type: string) => {
-    if (isPro) return type === 'match' ? 'bg-orange-600' : 'bg-blue-600';
-    return type === 'match' ? 'bg-neon-orange shadow-[0_0_8px_#FF6B00]' : 'bg-neon-cyan shadow-[0_0_8px_#00F0FF]';
+    if (isPro) {
+      if (type === 'match') return 'bg-orange-600';
+      if (type === 'calendar') return 'bg-sky-500';
+      return 'bg-blue-600';
+    }
+    if (type === 'match') return 'bg-neon-orange shadow-[0_0_8px_#FF6B00]';
+    if (type === 'calendar') return 'bg-sky-400 shadow-[0_0_8px_#38bdf8]';
+    return 'bg-neon-cyan shadow-[0_0_8px_#00F0FF]';
   };
 
   return (

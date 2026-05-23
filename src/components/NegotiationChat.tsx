@@ -170,8 +170,8 @@ export function NegotiationChat({
             <div className="h-full flex items-center justify-center"><Loader2 className={`animate-spin ${isPro ? 'text-blue-600' : 'text-neon-cyan'}`} /></div>
           ) : messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center opacity-30 space-y-2">
-              <MessageSquare size={32} />
-              <p className="text-[10px] font-black uppercase tracking-widest">Ouvrez la négociation...</p>
+              <MessageSquare size={32} className={isPro ? 'text-gray-400' : 'text-white'} />
+              <p className={`text-[10px] font-black uppercase tracking-widest ${isPro ? 'text-gray-500' : 'text-white'}`}>Ouvrez la négociation...</p>
             </div>
           ) : (
             messages.map((msg) => {
@@ -211,7 +211,7 @@ export function NegotiationChat({
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Écrire un message..."
-                className={`flex-1 rounded-2xl p-4 pr-14 text-sm font-bold outline-none transition-all border ${isPro ? 'bg-white border-gray-200 focus:border-blue-600' : 'bg-black border-white/10 focus:border-neon-cyan text-white'}`}
+                className={`flex-1 rounded-2xl p-4 pr-14 text-sm font-bold outline-none transition-all border ${isPro ? 'bg-white border-gray-200 focus:border-blue-600 text-gray-900' : 'bg-black border-white/10 focus:border-neon-cyan text-white'}`}
               />
               <button
                 type="submit"
