@@ -15,7 +15,8 @@ import {
   Zap,
   Briefcase,
   Loader2,
-  Search
+  Search,
+  Plus
 } from 'lucide-react';
 import { ScanlinesOverlay } from '@/components/ui/cyber/ScanlinesOverlay';
 import { useTeam } from '@/lib/context/TeamContext';
@@ -27,9 +28,8 @@ interface Club {
 }
 
 /**
- * ONBOARDING (v7.2 - ALPHA TEST V1)
- * Forcé en mode COACH unique. Sélecteur de club actif.
- * Rôles Parent/Joueur/Supporter supprimés de l'interface.
+ * ONBOARDING (v7.4 - ALPHA TEST V1)
+ * "Complète ton profil" - Supporte la création de club à la volée.
  */
 export default function OnboardingPage() {
   const router = useRouter();
@@ -47,25 +47,12 @@ export default function OnboardingPage() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [nickname, setNickname] = useState(''); // AJOUT SURNOM
-  const [bio, setBio] = useState(''); // AJOUT PRÉSENTATION
-  const [phone, setPhone] = useState(''); // AJOUT TÉLÉPHONE
-  const role = 'coach'; // FORCÉ POUR ALPHA TEST V1
+  const [nickname, setNickname] = useState('');
+  const [bio, setBio] = useState('');
+  const [phone, setPhone] = useState('');
 
   const [acceptCGU, setAcceptCGU] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
-
-  // Pré-remplissage automatique (Surtout utile pour la reconnexion)
-  useEffect(() => {
-    if (teamInfo && teamInfo.userFirstName) {
-      setFirstName(teamInfo.userFirstName);
-      setLastName(teamInfo.userLastName || '');
-      setNickname(teamInfo.coachName !== 'COACH' ? teamInfo.coachName : '');
-      setBio(teamInfo.bio || '');
-      setPhone(teamInfo.phone || '');
-      setSelectedTheme(teamInfo.grade === 'COACH' ? 'classic' : 'nexus');
-    }
-  }, [teamInfo]);
 
   // --- LOGIQUE CLUB ---
   const [allClubs, setClubs] = useState<Club[]>([]);
@@ -80,6 +67,29 @@ export default function OnboardingPage() {
     ).slice(0, 5);
   }, [allClubs, clubSearch]);
 
+  // Pré-remplissage automatique identité
+  useEffect(() => {
+    if (teamInfo && teamInfo.userFirstName) {
+      setFirstName(teamInfo.userFirstName);
+      setLastName(teamInfo.userLastName || '');
+      setNickname(teamInfo.coachName !== 'COACH' ? teamInfo.coachName : '');
+      setBio(teamInfo.bio || '');
+      setPhone(teamInfo.phone || '');
+      setSelectedTheme(teamInfo.grade === 'COACH' ? 'classic' : 'nexus');
+    }
+  }, [teamInfo]);
+
+  // Pré-remplissage du club une fois que la liste est chargée
+  useEffect(() => {
+    if (teamInfo?.id && allClubs.length > 0 && !selectedClub) {
+      const myClub = allClubs.find(c => c.id === teamInfo.id);
+      if (myClub) {
+        setSelectedClub(myClub);
+        setClubSearch('');
+      }
+    }
+  }, [teamInfo, allClubs, selectedClub]);
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -93,8 +103,12 @@ export default function OnboardingPage() {
 
   const handleFinish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!acceptCGU || !acceptPrivacy || !firstName || !lastName || !selectedClub) {
-      setErrorMessage("Veuillez remplir tous les champs et sélectionner votre club.");
+
+    // On valide que le nom du club est saisi, même si pas sélectionné
+    const clubName = selectedClub ? selectedClub.name : clubSearch.trim();
+
+    if (!acceptCGU || !acceptPrivacy || !firstName || !lastName || !clubName) {
+      setErrorMessage("Veuillez remplir tous les champs obligatoires.");
       return;
     }
 
@@ -105,16 +119,30 @@ export default function OnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée.");
 
-      // Mise à jour Profil dans Supabase
+      let clubId = selectedClub?.id;
+
+      // 1. Si pas de club sélectionné mais un nom saisi -> Création du club
+      if (!clubId && clubName) {
+        const { data: newClub, error: cErr } = await supabase
+          .from('clubs')
+          .insert([{ name: clubName, category: 'Mixte' }])
+          .select()
+          .single();
+
+        if (cErr) throw new Error("Erreur lors de la création du club.");
+        clubId = newClub.id;
+      }
+
+      // 2. Mise à jour Profil
       const { error: pErr } = await supabase.from('profiles').upsert([{
         id: user.id,
         role: 'coach',
         first_name: firstName,
         last_name: lastName,
-        nickname: nickname, // SAUVEGARDE SURNOM
-        bio: bio, // SAUVEGARDE BIO
-        phone: phone, // SAUVEGARDE TÉLÉPHONE
-        club_id: selectedClub.id,
+        nickname: nickname,
+        bio: bio,
+        phone: phone,
+        club_id: clubId,
         theme_preference: selectedTheme
       }]);
 
@@ -142,7 +170,7 @@ export default function OnboardingPage() {
         <div className="inline-block p-4 rounded-3xl border-2 mb-4 transition-all duration-500" style={{ borderColor: neonHex, backgroundColor: `${neonHex}1A` }}>
           <Fingerprint style={{ color: neonHex }} size={40} />
         </div>
-        <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white">Initialisation</h1>
+        <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white">Complète ton profil</h1>
         <p className="text-[9px] font-black text-[#39FF14] uppercase tracking-[0.4em] mt-2">
           ALPHA_TEST_V1 // PROTOCOLE_COACH
         </p>
@@ -192,8 +220,8 @@ export default function OnboardingPage() {
             <div className="relative">
               <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
               <input
-                placeholder={selectedClub ? selectedClub.name : "RECHERCHER VOTRE CLUB..."}
-                value={clubSearch}
+                placeholder="RECHERCHER OU SAISIR VOTRE CLUB..."
+                value={selectedClub ? selectedClub.name : clubSearch}
                 onChange={(e) => {
                   setClubSearch(e.target.value);
                   setIsClubListOpen(true);
@@ -203,7 +231,7 @@ export default function OnboardingPage() {
               />
               {selectedClub && <CheckCircle2 size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-neon-green" />}
             </div>
-            {isClubMenuOpen && filteredClubs.length > 0 && (
+            {isClubMenuOpen && (
               <div className="absolute z-50 w-full mt-2 bg-[#0A0A0A] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
                 {filteredClubs.map(club => (
                   <button key={club.id} type="button" onClick={() => { setSelectedClub(club); setClubSearch(''); setIsClubListOpen(false); }} className="w-full p-4 text-left hover:bg-white/5 border-b border-white/5 last:border-0">
@@ -211,6 +239,14 @@ export default function OnboardingPage() {
                     <p className="text-[8px] text-white/40 uppercase font-bold">{department}</p>
                   </button>
                 ))}
+                {clubSearch.trim() && !allClubs.some(c => c.name.toLowerCase() === clubSearch.toLowerCase()) && (
+                  <button type="button" onClick={() => setIsClubListOpen(false)} className="w-full p-4 text-left hover:bg-white/5 text-neon-cyan">
+                    <div className="flex items-center gap-2">
+                      <Plus size={14} />
+                      <p className="text-xs font-black uppercase italic">Utiliser "{clubSearch}"</p>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -248,7 +284,7 @@ export default function OnboardingPage() {
 
         {errorMessage && <p className="text-center text-[10px] font-black text-red-500 uppercase">{errorMessage}</p>}
 
-        <button type="submit" disabled={isLoading} className={`w-full py-6 rounded-2xl font-black uppercase italic text-lg transition-all flex items-center justify-center gap-3 shadow-2xl ${acceptCGU && acceptPrivacy && selectedClub ? (selectedTheme === 'nexus' ? 'bg-neon-cyan text-black' : 'bg-neon-orange text-white') : 'bg-white/5 text-white/20 cursor-not-allowed'}`}>
+        <button type="submit" disabled={isLoading} className={`w-full py-6 rounded-2xl font-black uppercase italic text-lg transition-all flex items-center justify-center gap-3 shadow-2xl ${acceptCGU && acceptPrivacy && (selectedClub || clubSearch.trim()) ? (selectedTheme === 'nexus' ? 'bg-neon-cyan text-black' : 'bg-neon-orange text-white') : 'bg-white/5 text-white/20 cursor-not-allowed'}`}>
           {isLoading ? <Loader2 className="animate-spin" /> : (isPro ? "ACTIVER MON COMPTE" : "DÉPLOYER_L_UNITÉ")}
           {!isLoading && <ChevronRight size={24} />}
         </button>
