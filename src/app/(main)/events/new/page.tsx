@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
@@ -14,16 +14,23 @@ import {
   Shield,
   Check,
   Repeat,
-  ChevronRight,
   Target,
   Brain,
   Flame,
   Layout,
-  Users
+  Search,
+  CheckCircle2,
+  Plus
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
+import { supabase } from '@/lib/supabase/client';
 
 type EventType = 'training' | 'match' | 'plateau' | 'tournament';
+
+interface Club {
+  id: string;
+  name: string;
+}
 
 export default function NewEventPage() {
   const router = useRouter();
@@ -44,6 +51,27 @@ export default function NewEventPage() {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<'weekly' | 'biweekly'>('weekly');
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+
+  // Club search states (for match type)
+  const [allClubs, setClubs] = useState<Club[]>([]);
+  const [clubSearch, setClubSearch] = useState('');
+  const [selectedOpponent, setSelectedOpponent] = useState<Club | null>(null);
+  const [isClubMenuOpen, setIsClubListOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchClubs = async () => {
+      const { data } = await supabase.from('clubs').select('id, name').order('name');
+      if (data) setClubs(data);
+    };
+    fetchClubs();
+  }, []);
+
+  const filteredClubs = useMemo(() => {
+    if (!clubSearch.trim()) return [];
+    return allClubs.filter(c =>
+      c.name.toLowerCase().includes(clubSearch.toLowerCase())
+    ).slice(0, 5);
+  }, [allClubs, clubSearch]);
 
   const eventTypes = [
     { id: 'training', label: 'Entraînement', desc: 'Séance technique & physique', icon: <Play size={24} />, color: 'bg-sky-400', textColor: 'text-sky-400' },
@@ -71,21 +99,28 @@ export default function NewEventPage() {
   };
 
   const handleSave = () => {
-    if (!date || !title) {
-      alert('Veuillez renseigner au moins un titre et une date.');
+    const finalTitle = type === 'match'
+      ? `vs ${selectedOpponent ? selectedOpponent.name : clubSearch.trim()}`
+      : title;
+
+    if (!date || (!finalTitle && type !== 'match') || (type === 'match' && !selectedOpponent && !clubSearch.trim())) {
+      alert('Veuillez renseigner les informations obligatoires (Equipe adverse / Titre et Date).');
       return;
     }
+
     const typeMapping: Record<EventType, string> = {
       training: 'entrainement', match: 'match-amical', plateau: 'plateau-amical', tournament: 'tournoi'
     };
+
     const newEvent = {
       id: Date.now(),
-      title: type === 'training' ? `[${trainingTheme}] ${title}` : title,
+      title: type === 'training' ? `[${trainingTheme}] ${finalTitle}` : finalTitle,
       date, time, location, note,
       type: typeMapping[type], status: 'confirmé',
       isRecurring, recurrenceFrequency, recurrenceEndDate,
       trainingTheme: type === 'training' ? trainingTheme : null
     };
+
     const existingEvents = JSON.parse(localStorage.getItem('team_events') || '[]');
     localStorage.setItem('team_events', JSON.stringify([...existingEvents, newEvent]));
 
@@ -161,12 +196,49 @@ export default function NewEventPage() {
 
           {/* Form Fields */}
           <div className="space-y-6">
-            {/* Intitulé & Thème (si entraînement) */}
+            {/* Intitulé / Opposant */}
             <div className={`${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'} rounded-[2.5rem] p-7 shadow-sm border space-y-5`}>
-              <div className="space-y-2">
-                <label className={`text-[10px] font-black uppercase tracking-widest block ml-2 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>Intitulé de la séance</label>
-                <input type="text" placeholder="Ex: Bloc bas, Finition..." value={title} onChange={(e) => setTitle(e.target.value)} className={`w-full ${isPro ? 'bg-gray-50 text-gray-900' : 'bg-black/40 text-white'} rounded-2xl p-5 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20`} />
-              </div>
+              {type === 'match' ? (
+                <div className="space-y-3">
+                  <label className={`text-[10px] font-black uppercase tracking-widest block ml-2 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>vs (Équipe adverse)</label>
+                  <div className="relative">
+                    <div className="relative">
+                      <Search size={18} className={`absolute left-4 top-1/2 -translate-y-1/2 ${isPro ? 'text-gray-400' : 'text-white/30'}`} />
+                      <input
+                        placeholder="RECHERCHER OU SAISIR..."
+                        value={selectedOpponent ? selectedOpponent.name : clubSearch}
+                        onChange={(e) => {
+                          setClubSearch(e.target.value);
+                          setIsClubListOpen(true);
+                          if (selectedOpponent) setSelectedOpponent(null);
+                        }}
+                        className={`w-full ${isPro ? 'bg-gray-50 text-gray-900' : 'bg-black/40 text-white'} rounded-2xl p-5 pl-12 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20 uppercase ${selectedOpponent ? 'text-neon-green' : ''}`}
+                      />
+                      {selectedOpponent && <CheckCircle2 size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-neon-green" />}
+                    </div>
+                    {isClubMenuOpen && (clubSearch.trim()) && (
+                      <div className={`absolute z-50 w-full mt-2 border rounded-xl overflow-hidden shadow-2xl ${isPro ? 'bg-white' : 'bg-[#0A0A0A]'}`}>
+                        {filteredClubs.map(club => (
+                          <button key={club.id} type="button" onClick={() => { setSelectedOpponent(club); setClubSearch(''); setIsClubListOpen(false); }} className={`w-full p-4 text-left border-b last:border-0 ${isPro ? 'hover:bg-gray-50 border-gray-100' : 'hover:bg-white/5 border-white/5'}`}>
+                            <p className={`text-xs font-black uppercase italic ${isPro ? 'text-gray-900' : 'text-white'}`}>{club.name}</p>
+                          </button>
+                        ))}
+                        {!allClubs.some(c => c.name.toLowerCase() === clubSearch.toLowerCase()) && (
+                          <button type="button" onClick={() => setIsClubListOpen(false)} className={`w-full p-4 text-left flex items-center gap-2 ${isPro ? 'text-orange-600' : 'text-neon-cyan'}`}>
+                            <Plus size={14} />
+                            <p className="text-xs font-black uppercase italic">Utiliser "{clubSearch}"</p>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className={`text-[10px] font-black uppercase tracking-widest block ml-2 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>Intitulé de la séance</label>
+                  <input type="text" placeholder="Ex: Bloc bas, Finition..." value={title} onChange={(e) => setTitle(e.target.value)} className={`w-full ${isPro ? 'bg-gray-50 text-gray-900' : 'bg-black/40 text-white'} rounded-2xl p-5 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20`} />
+                </div>
+              )}
 
               {type === 'training' && (
                 <div className="space-y-3">
