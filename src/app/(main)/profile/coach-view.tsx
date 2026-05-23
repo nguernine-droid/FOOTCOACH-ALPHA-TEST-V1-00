@@ -99,7 +99,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   return (
     <div className="space-y-10 text-left">
       <div className="flex justify-end gap-3 -mb-6 px-2 relative z-20">
-        <button onClick={() => router.push('/onboarding')} className={`flex items-center gap-2 px-4 py-2 rounded-2xl border transition-all active:scale-90 ${styles.cardBg} ${styles.border} ${styles.accent} hover:bg-orange-50 font-black uppercase text-[9px] tracking-widest shadow-lg`}>
+        <button onClick={() => router.push('/profile/edit')} className={`flex items-center gap-2 px-4 py-2 rounded-2xl border transition-all active:scale-90 ${styles.cardBg} ${styles.border} ${styles.accent} hover:bg-orange-50 font-black uppercase text-[9px] tracking-widest shadow-lg`}>
           <Edit3 size={16} /> Modifier Profil
         </button>
         <button onClick={() => router.push('/settings')} className={`p-3 rounded-2xl border transition-all active:scale-90 ${styles.cardBg} ${styles.border} ${styles.textSub} hover:text-white shadow-lg`}>
@@ -111,7 +111,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       <div className="relative">
         <FifaCard
           name={teamInfo?.coachName || (isPro ? 'COACH' : 'COMMANDANT')}
-          team={`${teamInfo?.clubName || 'UNITÉ_NEXUS'}`}
+          team={`${teamInfo?.clubName || 'UNITÉ_NEXUS'} - ${teamInfo?.category || ''} ${teamInfo?.level || ''}`}
           score={teamInfo?.xp ? 85 : 0} // Score à 0 si pas d'XP pour éviter le "85" en dur
           label={teamInfo?.grade || (isPro ? 'COACH' : 'COMMANDANT')}
           stats={[]} // Stats vides pour cette version

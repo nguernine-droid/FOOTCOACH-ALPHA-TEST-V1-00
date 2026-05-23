@@ -13,6 +13,7 @@ export interface TeamInfo {
   id?: string;
   clubName: string;
   category: string;
+  level: string;
   coachName: string;
   coachPhoto?: string;
   clubLogo?: string;
@@ -50,6 +51,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [teamInfo, setTeamInfoState] = useState<TeamInfo>({
     clubName: 'UNITE_NEXUS',
     category: 'SÉNIORS',
+    level: 'D1',
     coachName: 'COACH',
     doctrine: 0,
     synergie: 0,
@@ -91,7 +93,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           setTeamInfoState({
             id: profile.clubs?.id,
             clubName: profile.clubs?.name || 'MON CLUB',
-            category: profile.clubs?.category || 'SÉNIORS',
+            category: profile.coach_category || profile.clubs?.category || 'SÉNIORS',
+            level: profile.coach_level || 'D1',
             coachName: profile.nickname || profile.first_name || 'COACH',
             coachPhoto: profile.avatar_url,
             clubLogo: profile.clubs?.logo_url,
