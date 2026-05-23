@@ -8,23 +8,26 @@ import { ParentView } from './parent-view';
 import { PlayerView } from './player-view';
 import SupporterView from './supporter-view';
 import OnboardingPage from '@/app/(setup)/onboarding/page';
+import { Loader2 } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { role, theme, isProfileComplete, hasSeenWelcome, setHasSeenWelcome } = useTeam();
+  const { role, theme, isProfileComplete, hasSeenWelcome, setHasSeenWelcome, isLoading } = useTeam();
   const router = useRouter();
   const [isAddingParent, setIsAddingParent] = useState(false);
 
-  // Aiguillage Intelligent
-  // Si première visite et profil pas complet -> On affiche l'onboarding au sein de la page profil
-  const showWelcome = !hasSeenWelcome && !isProfileComplete;
+  // 1. ATTENTE DE SYNCHRONISATION
+  // Si l'application est en train de charger les données réelles, on affiche un loader
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-4">
+        <Loader2 size={40} className="animate-spin text-neon-cyan" />
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Synchronisation Profil...</p>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    // Si l'utilisateur a fini l'onboarding (isProfileComplete passe à true),
-    // on marque hasSeenWelcome à true pour ne plus jamais revenir.
-    if (isProfileComplete && !hasSeenWelcome) {
-      setHasSeenWelcome(true);
-    }
-  }, [isProfileComplete, hasSeenWelcome, setHasSeenWelcome]);
+  // 2. LOGIQUE D'AIGUILLAGE (Une fois les données chargées)
+  const showWelcome = !hasSeenWelcome && !isProfileComplete;
 
   const getBackgroundClass = () => {
     if (showWelcome) return 'bg-black text-white';
@@ -32,7 +35,6 @@ export default function ProfilePage() {
     return theme === 'nexus' ? 'bg-black text-white' : 'bg-gray-50 text-gray-900';
   };
 
-  // Bouton pour ignorer l'invitation (Optionnel, permet de voir sa carte vide)
   const handleSkipWelcome = () => {
     setHasSeenWelcome(true);
   };
@@ -40,7 +42,7 @@ export default function ProfilePage() {
   return (
     <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 ${getBackgroundClass()}`}>
 
-      {/* 1. ÉCRAN DE BIENVENUE (Proposition non bloquante) */}
+      {/* ÉCRAN DE BIENVENUE (Proposition non bloquante) */}
       {showWelcome && (
         <div className="space-y-6">
           <div className="flex justify-end px-2">
@@ -55,12 +57,12 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* 2. VUE COACH (Carte FIFA) */}
+      {/* VUE COACH (Carte FIFA) */}
       {!showWelcome && role === 'coach' && !isAddingParent && (
         <CoachView onActivateParent={() => setIsAddingParent(true)} />
       )}
 
-      {/* PARENT / JOUEUR / SUPPORTER */}
+      {/* AUTRES RÔLES */}
       {!showWelcome && (role === 'parent' || isAddingParent) && (
         <ParentView showBackButton={isAddingParent} onBackToCoach={() => setIsAddingParent(false)} />
       )}
