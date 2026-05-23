@@ -1,22 +1,28 @@
 'use client';
 
-import React from 'react';
-import { ShieldCheck, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, User, RefreshCw, Loader2 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { GlitchText } from '@/components/ui/cyber/GlitchText';
 import Link from 'next/link';
 
 /**
- * TOP_BAR (v9.2 - COMPACT ALPHA)
- * Version ultra-compacte pour optimiser l'espace écran sur mobile.
- * Suppression du Niveau, des Stats et de l'Effectif.
+ * TOP_BAR (v9.3 - SYNC READY)
+ * Version avec bouton de synchronisation forcée.
  */
 export function TopBar() {
-  const { teamInfo, theme, isProfileComplete } = useTeam();
+  const { teamInfo, theme, isProfileComplete, refreshData } = useTeam();
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const isPro = theme === 'classic';
   const accentColor = isPro ? 'text-neon-orange' : 'text-neon-cyan';
   const accentBorder = isPro ? 'border-neon-orange/30' : 'border-neon-cyan/30';
+
+  const handleManualRefresh = async () => {
+    setIsSyncing(true);
+    // On force un rechargement complet de la page pour vider tous les caches
+    window.location.reload();
+  };
 
   const coachStatus: 'Actif' | 'Inactif' | 'Toujours Partant' = 'Actif';
 
@@ -74,8 +80,8 @@ export function TopBar() {
           </div>
         </Link>
 
-        {/* COLONNE DROITE : PHOTO PROFIL */}
-        <div className="flex flex-col items-center">
+        {/* COLONNE DROITE : PHOTO PROFIL & SYNC */}
+        <div className="flex flex-col items-center gap-2">
           {/* Box 7: PHOTO */}
           <Link href="/profile" className="block group w-full">
             <div className={`aspect-square w-full rounded-xl border-2 transition-all group-hover:scale-105 active:scale-95 ${getStatusBorder()} bg-black/40 shadow-lg relative overflow-hidden`}>
@@ -84,12 +90,23 @@ export function TopBar() {
               ) : (
                 <User size={24} className={accentColor} />
               )}
-              {/* Badge Rôle Coach */}
               <div className={`absolute bottom-0 inset-x-0 py-0.5 text-center text-[5px] font-black uppercase bg-black/60 text-white`}>
                 COACH
               </div>
             </div>
           </Link>
+
+          {/* NOUVEAU : BOUTON SYNC MANUELLE */}
+          <button
+            onClick={handleManualRefresh}
+            className={`p-1 rounded-md border ${accentBorder} active:scale-90 transition-all`}
+          >
+            {isSyncing ? (
+              <Loader2 size={10} className={`animate-spin ${accentColor}`} />
+            ) : (
+              <RefreshCw size={10} className={accentColor} />
+            )}
+          </button>
         </div>
 
       </div>
