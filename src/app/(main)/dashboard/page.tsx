@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
-  Shield, Camera, ChevronRight, Calendar, Loader2
+  Shield, Camera, ChevronRight, Calendar, Loader2, Megaphone, Trophy, MessageSquare, Activity
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { ActionModal } from '@/components/ui/ActionModal';
@@ -21,6 +21,7 @@ export default function DashboardPage() {
   // ==========================================
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
   const [nextEvent, setNextEvent] = useState<any>(null);
+  const [activities, setActivities] = useState<any[]>([]);
   const [coachStats, setCoachStats] = useState({ grade: 'RECUEILLEUR', doctrine: 0, synergie: 0, influence: 0 });
   const [isDataLoading, setIsDataLoading] = useState(true);
 
@@ -51,15 +52,11 @@ export default function DashboardPage() {
         });
       }
 
-      let totalPlayers = 0;
-
-      // 2. Fetch Effectif (Club Players)
+      // 2. Fetch Effectif
       const { data: players } = await supabase
         .from('club_players')
         .select(`
-          id,
-          poste,
-          status,
+          id, poste, status,
           profiles (id, first_name, last_name, avatar_url)
         `)
         .eq('club_id', teamInfo.id);
@@ -73,10 +70,9 @@ export default function DashboardPage() {
           poste: p.poste || 'MIL'
         }));
         setSquad(formatted);
-        totalPlayers = formatted.length;
       }
 
-      // 3. Fetch Next Event (Réel)
+      // 3. Fetch Next Event
       const { data: events } = await supabase
         .from('events')
         .select('*')
@@ -92,11 +88,35 @@ export default function DashboardPage() {
           date: events[0].date,
           time: events[0].time,
           location: events[0].location,
-          type: 'match',
-          available: 0,
-          total: totalPlayers
+          type: 'match'
         });
       }
+
+      // 4. Fetch Activités Récentes (Briefing + Matchs)
+      const localBriefings = JSON.parse(localStorage.getItem('team_messages') || '[]');
+
+      const { data: matches } = await supabase
+        .from('match_requests')
+        .select('*, respondent:respondent_id(nickname, first_name)')
+        .eq('status', 'MATCHED')
+        .or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      const formattedMatches = (matches || []).map(m => ({
+        id: m.id,
+        type: 'match',
+        title: `Match Validé : ${m.type}`,
+        desc: `Contre Coach ${m.respondent?.nickname || m.respondent?.first_name || 'Nexus'}`,
+        date: new Date(m.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      }));
+
+      const combined = [
+        ...localBriefings.map((b: any) => ({ id: b.id, type: b.type || 'info', title: b.title, desc: b.lastMessage, date: b.date })),
+        ...formattedMatches
+      ].slice(0, 5);
+
+      setActivities(combined);
 
     } catch (err) {
       console.error("Erreur Dashboard Data:", err);
@@ -156,7 +176,7 @@ export default function DashboardPage() {
   return (
     <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-8 ${styles.mainBg}`}>
 
-      {/* 1. COACH PROFILE WIDGET (Données Dynamiques) */}
+      {/* 1. COACH PROFILE WIDGET */}
       {role === 'coach' && (
         <Link href={isProfileComplete ? "/profile" : "/onboarding"} className="block">
           <section className={`p-5 cursor-pointer active:scale-[0.98] transition-all group text-left border rounded-2xl ${styles.cardBg}`}>
@@ -190,30 +210,35 @@ export default function DashboardPage() {
 
       {/* 2. SQUAD OVERVIEW */}
       <SquadOverview
-        players={squad.length > 0 ? squad : []}
+        players={squad}
         selectedIds={selectedPlayerIds}
         onSelect={handleSelectPlayer}
         isPro={isPro}
       />
 
-      {/* 3. NEXT MISSION CARD */}
+      {/* 3. NEXT MISSION CARD -> REMPLACÉ PAR CALENDRIER SI VIDE */}
       <div className="space-y-3 text-left">
         {nextEvent ? (
           <NextMissionCard event={nextEvent} isPro={isPro} role={role || 'coach'} />
         ) : (
-          <div className={`${styles.cardBg} p-8 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center text-center space-y-4`}>
-             <Calendar size={32} className="opacity-20" />
-             <p className="text-[10px] font-black uppercase tracking-widest opacity-40 italic">Aucune mission programmée</p>
-             <button onClick={() => alert("🚧 MODULE EN DÉVELOPPEMENT\nLa planification de mission manuelle sera disponible après la phase Alpha.")} className={`text-[9px] font-black underline uppercase ${styles.accent}`}>Planifier un match</button>
-          </div>
+          <Link href="/events" className="block">
+            <div className={`${styles.cardBg} p-8 rounded-3xl border-2 flex flex-col items-center justify-center text-center space-y-4 active:scale-[0.98] transition-all`}>
+               <Calendar size={32} className={styles.accent} />
+               <div>
+                 <p className={`text-sm font-black uppercase italic ${styles.text}`}>Calendrier</p>
+                 <p className="text-[9px] font-bold uppercase tracking-widest opacity-40">Consultez l'agenda de l'unité</p>
+               </div>
+               <span className={`text-[9px] font-black underline uppercase ${styles.accent}`}>Ouvrir l'agenda</span>
+            </div>
+          </Link>
         )}
       </div>
 
       {/* 4. CENTRE D'ACTION */}
       <ActionCenter isPro={isPro} onAction={handleOpenAction} />
 
-      {/* 5. COMPACT PLANNING */}
-      <CompactPlanning styles={styles} isPro={isPro} />
+      {/* 5. ACTIVITÉ RÉCENTE (Remplace Planning) */}
+      <RecentActivity styles={styles} isPro={isPro} activities={activities} />
 
       {/* MODALE D'ACTION */}
       <ActionModal
@@ -242,17 +267,49 @@ function MiniCoachBar({ label, value, color, styles }: { label: string, value: n
   );
 }
 
-function CompactPlanning({ styles, isPro }: { styles: any, isPro: boolean }) {
+function RecentActivity({ styles, isPro, activities }: { styles: any, isPro: boolean, activities: any[] }) {
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'match': return <Trophy size={16} />;
+      case 'message': return <MessageSquare size={16} />;
+      default: return <Megaphone size={16} />;
+    }
+  };
+
+  const getColor = (type: string) => {
+    if (isPro) return type === 'match' ? 'bg-orange-600' : 'bg-blue-600';
+    return type === 'match' ? 'bg-neon-orange shadow-[0_0_8px_#FF6B00]' : 'bg-neon-cyan shadow-[0_0_8px_#00F0FF]';
+  };
+
   return (
     <section className="space-y-4 text-left">
       <div className="flex items-center gap-2 px-1 text-left">
-        <Calendar size={14} className={styles.accent} />
+        <Activity size={14} className={styles.accent} />
         <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${styles.accent}`}>
-          {isPro ? 'PLANNING_SAISON' : 'CALENDRIER_MISSION'}
+          Activité_Récente
         </h3>
       </div>
-      <div className={`${isPro ? 'bg-white border-gray-200' : 'bg-white/[0.03] border-white/5'} border rounded-2xl p-6 text-center italic text-[9px] uppercase tracking-widest text-gray-500`}>
-        Initialisation du flux de données...
+      <div className={`${isPro ? 'bg-white border-gray-200' : 'bg-white/[0.03] border-white/5'} border rounded-2xl p-2 space-y-1 text-left`}>
+        {activities.length > 0 ? (
+          activities.map((item, i) => (
+            <div key={i} className={`flex items-center justify-between p-4 border border-transparent ${isPro ? 'hover:bg-gray-50' : 'hover:bg-white/[0.06]'} rounded-xl transition-all cursor-pointer group text-left`}>
+              <div className="flex items-center gap-4 text-left flex-1 min-w-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 ${getColor(item.type)}`}>
+                  {getIcon(item.type)}
+                </div>
+                <div className="text-left flex-1 min-w-0">
+                  <p className={`text-xs font-black uppercase italic tracking-tight truncate ${styles.text}`}>{item.title}</p>
+                  <p className={`text-[9px] font-bold uppercase tracking-widest font-mono mt-1 truncate ${styles.textSub}`}>{item.desc}</p>
+                </div>
+                <p className={`text-[8px] font-black uppercase opacity-40 shrink-0 ml-2 ${styles.textSub}`}>{item.date}</p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-10 text-center italic text-[9px] uppercase tracking-widest text-gray-500">
+             En attente de nouvelles transmissions...
+          </div>
+        )}
       </div>
     </section>
   );
