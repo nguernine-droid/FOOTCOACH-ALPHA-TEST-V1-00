@@ -133,13 +133,18 @@ export default function EditProfilePage() {
         theme_preference: selectedTheme
       }).eq('id', user.id);
 
-      if (pErr) throw pErr;
+      if (pErr) {
+        console.error("Supabase Update Error:", pErr);
+        throw new Error(`Erreur Supabase: ${pErr.message}`);
+      }
 
       localStorage.setItem('app_theme', selectedTheme);
       await refreshData();
+      alert("✅ Profil mis à jour avec succès !");
       router.push('/profile');
     } catch (err: any) {
       setErrorMessage(err.message);
+      alert(err.message);
     } finally {
       setIsLoading(false);
     }

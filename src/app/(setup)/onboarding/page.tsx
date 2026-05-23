@@ -130,7 +130,10 @@ export default function OnboardingPage() {
         theme_preference: selectedTheme
       }]);
 
-      if (pErr) throw pErr;
+      if (pErr) {
+        console.error("Supabase Upsert Error:", pErr);
+        throw new Error(`Erreur Supabase: ${pErr.message}`);
+      }
 
       localStorage.setItem('user_role', 'coach');
       localStorage.setItem('app_theme', selectedTheme);
@@ -139,6 +142,7 @@ export default function OnboardingPage() {
       setIsSuccess(true);
     } catch (err: any) {
       setErrorMessage(err.message);
+      alert(err.message);
     } finally {
       setIsLoading(false);
     }
