@@ -1,9 +1,11 @@
 -- ==========================================
--- NEXUS OS : RESET TOTAL + CRÉATION STRUCTURE
--- (Sans Sécurité RLS pour faciliter le debug)
+-- NEXUS OS : STRUCTURE PROPRE V2 (CORRIGÉE)
 -- ==========================================
 
--- 1. PURGE : Suppression de tout ce qui existe
+-- 0. NETTOYAGE TOTAL (Efface les données existantes)
+DROP TABLE IF EXISTS public.theme_usage_logs CASCADE;
+DROP TABLE IF EXISTS public.feedbacks CASCADE;
+DROP TABLE IF EXISTS public.messages CASCADE;
 DROP TABLE IF EXISTS public.payments CASCADE;
 DROP TABLE IF EXISTS public.family_links CASCADE;
 DROP TABLE IF EXISTS public.notifications CASCADE;
@@ -14,126 +16,170 @@ DROP TABLE IF EXISTS public.club_players CASCADE;
 DROP TABLE IF EXISTS public.profiles CASCADE;
 DROP TABLE IF EXISTS public.clubs CASCADE;
 
+-- 1. CRÉATION DES TABLES AVEC BONNES RELATIONS
 
--- 2. CRÉATION : Structure brute des 9 tables
-
--- 1. TABLE DES CLUBS
-create table public.clubs (
-  id uuid default gen_random_uuid() primary key,
-  name text not null,
-  category text default 'U13',
+-- Table Clubs
+CREATE TABLE public.clubs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name text NOT NULL,
+  category text DEFAULT 'U13',
   logo_url text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. TABLE DES PROFILS
-create table public.profiles (
-  id uuid references auth.users on delete cascade primary key,
-  role text not null default 'coach' check (role in ('coach', 'player', 'parent', 'supporter')),
+-- Table Profils (Users)
+CREATE TABLE public.profiles (
+  id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  role text NOT NULL DEFAULT 'coach' CHECK (role in ('coach', 'player', 'parent', 'supporter')),
+
+  -- Info Basiques
   first_name text,
   last_name text,
+  nickname text,
   avatar_url text,
-  club_id uuid references public.clubs(id) on delete set null,
+  bio text,
+  phone text,
+  club_id uuid REFERENCES public.clubs(id) ON DELETE SET NULL,
 
-  -- THÈME
-  theme_preference text default 'classic',
+  -- Thème
+  theme_preference text DEFAULT 'classic',
 
-  -- Coach Stats RPG
-  coach_grade text default 'RECUEILLEUR',
-  coach_xp integer default 0,
-  coach_doctrine integer default 0,
-  coach_synergie integer default 0,
-  coach_influence integer default 0,
+  -- Stats RPG (COACH)
+  coach_grade text DEFAULT 'RECUEILLEUR',
+  coach_xp integer DEFAULT 0,
+  coach_doctrine integer DEFAULT 0,
+  coach_synergie integer DEFAULT 0,
+  coach_influence integer DEFAULT 0,
 
-  -- Joueur Stats RPG
-  player_vitality integer default 0,
-  player_logic integer default 0,
-  player_spirit integer default 0,
-  player_xp integer default 0,
-  player_lvl integer default 1,
-  parental_share_allowed boolean default false,
+  -- Stats RPG (JOUEUR)
+  player_vitality integer DEFAULT 0,
+  player_logic integer DEFAULT 0,
+  player_spirit integer DEFAULT 0,
+  player_xp integer DEFAULT 0,
+  player_lvl integer DEFAULT 1,
+  parental_share_allowed boolean DEFAULT false,
 
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. TABLE DES JOUEURS DANS UN CLUB
-create table public.club_players (
-  id uuid default gen_random_uuid() primary key,
-  club_id uuid references public.clubs(id) on delete cascade not null,
-  player_id uuid references public.profiles(id) on delete cascade not null,
-  status text default 'Actif' check (status in ('Inactif', 'Actif', 'Toujours Partant')),
+-- Table Joueurs dans un Club
+CREATE TABLE public.club_players (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  club_id uuid REFERENCES public.clubs(id) ON DELETE CASCADE NOT NULL,
+  player_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  status text DEFAULT 'Actif' CHECK (status in ('Inactif', 'Actif', 'Toujours Partant')),
   poste text,
   niveau text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(club_id, player_id)
 );
 
--- 4. TABLE CV COACH
-create table public.cv_items (
-  id uuid default gen_random_uuid() primary key,
-  coach_id uuid references public.profiles(id) on delete cascade not null,
-  type text not null check (type in ('Diplôme', 'Expérience', 'Philosophie')),
-  title text not null,
+-- Table CV Coach
+CREATE TABLE public.cv_items (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  coach_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type text NOT NULL CHECK (type in ('Diplôme', 'Expérience', 'Philosophie')),
+  title text NOT NULL,
   description text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. TABLE DES ANNONCES RADAR
-create table public.match_requests (
-  id uuid default gen_random_uuid() primary key,
-  coach_id uuid references public.profiles(id) on delete cascade not null,
-  type text default 'Match Amical' check (type in ('Match Amical', 'Tournoi', 'Plateau', 'Stage', 'Événement')),
-  category text not null,
-  date date not null,
-  time time not null,
-  location text not null,
+-- Table Match Requests (Radar)
+CREATE TABLE public.match_requests (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  coach_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  type text DEFAULT 'Match Amical' CHECK (type in ('Match Amical', 'Tournoi', 'Plateau', 'Stage', 'Événement')),
+  category text NOT NULL,
+  date date NOT NULL,
+  time time NOT NULL,
+  location text NOT NULL,
   comment text,
-  status text default 'OPEN' check (status in ('OPEN', 'PENDING', 'MATCHED', 'EXPIRED')),
-  respondent_id uuid references public.profiles(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  status text DEFAULT 'OPEN' CHECK (status in ('OPEN', 'PENDING', 'MATCHED', 'EXPIRED', 'CANCELLED')),
+  respondent_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. TABLE DES ÉVÉNEMENTS
-create table public.events (
-  id uuid default gen_random_uuid() primary key,
-  match_request_id uuid references public.match_requests(id) on delete set null,
-  title text not null,
-  type text default 'Match',
-  date date not null,
-  time time not null,
-  location text not null,
-  home_club_id uuid references public.clubs(id),
-  away_club_id uuid references public.clubs(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Table Events (Calendrier)
+CREATE TABLE public.events (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  match_request_id uuid REFERENCES public.match_requests(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  type text DEFAULT 'Match',
+  date date NOT NULL,
+  time time NOT NULL,
+  location text NOT NULL,
+  home_club_id uuid REFERENCES public.clubs(id),
+  away_club_id uuid REFERENCES public.clubs(id),
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. TABLE DES NOTIFICATIONS
-create table public.notifications (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  type text not null,
-  title text not null,
-  payload jsonb,
-  read boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Table Messages (Chat)
+CREATE TABLE public.messages (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  match_request_id uuid REFERENCES public.match_requests(id) ON DELETE CASCADE NOT NULL,
+  sender_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  text text NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 8. TABLE DES LIENS FAMILIAUX
-create table public.family_links (
-  id uuid default gen_random_uuid() primary key,
-  parent_or_supporter_id uuid references public.profiles(id) on delete cascade not null,
-  player_id uuid references public.profiles(id) on delete cascade not null,
-  relationship text default 'Parent',
-  can_view_card boolean default false,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Table Feedbacks
+CREATE TABLE public.feedbacks (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  type text CHECK (type IN ('bug', 'amélioration', 'question')),
+  content text NOT NULL,
+  admin_reply text,
+  status text DEFAULT 'open' CHECK (status IN ('open', 'closed')),
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 9. TABLE DES PAIEMENTS
-create table public.payments (
-  id uuid default gen_random_uuid() primary key,
-  club_id uuid references public.clubs(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) on delete cascade not null,
-  title text not null,
-  amount text not null,
-  status text default 'orange' check (status in ('orange', 'green')),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+-- 2. INSERTION DES CLUBS (Exemples)
+INSERT INTO public.clubs (name, category, logo_url) VALUES
+('AS Bessanaise', 'Mixte', 'https://api.dicebear.com/7.x/identicon/svg?seed=ASBessanaise'),
+('FC de Sete', 'Mixte', 'https://api.dicebear.com/7.x/identicon/svg?seed=FCSete'),
+('Montpellier Herault SC', 'Mixte', 'https://api.dicebear.com/7.x/identicon/svg?seed=MHSC');
+
+-- 3. SÉCURITÉ & REALTIME
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clubs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feedbacks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all for authenticated" ON public.profiles FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Allow all for clubs" ON public.clubs FOR ALL USING (true);
+CREATE POLICY "Allow all for messages" ON public.messages FOR ALL USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Allow all for feedbacks" ON public.feedbacks FOR ALL USING (auth.uid() IS NOT NULL);
+
+-- Sécurisation Realtime
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'messages') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+  END IF;
+END $$;
+
+-- 4. WEBHOOK DISCORD RÉEL
+CREATE EXTENSION IF NOT EXISTS "pg_net";
+
+CREATE OR REPLACE FUNCTION public.alerte_admin_feedback()
+RETURNS TRIGGER AS $$ BEGIN
+  PERFORM
+    net.http_post(
+      url := 'https://discord.com/api/webhooks/1507782001091022868/iuP7yhqy4DEF6wtCxg5JSBKsjoJATiECQSPx2z3jBdPG7vzICDFKF7VhQGK2J7CqnyIN',
+      body := json_build_object(
+        'embeds', ARRAY[json_build_object(
+          'title', '🚀 NOUVEAU SIGNALEMENT : ' || UPPER(NEW.type),
+          'description', NEW.content,
+          'color', CASE WHEN NEW.type = 'bug' THEN 15548997 ELSE 3066993 END,
+          'footer', json_build_object('text', 'ID Utilisateur: ' || NEW.user_id)
+        )]
+      )::text,
+      headers := '{"Content-Type": "application/json"}'::jsonb
+    );
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_on_feedback_inserted ON public.feedbacks;
+CREATE TRIGGER tr_on_feedback_inserted
+AFTER INSERT ON public.feedbacks
+FOR EACH ROW
+EXECUTE FUNCTION public.alerte_admin_feedback();

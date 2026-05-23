@@ -119,6 +119,12 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             grade: theme === 'classic' ? 'COACH' : 'COMMANDANT'
           }));
         }
+      } else {
+        // Pas de session utilisateur -> Sécurité : on nettoie les résidus locaux
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('app_theme');
+        localStorage.removeItem('is_authenticated');
+        localStorage.removeItem('team_info');
       }
     } catch (err) {
       console.error("Context Sync Error:", err);

@@ -2,30 +2,35 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 /**
  * ROOT_PAGE : L'AIGUILLAGE INTELLIGENT
- * On passe en 'use client' pour accéder au LocalStorage.
- * Cela évite le flash du dashboard pour les nouveaux utilisateurs.
+ * Vérifie la session réelle pour éviter les résidus de LocalStorage.
  */
 export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const hasRole = localStorage.getItem('user_role');
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-    if (hasRole) {
-      // Utilisateur connu -> Cockpit
-      router.replace('/dashboard');
-    } else {
-      // Nouvel utilisateur -> Vitrine
-      router.replace('/showcase');
-    }
+      if (session) {
+        // Session valide -> Dashboard
+        router.replace('/dashboard');
+      } else {
+        // Pas de session -> On nettoie le local et direction Showcase
+        localStorage.removeItem('user_role');
+        localStorage.removeItem('is_authenticated');
+        router.replace('/showcase');
+      }
+    };
+
+    checkSession();
   }, [router]);
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">
-      {/* Petit loader discret pendant l'aiguillage */}
       <div className="w-8 h-8 border-2 border-[#39FF14] border-t-transparent rounded-full animate-spin" />
     </div>
   );
