@@ -72,8 +72,8 @@ export default function DashboardPage() {
         setSquad(formatted);
       }
 
-      // 3. Fetch Next Event
-      const { data: events } = await supabase
+      // 3. Fetch Next Event (Supabase + LocalStorage Alpha)
+      const { data: dbEvents } = await supabase
         .from('events')
         .select('*')
         .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`)
@@ -81,14 +81,28 @@ export default function DashboardPage() {
         .order('date', { ascending: true })
         .limit(1);
 
-      if (events && events.length > 0) {
+      const localEvents = JSON.parse(localStorage.getItem('team_events') || '[]');
+      const nextLocal = localEvents
+        .filter((e: any) => new Date(e.date) >= new Date(new Date().setHours(0,0,0,0)))
+        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+
+      if (dbEvents && dbEvents.length > 0) {
         setNextEvent({
-          id: events[0].id,
-          title: events[0].title,
-          date: events[0].date,
-          time: events[0].time,
-          location: events[0].location,
+          id: dbEvents[0].id,
+          title: dbEvents[0].title,
+          date: dbEvents[0].date,
+          time: dbEvents[0].time,
+          location: dbEvents[0].location,
           type: 'match'
+        });
+      } else if (nextLocal) {
+        setNextEvent({
+          id: nextLocal.id,
+          title: nextLocal.title,
+          date: nextLocal.date,
+          time: nextLocal.time,
+          location: nextLocal.location,
+          type: nextLocal.type === 'entrainement' ? 'training' : 'match'
         });
       }
 
@@ -126,10 +140,19 @@ export default function DashboardPage() {
         date: new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
       }));
 
+      const formattedLocalEvents = localEvents.slice(0, 3).map((e: any) => ({
+        id: e.id,
+        type: 'calendar',
+        title: `RDV : ${e.title}`,
+        desc: `${e.date} à ${e.time} - ${e.location}`,
+        date: new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+      }));
+
       const combined = [
         ...localBriefings.map((b: any) => ({ id: b.id, type: b.type || 'info', title: b.title, desc: b.lastMessage, date: b.date })),
         ...formattedMatches,
-        ...formattedEvents
+        ...formattedEvents,
+        ...formattedLocalEvents
       ].sort((a, b) => {
          const dateA = a.date.includes('/') ? new Date(a.date.split('/').reverse().join('-')) : new Date();
          const dateB = b.date.includes('/') ? new Date(b.date.split('/').reverse().join('-')) : new Date();
