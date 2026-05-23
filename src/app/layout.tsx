@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { PWAUpdater } from "@/components/PWAUpdater";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ScanlinesOverlay } from "@/components/ui/cyber/ScanlinesOverlay";
@@ -10,17 +11,17 @@ import { TeamProvider } from "@/lib/context/TeamContext";
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "FOOTCOACH ALPHA TEST V1",
-  description: "Application de coaching FOOTCOACH ALPHA TEST V1",
+  title: "TEAM NEXUS ALPHA V1",
+  description: "Unité Tactique de Matchmaking & Coaching",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FOOTCOACH",
+    title: "TEAM NEXUS",
   },
   icons: {
-    apple: "https://nextjs.org/favicon.ico",
-    icon: "https://nextjs.org/favicon.ico",
+    apple: "/icons/icon-192x192.png",
+    icon: "/icons/icon-192x192.png",
   },
 };
 
@@ -74,6 +75,7 @@ export default function RootLayout({
       <body className="antialiased bg-black min-h-screen">
         <TeamProvider>
           <ClientGuard>
+            <PWAUpdater />
             <ScanlinesOverlay />
             <PWAInstallPrompt />
             {children}
