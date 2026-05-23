@@ -251,7 +251,7 @@ export default function SettingsPage() {
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Décrivez votre problème ou idée..."
-              className={`w-full min-h-[100px] rounded-2xl p-4 text-xs font-medium outline-none border transition-all ${isPro ? 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400' : 'bg-white/5 border-white/10 text-white placeholder:text-gray-600'}`}
+              className={`w-full min-h-[100px] rounded-2xl p-4 text-xs font-medium outline-none border transition-all ${isPro ? 'bg-gray-50 border-gray-200 text-black !text-black placeholder:text-gray-400' : 'bg-white/5 border-white/10 text-white placeholder:text-gray-600'}`}
             />
 
             <button

@@ -211,7 +211,7 @@ export function NegotiationChat({
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Écrire un message..."
-                className={`flex-1 rounded-2xl p-4 pr-14 text-sm font-bold outline-none transition-all border ${isPro ? 'bg-white border-gray-200 focus:border-blue-600 text-gray-900' : 'bg-black border-white/10 focus:border-neon-cyan text-white'}`}
+                className={`flex-1 rounded-2xl p-4 pr-14 text-sm font-bold outline-none transition-all border ${isPro ? 'bg-white border-gray-200 focus:border-blue-600 text-black !text-black' : 'bg-black border-white/10 focus:border-neon-cyan text-white'}`}
               />
               <button
                 type="submit"
