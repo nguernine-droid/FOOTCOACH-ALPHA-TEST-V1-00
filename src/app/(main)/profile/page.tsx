@@ -46,9 +46,9 @@ export default function ProfilePage() {
           <div className="flex justify-end px-2">
              <button
                onClick={handleSkipWelcome}
-               className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 hover:text-white transition-colors border border-white/10 px-4 py-2 rounded-full"
+               className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-cyan hover:text-white transition-colors border border-neon-cyan/50 px-6 py-3 rounded-full bg-neon-cyan/10 shadow-[0_0_15px_#00F0FF33]"
              >
-               Ignorer pour l'instant
+               Passer pour l'instant
              </button>
           </div>
           <OnboardingPage />
