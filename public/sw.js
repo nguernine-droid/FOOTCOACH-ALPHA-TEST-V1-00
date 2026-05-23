@@ -1,4 +1,4 @@
-const CACHE_NAME = 'footcoach-v1';
+const CACHE_NAME = 'team-nexus-v1.1.0'; // Version augmentée pour forcer le nettoyage
 const URLS_TO_CACHE = [
   '/',
   '/manifest.json'
@@ -8,11 +8,10 @@ const URLS_TO_CACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(URLS_TO_CACHE).catch((error) => {
-        console.log('Erreur lors du cache initial:', error);
-      });
+      return cache.addAll(URLS_TO_CACHE);
     })
   );
+  // Force l'activation immédiate sans attendre la fermeture des onglets
   self.skipWaiting();
 });
 
@@ -22,32 +21,37 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
+          // Supprime les anciens caches qui ne correspondent plus au nouveau nom
           if (cacheName !== CACHE_NAME) {
+            console.log('🧹 Nettoyage ancien cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     })
   );
+  // Prend le contrôle immédiatement des pages ouvertes
   self.clients.claim();
 });
 
-// Stratégie de cache - Network first, puis cache
-self.addEventListener('fetch', (event) => {
-  // Ignorer les requêtes non-GET
-  if (event.request.method !== 'GET') {
-    return;
+// Message listener pour forcer la mise à jour
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
+});
+
+// Stratégie de cache - Network first (Toujours chercher le réseau d'abord)
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Ne pas cacher les réponses non-2xx
         if (!response || response.status !== 200 || response.type === 'error') {
           return response;
         }
 
-        // Cloner la réponse
         const responseToCache = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseToCache);
@@ -56,14 +60,10 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Si le fetch échoue, utiliser le cache
         return caches.match(event.request).then((response) => {
-          return response || new Response('Offline - Page non disponible', {
+          return response || new Response('Hors ligne - Veuillez vous reconnecter.', {
             status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-              'Content-Type': 'text/plain',
-            }),
+            statusText: 'Service Unavailable'
           });
         });
       })
