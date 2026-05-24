@@ -70,7 +70,6 @@ export default function RootLayout({
         <TeamProvider>
           <VersionGuard>
             <ClientGuard>
-              <UpdatePrompt />
               <ScanlinesOverlay />
               <PWAInstallPrompt />
               {children}

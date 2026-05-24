@@ -9,43 +9,27 @@ import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
 
 type EventType = 'training' | 'match' | 'plateau' | 'tournament';
-
-interface Club {
-  id: string;
-  name: string;
-}
+interface Club { id: string; name: string; }
 
 export default function NewEventPage() {
   const router = useRouter();
-  const { theme, teamInfo } = useTeam();
-
+  const { teamInfo } = useTeam();
   const [type, setType] = useState<EventType>('training');
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // --- CHAMPS COMMUNS ---
+  // --- ÉTATS ---
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [endTime, setEndTime] = useState('');
   const [location, setLocation] = useState('');
   const [instructions, setInstructions] = useState('');
-
-  // --- SPÉCIFIQUE ENTRAÎNEMENT ---
-  const [trainingTheme, setTrainingTheme] = useState('Technique');
-  const [duration, setDuration] = useState(90);
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
-
-  // --- SPÉCIFIQUE MATCH (BATTLE SWITCH) ---
   const [isOfficial, setIsOfficial] = useState(false);
-  const [allClubs, setAllClubs] = useState<Club[]>([]);
+  const [trainingTheme, setTrainingTheme] = useState('Technique');
   const [opponentSearch, setOpponentSearch] = useState('');
   const [selectedOpponent, setSelectedOpponent] = useState<Club | null>(null);
   const [isOpponentMenuOpen, setIsOpponentMenuOpen] = useState(false);
-
-  // --- SPÉCIFIQUE PLATEAU ---
+  const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [plateauOpponents, setPlateauOpponents] = useState(['', '', '']);
   const [plateauSearchIndex, setPlateauSearchIndex] = useState<number | null>(null);
 
@@ -84,32 +68,18 @@ export default function NewEventPage() {
   const handleSave = async () => {
     if (!startDate || !startTime) { alert("Date et heure obligatoires."); return; }
     setIsLoading(true);
-
     try {
       const finalOpponent = selectedOpponent ? selectedOpponent.name : opponentSearch;
-      const { data: { user } } = await supabase.auth.getUser();
-      const eventsToInsert = [];
-      const start = new Date(startDate);
-      const endRecurrence = isRecurring && recurrenceEndDate ? new Date(recurrenceEndDate) : start;
-      let current = new Date(start);
-
-      while (current <= endRecurrence) {
-        eventsToInsert.push({
+      const eventsToInsert = [{
           title: type === 'match' ? `vs ${finalOpponent || 'ADVERSAIRE'}` : (type === 'training' ? `Séance ${trainingTheme}` : type.toUpperCase()),
-          type: type,
-          date: current.toISOString().split('T')[0],
-          time: startTime,
+          type, date: startDate, time: startTime,
           location: location.toUpperCase() || 'À DÉFINIR',
           home_club_id: teamInfo?.id,
           away_club_id: type === 'match' ? selectedOpponent?.id : null,
           description: instructions.toUpperCase(),
           training_theme: type === 'training' ? trainingTheme : null,
           tournament_config: { is_official: isOfficial, opponents: type === 'plateau' ? plateauOpponents : null }
-        });
-        if (!isRecurring) break;
-        current.setDate(current.getDate() + 7);
-      }
-
+      }];
       await supabase.from('events').insert(eventsToInsert);
       setShowSuccess(true);
       setTimeout(() => router.push('/events'), 1500);
@@ -118,43 +88,56 @@ export default function NewEventPage() {
 
   const styles = {
     card: (color = 'white/10') => `bg-[#0A0A0A] border-2 border-${color} rounded-[2.5rem] p-6 space-y-6 shadow-xl transition-all duration-500`,
-    input: `w-full bg-white/10 p-4 rounded-2xl text-sm font-black text-white outline-none border-2 border-white/5 focus:border-neon-cyan uppercase placeholder:text-white/20`,
+    input: `w-full bg-white/10 p-4 rounded-2xl text-sm font-black text-white outline-none border-2 border-white/5 focus:border-neon-cyan uppercase placeholder:text-white/20 shadow-inner transition-all`,
     label: `text-[10px] font-black text-neon-cyan uppercase px-2 tracking-[0.2em] block mb-1`
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans">
       <main className="max-w-md mx-auto pb-44 p-6 space-y-8">
-        <div className="flex items-center gap-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">Nouveau_Planning</h1></div>
+        <div className="flex items-center gap-4 mb-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">Nouveau_Planning</h1></div>
 
-        <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-[3rem] border border-white/10 h-40 shadow-2xl">
+        {/* CARROUSEL DES TYPES */}
+        <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-[3rem] border border-white/10 h-44 shadow-2xl relative">
           {eventTypes.map((t) => (
             <div key={t.id} className={`min-w-full snap-center ${t.color} p-8 flex flex-col justify-center text-left relative overflow-hidden`}>
-              <h2 className="text-3xl font-black uppercase italic leading-none">{t.label}</h2>
+              <h2 className="text-3xl font-black uppercase italic leading-none mb-1">{t.label}</h2>
+
               {t.id === 'match' && (
-                /* BATTLE SWITCH POSITIONNÉ JUSTE SOUS LE TITRE MATCH */
-                <div className="mt-4 w-48 h-10 rounded-full bg-black/40 border-2 border-white/20 p-1 flex relative cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsOfficial(!isOfficial); }}>
-                   <div className={`flex-1 text-[7px] font-black z-10 flex items-center justify-center transition-opacity ${isOfficial ? 'opacity-40' : 'text-[#39FF14]'}`}>AMICAL</div>
-                   <div className={`flex-1 text-[7px] font-black z-10 flex items-center justify-center transition-opacity ${!isOfficial ? 'opacity-40' : 'text-orange-500'}`}>OFFICIEL</div>
-                   <div className={`absolute top-1 bottom-1 w-[48%] bg-white rounded-full shadow-lg transition-all duration-300 ${isOfficial ? 'left-[50%]' : 'left-[2%]'}`} />
-                </div>
+                /* BATTLE SWITCH : VERSION BOUTON PRIORITAIRE */
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsOfficial(!isOfficial);
+                    if (navigator.vibrate) navigator.vibrate(10);
+                  }}
+                  className={`mt-3 w-48 h-10 rounded-full bg-black/40 border-2 transition-all duration-500 p-1 flex relative items-center z-[100] outline-none active:scale-95 ${isOfficial ? 'border-orange-500' : 'border-[#39FF14]'}`}
+                >
+                   <div className={`flex-1 text-[7px] font-black z-10 pointer-events-none transition-opacity ${isOfficial ? 'opacity-30' : 'text-[#39FF14]'}`}>AMICAL</div>
+                   <div className={`flex-1 text-[7px] font-black z-10 pointer-events-none transition-opacity ${!isOfficial ? 'opacity-30' : 'text-orange-500'}`}>OFFICIEL</div>
+                   <div className={`absolute top-1 bottom-1 w-[48%] bg-white rounded-full shadow-2xl transition-all duration-300 transform pointer-events-none ${isOfficial ? 'left-[50%]' : 'left-[1%]'}`} />
+                </button>
               )}
-              <p className="text-[9px] font-bold uppercase tracking-widest mt-2 opacity-70">{t.desc}</p>
+
+              <p className="text-[9px] font-bold uppercase tracking-widest mt-2 opacity-70 pointer-events-none">{t.desc}</p>
             </div>
           ))}
         </div>
 
         <div className="space-y-6">
+          {/* SECTION CONFIGURATION */}
           <section className={styles.card(isOfficial && type === 'match' ? 'orange-500/40' : (type === 'match' ? 'green-500/40' : 'white/10'))}>
             {type === 'match' && (
               <div className="relative">
                 <label className={styles.label}>Équipe Adverse</label>
                 <div className="relative">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input placeholder="NOM DU CLUB..." value={selectedOpponent ? selectedOpponent.name : opponentSearch} onChange={(e) => { setOpponentSearch(e.target.value.toUpperCase()); setIsOpponentMenuOpen(true); if (selectedOpponent) setSelectedOpponent(null); }} className={`${styles.input} pl-12 ${selectedOpponent ? 'border-neon-green text-neon-green' : ''}`} />
+                  <input placeholder="RECHERCHER OU SAISIR..." value={selectedOpponent ? selectedOpponent.name : opponentSearch} onChange={(e) => { setOpponentSearch(e.target.value.toUpperCase()); setIsOpponentMenuOpen(true); if (selectedOpponent) setSelectedOpponent(null); }} className={`${styles.input} pl-12 ${selectedOpponent ? 'border-neon-green text-neon-green' : ''}`} />
                 </div>
                 {isOpponentMenuOpen && opponentSearch.trim() && (
-                  <div className="absolute z-[100] w-full mt-2 bg-[#111] border-2 border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="absolute z-[200] w-full mt-2 bg-[#111] border-2 border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                     {filteredClubs.map(club => (<button key={club.id} type="button" onClick={() => { setSelectedOpponent(club); setOpponentSearch(''); setIsOpponentMenuOpen(false); }} className="w-full p-5 text-left border-b border-white/5 hover:bg-white/5 transition-colors text-xs font-black uppercase italic text-white">{club.name}</button>))}
                     <button type="button" onClick={() => setIsOpponentMenuOpen(false)} className="w-full p-4 text-center bg-white/5 text-[10px] font-black text-neon-cyan uppercase">Utiliser "{opponentSearch}"</button>
                   </div>
@@ -163,20 +146,20 @@ export default function NewEventPage() {
             )}
 
             {type === 'training' && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 {['Technique','Tactique','Physique','Match','Spécifique'].map(th => (
-                  <button key={th} type="button" onClick={() => setTrainingTheme(th)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase border-2 transition-all ${trainingTheme === th ? 'bg-neon-cyan border-neon-cyan text-black' : 'bg-white/5 border-white/10 text-gray-500'}`}>{th}</button>
+                  <button key={th} type="button" onClick={() => setTrainingTheme(th)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase border-2 transition-all ${trainingTheme === th ? 'bg-neon-cyan border-neon-cyan text-black shadow-lg shadow-neon-cyan/40' : 'bg-white/5 border-white/10 text-gray-500'}`}>{th}</button>
                 ))}
               </div>
             )}
           </section>
 
           <section className={styles.card()}>
-             <div className="flex flex-col gap-4">
+             <div className="space-y-4">
                 <div><label className={styles.label}>📅 Date</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.input} /></div>
                 <div><label className={styles.label}>⌚ Heure</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={styles.input} /></div>
              </div>
-             <div><label className={styles.label}>📍 Lieu de rdv</label><input placeholder="STADE..." value={location} onChange={e => setLocation(e.target.value)} className={styles.input} /></div>
+             <div className="pt-4"><label className={styles.label}>📍 Lieu</label><input placeholder="STADE..." value={location} onChange={e => setLocation(e.target.value)} className={styles.input} /></div>
           </section>
 
           {type === 'plateau' && (
@@ -196,7 +179,7 @@ export default function NewEventPage() {
           </section>
         </div>
 
-        <button onClick={handleSave} className="fixed bottom-28 left-6 right-6 bg-neon-cyan text-black font-black py-6 rounded-[3rem] shadow-[0_0_30px_rgba(0,240,255,0.4)] uppercase italic text-xl active:scale-95 transition-all">VALIDER</button>
+        <button onClick={handleSave} className="fixed bottom-28 left-6 right-6 bg-neon-cyan text-black font-black py-6 rounded-[3rem] shadow-[0_0_30px_rgba(0,240,255,0.4)] uppercase italic text-xl active:scale-95 transition-all z-[90]">VALIDER</button>
       </main>
     </div>
   );
