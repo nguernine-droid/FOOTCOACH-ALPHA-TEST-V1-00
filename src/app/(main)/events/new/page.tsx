@@ -210,12 +210,34 @@ export default function NewEventPage() {
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 block ml-2">vs (Équipe adverse)</label>
                   <div className="relative">
-                    <input placeholder="RECHERCHER OU SAISIR..." value={selectedOpponent ? selectedOpponent.name : clubSearch} onChange={(e) => { setClubSearch(e.target.value); setIsClubListOpen(true); if (selectedOpponent) setSelectedOpponent(null); }} className={`w-full ${isPro ? 'bg-gray-50 text-gray-900' : 'bg-black/40 text-white'} rounded-2xl p-5 text-lg font-black outline-none border-2 border-transparent focus:border-brand-orange/20 uppercase ${selectedOpponent ? 'text-neon-green' : ''}`} />
+                    <input
+                      placeholder="RECHERCHER OU SAISIR..."
+                      value={selectedOpponent ? selectedOpponent.name : clubSearch}
+                      onChange={(e) => { setClubSearch(e.target.value); setIsClubListOpen(true); if (selectedOpponent) setSelectedOpponent(null); }}
+                      className={`w-full ${isPro ? 'bg-gray-50 text-gray-900 border-gray-200' : 'bg-[#0A0A0A] text-white border-white/10'} rounded-2xl p-5 text-lg font-black outline-none border-2 focus:border-brand-orange/40 uppercase ${selectedOpponent ? 'text-neon-green' : ''}`}
+                    />
                     {isClubMenuOpen && clubSearch.trim() && (
-                      <div className={`absolute z-50 w-full mt-2 border rounded-xl overflow-hidden shadow-2xl ${isPro ? 'bg-white' : 'bg-[#0A0A0A]'}`}>
+                      <div className={`absolute z-50 w-full mt-2 border rounded-xl overflow-hidden shadow-2xl ${isPro ? 'bg-white border-gray-100' : 'bg-[#0F0F0F] border-white/10'}`}>
                         {filteredClubs.map(club => (
-                          <button key={club.id} type="button" onClick={() => { setSelectedOpponent(club); setClubSearch(''); setIsClubListOpen(false); }} className="w-full p-4 text-left border-b border-white/5 hover:bg-white/5"><p className="text-xs font-black uppercase italic">{club.name}</p></button>
+                          <button
+                            key={club.id}
+                            type="button"
+                            onClick={() => { setSelectedOpponent(club); setClubSearch(''); setIsClubListOpen(false); }}
+                            className={`w-full p-4 text-left border-b ${isPro ? 'border-gray-50 hover:bg-gray-50' : 'border-white/5 hover:bg-white/5'}`}
+                          >
+                            <p className={`text-xs font-black uppercase italic ${isPro ? 'text-gray-900' : 'text-white'}`}>{club.name}</p>
+                          </button>
                         ))}
+                        {!allClubs.some(c => c.name.toLowerCase() === clubSearch.toLowerCase()) && (
+                          <button
+                            type="button"
+                            onClick={() => setIsClubListOpen(false)}
+                            className={`w-full p-4 text-left flex items-center gap-2 ${isPro ? 'text-orange-600' : 'text-neon-cyan'}`}
+                          >
+                            <Plus size={14} />
+                            <p className="text-xs font-black uppercase italic">Utiliser "{clubSearch}"</p>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
