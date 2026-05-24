@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Loader2, ShieldCheck, RefreshCw, AlertTriangle } from 'lucide-react';
 
 // ON PASSE EN 206 AVEC TON SYSTÈME DE DISJONCTEUR UNIQUE
-export const CURRENT_APP_VERSION = '1.0.206';
+export const CURRENT_APP_VERSION = '1.0.208';
 
 export function VersionGuard({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'blocked' | 'error'>('loading');

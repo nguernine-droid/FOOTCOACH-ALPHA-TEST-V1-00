@@ -20,7 +20,8 @@ import {
   Layout,
   Search,
   CheckCircle2,
-  Plus
+  Plus,
+  Loader2
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
