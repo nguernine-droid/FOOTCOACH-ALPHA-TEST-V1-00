@@ -66,10 +66,10 @@ export default function DashboardPage() {
 
   const getStyle = (type: string) => {
     const t = type?.toLowerCase() || '';
-    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_15px_#f97316]' };
-    if (t.includes('match') || t.includes('amical')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_15px_#39FF14]' };
-    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_15px_#a855f7]' };
-    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_15px_#0ea5e9]' };
+    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_20px_#f97316]' };
+    if (t.includes('match')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_20px_#39FF14]' };
+    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_20px_#a855f7]' };
+    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_20px_#0ea5e9]' };
   };
 
   const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white', text: 'text-gray-900' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white' };
@@ -84,7 +84,7 @@ export default function DashboardPage() {
   return (
     <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-5 ${styles.mainBg}`}>
 
-      {/* HUB COMMANDEMENT COMPACT */}
+      {/* HUB COMMANDEMENT */}
       <section className={`p-4 border rounded-[2rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
          <div className="relative z-10 text-left space-y-3">
             <div className="flex justify-between items-center">
@@ -101,26 +101,7 @@ export default function DashboardPage() {
          </div>
       </section>
 
-      {/* ALERTES DÉFIS */}
-      {activeWidget?.type === 'CHALLENGE' && (
-        <section className="animate-in slide-in-from-top-4 duration-500">
-           <div className="bg-[#0A0A0A] border-2 border-neon-orange rounded-[2rem] p-5 shadow-2xl relative">
-              <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-2xl border-2 border-neon-orange bg-black flex items-center justify-center overflow-hidden"><Trophy className="text-neon-orange" size={24} /></div>
-                 <div className="text-left flex-1 min-w-0">
-                    <p className="text-[9px] font-black text-neon-orange uppercase italic">Défi Relevé !</p>
-                    <h4 className="text-base font-black text-white uppercase italic truncate">{activeWidget.data.respondent?.clubs?.name}</h4>
-                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                 <button onClick={() => router.push('/comms')} className="bg-white/5 text-white py-3 rounded-xl font-black uppercase text-[8px] border border-white/10">Discuter</button>
-                 <button onClick={() => router.push('/radar')} className="bg-neon-orange text-black py-3 rounded-xl font-black uppercase text-[8px] shadow-lg">Accepter</button>
-              </div>
-           </div>
-        </section>
-      )}
-
-      {/* CARROUSEL TIMELINE - VERSION HAUTE LISIBILITÉ */}
+      {/* CARROUSEL TIMELINE - SOLUTION B (NO BUTTON, XXL LOGOS) */}
       <section className="space-y-2 text-left">
         <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500 px-1">Missions_&_Événements</h3>
 
@@ -129,9 +110,13 @@ export default function DashboardPage() {
             const mStyle = getStyle(ev.type);
             const isMatch = ev.type?.toLowerCase().includes('match');
             return (
-              <div key={i} className="min-w-[85%] snap-center relative rounded-[2.5rem] overflow-hidden border-2 border-white/10 shadow-2xl h-[300px] flex flex-col justify-between group transition-all active:scale-95">
+              <div
+                key={i}
+                onClick={() => router.push('/events')}
+                className="min-w-[85%] snap-center relative rounded-[3rem] overflow-hidden border-2 border-white/10 shadow-2xl h-[330px] flex flex-col justify-between group transition-all active:scale-[0.98] cursor-pointer"
+              >
 
-                 {/* FOND STADIUM */}
+                 {/* FOND STADIUM DYNAMIQUE */}
                  {isMatch ? (
                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }}>
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
@@ -141,71 +126,53 @@ export default function DashboardPage() {
                  )}
 
                  <div className="relative z-10 p-6 flex flex-col h-full justify-between text-center">
-                    {/* HAUT : DATE & HEURE AGRANDIE */}
+                    {/* HAUT : DATE & HEURE GÉANTE */}
                     <div className="flex justify-center">
-                       <div className="px-6 py-2 rounded-full border-2 border-white/20 bg-black/60 text-[11px] font-black uppercase tracking-[0.2em] text-neon-cyan backdrop-blur-md shadow-2xl">
+                       <div className="px-6 py-2.5 rounded-full border-2 border-white/20 bg-black/60 text-[12px] font-black uppercase tracking-[0.2em] text-neon-cyan backdrop-blur-md shadow-2xl animate-pulse-slow">
                           {new Date(ev.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {ev.time}
                        </div>
                     </div>
 
-                    {/* CENTRE : DUEL DE LOGOS & NOMS VISIBLES */}
+                    {/* CENTRE : DUEL DE BLASONS COLOSSAUX */}
                     {isMatch ? (
-                      <div className="flex justify-center items-center gap-4 my-2">
-                         <div className="flex flex-col items-center gap-2 flex-1">
-                            <div className="w-20 h-20 rounded-3xl border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
-                               {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={36} className="text-gray-600" />}
+                      <div className="flex justify-center items-center gap-2 my-auto">
+                         <div className="flex flex-col items-center gap-3 flex-1">
+                            <div className="w-28 h-28 rounded-[2.5rem] border-2 border-white/20 bg-black/40 p-4 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-[0_0_40px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform duration-700">
+                               {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" alt="" /> : <Shield size={48} className="text-gray-600" />}
                             </div>
-                            <p className="text-[10px] font-black uppercase italic text-white drop-shadow-lg line-clamp-1">{teamInfo?.clubName}</p>
+                            <p className="text-xs font-black uppercase italic text-white drop-shadow-2xl line-clamp-1 tracking-tighter">{teamInfo?.clubName}</p>
                          </div>
-                         <div className="text-3xl font-black italic text-white/30 tracking-tighter transform -rotate-12">VS</div>
-                         <div className="flex flex-col items-center gap-2 flex-1">
-                            <div className="w-20 h-20 rounded-3xl border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
-                               {ev.away_club?.logo_url ? <img src={ev.away_club.logo_url} className="w-full h-full object-contain" /> : <Shield size={36} className="text-gray-600" />}
+
+                         <div className="text-5xl font-black italic text-white/30 tracking-tighter transform -rotate-12 drop-shadow-2xl px-2">VS</div>
+
+                         <div className="flex flex-col items-center gap-3 flex-1">
+                            <div className="w-28 h-28 rounded-[2.5rem] border-2 border-white/20 bg-black/40 p-4 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-[0_0_40px_rgba(255,255,255,0.15)] group-hover:scale-110 transition-transform duration-700">
+                               {ev.away_club?.logo_url ? <img src={ev.away_club.logo_url} className="w-full h-full object-contain" alt="" /> : <Shield size={48} className="text-gray-600" />}
                             </div>
-                            <p className="text-[10px] font-black uppercase italic text-white drop-shadow-lg line-clamp-1">{ev.away_club?.name || 'ADV'}</p>
+                            <p className="text-xs font-black uppercase italic text-white drop-shadow-2xl line-clamp-1 tracking-tighter">{ev.away_club?.name || 'ADVERSAIRE'}</p>
                          </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-2 my-1">
-                         <div className={`w-18 h-18 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center ${mStyle.color}`}>
-                            {ev.type === 'training' ? <Target size={32} /> : <Trophy size={32} />}
+                      <div className="flex flex-col items-center gap-6 my-auto">
+                         <div className={`w-32 h-32 rounded-full bg-white/5 border-4 border-white/10 flex items-center justify-center ${mStyle.color} shadow-2xl group-hover:scale-110 transition-transform duration-700`}>
+                            {ev.type === 'training' ? <Target size={60} /> : <Trophy size={60} />}
                          </div>
-                         <h4 className="text-2xl font-black text-white uppercase italic leading-none drop-shadow-2xl">{ev.title}</h4>
+                         <h4 className="text-4xl font-black text-white uppercase italic leading-none drop-shadow-2xl">{ev.title}</h4>
                       </div>
                     )}
 
-                    {/* BAS : INFOS & JAUGE & ACTION */}
-                    <div className="space-y-4">
-                       <div className="flex items-center justify-center gap-3 text-sm font-black text-white uppercase tracking-[0.2em] drop-shadow-2xl bg-black/30 py-2 rounded-xl backdrop-blur-sm border border-white/5">
-                          <MapPin size={18} className={mStyle.color} strokeWidth={3} /> {ev.location}
-                       </div>
-
-                       <div className="space-y-1.5 pt-1">
-                          <div className="flex justify-between items-end px-1">
-                             <p className="text-[7px] font-black uppercase text-white/30 tracking-widest">Capacité</p>
-                             <p className={`text-[9px] font-black ${mStyle.color}`}>0 / {squad.length}</p>
-                          </div>
-                          <div className="flex gap-1 h-1.5 px-0.5">
-                             {[1,2,3,4,5,6,7,8].map(s => (
-                               <div key={s} className="flex-1 rounded-sm bg-white/10 border border-white/5" />
-                             ))}
-                          </div>
-                       </div>
-
-                       <button
-                         onClick={() => router.push('/events')}
-                         className={`w-full py-4 rounded-2xl font-black uppercase italic text-[10px] flex items-center justify-center gap-3 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow mb-1 border-t-2 border-white/20`}
-                       >
-                         Consulter Mission <ArrowRight size={14} strokeWidth={4} />
-                       </button>
+                    {/* BAS : LIEU XXL ET CONTRASTÉ */}
+                    <div className="flex items-center justify-center gap-3 text-xs font-black text-white uppercase tracking-[0.2em] drop-shadow-2xl bg-black/50 py-4 rounded-[1.8rem] backdrop-blur-md border border-white/10 mt-auto shadow-xl group-hover:border-neon-cyan/50 transition-colors">
+                       <MapPin size={18} className={mStyle.color} strokeWidth={3} />
+                       <span className="truncate">{ev.location}</span>
                     </div>
                  </div>
               </div>
             );
           }) : (
-            <Link href="/events/new" className="min-w-[85%] snap-center block p-12 border-2 border-dashed border-white/10 rounded-[2.5rem] text-center opacity-30 active:scale-95">
+            <Link href="/events/new" className="min-w-[85%] snap-center block p-12 border-2 border-dashed border-white/10 rounded-[3rem] text-center opacity-30 active:scale-95">
                <Plus size={32} className="mx-auto mb-2 text-neon-cyan" />
-               <p className="text-[9px] font-black uppercase tracking-widest">Planifier Mission...</p>
+               <p className="text-[9px] font-black uppercase tracking-widest text-center w-full">Initialiser Mission...</p>
             </Link>
           )}
         </div>
@@ -221,7 +188,7 @@ function StatBox({ label, val, color }: { label: string, val: number, color: str
   return (
     <div className="bg-white/[0.02] border border-white/5 p-3 rounded-2xl text-center">
        <p className={`text-lg font-black ${color} leading-none mb-1 text-center`}>{val}</p>
-       <p className="text-[5px] font-black uppercase text-gray-500 tracking-tighter text-center">{label}</p>
+       <p className="text-[6px] font-black uppercase text-gray-500 tracking-tighter text-center">{label}</p>
     </div>
   );
 }
