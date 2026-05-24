@@ -101,7 +101,7 @@ function NavItem({ href, icon, label, active, theme, locked }: { href: string, i
   return (
     <Link
       href={href}
-      className={`flex flex-col items-center gap-1 transition-all duration-300 ${active ? `${activeColor} scale-110 font-black` : 'text-white/30 font-bold hover:text-white/60'}`}
+      className={`flex flex-col items-center gap-1 transition-all duration-300 ${active ? `${activeColor} scale-110 font-black` : 'text-white font-bold hover:text-white'}`}
     >
       <div className={active ? 'drop-shadow-[0_0_8px_currentColor]' : ''}>
         {icon}
