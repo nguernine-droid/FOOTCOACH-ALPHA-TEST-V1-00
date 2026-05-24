@@ -23,17 +23,24 @@ export function TopBar() {
       if (data) {
         const vMaster = data.value.trim();
         setTargetVersion(vMaster);
-        if (vMaster !== CURRENT_APP_VERSION) {
-          setIsOutdated(true);
-        } else {
-          setIsOutdated(false);
-        }
+        setIsOutdated(vMaster !== CURRENT_APP_VERSION);
       }
     };
     checkVer();
     const interval = setInterval(checkVer, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleManualSync = async () => {
+    console.log("🛠 Synchro forcée demandée...");
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) await reg.unregister();
+    }
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
+    window.location.href = window.location.pathname + '?v=' + Date.now();
+  };
 
   return (
     <header className="flex-shrink-0 bg-black/80 backdrop-blur-xl border-b border-white/10 p-3 z-40 sticky top-0 overflow-hidden">
@@ -57,7 +64,7 @@ export function TopBar() {
 
         {/* CENTRE : INFOS & VERSION */}
         <div className="flex flex-col gap-1 justify-center">
-          <Link href="/profile" className="text-center">
+          <div className="text-center">
             <GlitchText
               text={teamInfo?.clubName || 'UNITÉ_NEXUS'}
               className={`text-sm font-black italic tracking-tighter uppercase ${accentColor} leading-none line-clamp-1`}
@@ -67,21 +74,22 @@ export function TopBar() {
                 {teamInfo?.coachName || 'COACH'}
               </p>
             </div>
-          </Link>
+          </div>
 
           <div className="text-center flex flex-col items-center gap-1 mt-1">
              {isOutdated ? (
                <div
-                 onClick={() => window.location.reload()}
-                 className="flex flex-col items-center gap-0.5"
+                 onClick={handleManualSync}
+                 className="flex flex-col items-center gap-0.5 cursor-pointer"
                >
-                 <div className="px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white animate-pulse shadow-[0_0_15px_#ef4444] text-[8px] font-black tracking-widest cursor-pointer">
+                 <div className="px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white animate-pulse shadow-[0_0_15px_#ef4444] text-[8px] font-black tracking-widest">
                     MAJ DISPONIBLE (V.{targetVersion})
                  </div>
-                 <p className="text-[6px] text-gray-500 font-bold uppercase">Locale: V.{CURRENT_APP_VERSION}</p>
+                 <p className="text-[6px] text-gray-500 font-bold uppercase tracking-widest">Locale: V.{CURRENT_APP_VERSION}</p>
                </div>
              ) : (
-               <div className={`px-3 py-0.5 rounded-full border ${isPro ? 'bg-orange-600/20 border-orange-400/40 text-orange-400' : 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan'} text-[8px] font-black tracking-widest`}>
+               <div className={`px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-[#39FF14] text-[8px] font-black tracking-widest flex items-center gap-2`}>
+                 <div className="w-1.5 h-1.5 rounded-full bg-[#39FF14]" />
                  V.{CURRENT_APP_VERSION} (À JOUR)
                </div>
              )}
