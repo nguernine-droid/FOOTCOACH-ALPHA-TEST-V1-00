@@ -17,7 +17,8 @@ import {
   User as UserIcon,
   X,
   MapPin,
-  Clock
+  Clock,
+  Landmark
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -57,7 +58,7 @@ export default function MessagesPage() {
         .from('match_requests')
         .select(`
           *,
-          profiles:coach_id (nickname, first_name, clubs:club_id(name, logo_url))
+          profiles:coach_id (nickname, first_name, clubs:club_id(name, logo_url, stadium))
         `)
         .order('created_at', { ascending: false });
 
@@ -68,7 +69,10 @@ export default function MessagesPage() {
         title: `${ad.type} : ${ad.profiles?.clubs?.name || 'Nexus'}`,
         lastMessage: `Match le ${new Date(ad.date).toLocaleDateString()} à ${ad.time}`,
         date: new Date(ad.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
-        fullData: ad,
+        fullData: {
+          ...ad,
+          stadium: ad.profiles?.clubs?.stadium
+        },
         isSystem: false
       }));
 
@@ -267,6 +271,12 @@ export default function MessagesPage() {
                          <MapPin size={18} className={styles.accent} />
                          <p className={`text-xs font-bold ${styles.textMain}`}>{selectedAnnouncement.fullData.location}</p>
                       </div>
+                      {selectedAnnouncement.fullData.stadium && (
+                        <div className="flex items-center gap-3">
+                           <Landmark size={18} className={styles.accent} />
+                           <p className={`text-[11px] font-black uppercase italic ${styles.textMain}`}>{selectedAnnouncement.fullData.stadium}</p>
+                        </div>
+                      )}
                       {selectedAnnouncement.fullData.comment && (
                         <p className="text-[10px] italic text-gray-500 bg-white/5 p-4 rounded-2xl mt-4 border border-white/5">
                           "{selectedAnnouncement.fullData.comment}"

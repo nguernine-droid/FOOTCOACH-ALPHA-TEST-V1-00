@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, Trophy, Zap, Clock, MapPin, CheckCircle2, X, Check, Plus } from 'lucide-react';
+import { Calendar, Trophy, Zap, Clock, MapPin, CheckCircle2, X, Check, Plus, Landmark } from 'lucide-react';
 import Link from 'next/link';
 import { NeonButton } from '@/components/ui/cyber/NeonButton';
 
@@ -15,6 +15,7 @@ interface NextMissionCardProps {
     date: string;
     time: string;
     location: string;
+    stadium?: string;
     type: 'match' | 'tournoi' | 'entrainement';
     available: number;
     total: number;
@@ -74,13 +75,21 @@ export function NextMissionCard({ event, isPro, role }: NextMissionCardProps) {
         </div>
 
         {/* Contenu Principal */}
-        <div>
-          <h2 className={`text-3xl font-black italic uppercase leading-none tracking-tighter mb-2 ${isPro ? 'text-gray-900' : 'text-white'}`}>
+        <div className="space-y-3">
+          <h2 className={`text-3xl font-black italic uppercase leading-none tracking-tighter ${isPro ? 'text-gray-900' : 'text-white'}`}>
             {event.title}
           </h2>
-          <div className={`flex items-center gap-2 ${isPro ? 'text-gray-500' : 'text-white/50'} text-[10px] font-black font-mono tracking-widest`}>
-            <MapPin size={12} className={isMatch ? (isPro ? 'text-orange-600' : 'text-neon-orange') : (isPro ? 'text-blue-600' : 'text-neon-cyan')} />
-            {event.location?.toUpperCase() || 'BASE_STADIUM_ALPHA'}
+          <div className="space-y-1.5">
+            <div className={`flex items-center gap-2 ${isPro ? 'text-gray-500' : 'text-white/50'} text-[10px] font-black font-mono tracking-widest`}>
+              <MapPin size={12} className={isMatch ? (isPro ? 'text-orange-600' : 'text-neon-orange') : (isPro ? 'text-blue-600' : 'text-neon-cyan')} />
+              {event.location?.toUpperCase() || 'BASE_STADIUM_ALPHA'}
+            </div>
+            {event.stadium && (
+              <div className={`flex items-center gap-2 ${isPro ? 'text-orange-600' : 'text-neon-orange'} text-[9px] font-black font-mono tracking-[0.2em] italic border-t border-white/5 pt-1`}>
+                <Landmark size={12} />
+                {event.stadium.toUpperCase()}
+              </div>
+            )}
           </div>
         </div>
 

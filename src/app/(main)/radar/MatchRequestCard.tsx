@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   MapPin, Clock, Shield, Zap,
-  CheckCircle2, XCircle, Activity, MessageSquare, Wifi
+  CheckCircle2, XCircle, Activity, MessageSquare, Wifi, Landmark
 } from 'lucide-react';
 import { MatchRequest } from './page';
 
@@ -18,8 +18,8 @@ interface MatchRequestCardProps {
 }
 
 /**
- * MATCH_REQUEST_CARD (v8.3 - ALPHA TEST V1)
- * Correction de l'erreur de syntaxe sur les conditions d'affichage.
+ * MATCH_REQUEST_CARD (v8.4 - ALPHA TEST V1)
+ * Affichage du stade si disponible.
  */
 export function MatchRequestCard({
   request,
@@ -35,8 +35,8 @@ export function MatchRequestCard({
   const isMatched = request.status === 'MATCHED';
   const amIRespondent = request.respondentId === currentCoachId;
 
-  const accentColor = isPro ? 'text-blue-600' : 'text-neon-cyan';
-  const accentBorder = isPro ? 'border-blue-200' : 'border-neon-cyan/30';
+  const accentColor = isPro ? 'text-orange-600' : 'text-neon-cyan';
+  const accentBorder = isPro ? 'border-gray-200' : 'border-neon-cyan/30';
   const cardBg = isPro ? 'bg-white' : 'bg-[#0A0A0A]';
 
   const getTypeStyles = () => {
@@ -56,7 +56,11 @@ export function MatchRequestCard({
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center ${isPro ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
-              <Shield size={24} className={isMine ? 'text-neon-orange' : accentColor} />
+              {request.coachLogo ? (
+                <img src={request.coachLogo} alt="Logo" className="w-full h-full object-contain p-1.5" />
+              ) : (
+                <Shield size={24} className={isMine ? 'text-orange-600' : accentColor} />
+              )}
             </div>
             <div className="text-left">
               <h4 className={`text-sm font-black uppercase italic ${isPro ? 'text-gray-900' : 'text-white'}`}>
@@ -72,15 +76,23 @@ export function MatchRequestCard({
           </div>
         </div>
 
-        <div className={`p-3 rounded-xl ${isPro ? 'bg-gray-50 border-gray-100' : 'bg-black/40 border-white/5'} border grid grid-cols-2 gap-3`}>
-          <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400">
-            <Clock size={12} className={accentColor} />
-            <span>{new Date(request.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} @ {request.time}</span>
+        <div className={`p-3 rounded-xl ${isPro ? 'bg-gray-50 border-gray-100' : 'bg-black/40 border-white/5'} border space-y-2`}>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400">
+              <Clock size={12} className={accentColor} />
+              <span>{new Date(request.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} @ {request.time}</span>
+            </div>
+            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400">
+              <MapPin size={12} className={accentColor} />
+              <span className="truncate">{request.location}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400">
-            <MapPin size={12} className={accentColor} />
-            <span className="truncate">{request.location}</span>
-          </div>
+          {request.stadium && (
+            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 border-t border-white/5 pt-2">
+               <Landmark size={12} className={accentColor} />
+               <span className="truncate uppercase italic">{request.stadium}</span>
+            </div>
+          )}
         </div>
 
         {request.comment && (
@@ -100,10 +112,10 @@ export function MatchRequestCard({
           ) : isMine ? (
             <div className="space-y-3">
               {isPending ? (
-                <div className={`p-4 rounded-2xl border-2 border-dashed ${isPro ? 'bg-orange-50 border-orange-200' : 'bg-neon-orange/10 border-neon-orange/30'}`}>
+                <div className={`p-4 rounded-2xl border-2 border-dashed ${isPro ? 'bg-orange-50 border-orange-200' : 'bg-orange-600/10 border-orange-600/30'}`}>
                   <div className="flex justify-between items-center mb-3">
                     <div className="text-left">
-                      <p className={`text-[8px] font-black uppercase tracking-widest ${isPro ? 'text-orange-700' : 'text-neon-orange'}`}>Réponse Reçue de :</p>
+                      <p className={`text-[8px] font-black uppercase tracking-widest ${isPro ? 'text-orange-700' : 'text-orange-500'}`}>Réponse Reçue de :</p>
                       <p className="text-xs font-black text-white italic">{request.respondentName}</p>
                     </div>
                     <div className="flex gap-2">
@@ -144,7 +156,7 @@ export function MatchRequestCard({
                 <button
                   onClick={() => onInterested(request.id)}
                   className={`w-full py-5 rounded-2xl font-black uppercase italic text-xs tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95
-                    ${isPro ? 'bg-blue-600 text-white shadow-lg' : 'bg-neon-cyan text-black shadow-[0_0_15px_#00F0FF33]'}
+                    ${isPro ? 'bg-orange-600 text-white shadow-lg' : 'bg-neon-cyan text-black shadow-[0_0_15px_#00F0FF33]'}
                   `}
                 >
                   <Zap size={18} fill="currentColor" /> Proposer Match

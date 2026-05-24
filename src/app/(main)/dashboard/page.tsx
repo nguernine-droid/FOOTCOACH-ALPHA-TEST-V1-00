@@ -72,17 +72,23 @@ export default function DashboardPage() {
         setSquad(formatted);
       }
 
-      // 3. Fetch Events (Future and Past)
+      // 3. Fetch Events (Future and Past) - Including Stadium
       const { data: dbEvents } = await supabase
         .from('events')
-        .select('*')
+        .select('*, match_requests(profiles:coach_id(clubs:club_id(stadium)))')
         .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`)
         .order('date', { ascending: true });
 
       const localEvents = JSON.parse(localStorage.getItem('team_events') || '[]');
 
       const allEvents = [
-        ...(dbEvents || []).map(e => ({ ...e, type: 'match', available: 0, total: squad.length })),
+        ...(dbEvents || []).map(e => ({
+          ...e,
+          type: 'match',
+          available: 0,
+          total: squad.length,
+          stadium: e.match_requests?.profiles?.clubs?.stadium
+        })),
         ...localEvents.map((e: any) => ({ ...e, available: 0, total: squad.length }))
       ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 

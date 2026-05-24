@@ -15,6 +15,7 @@ export interface MatchRequest {
   coachClub: string;
   coachName: string;
   coachLogo?: string;
+  stadium?: string;
   type: string;
   category: string;
   status: 'OPEN' | 'PENDING' | 'MATCHED' | 'EXPIRED';
@@ -66,12 +67,12 @@ export default function RadarPage() {
           profiles:coach_id (
             first_name,
             last_name,
-            clubs:club_id (name, logo_url)
+            clubs:club_id (name, logo_url, stadium)
           ),
           respondent:respondent_id (
             first_name,
             last_name,
-            clubs:club_id (name, logo_url)
+            clubs:club_id (name, logo_url, stadium)
           )
         `)
         .neq('status', 'EXPIRED')
@@ -85,6 +86,7 @@ export default function RadarPage() {
         coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
         coachName: item.profiles ? `${item.profiles.first_name} ${item.profiles.last_name}` : 'Coach Inconnu',
         coachLogo: item.profiles?.clubs?.logo_url,
+        stadium: item.profiles?.clubs?.stadium,
         type: item.type,
         category: item.category,
         status: item.status,
