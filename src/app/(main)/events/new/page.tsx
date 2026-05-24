@@ -16,8 +16,8 @@ interface Club {
 }
 
 /**
- * NEW_EVENT_PAGE (v13.0 - MASTER FLOW)
- * Auto-titre, Remplissage automatique corrigé, Visibilité Max.
+ * NEW_EVENT_PAGE (v13.1 - UI FIX & AUTO-PLATEAU)
+ * Correction chevauchement Date/Heure et activation auto-remplissage Plateau.
  */
 export default function NewEventPage() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function NewEventPage() {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
 
-  // --- SPÉCIFIQUE MATCH / AUTOCOMPLETE ---
+  // --- MOTEUR DE RECHERCHE CLUBS (Partagé Match & Plateau) ---
   const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [opponentSearch, setOpponentSearch] = useState('');
   const [selectedOpponent, setSelectedOpponent] = useState<Club | null>(null);
@@ -50,9 +50,9 @@ export default function NewEventPage() {
 
   // --- SPÉCIFIQUE PLATEAU ---
   const [plateauOpponents, setPlateauOpponents] = useState(['', '', '']);
+  const [plateauSearchIndex, setPlateauSearchIndex] = useState<number | null>(null);
   const [tournamentTitle, setTournamentTitle] = useState('');
 
-  // Chargement initial des clubs pour l'auto-remplissage
   useEffect(() => {
     const fetchClubs = async () => {
       const { data } = await supabase.from('clubs').select('id, name').order('name');
@@ -62,11 +62,12 @@ export default function NewEventPage() {
   }, []);
 
   const filteredClubs = useMemo(() => {
-    if (!opponentSearch.trim()) return [];
+    const search = plateauSearchIndex !== null ? plateauOpponents[plateauSearchIndex] : opponentSearch;
+    if (!search?.trim()) return [];
     return allClubs.filter(c =>
-      c.name.toLowerCase().includes(opponentSearch.toLowerCase())
+      c.name.toLowerCase().includes(search.toLowerCase())
     ).slice(0, 10);
-  }, [allClubs, opponentSearch]);
+  }, [allClubs, opponentSearch, plateauOpponents, plateauSearchIndex]);
 
   const eventTypes = [
     { id: 'training', label: 'Entraînement', desc: 'Séance technique', icon: <Play size={24} />, color: 'bg-sky-500' },
@@ -90,6 +91,8 @@ export default function NewEventPage() {
     const index = Math.round(scrollLeft / width);
     if (eventTypes[index] && eventTypes[index].id !== type) {
       setType(eventTypes[index].id as EventType);
+      setIsOpponentMenuOpen(false);
+      setPlateauSearchIndex(null);
     }
   };
 
@@ -139,8 +142,16 @@ export default function NewEventPage() {
 
   const styles = {
     card: `bg-[#0A0A0A] border-2 border-white/10 rounded-[2.5rem] p-6 space-y-6 shadow-xl`,
-    input: `w-full bg-white/10 p-5 rounded-2xl text-base font-black text-white outline-none border-2 border-white/5 focus:border-neon-cyan uppercase placeholder:text-white/20`,
-    label: `text-[11px] font-black text-neon-cyan uppercase px-2 tracking-[0.2em] block mb-2`
+    input: `w-full bg-white/10 p-4 rounded-2xl text-sm font-black text-white outline-none border-2 border-white/5 focus:border-neon-cyan uppercase placeholder:text-white/20 shadow-inner transition-all`,
+    label: `text-[10px] font-black text-neon-cyan uppercase px-2 tracking-[0.2em] block mb-1`
+  };
+
+  const selectOpponentInPlateau = (clubName: string) => {
+    if (plateauSearchIndex === null) return;
+    const newOpps = [...plateauOpponents];
+    newOpps[plateauSearchIndex] = clubName.toUpperCase();
+    setPlateauOpponents(newOpps);
+    setPlateauSearchIndex(null);
   };
 
   return (
@@ -148,7 +159,7 @@ export default function NewEventPage() {
       <main className="max-w-md mx-auto pb-44 p-6 space-y-8">
         {/* HEADER */}
         <div className="flex items-center gap-4 mb-4">
-           <button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl"><ChevronLeft size={24} /></button>
+           <button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl active:scale-90 transition-transform"><ChevronLeft size={24} /></button>
            <h1 className="text-xl font-black uppercase italic tracking-tighter text-white">Nouveau_Planning</h1>
         </div>
 
@@ -163,7 +174,7 @@ export default function NewEventPage() {
         </div>
 
         <div className="space-y-6">
-          {/* 1. CONFIGURATION SPÉCIFIQUE */}
+          {/* 1. CONFIGURATION SPÉCIFIQUE MATCH / TOURNOI / TRAINING */}
           {type !== 'plateau' && (
             <section className={styles.card}>
               {type === 'match' && (
@@ -182,26 +193,14 @@ export default function NewEventPage() {
                       className={`${styles.input} pl-12 ${selectedOpponent ? 'border-neon-green text-neon-green' : ''}`}
                     />
                   </div>
-                  {/* DROPDOWN AUTO-REMPLISSAGE (CORRIGÉ) */}
                   {isOpponentMenuOpen && opponentSearch.trim() && (
                     <div className="absolute z-[100] w-full mt-2 bg-[#111] border-2 border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
                       {filteredClubs.map(club => (
-                        <button
-                          key={club.id}
-                          type="button"
-                          onClick={() => { setSelectedOpponent(club); setOpponentSearch(''); setIsOpponentMenuOpen(false); }}
-                          className="w-full p-5 text-left border-b border-white/5 hover:bg-white/5 transition-colors"
-                        >
+                        <button key={club.id} type="button" onClick={() => { setSelectedOpponent(club); setOpponentSearch(''); setIsOpponentMenuOpen(false); }} className="w-full p-5 text-left border-b border-white/5 hover:bg-white/5 transition-colors">
                           <p className="text-xs font-black text-white uppercase italic">{club.name}</p>
                         </button>
                       ))}
-                      <button
-                        type="button"
-                        onClick={() => setIsOpponentMenuOpen(false)}
-                        className="w-full p-4 text-center bg-white/5 text-[10px] font-black text-neon-cyan uppercase"
-                      >
-                        Utiliser "{opponentSearch}"
-                      </button>
+                      <button type="button" onClick={() => setIsOpponentMenuOpen(false)} className="w-full p-4 text-center bg-white/5 text-[10px] font-black text-neon-cyan uppercase">Utiliser "{opponentSearch}"</button>
                     </div>
                   )}
                 </div>
@@ -227,28 +226,54 @@ export default function NewEventPage() {
             </section>
           )}
 
-          {/* 2. LOGISTIQUE TEMPORELLE */}
+          {/* 2. LOGISTIQUE TEMPORELLE (FIX OVERLAP) */}
           <section className={styles.card}>
-             <div className="grid grid-cols-2 gap-4">
-                <div><label className={styles.label}>📅 Date</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.input} /></div>
-                <div><label className={styles.label}>⌚ Heure</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={styles.input} /></div>
+             <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                   <label className={styles.label}>📅 Date</label>
+                   <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.input} />
+                </div>
+                <div className="flex-1">
+                   <label className={styles.label}>⌚ Heure</label>
+                   <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={styles.input} />
+                </div>
              </div>
              <div><label className={styles.label}>📍 Lieu de rdv</label><input placeholder="STADE..." value={location} onChange={e => setLocation(e.target.value)} className={styles.input} /></div>
           </section>
 
-          {/* 3. PLATEAU (ADVERSAIRES) */}
+          {/* 3. PLATEAU (ADVERSAIRES + AUTOCOMPLETE) */}
           {type === 'plateau' && (
             <section className={styles.card}>
                <h3 className="text-xs font-black uppercase text-purple-500 flex items-center gap-2 mb-4"><ListOrdered size={16}/> Les 3 Adversaires</h3>
-               <div className="space-y-3">
+               <div className="space-y-4 relative">
                  {plateauOpponents.map((opp, i) => (
                    <div key={i} className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-purple-500">#{i+1}</span>
-                      <input placeholder="NOM DU CLUB" value={opp} onChange={(e) => {
-                        const n = [...plateauOpponents]; n[i] = e.target.value.toUpperCase(); setPlateauOpponents(n);
-                      }} className={`${styles.input} pl-10 border-purple-500/10`} />
+                      <input
+                        placeholder="NOM DU CLUB"
+                        value={opp}
+                        onFocus={() => setPlateauSearchIndex(i)}
+                        onChange={(e) => {
+                          const n = [...plateauOpponents];
+                          n[i] = e.target.value.toUpperCase();
+                          setPlateauOpponents(n);
+                        }}
+                        className={`${styles.input} pl-10 ${plateauSearchIndex === i ? 'border-purple-500' : 'border-purple-500/10'}`}
+                      />
                    </div>
                  ))}
+
+                 {/* DROPDOWN PLATEAU (DYNAMIQUE) */}
+                 {plateauSearchIndex !== null && plateauOpponents[plateauSearchIndex].trim() && (
+                    <div className="absolute z-[110] w-full bg-[#111] border-2 border-purple-500/30 rounded-2xl overflow-hidden shadow-2xl mt-[-10px]">
+                       {filteredClubs.map(club => (
+                         <button key={club.id} type="button" onClick={() => selectOpponentInPlateau(club.name)} className="w-full p-4 text-left border-b border-white/5 hover:bg-purple-500/10 transition-colors">
+                            <p className="text-xs font-black text-white uppercase italic">{club.name}</p>
+                         </button>
+                       ))}
+                       <button type="button" onClick={() => setPlateauSearchIndex(null)} className="w-full p-3 text-center bg-white/5 text-[9px] font-black text-gray-500 uppercase italic">Fermer la liste</button>
+                    </div>
+                 )}
                </div>
             </section>
           )}
@@ -260,7 +285,7 @@ export default function NewEventPage() {
           </section>
         </div>
 
-        <button onClick={handleSave} className="fixed bottom-28 left-6 right-6 bg-neon-cyan text-black font-black py-6 rounded-[3rem] shadow-[0_0_30px_rgba(0,240,255,0.4)] uppercase italic text-xl active:scale-95 transition-all">
+        <button onClick={handleSave} className="fixed bottom-28 left-6 right-6 bg-neon-cyan text-black font-black py-6 rounded-[3rem] shadow-[0_0_30px_rgba(0,240,255,0.4)] uppercase italic text-xl active:scale-95 transition-all z-[90]">
            VALIDER
         </button>
       </main>
