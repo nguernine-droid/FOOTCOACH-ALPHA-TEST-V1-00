@@ -16,8 +16,8 @@ interface Club {
 }
 
 /**
- * NEW_EVENT_PAGE (v13.1 - UI FIX & AUTO-PLATEAU)
- * Correction chevauchement Date/Heure et activation auto-remplissage Plateau.
+ * NEW_EVENT_PAGE (v13.2 - MISSION SWITCH & UI FIX)
+ * Ajout du sélecteur "Battle Switch" pour Amical/Officiel.
  */
 export default function NewEventPage() {
   const router = useRouter();
@@ -42,7 +42,8 @@ export default function NewEventPage() {
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
 
-  // --- MOTEUR DE RECHERCHE CLUBS (Partagé Match & Plateau) ---
+  // --- SPÉCIFIQUE MATCH (SWITCH AMICAL/OFFICIEL) ---
+  const [isOfficial, setIsOfficial] = useState(false);
   const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [opponentSearch, setOpponentSearch] = useState('');
   const [selectedOpponent, setSelectedOpponent] = useState<Club | null>(null);
@@ -127,7 +128,11 @@ export default function NewEventPage() {
           home_club_id: teamInfo?.id,
           away_club_id: type === 'match' ? selectedOpponent?.id : null,
           description: instructions.toUpperCase(),
-          training_theme: type === 'training' ? trainingTheme : null
+          training_theme: type === 'training' ? trainingTheme : null,
+          tournament_config: {
+            is_official: type === 'match' ? isOfficial : false,
+            opponents: type === 'plateau' ? plateauOpponents : null
+          }
         });
 
         if (!isRecurring) break;
@@ -141,7 +146,7 @@ export default function NewEventPage() {
   };
 
   const styles = {
-    card: `bg-[#0A0A0A] border-2 border-white/10 rounded-[2.5rem] p-6 space-y-6 shadow-xl`,
+    card: `bg-[#0A0A0A] border-2 border-white/10 rounded-[2.5rem] p-6 space-y-6 shadow-xl transition-all`,
     input: `w-full bg-white/10 p-4 rounded-2xl text-sm font-black text-white outline-none border-2 border-white/5 focus:border-neon-cyan uppercase placeholder:text-white/20 shadow-inner transition-all`,
     label: `text-[10px] font-black text-neon-cyan uppercase px-2 tracking-[0.2em] block mb-1`
   };
@@ -174,10 +179,30 @@ export default function NewEventPage() {
         </div>
 
         <div className="space-y-6">
-          {/* 1. CONFIGURATION SPÉCIFIQUE MATCH / TOURNOI / TRAINING */}
-          {type !== 'plateau' && (
-            <section className={styles.card}>
-              {type === 'match' && (
+          {/* 1. CONFIGURATION SPÉCIFIQUE */}
+          <section className={styles.card}>
+            {type === 'match' && (
+              <div className="space-y-8">
+                {/* BATTLE SWITCH (Style Image) */}
+                <div className="flex flex-col items-center gap-4">
+                   <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">Nature de la Mission</label>
+                   <div
+                     onClick={() => setIsOfficial(!isOfficial)}
+                     className={`relative w-full h-20 rounded-full border-4 transition-all duration-500 cursor-pointer flex items-center p-1 ${isOfficial ? 'bg-orange-600/20 border-orange-500' : 'bg-green-600/20 border-[#39FF14]'}`}
+                   >
+                      {/* Labels fixes */}
+                      <div className="flex-1 text-center z-10 transition-opacity duration-500 font-black text-[10px] uppercase italic tracking-widest opacity-100">AMICAL</div>
+                      <div className="flex-1 text-center z-10 transition-opacity duration-500 font-black text-[10px] uppercase italic tracking-widest opacity-100">OFFICIEL</div>
+
+                      {/* Curseur glissant */}
+                      <div
+                        className={`absolute w-[48%] h-[85%] bg-white rounded-full shadow-2xl transition-all duration-500 flex items-center justify-center ${isOfficial ? 'translate-x-[102%] shadow-[0_0_20px_rgba(249,115,22,0.6)]' : 'translate-x-0 shadow-[0_0_20px_rgba(57,255,20,0.6)]'}`}
+                      >
+                         <Trophy size={20} className={isOfficial ? 'text-orange-500' : 'text-[#39FF14]'} />
+                      </div>
+                   </div>
+                </div>
+
                 <div className="relative">
                   <label className={styles.label}>Équipe Adverse</label>
                   <div className="relative">
@@ -204,37 +229,37 @@ export default function NewEventPage() {
                     </div>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {type === 'tournament' && (
-                <div>
-                  <label className={styles.label}>Nom du Tournoi</label>
-                  <input placeholder="EX: TOURNOI DE PÂQUES" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} className={styles.input} />
-                </div>
-              )}
+            {type === 'tournament' && (
+              <div>
+                <label className={styles.label}>Nom du Tournoi</label>
+                <input placeholder="EX: TOURNOI DE PÂQUES" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} className={styles.input} />
+              </div>
+            )}
 
-              {type === 'training' && (
-                <div className="space-y-4">
-                  <label className={styles.label}>Objectif Technique</label>
-                  <div className="flex flex-wrap gap-2">
-                    {trainingThemes.map(th => (
-                      <button key={th.id} type="button" onClick={() => setTrainingTheme(th.id)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase border-2 transition-all ${trainingTheme === th.id ? 'bg-neon-cyan border-neon-cyan text-black shadow-lg shadow-neon-cyan/40' : 'bg-white/5 border-white/10 text-gray-500'}`}>{th.id}</button>
-                    ))}
-                  </div>
+            {type === 'training' && (
+              <div className="space-y-4">
+                <label className={styles.label}>Objectif Technique</label>
+                <div className="flex flex-wrap gap-2">
+                  {trainingThemes.map(th => (
+                    <button key={th.id} type="button" onClick={() => setTrainingTheme(th.id)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase border-2 transition-all ${trainingTheme === th.id ? 'bg-neon-cyan border-neon-cyan text-black shadow-lg shadow-neon-cyan/40' : 'bg-white/5 border-white/10 text-gray-500'}`}>{th.id}</button>
+                  ))}
                 </div>
-              )}
-            </section>
-          )}
+              </div>
+            )}
+          </section>
 
           {/* 2. LOGISTIQUE TEMPORELLE (FIX OVERLAP) */}
           <section className={styles.card}>
              <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex-1">
-                   <label className={styles.label}>📅 Date</label>
+                   <label className={styles.label}>📅 Date de début</label>
                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.input} />
                 </div>
                 <div className="flex-1">
-                   <label className={styles.label}>⌚ Heure</label>
+                   <label className={styles.label}>⌚ Heure de début</label>
                    <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={styles.input} />
                 </div>
              </div>
@@ -263,7 +288,6 @@ export default function NewEventPage() {
                    </div>
                  ))}
 
-                 {/* DROPDOWN PLATEAU (DYNAMIQUE) */}
                  {plateauSearchIndex !== null && plateauOpponents[plateauSearchIndex].trim() && (
                     <div className="absolute z-[110] w-full bg-[#111] border-2 border-purple-500/30 rounded-2xl overflow-hidden shadow-2xl mt-[-10px]">
                        {filteredClubs.map(club => (

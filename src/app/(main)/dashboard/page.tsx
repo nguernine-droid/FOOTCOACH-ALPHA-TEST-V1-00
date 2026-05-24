@@ -21,9 +21,9 @@ export default function DashboardPage() {
   const [radarStats, setRadarStats] = useState({ match: 0, tournament: 0, plateau: 0 });
   const [isDataLoading, setIsDataLoading] = useState(true);
 
-  // --- ÉTATS DU CARROUSEL ---
   const [events, setEvents] = useState<any[]>([]);
-  const [activeWidget, setActiveWidget] = useState<any>(null); // Pour les Alertes Radar
+  const [activeWidget, setActiveWidget] = useState<any>(null);
+  const [dismissedId, setDismissedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchDashboardData = useCallback(async () => {
@@ -32,19 +32,15 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Fetch Effectif
       const { data: players } = await supabase.from('club_players').select(`id, poste, status, profiles (id, first_name, last_name, avatar_url)`).eq('club_id', teamInfo.id);
       if (players) setSquad(players.map((p: any) => ({ id: p.profiles?.id, name: `${p.profiles?.first_name} ${p.profiles?.last_name?.charAt(0)}.`, status: p.status === 'Actif' ? 'active' : p.status === 'Inactif' ? 'inactive' : 'doubt', avatarUrl: p.profiles?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${p.profiles?.id}`, poste: p.poste || 'MIL' })));
 
-      // 2. Intelligence Radar
       const { data: catReqs } = await supabase.from('match_requests').select('type').eq('category', teamInfo.category).eq('status', 'OPEN').neq('coach_id', user.id);
       if (catReqs) setRadarStats({ match: catReqs.filter(r => r.type === 'Match Amical').length, tournament: catReqs.filter(r => r.type === 'Tournoi').length, plateau: catReqs.filter(r => r.type === 'Plateau').length });
 
-      // 3. Fetch All Events for Carousel
       const { data: allEvts } = await supabase.from('events').select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)').order('date', { ascending: true });
       setEvents(allEvts || []);
 
-      // 4. Alertes Radar Prioritaires (Défis)
       const { data: response } = await supabase.from('match_requests').select('*, respondent:respondent_id(nickname, first_name, clubs:club_id(name, logo_url))').eq('coach_id', user.id).eq('status', 'PENDING').maybeSingle();
       if (response) setActiveWidget({ type: 'CHALLENGE', data: response });
       else setActiveWidget(null);
@@ -52,16 +48,14 @@ export default function DashboardPage() {
     } catch (err) { console.error(err); } finally { setIsDataLoading(false); }
   }, [teamInfo?.id, teamInfo?.category]);
 
-  // AUTO-SCROLL VERS LA MISSION LA PLUS PROCHE
   useEffect(() => {
     if (events.length > 0 && scrollRef.current) {
       const today = new Date().toISOString().split('T')[0];
       const closestIdx = events.findIndex(e => e.date >= today);
       const targetIdx = closestIdx === -1 ? events.length - 1 : closestIdx;
-
       setTimeout(() => {
         if (scrollRef.current) {
-           const cardWidth = scrollRef.current.offsetWidth * 0.85; // Taille d'une carte
+           const cardWidth = scrollRef.current.offsetWidth * 0.85;
            scrollRef.current.scrollTo({ left: targetIdx * (cardWidth + 16), behavior: 'smooth' });
         }
       }, 500);
@@ -72,10 +66,10 @@ export default function DashboardPage() {
 
   const getStyle = (type: string) => {
     const t = type?.toLowerCase() || '';
-    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_15px_#f97316]' };
-    if (t.includes('match')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_15px_#39FF14]' };
-    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_15px_#a855f7]' };
-    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_15px_#0ea5e9]' };
+    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_20px_#f97316]' };
+    if (t.includes('match')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_20px_#39FF14]' };
+    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_20px_#a855f7]' };
+    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_20px_#0ea5e9]' };
   };
 
   const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white', text: 'text-gray-900' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white' };
@@ -83,14 +77,14 @@ export default function DashboardPage() {
   if (isContextLoading || (isDataLoading && teamInfo?.id)) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-black">
       <Loader2 size={40} className="animate-spin text-neon-cyan" />
-      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40">NEXUS_TIMELINE_SYNC...</p>
+      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40">NEXUS_VISUAL_UPGRADE...</p>
     </div>
   );
 
   return (
     <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-6 ${styles.mainBg}`}>
 
-      {/* HUB COMMANDEMENT COMPACT */}
+      {/* HUB COMMANDEMENT */}
       <section className={`p-5 border rounded-[2rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
          <div className="relative z-10 text-left space-y-4">
             <div className="flex justify-between items-center">
@@ -107,16 +101,13 @@ export default function DashboardPage() {
          </div>
       </section>
 
-      {/* DECISION HUB : ALERTES RADAR (Fixe) */}
+      {/* ALERTES DÉFIS */}
       {activeWidget?.type === 'CHALLENGE' && (
         <section className="animate-in slide-in-from-top-4 duration-500">
            <div className="bg-[#0A0A0A] border-2 border-neon-orange rounded-[2rem] p-6 shadow-2xl relative">
               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-2xl border-2 border-neon-orange bg-black flex items-center justify-center overflow-hidden"><Trophy className="text-neon-orange" size={24} /></div>
-                 <div className="text-left flex-1 min-w-0">
-                    <p className="text-[9px] font-black text-neon-orange uppercase italic">Défi Relevé !</p>
-                    <h4 className="text-base font-black text-white uppercase italic truncate">{activeWidget.data.respondent?.clubs?.name}</h4>
-                 </div>
+                 <div className="w-12 h-12 rounded-2xl border-2 border-neon-orange bg-black flex items-center justify-center"><Trophy className="text-neon-orange" size={24} /></div>
+                 <div className="text-left flex-1 min-w-0"><p className="text-[9px] font-black text-neon-orange uppercase italic">Défi Relevé !</p><h4 className="text-base font-black text-white uppercase italic truncate">{activeWidget.data.respondent?.clubs?.name}</h4></div>
               </div>
               <div className="grid grid-cols-2 gap-2 mt-5">
                  <button onClick={() => router.push('/comms')} className="bg-white/5 text-white py-3 rounded-xl font-black uppercase text-[8px] border border-white/10">Discuter</button>
@@ -126,7 +117,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* CARROUSEL DE MISSIONS (Style Photo 2 Compact) */}
+      {/* CARROUSEL TIMELINE AVEC FOND STADE VISIBLE */}
       <section className="space-y-3 text-left">
         <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500 px-1">Missions_&_Événements</h3>
 
@@ -135,11 +126,13 @@ export default function DashboardPage() {
             const mStyle = getStyle(ev.type);
             const isMatch = ev.type?.toLowerCase().includes('match');
             return (
-              <div key={i} className="min-w-[85%] snap-center relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 shadow-2xl h-64 flex flex-col justify-end group transition-all active:scale-95">
-                 {/* FOND STADE IMMERSIF */}
+              <div key={i} className="min-w-[85%] snap-center relative rounded-[2.5rem] overflow-hidden border-2 border-white/10 shadow-2xl h-72 flex flex-col justify-end group transition-all active:scale-95">
+
+                 {/* FOND STADIUM ÉPIQUE (Plus clair et sans flou) */}
                  {isMatch ? (
                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }}>
-                      <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px]" />
+                      {/* Dégradé vignette pour la lisibilité basse uniquement */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                    </div>
                  ) : (
                    <div className="absolute inset-0 bg-[#0A0A0A]" />
@@ -147,38 +140,46 @@ export default function DashboardPage() {
 
                  <div className="relative z-10 p-6 flex flex-col h-full justify-between">
                     <div className="flex justify-between items-start">
-                       <div className="px-3 py-1 rounded-full border border-white/20 bg-black/40 text-[8px] font-black uppercase tracking-widest text-white backdrop-blur-md">
+                       <div className="px-4 py-1.5 rounded-full border border-white/20 bg-black/60 text-[9px] font-black uppercase tracking-widest text-white backdrop-blur-md shadow-lg">
                           {new Date(ev.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {ev.time}
                        </div>
-                       <Zap size={16} className={mStyle.color} fill="currentColor" />
+                       <Zap size={20} className={`${mStyle.color} drop-shadow-[0_0_8px_currentColor]`} fill="currentColor" />
                     </div>
 
-                    <div className="text-left">
-                       <h4 className="text-3xl font-black text-white uppercase italic leading-none truncate mb-1">
+                    <div className="text-left space-y-1 mb-2">
+                       <h4 className="text-4xl font-black text-white uppercase italic leading-none truncate drop-shadow-2xl">
                           {isMatch ? `VS ${ev.away_club?.name || 'ADV'}` : ev.title}
                        </h4>
-                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><Landmark size={12} className={mStyle.color} /> {ev.location}</p>
+                       <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest flex items-center gap-1.5 drop-shadow-lg"><Landmark size={12} className={mStyle.color} /> {ev.location}</p>
                     </div>
 
                     <div className="space-y-4">
                        <div className="flex justify-between items-end px-1">
-                          <p className="text-[8px] font-black uppercase text-white/30 tracking-widest">Disponibilités</p>
-                          <p className={`text-[10px] font-black ${mStyle.color}`}>0 / {squad.length}</p>
+                          <p className="text-[9px] font-black uppercase text-white/50 tracking-widest drop-shadow-lg">Capacité Unité</p>
+                          <p className={`text-xs font-black ${mStyle.color} drop-shadow-lg`}>0 / {squad.length}</p>
                        </div>
+
+                       {/* JAUGE SEGMENTÉE */}
+                       <div className="flex gap-1 h-2 px-1">
+                          {[1,2,3,4,5,6,7,8].map(s => (
+                            <div key={s} className="flex-1 rounded-sm bg-white/10 border border-white/5 shadow-inner" />
+                          ))}
+                       </div>
+
                        <button
                          onClick={() => router.push('/events')}
-                         className={`w-full py-4 rounded-2xl font-black uppercase italic text-[9px] flex items-center justify-center gap-3 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow`}
+                         className={`w-full py-5 rounded-2xl font-black uppercase italic text-[10px] flex items-center justify-center gap-4 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow border-t-2 border-white/20`}
                        >
-                         Consulter Effectif <ArrowRight size={12} strokeWidth={4} />
+                         Consulter Effectif <ArrowRight size={14} strokeWidth={4} />
                        </button>
                     </div>
                  </div>
               </div>
             );
           }) : (
-            <Link href="/events/new" className="min-w-[85%] snap-center block p-12 border-2 border-dashed border-white/10 rounded-[2.5rem] text-center opacity-30 active:scale-95">
-               <Plus size={32} className="mx-auto mb-2 text-neon-cyan" />
-               <p className="text-[9px] font-black uppercase tracking-widest">Planifier Mission...</p>
+            <Link href="/events/new" className="min-w-[85%] snap-center block p-16 border-2 border-dashed border-white/10 rounded-[2.5rem] text-center opacity-30 active:scale-95">
+               <Plus size={32} className="mx-auto mb-3 text-neon-cyan" />
+               <p className="text-[10px] font-black uppercase tracking-widest">Planifier Mission...</p>
             </Link>
           )}
         </div>
