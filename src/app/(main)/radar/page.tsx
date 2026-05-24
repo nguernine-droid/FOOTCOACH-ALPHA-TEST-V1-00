@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Wifi, Activity, Plus, Loader2, List, Radar as RadarIcon, History } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Wifi, Activity, Plus, Loader2, List, Radar as RadarIcon, History, Filter, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { RadarSonar } from '@/components/RadarSonar';
@@ -41,6 +41,13 @@ export default function RadarPage() {
   const [requests, setRequests] = useState<MatchRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [selectedChatRequest, setSelectedChatRequest] = useState<MatchRequest | null>(null);
+
+  // FILTERS
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('TOUS');
+  const [filterDistance, setFilterDistance] = useState(50); // en km
+
+  const categories = ['TOUS', 'U6/U7', 'U8/U9', 'U10/U11', 'U12/U13', 'U14/U15', 'U16/U17', 'U18', 'SÉNIORS', 'VÉTÉRANS'];
 
   const fetchRadarData = useCallback(async () => {
     setIsLoading(true);
@@ -105,6 +112,19 @@ export default function RadarPage() {
     fetchRadarData();
   }, [fetchRadarData]);
 
+  const filteredRequests = useMemo(() => {
+    return requests.filter(req => {
+      const matchCat = filterCategory === 'TOUS' || req.category === filterCategory;
+      // Distance simulation (all within range for alpha)
+      return matchCat;
+    });
+  }, [requests, filterCategory, filterDistance]);
+
+  // BUG FIX: On retire l'utilisateur du radar sonar (pour ne pas apparaître 2 fois)
+  const sonarSignals = useMemo(() => {
+    return filteredRequests.filter(req => req.coachId !== currentUserId);
+  }, [filteredRequests, currentUserId]);
+
   const handleInterest = async (requestId: string) => {
     try {
       const { error } = await supabase
@@ -145,14 +165,16 @@ export default function RadarPage() {
   };
 
   const styles = isPro ? {
-    accent: 'text-blue-600',
-    btnPrimary: 'bg-blue-600 text-white shadow-lg',
-    tabActive: 'bg-blue-600 text-white',
+    accent: 'text-orange-600',
+    btnPrimary: 'bg-orange-600 text-white shadow-lg',
+    cardBg: 'bg-white border-gray-200',
+    tabActive: 'bg-orange-600 text-white',
     tabInactive: 'bg-gray-100 text-gray-500',
     textSub: 'text-gray-500'
   } : {
     accent: 'text-neon-cyan',
     btnPrimary: 'bg-neon-cyan text-black shadow-[0_0_20px_#00F0FF33]',
+    cardBg: 'bg-white/5 border-white/10',
     tabActive: 'bg-neon-cyan text-black',
     tabInactive: 'bg-white/5 text-gray-500',
     textSub: 'text-gray-400'
@@ -169,10 +191,41 @@ export default function RadarPage() {
             <List size={16} /> <span className="text-[10px] font-black uppercase italic">Annonces</span>
           </button>
         </div>
+        <button onClick={() => setShowFilters(!showFilters)} className={`p-4 rounded-2xl border ${showFilters ? styles.btnPrimary : styles.cardBg} transition-all`}>
+           <Filter size={20} />
+        </button>
         <button onClick={() => router.push('/radar/new')} className={`p-4 rounded-2xl transition-all active:scale-90 ${styles.btnPrimary}`}>
           <Plus size={24} strokeWidth={4} />
         </button>
       </div>
+
+      {showFilters && (
+        <section className={`p-6 rounded-3xl border animate-in fade-in zoom-in duration-300 ${styles.cardBg} space-y-6`}>
+           <div className="space-y-3">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Filtrer par catégorie</h3>
+              <div className="flex flex-wrap gap-2">
+                 {categories.map(cat => (
+                   <button
+                     key={cat} onClick={() => setFilterCategory(cat)}
+                     className={`px-3 py-1.5 rounded-lg text-[8px] font-black border transition-all ${filterCategory === cat ? styles.btnPrimary : 'border-white/10 text-gray-500'}`}
+                   >
+                     {cat}
+                   </button>
+                 ))}
+              </div>
+           </div>
+           <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                 <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Distance Maximale</h3>
+                 <span className={`text-[10px] font-bold ${styles.accent}`}>{filterDistance} KM</span>
+              </div>
+              <input
+                type="range" min="5" max="200" step="5" value={filterDistance} onChange={(e) => setFilterDistance(parseInt(e.target.value))}
+                className="w-full accent-orange-600"
+              />
+           </div>
+        </section>
+      )}
 
       {viewMode === 'sonar' ? (
         <section className={`rounded-[2.5rem] border-2 p-8 relative overflow-hidden transition-all duration-700 ${isPro ? 'bg-white border-gray-200 shadow-xl' : 'bg-[#050505] border-white/5 shadow-2xl'}`}>
@@ -187,19 +240,19 @@ export default function RadarPage() {
                <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
              </div>
            ) : (
-             <RadarSonar signals={requests} onSignalClick={(req) => { setViewMode('list'); /* Scroll to req could be added */ }} isScanning={isScanning} theme={theme} />
+             <RadarSonar signals={sonarSignals} onSignalClick={(req) => { setViewMode('list'); }} isScanning={isScanning} theme={theme} />
            )}
         </section>
       ) : (
         <div className="space-y-6">
-           {requests.map(req => (
+           {filteredRequests.map(req => (
              <MatchRequestCard
                key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId}
                onInterested={handleInterest} onAccept={() => handleAccept(req)} onRefuse={()=>{}}
                onChat={(r) => setSelectedChatRequest(r)}
              />
            ))}
-           {requests.length === 0 && <div className="py-20 text-center opacity-30 italic uppercase text-[10px]">Aucun signal détecté</div>}
+           {filteredRequests.length === 0 && <div className="py-20 text-center opacity-30 italic uppercase text-[10px]">Aucun signal détecté</div>}
         </div>
       )}
 

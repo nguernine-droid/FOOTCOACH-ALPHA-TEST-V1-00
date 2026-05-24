@@ -14,9 +14,13 @@ import {
   Plus,
   Users,
   Loader2,
-  User as UserIcon
+  User as UserIcon,
+  X,
+  MapPin,
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
 import { NegotiationChat } from '@/components/NegotiationChat';
@@ -24,6 +28,7 @@ import { NegotiationChat } from '@/components/NegotiationChat';
 type TabType = 'announcements' | 'network';
 
 export default function MessagesPage() {
+  const router = useRouter();
   const { theme, isLoading: isContextLoading } = useTeam();
   const isPro = theme === 'classic';
 
@@ -33,6 +38,9 @@ export default function MessagesPage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedChat, setSelectedChat] = useState<any | null>(null);
+
+  // MODAL POUR DÉTAILS
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<any | null>(null);
 
   const fetchCommsData = useCallback(async () => {
     setIsDataLoading(true);
@@ -44,14 +52,29 @@ export default function MessagesPage() {
       }
       setCurrentUserId(user.id);
 
-      try {
-        const storedMessages = JSON.parse(localStorage.getItem('team_messages') || '[]');
-        setAnnouncements(Array.isArray(storedMessages) ? storedMessages : []);
-      } catch (e) {
-        setAnnouncements([]);
-      }
+      // Fetch Real Announcements from DB
+      const { data: ads } = await supabase
+        .from('match_requests')
+        .select(`
+          *,
+          profiles:coach_id (nickname, first_name, clubs:club_id(name, logo_url))
+        `)
+        .order('created_at', { ascending: false });
 
-      const { data: matchedData, error: matchedError } = await supabase
+      const localMessages = JSON.parse(localStorage.getItem('team_messages') || '[]');
+
+      const dbAnnouncements = (ads || []).map(ad => ({
+        id: ad.id,
+        title: `${ad.type} : ${ad.profiles?.clubs?.name || 'Nexus'}`,
+        lastMessage: `Match le ${new Date(ad.date).toLocaleDateString()} à ${ad.time}`,
+        date: new Date(ad.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+        fullData: ad,
+        isSystem: false
+      }));
+
+      setAnnouncements([...dbAnnouncements, ...localMessages]);
+
+      const { data: matchedData } = await supabase
         .from('match_requests')
         .select(`
           id, coach_id, respondent_id, type, date, status,
@@ -61,7 +84,7 @@ export default function MessagesPage() {
         .eq('status', 'MATCHED')
         .or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`);
 
-      if (!matchedError && matchedData) {
+      if (matchedData) {
         const contacts = matchedData.map((m: any) => {
           const isOwner = m.coach_id === user.id;
           const other = isOwner ? m.respondent : m.profiles;
@@ -155,9 +178,13 @@ export default function MessagesPage() {
         ) : activeTab === 'announcements' ? (
           announcements.length > 0 ? (
              announcements.map(conv => (
-               <div key={conv.id} className={`${styles.cardBg} rounded-[2rem] p-5 border flex items-center gap-4 shadow-sm`}>
+               <div
+                 key={conv.id}
+                 onClick={() => setSelectedAnnouncement(conv)}
+                 className={`${styles.cardBg} rounded-[2rem] p-5 border flex items-center gap-4 shadow-sm active:scale-95 transition-all cursor-pointer`}
+               >
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isPro ? 'bg-orange-100 text-orange-600' : 'bg-white/10 text-neon-cyan'}`}>
-                    <Bell size={20} />
+                    {conv.fullData?.type?.includes('Match') ? <Trophy size={20} /> : <Bell size={20} />}
                   </div>
                   <div className="flex-1 text-left min-w-0">
                     <p className={`text-xs font-black uppercase italic ${styles.textMain}`}>{conv.title}</p>
@@ -202,6 +229,64 @@ export default function MessagesPage() {
           )
         )}
       </div>
+
+      {/* MODAL DÉTAILS ANNONCE */}
+      {selectedAnnouncement && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedAnnouncement(null)} />
+           <div className={`relative w-full max-w-sm ${isPro ? 'bg-white' : 'bg-[#0A0A0A] border border-white/10'} rounded-[2.5rem] p-8 shadow-2xl`}>
+              <button onClick={() => setSelectedAnnouncement(null)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-colors">
+                <X size={20} className="text-gray-500" />
+              </button>
+
+              <div className="text-left space-y-6 mt-4">
+                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isPro ? 'bg-orange-100 text-orange-600' : 'bg-neon-cyan/20 text-neon-cyan'} mb-4`}>
+                   {selectedAnnouncement.fullData?.type?.includes('Match') ? <Trophy size={32} /> : <Megaphone size={32} />}
+                 </div>
+
+                 <div>
+                   <h2 className={`text-2xl font-black uppercase italic tracking-tighter ${styles.textMain}`}>
+                     {selectedAnnouncement.title}
+                   </h2>
+                   <p className={`text-[10px] font-bold uppercase tracking-widest mt-1 ${styles.accent}`}>
+                     Détails de la mission
+                   </p>
+                 </div>
+
+                 {selectedAnnouncement.fullData ? (
+                   <div className="space-y-4 pt-4 border-t border-white/5">
+                      <div className="flex items-center gap-3">
+                         <Calendar size={18} className={styles.accent} />
+                         <p className={`text-xs font-bold ${styles.textMain}`}>{new Date(selectedAnnouncement.fullData.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                         <Clock size={18} className={styles.accent} />
+                         <p className={`text-xs font-bold ${styles.textMain}`}>{selectedAnnouncement.fullData.time}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                         <MapPin size={18} className={styles.accent} />
+                         <p className={`text-xs font-bold ${styles.textMain}`}>{selectedAnnouncement.fullData.location}</p>
+                      </div>
+                      {selectedAnnouncement.fullData.comment && (
+                        <p className="text-[10px] italic text-gray-500 bg-white/5 p-4 rounded-2xl mt-4 border border-white/5">
+                          "{selectedAnnouncement.fullData.comment}"
+                        </p>
+                      )}
+
+                      <button
+                        onClick={() => { setSelectedAnnouncement(null); router.push('/radar'); }}
+                        className={`w-full py-4 mt-4 rounded-xl font-black uppercase italic text-xs ${styles.tabActive}`}
+                      >
+                        Voir sur le Radar
+                      </button>
+                   </div>
+                 ) : (
+                   <p className={`text-xs ${styles.textSub}`}>{selectedAnnouncement.lastMessage}</p>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
 
       {selectedChat && currentUserId && (
         <NegotiationChat

@@ -20,7 +20,7 @@ export default function DashboardPage() {
   // STATE RÉEL
   // ==========================================
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
-  const [nextEvent, setNextEvent] = useState<any>(null);
+  const [events, setEvents] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [coachStats, setCoachStats] = useState({ grade: 'RECUEILLEUR', doctrine: 0, synergie: 0, influence: 0 });
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -72,41 +72,23 @@ export default function DashboardPage() {
         setSquad(formatted);
       }
 
-      // 3. Fetch Next Event (Supabase + LocalStorage Alpha)
+      // 3. Fetch Events (Future and Past)
       const { data: dbEvents } = await supabase
         .from('events')
         .select('*')
         .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`)
-        .gte('date', new Date().toISOString().split('T')[0])
-        .order('date', { ascending: true })
-        .limit(1);
+        .order('date', { ascending: true });
 
       const localEvents = JSON.parse(localStorage.getItem('team_events') || '[]');
-      const nextLocal = localEvents
-        .filter((e: any) => new Date(e.date) >= new Date(new Date().setHours(0,0,0,0)))
-        .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
 
-      if (dbEvents && dbEvents.length > 0) {
-        setNextEvent({
-          id: dbEvents[0].id,
-          title: dbEvents[0].title,
-          date: dbEvents[0].date,
-          time: dbEvents[0].time,
-          location: dbEvents[0].location,
-          type: 'match'
-        });
-      } else if (nextLocal) {
-        setNextEvent({
-          id: nextLocal.id,
-          title: nextLocal.title,
-          date: nextLocal.date,
-          time: nextLocal.time,
-          location: nextLocal.location,
-          type: nextLocal.type === 'entrainement' ? 'training' : 'match'
-        });
-      }
+      const allEvents = [
+        ...(dbEvents || []).map(e => ({ ...e, type: 'match', available: 0, total: squad.length })),
+        ...localEvents.map((e: any) => ({ ...e, available: 0, total: squad.length }))
+      ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      // 4. Fetch Activités Récentes (Briefing + Matchs + Calendrier)
+      setEvents(allEvents);
+
+      // 4. Fetch Activités Récentes
       const localBriefings = JSON.parse(localStorage.getItem('team_messages') || '[]');
 
       const { data: matches } = await supabase
@@ -117,27 +99,12 @@ export default function DashboardPage() {
         .order('created_at', { ascending: false })
         .limit(3);
 
-      const { data: calendarEvents } = await supabase
-        .from('events')
-        .select('*')
-        .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`)
-        .order('date', { ascending: true })
-        .limit(3);
-
       const formattedMatches = (matches || []).map(m => ({
         id: m.id,
         type: 'match',
         title: `Match Confirmé : ${m.type}`,
         desc: `Vs Coach ${m.respondent?.nickname || m.respondent?.first_name || 'Nexus'}`,
         date: new Date(m.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-      }));
-
-      const formattedEvents = (calendarEvents || []).map(e => ({
-        id: e.id,
-        type: 'calendar',
-        title: `Calendrier : ${e.title}`,
-        desc: `${e.date} à ${e.time} - ${e.location}`,
-        date: new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
       }));
 
       const formattedLocalEvents = localEvents.slice(0, 3).map((e: any) => ({
@@ -151,7 +118,6 @@ export default function DashboardPage() {
       const combined = [
         ...localBriefings.map((b: any) => ({ id: b.id, type: b.type || 'info', title: b.title, desc: b.lastMessage, date: b.date })),
         ...formattedMatches,
-        ...formattedEvents,
         ...formattedLocalEvents
       ].sort((a, b) => {
          const dateA = a.date.includes('/') ? new Date(a.date.split('/').reverse().join('-')) : new Date();
@@ -166,7 +132,7 @@ export default function DashboardPage() {
     } finally {
       setIsDataLoading(false);
     }
-  }, [teamInfo?.id]);
+  }, [teamInfo?.id, squad.length]);
 
   useEffect(() => {
     if (teamInfo?.id) {
@@ -221,7 +187,7 @@ export default function DashboardPage() {
 
       {/* 1. COACH PROFILE WIDGET */}
       {role === 'coach' && (
-        <Link href={isProfileComplete ? "/profile" : "/onboarding"} className="block">
+        <Link href="/profile" className="block">
           <section className={`p-5 cursor-pointer active:scale-[0.98] transition-all group text-left border rounded-2xl ${styles.cardBg}`}>
             <div className="flex items-center gap-4 mb-4">
                <div className={`w-14 h-14 rounded-2xl border-2 overflow-hidden flex items-center justify-center flex-shrink-0 ${styles.accentBg}`}>
@@ -242,11 +208,6 @@ export default function DashboardPage() {
                   <ChevronRight size={20} className={`${styles.textSub} transition-colors`} />
                </div>
             </div>
-            <div className="grid grid-cols-3 gap-3 text-left">
-               <MiniCoachBar label="DOC" value={teamInfo?.doctrine || 0} color="bg-neon-orange" styles={styles} />
-               <MiniCoachBar label="SYN" value={teamInfo?.synergie || 0} color={isPro ? 'bg-blue-600' : 'bg-neon-cyan'} styles={styles} />
-               <MiniCoachBar label="INF" value={teamInfo?.influence || 0} color="bg-neon-magenta" styles={styles} />
-            </div>
           </section>
         </Link>
       )}
@@ -259,10 +220,17 @@ export default function DashboardPage() {
         isPro={isPro}
       />
 
-      {/* 3. NEXT MISSION CARD -> REMPLACÉ PAR CALENDRIER SI VIDE */}
-      <div className="space-y-3 text-left">
-        {nextEvent ? (
-          <NextMissionCard event={nextEvent} isPro={isPro} role={role || 'coach'} />
+      {/* 3. SCROLLABLE MISSION CARDS */}
+      <div className="space-y-4">
+        <h3 className={`text-[10px] font-black uppercase tracking-widest ${styles.textSub} px-1`}>Missions & Événements</h3>
+        {events.length > 0 ? (
+          <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-4 pb-4 -mx-1 px-1">
+            {events.map((ev, i) => (
+              <div key={i} className="min-w-[85%] snap-center">
+                <NextMissionCard event={ev} isPro={isPro} role={role || 'coach'} />
+              </div>
+            ))}
+          </div>
         ) : (
           <Link href="/events" className="block">
             <div className={`${styles.cardBg} p-8 rounded-3xl border-2 flex flex-col items-center justify-center text-center space-y-4 active:scale-[0.98] transition-all`}>
@@ -280,7 +248,7 @@ export default function DashboardPage() {
       {/* 4. CENTRE D'ACTION */}
       <ActionCenter isPro={isPro} onAction={handleOpenAction} />
 
-      {/* 5. ACTIVITÉ RÉCENTE (Remplace Planning) */}
+      {/* 5. ACTIVITÉ RÉCENTE */}
       <RecentActivity styles={styles} isPro={isPro} activities={activities} />
 
       {/* MODALE D'ACTION */}
@@ -292,20 +260,6 @@ export default function DashboardPage() {
         actionType={actionType}
       />
 
-    </div>
-  );
-}
-
-function MiniCoachBar({ label, value, color, styles }: { label: string, value: number, color: string, styles: any }) {
-  return (
-    <div className="space-y-1 text-left">
-       <div className="flex justify-between items-center text-[7px] font-black font-mono text-left">
-         <span className={styles.textSub}>{label}</span>
-         <span className={styles.text}>{value}%</span>
-       </div>
-       <div className={`h-1 w-full ${styles.progressBg} rounded-full overflow-hidden text-left`}>
-         <div className={`h-full ${color} transition-all duration-1000`} style={{ width: `${value}%` }} />
-       </div>
     </div>
   );
 }
