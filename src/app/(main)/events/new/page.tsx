@@ -25,7 +25,8 @@ function NewEventContent() {
   // --- ÉTATS ---
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
-  const [location, setLocation] = useState('');
+  const [city, setCity] = useState('');
+  const [stadiumName, setStadiumName] = useState('');
   const [instructions, setInstructions] = useState('');
   const [isOfficial, setIsOfficial] = useState(false);
   const [trainingTheme, setTrainingTheme] = useState('Technique');
@@ -36,20 +37,20 @@ function NewEventContent() {
   const [plateauOpponents, setPlateauOpponents] = useState(['', '', '']);
   const [plateauSearchIndex, setPlateauSearchIndex] = useState<number | null>(null);
 
-  // CHARGEMENT MODE ÉDITION
   useEffect(() => {
     if (editId) {
       const fetchEvent = async () => {
-        const { data, error } = await supabase.from('events').select('*').eq('id', editId).single();
-        if (data && !error) {
+        const { data } = await supabase.from('events').select('*').eq('id', editId).single();
+        if (data) {
           setType(data.type as EventType);
           setStartDate(data.date);
           setStartTime(data.time);
-          setLocation(data.location || '');
+          setCity(data.city || '');
+          setStadiumName(data.stadium_name || '');
           setInstructions(data.description || '');
           setIsOfficial(data.tournament_config?.is_official || false);
           if (data.type === 'training') setTrainingTheme(data.training_theme || 'Technique');
-          if (data.type === 'match') setOpponentSearch(data.title.replace('VS ', ''));
+          if (data.type === 'match') setOpponentSearch(data.title.replace('vs ', '').replace('VS ', ''));
           if (data.type === 'plateau') setPlateauOpponents(data.tournament_config?.opponents || ['', '', '']);
         }
       };
@@ -97,7 +98,9 @@ function NewEventContent() {
       const eventData = {
           title: type === 'match' ? `vs ${finalOpponent || 'ADVERSAIRE'}` : (type === 'training' ? `Séance ${trainingTheme}` : type.toUpperCase()),
           type, date: startDate, time: startTime,
-          location: location.toUpperCase() || 'À DÉFINIR',
+          city: city.toUpperCase(),
+          stadium_name: stadiumName.toUpperCase(),
+          location: `${stadiumName} ${city}`.trim(),
           home_club_id: teamInfo?.id,
           away_club_id: type === 'match' ? selectedOpponent?.id : null,
           description: instructions.toUpperCase(),
@@ -105,11 +108,8 @@ function NewEventContent() {
           tournament_config: { is_official: isOfficial, opponents: type === 'plateau' ? plateauOpponents : null }
       };
 
-      if (editId) {
-        await supabase.from('events').update(eventData).eq('id', editId);
-      } else {
-        await supabase.from('events').insert([eventData]);
-      }
+      if (editId) await supabase.from('events').update(eventData).eq('id', editId);
+      else await supabase.from('events').insert([eventData]);
 
       setShowSuccess(true);
       setTimeout(() => router.push('/events'), 1500);
@@ -125,38 +125,27 @@ function NewEventContent() {
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans">
       <main className="max-w-md mx-auto pb-44 p-6 space-y-8">
-        <div className="flex items-center gap-4 mb-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl active:scale-90 transition-transform"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">{editId ? 'Modifier_Planning' : 'Nouveau_Planning'}</h1></div>
+        <div className="flex items-center gap-4 mb-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl active:scale-90 transition-transform"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">Nouveau_Planning</h1></div>
 
-        {/* CARROUSEL DES TYPES */}
+        {/* TYPE SELECTOR */}
         <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-[3rem] border border-white/10 h-44 shadow-2xl relative">
           {eventTypes.map((t) => (
             <div key={t.id} className={`min-w-full snap-center ${t.color} p-8 flex flex-col justify-center text-left relative overflow-hidden`}>
               <h2 className="text-3xl font-black uppercase italic leading-none mb-1">{t.label}</h2>
-
               {t.id === 'match' && (
-                <button
-                  type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsOfficial(!isOfficial);
-                    if (navigator.vibrate) navigator.vibrate(10);
-                  }}
-                  className={`mt-3 w-48 h-10 rounded-full bg-black/40 border-2 transition-all duration-500 p-1 flex relative items-center z-[100] outline-none active:scale-95 ${isOfficial ? 'border-orange-500' : 'border-[#39FF14]'}`}
-                >
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsOfficial(!isOfficial); }} className={`mt-3 w-48 h-10 rounded-full bg-black/40 border-2 transition-all duration-500 p-1 flex relative items-center z-[100] outline-none active:scale-95 ${isOfficial ? 'border-orange-500' : 'border-[#39FF14]'}`}>
                    <div className={`flex-1 text-[7px] font-black z-10 pointer-events-none transition-opacity ${isOfficial ? 'opacity-30' : 'text-[#39FF14]'}`}>AMICAL</div>
                    <div className={`flex-1 text-[7px] font-black z-10 pointer-events-none transition-opacity ${!isOfficial ? 'opacity-30' : 'text-orange-500'}`}>OFFICIEL</div>
                    <div className={`absolute top-1 bottom-1 w-[48%] bg-white rounded-full shadow-2xl transition-all duration-300 transform pointer-events-none ${isOfficial ? 'left-[50%]' : 'left-[1%]'}`} />
                 </button>
               )}
-
-              <p className="text-[9px] font-bold uppercase tracking-widest mt-2 opacity-70 pointer-events-none">{t.desc}</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest mt-2 opacity-70">{t.desc}</p>
             </div>
           ))}
         </div>
 
         <div className="space-y-6">
-          {/* SECTION CONFIGURATION */}
+          {/* 1. CONFIGURATION SPÉCIFIQUE */}
           <section className={styles.card(isOfficial && type === 'match' ? 'orange-500/40' : (type === 'match' ? 'green-500/40' : 'white/10'))}>
             {type === 'match' && (
               <div className="relative">
@@ -175,36 +164,55 @@ function NewEventContent() {
             )}
 
             {type === 'training' && (
-              <div className="flex flex-wrap gap-2 pt-2">
-                {['Technique','Tactique','Physique','Match','Spécifique'].map(th => (
-                  <button key={th} type="button" onClick={() => setTrainingTheme(th)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase border-2 transition-all ${trainingTheme === th ? 'bg-neon-cyan border-neon-cyan text-black shadow-lg shadow-neon-cyan/40' : 'bg-white/5 border-white/10 text-gray-500'}`}>{th}</button>
-                ))}
+              <div className="space-y-4">
+                <label className={styles.label}>Objectif Technique</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Technique','Tactique','Physique','Match','Spécifique'].map(th => (
+                    <button key={th} type="button" onClick={() => setTrainingTheme(th)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase border-2 transition-all ${trainingTheme === th ? 'bg-neon-cyan border-neon-cyan text-black' : 'bg-white/5 border-white/10 text-gray-500'}`}>{th}</button>
+                  ))}
+                </div>
               </div>
             )}
           </section>
 
+          {/* 2. LOGISTIQUE GPS (VILLE & STADE IMMERSIF) */}
           <section className={styles.card()}>
-             <div className="space-y-4">
-                <div><label className={styles.label}>📅 Date</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.input} /></div>
-                <div><label className={styles.label}>⌚ Heure</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={styles.input} /></div>
-             </div>
-             <div className="pt-4"><label className={styles.label}>📍 Lieu</label><input placeholder="STADE..." value={location} onChange={e => setLocation(e.target.value)} className={styles.input} /></div>
-          </section>
+             <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                   <div><label className={styles.label}>📅 Date</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={styles.input} /></div>
+                   <div><label className={styles.label}>⌚ Heure</label><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className={styles.input} /></div>
+                </div>
 
-          {type === 'plateau' && (
-            <section className={styles.card()}>
-               <h3 className="text-xs font-black uppercase text-purple-500 mb-4">Les 3 Adversaires</h3>
-               <div className="space-y-3 relative">
-                 {plateauOpponents.map((opp, i) => (
-                   <input key={i} placeholder={`CLUB #${i+1}`} value={opp} onFocus={() => setPlateauSearchIndex(i)} onChange={(e) => { const n = [...plateauOpponents]; n[i] = e.target.value.toUpperCase(); setPlateauOpponents(n); }} className={styles.input} />
-                 ))}
-               </div>
-            </section>
-          )}
+                <div className="pt-4 border-t border-white/5 space-y-5">
+                   <div>
+                      <label className={styles.label}>🏙️ Ville (Affichage)</label>
+                      <input placeholder="SÈTE, MONTPELLIER..." value={city} onChange={e => setCity(e.target.value.toUpperCase())} className={styles.input} />
+                   </div>
+
+                   {/* CHAMP STADE AVEC VIGNETTE IMMERSIVE */}
+                   <div>
+                      <label className={styles.label}>🏟️ L'Arène (Nom du stade pour GPS)</label>
+                      <div className="flex gap-4 items-center">
+                         <div className={`w-20 h-20 rounded-2xl border-2 overflow-hidden flex-shrink-0 transition-all duration-500 ${stadiumName ? (isOfficial ? 'border-orange-500 shadow-[0_0_15px_#f97316]' : 'border-[#39FF14] shadow-[0_0_15px_#39FF14]') : 'border-white/10'}`}>
+                            <img src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=200" className="w-full h-full object-cover" alt="Stade" />
+                         </div>
+                         <div className="flex-1">
+                            <input
+                              placeholder="STADE MUNICIPAL..."
+                              value={stadiumName}
+                              onChange={e => setStadiumName(e.target.value.toUpperCase())}
+                              className={`${styles.input} border-none shadow-none bg-white/5 h-16`}
+                            />
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             </div>
+          </section>
 
           <section className={styles.card()}>
              <label className={styles.label}>Consignes (Matériel, RDV...)</label>
-             <textarea placeholder="EX: RDV 13H00..." value={instructions} onChange={e => setInstructions(e.target.value)} className={`${styles.input} min-h-[120px] resize-none`} />
+             <textarea placeholder="EX: RDV 13H00. MAILLOTS BLEUS..." value={instructions} onChange={e => setInstructions(e.target.value)} className={`${styles.input} min-h-[100px] resize-none text-sm`} />
           </section>
         </div>
 
@@ -216,7 +224,7 @@ function NewEventContent() {
 
 export default function NewEventPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-neon-cyan font-black uppercase">Chargement_Nexus...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-neon-cyan font-black uppercase tracking-widest">NEXUS_LINK_LOADING...</div>}>
       <NewEventContent />
     </Suspense>
   );
