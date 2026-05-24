@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTeam } from '@/lib/context/TeamContext';
+import { supabase } from '@/lib/supabase/client';
 
 // Typage strict
 type EventType = 'match-champ' | 'match-amical' | 'plateau-off' | 'plateau-amical' | 'tournoi' | 'interclub' | 'autres';
@@ -23,12 +25,14 @@ type StatusType = 'terminé' | 'confirmé' | 'en-attente' | 'convoqué';
 
 const SQUAD_SIZE = 12;
 
-const eventTypes: Record<EventType, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+const eventTypes: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   'match-champ': { label: 'Match Championnat', color: '#EF4444', bg: 'bg-red-500', icon: <Trophy size={20} fill="currentColor" /> },
   'match-amical': { label: 'Match Amical', color: '#F97316', bg: 'bg-orange-500', icon: <Zap size={20} fill="currentColor" /> },
+  'match': { label: 'Match', color: '#F97316', bg: 'bg-orange-500', icon: <Trophy size={20} fill="currentColor" /> },
   'plateau-off': { label: 'Plateau Officiel', color: '#22C55E', bg: 'bg-green-500', icon: <Star size={20} fill="currentColor" /> },
   'plateau-amical': { label: 'Plateau Amical', color: '#3B82F6', bg: 'bg-blue-500', icon: <Users size={20} /> },
   'tournoi': { label: 'Tournois', color: '#A855F7', bg: 'bg-purple-500', icon: <Trophy size={20} fill="currentColor" /> },
+  'entrainement': { label: 'Entraînement', color: '#0EA5E9', bg: 'bg-sky-500', icon: <Zap size={20} fill="currentColor" /> },
   'interclub': { label: 'Interclub', color: '#FACC15', bg: 'bg-yellow-400', icon: <Users size={20} /> },
   'autres': { label: 'Autres', color: '#9CA3AF', bg: 'bg-gray-400', icon: <CalendarIcon size={20} /> },
 };
@@ -42,10 +46,12 @@ const statusStyles: Record<StatusType, { label: string; bg: string; text: string
 
 export default function CalendarPage() {
   const router = useRouter();
+  const { teamInfo } = useTeam();
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [isExpanded, setIsExpanded] = useState(true);
   const [monthOffset, setMonthOffset] = useState(0);
   const [events, setEvents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Calcul dynamique du mois affiché
   const today = new Date();
@@ -57,11 +63,36 @@ export default function CalendarPage() {
   const monthShort = viewDate.toLocaleDateString('fr-FR', { month: 'short' });
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Chargement des événements (LocalStorage uniquement pour l'Alpha)
+  // Chargement des événements (Supabase + LocalStorage fallback)
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('team_events') || '[]');
-    setEvents(stored);
-  }, []);
+    const fetchEvents = async () => {
+      setIsLoading(true);
+      try {
+        // 1. Fetch from Supabase
+        const { data: dbEvents } = await supabase
+          .from('events')
+          .select('*')
+          .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`);
+
+        // 2. Fallback to LocalStorage (old Alpha events)
+        const stored = JSON.parse(localStorage.getItem('team_events') || '[]');
+
+        const combined = [
+          ...(dbEvents || []).map(e => ({ ...e, type: e.type.toLowerCase() })),
+          ...stored
+        ];
+
+        // Deduplicate by ID if needed (for safety)
+        setEvents(combined);
+      } catch (err) {
+        console.error("Calendar Sync Error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (teamInfo?.id) fetchEvents();
+  }, [teamInfo?.id]);
 
   // Filtrage des événements pour le mois en cours
   const monthEvents = useMemo(() => {

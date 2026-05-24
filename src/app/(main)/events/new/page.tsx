@@ -34,11 +34,12 @@ interface Club {
 
 export default function NewEventPage() {
   const router = useRouter();
-  const { theme } = useTeam();
+  const { theme, teamInfo } = useTeam();
   const isPro = theme === 'classic';
 
   const [type, setType] = useState<EventType>('training');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Form states
@@ -98,7 +99,7 @@ export default function NewEventPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const finalTitle = type === 'match'
       ? `vs ${selectedOpponent ? selectedOpponent.name : clubSearch.trim()}`
       : title;
@@ -108,38 +109,53 @@ export default function NewEventPage() {
       return;
     }
 
-    const typeMapping: Record<EventType, string> = {
-      training: 'entrainement', match: 'match-amical', plateau: 'plateau-amical', tournament: 'tournoi'
-    };
+    setIsLoading(true);
 
-    const newEvent = {
-      id: Date.now(),
-      title: type === 'training' ? `[${trainingTheme}] ${finalTitle}` : finalTitle,
-      date, time, location, note,
-      type: typeMapping[type], status: 'confirmé',
-      isRecurring, recurrenceFrequency, recurrenceEndDate,
-      trainingTheme: type === 'training' ? trainingTheme : null
-    };
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Session expirée");
 
-    const existingEvents = JSON.parse(localStorage.getItem('team_events') || '[]');
-    localStorage.setItem('team_events', JSON.stringify([...existingEvents, newEvent]));
+      const typeMapping: Record<EventType, string> = {
+        training: 'Entraînement', match: 'Match', plateau: 'Plateau', tournament: 'Tournoi'
+      };
 
-    // --- CENTRALISATION DANS LE BRIEFING ---
-    const newMessage = {
-      id: Date.now() + 4,
-      title: `${type === 'training' ? 'Entraînement' : 'Match'} : ${newEvent.title}`,
-      lastSender: "Agenda Coach",
-      lastMessage: `Nouveau RDV le ${new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à ${time}. Lieu: ${location}`,
-      type: 'convocation',
-      date: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
-      unread: 1,
-      isSystem: true
-    };
-    const existingMessages = JSON.parse(localStorage.getItem('team_messages') || '[]');
-    localStorage.setItem('team_messages', JSON.stringify([newMessage, ...existingMessages]));
+      // 1. Sauvegarde réelle dans Supabase
+      const { error: eventError } = await supabase
+        .from('events')
+        .insert([{
+          title: type === 'training' ? `[${trainingTheme}] ${finalTitle}` : finalTitle,
+          type: typeMapping[type],
+          date,
+          time,
+          location: location || 'À définir',
+          home_club_id: teamInfo?.id, // Le coach qui crée reçoit par défaut
+          away_club_id: selectedOpponent?.id || null, // ID si club existant
+          match_request_id: null // Pas lié au radar ici
+        }]);
 
-    setShowSuccess(true);
-    setTimeout(() => router.push('/events'), 1500);
+      if (eventError) throw eventError;
+
+      // 2. Création du message système local (Briefing)
+      const newMessage = {
+        id: Date.now(),
+        title: `${type === 'training' ? 'Entraînement' : 'Match'} : ${finalTitle}`,
+        lastSender: "Système",
+        lastMessage: `Nouveau RDV le ${new Date(date).toLocaleDateString()} à ${time}.`,
+        type: 'info',
+        date: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+        isSystem: true
+      };
+
+      const existingMessages = JSON.parse(localStorage.getItem('team_messages') || '[]');
+      localStorage.setItem('team_messages', JSON.stringify([newMessage, ...existingMessages]));
+
+      setShowSuccess(true);
+      setTimeout(() => router.push('/events'), 1500);
+    } catch (err: any) {
+      alert("Erreur de sauvegarde : " + err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

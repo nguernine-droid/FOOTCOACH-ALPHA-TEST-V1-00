@@ -6,9 +6,10 @@ import { useTeam } from '@/lib/context/TeamContext';
 import { GlitchText } from '@/components/ui/cyber/GlitchText';
 import Link from 'next/link';
 
+import { CURRENT_APP_VERSION } from '@/components/PWAUpdater';
+
 /**
- * TOP_BAR (v9.4 - GESTURE SYNC)
- * Version avec synchronisation par appui long sur la photo de profil.
+ * TOP_BAR (v9.5 - VERSIONED)
  */
 export function TopBar() {
   const { teamInfo, theme } = useTeam();
@@ -77,7 +78,7 @@ export function TopBar() {
             </p>
           </div>
           <div className="text-center">
-             <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027 // V1.1.0</p>
+             <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027 // V.{CURRENT_APP_VERSION}</p>
           </div>
         </Link>
 

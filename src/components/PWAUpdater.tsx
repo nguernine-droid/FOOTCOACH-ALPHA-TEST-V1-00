@@ -1,40 +1,72 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
 
 /**
- * PWA_UPDATER (v1.2 - PERSISTENT SYNC)
- * Gère les mises à jour sans déconnecter l'utilisateur.
+ * PWA_UPDATER (v2.0 - MASTER VERSION LOCK)
+ * Force le rafraîchissement si la version locale est obsolète.
  */
+export const CURRENT_APP_VERSION = '1.001'; // <-- On incrémente ici à chaque commit
+
 export function PWAUpdater() {
+  const [isUpdating, setIsUpdating] = useState(false);
+
   useEffect(() => {
-    const handleSync = async () => {
-      // 1. Vérification de la session Supabase au lancement
-      const { data: { session } } = await supabase.auth.getSession();
+    const checkVersion = async () => {
+      try {
+        // 1. On demande la version Maître à Supabase
+        const { data, error } = await supabase
+          .from('app_config')
+          .select('value')
+          .eq('key', 'min_version')
+          .single();
 
-      // 2. Gestion intelligente du rafraîchissement (Évite les boucles)
-      const lastSync = localStorage.getItem('pwa_last_sync');
-      const now = Date.now();
-      const twelveHours = 12 * 60 * 60 * 1000; // Rafraîchissement 2 fois par jour
+        if (error || !data) return;
 
-      if (!lastSync || (now - parseInt(lastSync)) > twelveHours) {
-        if ('serviceWorker' in navigator) {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          for (const reg of registrations) {
-            await reg.update();
-            if (reg.waiting) {
-              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        const masterVersion = data.value;
+
+        // 2. COMPARAISON
+        if (masterVersion !== CURRENT_APP_VERSION) {
+          console.log(`🚀 MISE À JOUR DÉTECTÉE : ${CURRENT_APP_VERSION} -> ${masterVersion}`);
+          setIsUpdating(true);
+
+          // 3. NETTOYAGE RADICAL
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const reg of registrations) {
+              await reg.unregister(); // On désinstalle le vieux service worker
             }
           }
+
+          // On vide tout le cache navigateur
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+
+          // On attend un peu pour l'effet visuel
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
         }
-        localStorage.setItem('pwa_last_sync', now.toString());
-        console.log("📡 TEAM NEXUS : Synchronisation bi-quotidienne effectuée.");
+      } catch (err) {
+        console.error("Version Check Error:", err);
       }
     };
 
-    handleSync();
+    checkVersion();
   }, []);
+
+  if (isUpdating) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center p-10 text-center animate-in fade-in duration-500">
+        <div className="w-16 h-16 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mb-8" />
+        <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Mise à jour_Critique</h2>
+        <p className="text-[10px] font-mono text-neon-cyan uppercase tracking-[0.4em] mt-4 animate-pulse">
+          Synchronisation V.{CURRENT_APP_VERSION}...
+        </p>
+      </div>
+    );
+  }
 
   return null;
 }

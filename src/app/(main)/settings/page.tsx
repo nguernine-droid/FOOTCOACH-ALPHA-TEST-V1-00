@@ -150,7 +150,7 @@ export default function SettingsPage() {
 
       // 2. ENVOI DIRECT À DISCORD (Plan de secours 100% stable)
       try {
-        await fetch('https://discord.com/api/webhooks/1507782001091022868/iuP7yhqy4DEF6wtCxg5JSBKsjoJATiECQSPx2z3jBdPG7vzICDFKF7VhQGK2J7CqnyIN', {
+        await fetch('https://discord.com/api/webhooks/1507907126314401863/Cl4VdOpZOa-QiPWfALEU1grTAprP6MApmvvxXdpxfrFU6yHkyeemQUFAnZQ7PR8F6zlM', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
