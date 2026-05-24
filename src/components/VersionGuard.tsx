@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Loader2, AlertTriangle, RefreshCw, Smartphone } from 'lucide-react';
 
-export const CURRENT_APP_VERSION = '1.001';
+export const CURRENT_APP_VERSION = '1.002';
 
 export function VersionGuard({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'blocked'>('loading');

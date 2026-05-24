@@ -6,10 +6,10 @@ import { useTeam } from '@/lib/context/TeamContext';
 import { GlitchText } from '@/components/ui/cyber/GlitchText';
 import Link from 'next/link';
 
-import { CURRENT_APP_VERSION } from '@/components/PWAUpdater';
+import { CURRENT_APP_VERSION } from '@/components/VersionGuard';
 
 /**
- * TOP_BAR (v9.5 - VERSIONED)
+ * TOP_BAR (v9.6 - VISIBLE VERSION)
  */
 export function TopBar() {
   const { teamInfo, theme } = useTeam();
@@ -77,8 +77,11 @@ export function TopBar() {
               {teamInfo?.coachName || 'COACH'}
             </p>
           </div>
-          <div className="text-center">
-             <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027 // V.{CURRENT_APP_VERSION}</p>
+          <div className="text-center flex flex-col items-center gap-0.5">
+             <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027</p>
+             <div className={`px-2 py-0.5 rounded-full border ${isPro ? 'bg-orange-600/10 border-orange-600/30 text-orange-600' : 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan'} text-[8px] font-black tracking-widest`}>
+                ALPHA_V.{CURRENT_APP_VERSION}
+             </div>
           </div>
         </Link>
 
