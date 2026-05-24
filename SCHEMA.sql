@@ -1,5 +1,5 @@
 -- ==========================================
--- TEAM NEXUS OS : MASTER STRUCTURE V6.0 (CLUBS RÉELS)
+-- TEAM NEXUS OS : MASTER STRUCTURE V8.0 (STABLE)
 -- ==========================================
 
 -- 0. NETTOYAGE TOTAL
@@ -10,69 +10,113 @@ DROP TABLE IF EXISTS public.profiles CASCADE;
 DROP TABLE IF EXISTS public.clubs CASCADE;
 DROP TABLE IF EXISTS public.app_config CASCADE;
 DROP TABLE IF EXISTS public.feed_posts CASCADE;
+DROP TABLE IF EXISTS public.messages CASCADE;
 
--- 1. CRÉATION DES TABLES (Identique au script précédent...)
+-- 1. CONFIGURATION
 CREATE TABLE public.app_config (key text PRIMARY KEY, value text NOT NULL);
+INSERT INTO public.app_config (key, value) VALUES ('min_version', '1.0.207');
+
+-- 2. CLUBS
 CREATE TABLE public.clubs (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  name text NOT NULL,
+  name text UNIQUE NOT NULL,
   city text,
   stadium text,
+  category text DEFAULT 'Mixte',
   logo_url text,
   created_at timestamp with time zone DEFAULT now()
 );
 
--- (Toutes les autres tables créées ici...)
+-- 3. PROFILS
+CREATE TABLE public.profiles (
+  id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  role text DEFAULT 'coach',
+  first_name text,
+  last_name text,
+  nickname text,
+  bio text,
+  phone text,
+  club_id uuid REFERENCES public.clubs(id) ON DELETE SET NULL,
+  coach_category text DEFAULT 'SÉNIORS',
+  coach_level text DEFAULT 'D1',
+  theme_preference text DEFAULT 'classic',
+  avatar_url text,
+  created_at timestamp with time zone DEFAULT now()
+);
 
--- 2. INSERTION COMPLÈTE DES 50 CLUBS
-INSERT INTO public.clubs (name, city, stadium, logo_url) VALUES
-('AS Bessanaise', 'Béziers', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASBessanaise'),
-('AS Canetoise', 'Cannes-et-Clare', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASCanetoise'),
-('AS de Valros', 'Valros', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASValros'),
-('AS Fabreguoise', 'Fabrègues', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASFabreguoise'),
-('AS Garosud', 'Montpellier', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASGarosud'),
-('AS la Grande Motte', 'La Grande-Motte', 'Stade Jean-Bouin', 'https://api.dicebear.com/7.x/identicon/svg?seed=ASGrandeMotte'),
-('AS Lattoise', 'Lattes', 'Stade Roger Pibou', 'https://api.dicebear.com/7.x/identicon/svg?seed=ASLattoise'),
-('AS Lodeve', 'Lodève', 'Stade Louis Blanc', 'https://api.dicebear.com/7.x/identicon/svg?seed=ASLodeve'),
-('AS Murvielloise', 'Murviel-lès-Béziers', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASMurvielloise'),
-('AS Pignan', 'Pignan', 'Stade Michel Boulle', 'https://api.dicebear.com/7.x/identicon/svg?seed=ASPignan'),
-('AS Puimissonnaise 42/63', 'Puimisson', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASPuimissonnaise'),
-('AS Roujan Caux', 'Roujan', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASRoujanCaux'),
-('AS Saint Martin Montpellier', 'Montpellier', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASSaintMartin'),
-('AS Valerguoise', 'Saint-Jean-de-Védas', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASValerguoise'),
-('AS Vicoise', 'Vic-la-Gardiole', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ASVicoise'),
-('Avenir Sportif Beziers', 'Béziers', 'Stade de la Méditerranée', 'https://api.dicebear.com/7.x/identicon/svg?seed=ASBeziers'),
-('Baillargues St Bres', 'Baillargues', 'Stade Municipal', 'https://api.dicebear.com/7.x/identicon/svg?seed=Baillargues'),
-('Beziers FC', 'Béziers', 'Stade de la Libération', 'https://api.dicebear.com/7.x/identicon/svg?seed=BeziersFC'),
-('Bouzigues Loupian AC', 'Bouzigues', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=Bouzigues'),
-('Castelnau le Cres FC', 'Castelnau-le-Lez', 'Stade Yves Du Manoir', 'https://api.dicebear.com/7.x/identicon/svg?seed=Castelnau'),
-('Enserune FC', 'Nissan-lez-Enserune', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=Enserune'),
-('ES Nezignanaise', 'Nézignan-l''Évêque', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ESNezignanaise'),
-('ET.S Nezignanaise', 'Nézignan-l''Évêque', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=ETS'),
-('FC Boujan Mediterranee', 'Boujan-sur-Libron', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=FCBoujan'),
-('FC Clermontais', 'Clermont-l''Hérault', 'Stade René Bousquet', 'https://api.dicebear.com/7.x/identicon/svg?seed=FCClermontais'),
-('FC de Sete', 'Sète', 'Stade Louis Michel', 'https://api.dicebear.com/7.x/identicon/svg?seed=FCSete'),
-('FC Laverune', 'Lavérune', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=FCLaverune'),
-('FC Lespignan Vendres', 'Lespignan', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=FCLespignan'),
-('FC Pas du Loup', 'Montpellier', 'Stade Pas du Loup', 'https://api.dicebear.com/7.x/identicon/svg?seed=FCPasduLoup'),
-('FC Sauvian', 'Sauvian', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=FCSauvian'),
-('FC Sussargues', 'Sussargues', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=FCSussargues'),
-('FC Vailhauquois', 'Vailhauquès', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=FCVailhauquois'),
-('FO Sud Herault', 'Béziers', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=FOSudHerault'),
-('Gallia C. Lunellois', 'Lunel', 'Stade Jean Moulin', 'https://api.dicebear.com/7.x/identicon/svg?seed=GalliaLunel'),
-('Jacou Clapiers FA', 'Jacou', 'Stade Charles Fages', 'https://api.dicebear.com/7.x/identicon/svg?seed=Jacou'),
-('Juvignac FC', 'Juvignac', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=Juvignac'),
-('Meze Stade FC', 'Mèze', 'Stade Louis Aragon', 'https://api.dicebear.com/7.x/identicon/svg?seed=MezeStade'),
-('Montpellier Herault SC', 'Montpellier', 'Stade de la Mosson', 'https://api.dicebear.com/7.x/identicon/svg?seed=MHSC'),
-('Montpeyroux FC', 'Montpeyroux', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=Montpeyroux'),
-('O. F. Thezan Saint-genies', 'Thézan-lès-Béziers', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=Thezan'),
-('RC St Georges D''orques', 'Saint-Georges-d''Orques', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=RCStGeorges'),
-('RC Vedasien', 'Le Vigan', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=RCVedasien'),
-('RCo. Agathois', 'Agde', 'Stade Louis Sanguin', 'https://api.dicebear.com/7.x/identicon/svg?seed=RCOAgde'),
-('Sete Olympique FC', 'Sète', 'Stade Jules Ladoumègue', 'https://api.dicebear.com/7.x/identicon/svg?seed=SeteOlympique'),
-('US Beziers', 'Béziers', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=USBeziers'),
-('US Grabelloise Omnisports', 'Grabels', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=USGrabels'),
-('US Lunel', 'Lunel', 'Stade Michel Bibard', 'https://api.dicebear.com/7.x/identicon/svg?seed=USLunel'),
-('US Mauguio Carnon', 'Mauguio', 'Stade Michel Bibard', 'https://api.dicebear.com/7.x/identicon/svg?seed=USMauguio'),
-('US Villeneuvoise', 'Villeneuve-lès-Béziers', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=USVilleneuve'),
-('Vic la Gardiole FC', 'Vic-la-Gardiole', NULL, 'https://api.dicebear.com/7.x/identicon/svg?seed=VicGardiole');
+-- 4. ÉVÉNEMENTS (LA VERSION COMPLÈTE)
+CREATE TABLE public.events (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  match_request_id uuid REFERENCES public.match_requests(id) ON DELETE SET NULL, -- LIEN RADAR
+  title text NOT NULL,
+  type text DEFAULT 'Match',
+  date date NOT NULL,
+  time time NOT NULL,
+  location text,
+  home_club_id uuid REFERENCES public.clubs(id),
+  away_club_id uuid REFERENCES public.clubs(id),
+  home_score integer DEFAULT 0,
+  away_score integer DEFAULT 0,
+  status text DEFAULT 'scheduled',
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- 5. MATCH EVENTS (Live Score)
+CREATE TABLE public.match_events (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  match_id uuid REFERENCES public.events(id) ON DELETE CASCADE,
+  author_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type text NOT NULL,
+  team text,
+  content text,
+  status text DEFAULT 'pending',
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- 6. MATCH REQUESTS (Radar)
+CREATE TABLE public.match_requests (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  coach_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type text DEFAULT 'Match Amical',
+  category text,
+  date date,
+  time time,
+  location text,
+  status text DEFAULT 'OPEN',
+  respondent_id uuid REFERENCES public.profiles(id),
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- 7. MESSAGES & FEED
+CREATE TABLE public.messages (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  match_request_id uuid REFERENCES public.match_requests(id) ON DELETE CASCADE,
+  sender_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  text text NOT NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE TABLE public.feed_posts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  author_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  content text NOT NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- 8. FONCTION SCORE
+CREATE OR REPLACE FUNCTION increment_score(row_id uuid, column_name text)
+RETURNS void AS $$ BEGIN
+  EXECUTE format('UPDATE events SET %I = %I + 1 WHERE id = %L', column_name, column_name, row_id);
+END; $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 9. AUTO-PROFIL TRIGGER
+CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger AS $$ BEGIN
+  INSERT INTO public.profiles (id, role) VALUES (new.id, 'coach'); RETURN NEW;
+END; $$ LANGUAGE plpgsql SECURITY DEFINER;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 10. REALTIME & PERMISSIONS
+ALTER PUBLICATION supabase_realtime ADD TABLE match_events, events, feed_posts, match_requests, messages;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, authenticated, anon, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, authenticated, anon, service_role;
