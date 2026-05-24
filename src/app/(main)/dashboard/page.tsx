@@ -66,10 +66,10 @@ export default function DashboardPage() {
 
   const getStyle = (type: string) => {
     const t = type?.toLowerCase() || '';
-    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_20px_#f97316]' };
-    if (t.includes('match') || t.includes('amical')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_20px_#39FF14]' };
-    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_20px_#a855f7]' };
-    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_20px_#0ea5e9]' };
+    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_15px_#f97316]' };
+    if (t.includes('match') || t.includes('amical')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_15px_#39FF14]' };
+    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_15px_#a855f7]' };
+    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_15px_#0ea5e9]' };
   };
 
   const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white', text: 'text-gray-900' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white' };
@@ -77,22 +77,22 @@ export default function DashboardPage() {
   if (isContextLoading || (isDataLoading && teamInfo?.id)) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-black">
       <Loader2 size={40} className="animate-spin text-neon-cyan" />
-      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40">NEXUS_BATTLE_STATION...</p>
+      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40 text-center">NEXUS_CALIBRATION...</p>
     </div>
   );
 
   return (
-    <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-6 ${styles.mainBg}`}>
+    <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-5 ${styles.mainBg}`}>
 
-      {/* HUB COMMANDEMENT */}
-      <section className={`p-5 border rounded-[2rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
-         <div className="relative z-10 text-left space-y-4">
+      {/* HUB COMMANDEMENT COMPACT */}
+      <section className={`p-4 border rounded-[2rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
+         <div className="relative z-10 text-left space-y-3">
             <div className="flex justify-between items-center">
-               <div className="text-left"><p className="text-[9px] font-black uppercase text-gray-500">Unité_Opérationnelle</p><h3 className={`text-lg font-black uppercase italic leading-none mt-1 ${styles.text}`}>Bonjour {teamInfo?.coachName}</h3></div>
+               <div className="text-left"><p className="text-[9px] font-black uppercase text-gray-500 tracking-widest">Unité_Nox</p><h3 className={`text-lg font-black uppercase italic leading-none mt-1 ${styles.text}`}>Bonjour {teamInfo?.coachName}</h3></div>
                <div className="w-2 h-2 rounded-full bg-[#39FF14] shadow-[0_0_8px_#39FF14]" />
             </div>
             <div className="bg-white/5 rounded-xl p-3 border border-white/5 flex items-center justify-between">
-               <div className="flex items-center gap-2"><Layers size={14} className="text-neon-cyan" /><p className="text-[8px] font-black uppercase text-gray-400">Radar {teamInfo?.category}</p></div>
+               <div className="flex items-center gap-2"><Layers size={14} className="text-neon-cyan" /><p className="text-[8px] font-black uppercase text-gray-400">Opportunités {teamInfo?.category}</p></div>
                <div className="flex gap-3">
                   <div className="text-center"><p className="text-xs font-black text-white">{radarStats.match}</p><p className="text-[5px] text-gray-500 uppercase">Matchs</p></div>
                   <div className="text-center"><p className="text-xs font-black text-white">{radarStats.plateau}</p><p className="text-[5px] text-gray-500 uppercase">Plateaux</p></div>
@@ -104,15 +104,12 @@ export default function DashboardPage() {
       {/* ALERTES DÉFIS */}
       {activeWidget?.type === 'CHALLENGE' && (
         <section className="animate-in slide-in-from-top-4 duration-500">
-           <div className="bg-[#0A0A0A] border-2 border-neon-orange rounded-[2rem] p-6 shadow-2xl relative">
+           <div className="bg-[#0A0A0A] border-2 border-neon-orange rounded-[2rem] p-5 shadow-2xl relative">
               <div className="flex items-center gap-4">
                  <div className="w-12 h-12 rounded-2xl border-2 border-neon-orange bg-black flex items-center justify-center overflow-hidden"><Trophy className="text-neon-orange" size={24} /></div>
-                 <div className="text-left flex-1 min-w-0">
-                    <p className="text-[9px] font-black text-neon-orange uppercase italic">Défi Relevé !</p>
-                    <h4 className="text-base font-black text-white uppercase italic truncate">{activeWidget.data.respondent?.clubs?.name}</h4>
-                 </div>
+                 <div className="text-left flex-1 min-w-0"><p className="text-[9px] font-black text-neon-orange uppercase italic">Défi Relevé !</p><h4 className="text-base font-black text-white uppercase italic truncate">{activeWidget.data.respondent?.clubs?.name}</h4></div>
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-5">
+              <div className="grid grid-cols-2 gap-2 mt-4">
                  <button onClick={() => router.push('/comms')} className="bg-white/5 text-white py-3 rounded-xl font-black uppercase text-[8px] border border-white/10">Discuter</button>
                  <button onClick={() => router.push('/radar')} className="bg-neon-orange text-black py-3 rounded-xl font-black uppercase text-[8px] shadow-lg">Accepter</button>
               </div>
@@ -120,76 +117,72 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* CARROUSEL TIMELINE AVEC DUEL DE LOGOS XXL */}
-      <section className="space-y-3 text-left">
+      {/* CARROUSEL TIMELINE - FORMAT IMAGE 2 (COMPACT) */}
+      <section className="space-y-2 text-left">
         <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500 px-1">Missions_&_Événements</h3>
 
-        <div ref={scrollRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-4 -mx-4 px-4 pb-4">
+        <div ref={scrollRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-4 -mx-4 px-4 pb-2">
           {events.length > 0 ? events.map((ev, i) => {
             const mStyle = getStyle(ev.type);
             const isMatch = ev.type?.toLowerCase().includes('match');
             return (
-              <div key={i} className="min-w-[85%] snap-center relative rounded-[3rem] overflow-hidden border-2 border-white/10 shadow-2xl h-[400px] flex flex-col justify-between group transition-all active:scale-95">
+              <div key={i} className="min-w-[85%] snap-center relative rounded-[2.5rem] overflow-hidden border-2 border-white/10 shadow-2xl h-[290px] flex flex-col justify-between group transition-all active:scale-95">
 
-                 {/* FOND STADIUM ÉPIQUE */}
+                 {/* FOND STADIUM DYNAMIQUE */}
                  {isMatch ? (
                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }}>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
                    </div>
                  ) : (
                    <div className="absolute inset-0 bg-[#0A0A0A]" />
                  )}
 
-                 <div className="relative z-10 p-8 flex flex-col h-full justify-between text-center">
-                    {/* HAUT : DATE PILULE */}
+                 <div className="relative z-10 p-6 flex flex-col h-full justify-between text-center">
+                    {/* HAUT : DATE COMPACTE */}
                     <div className="flex justify-center">
-                       <div className="px-5 py-2 rounded-full border border-white/20 bg-black/60 text-[10px] font-black uppercase tracking-[0.2em] text-white backdrop-blur-md shadow-2xl">
+                       <div className="px-4 py-1.5 rounded-full border border-white/10 bg-black/50 text-[8px] font-black uppercase tracking-[0.15em] text-white backdrop-blur-md">
                           {new Date(ev.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {ev.time}
                        </div>
                     </div>
 
-                    {/* CENTRE : LE DUEL XXL */}
+                    {/* CENTRE : LE DUEL OU THÈME */}
                     {isMatch ? (
-                      <div className="flex justify-center items-center gap-6 my-4">
-                         {/* MON CLUB */}
-                         <div className="flex flex-col items-center gap-3 flex-1">
-                            <div className={`w-24 h-24 rounded-[2rem] border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center shadow-2xl backdrop-blur-md overflow-hidden`}>
-                               {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={48} className="text-gray-600" />}
+                      <div className="flex justify-center items-center gap-4 my-1">
+                         <div className="flex flex-col items-center gap-2 flex-1">
+                            <div className="w-14 h-14 rounded-2xl border-2 border-white/10 bg-black/40 p-2 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
+                               {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={24} className="text-gray-600" />}
                             </div>
-                            <p className="text-[10px] font-black uppercase italic text-white drop-shadow-lg line-clamp-1">{teamInfo?.clubName}</p>
+                            <p className="text-[7px] font-black uppercase italic text-white/40 line-clamp-1">{teamInfo?.clubName}</p>
                          </div>
-
-                         <div className="text-4xl font-black italic text-white/40 tracking-tighter transform -rotate-12 drop-shadow-2xl">VS</div>
-
-                         {/* ADVERSAIRE */}
-                         <div className="flex flex-col items-center gap-3 flex-1">
-                            <div className={`w-24 h-24 rounded-[2rem] border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center shadow-2xl backdrop-blur-md overflow-hidden`}>
-                               {ev.away_club?.logo_url ? <img src={ev.away_club.logo_url} className="w-full h-full object-contain" /> : <Shield size={48} className="text-gray-600" />}
+                         <div className="text-2xl font-black italic text-white/20 tracking-tighter transform -rotate-12">VS</div>
+                         <div className="flex flex-col items-center gap-2 flex-1">
+                            <div className="w-14 h-14 rounded-2xl border-2 border-white/10 bg-black/40 p-2 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
+                               {ev.away_club?.logo_url ? <img src={ev.away_club.logo_url} className="w-full h-full object-contain" /> : <Shield size={24} className="text-gray-600" />}
                             </div>
-                            <p className="text-[10px] font-black uppercase italic text-white drop-shadow-lg line-clamp-1">{ev.away_club?.name || 'ADVERSAIRE'}</p>
+                            <p className="text-[7px] font-black uppercase italic text-white/40 line-clamp-1">{ev.away_club?.name || 'ADV'}</p>
                          </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center gap-4">
-                         <div className={`w-24 h-24 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center ${mStyle.color}`}>
-                            {ev.type === 'training' ? <Target size={50} /> : <Trophy size={50} />}
+                      <div className="flex flex-col items-center gap-2 my-1">
+                         <div className={`w-12 h-12 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center ${mStyle.color}`}>
+                            {ev.type === 'training' ? <Target size={28} /> : <Trophy size={28} />}
                          </div>
-                         <h4 className="text-4xl font-black text-white uppercase italic leading-none drop-shadow-2xl">{ev.title}</h4>
+                         <h4 className="text-xl font-black text-white uppercase italic leading-none drop-shadow-2xl">{ev.title}</h4>
                       </div>
                     )}
 
-                    {/* BAS : JAUGE & ACTION */}
-                    <div className="space-y-6">
-                       <div className="flex items-center justify-center gap-3 text-[10px] font-bold text-white/60 uppercase tracking-widest drop-shadow-lg">
-                          <Landmark size={14} className={mStyle.color} /> {ev.location}
+                    {/* BAS : INFOS & JAUGE & ACTION (Remontés) */}
+                    <div className="space-y-3">
+                       <div className="flex items-center justify-center gap-2 text-[8px] font-black text-white/60 uppercase tracking-widest">
+                          <Landmark size={12} className={mStyle.color} /> {ev.location}
                        </div>
 
-                       <div className="space-y-3">
+                       <div className="space-y-1.5">
                           <div className="flex justify-between items-end px-1">
-                             <p className="text-[9px] font-black uppercase text-white/40 tracking-widest">Effectif_Opérationnel</p>
-                             <p className={`text-xs font-black ${mStyle.color}`}>0 / {squad.length}</p>
+                             <p className="text-[7px] font-black uppercase text-white/30 tracking-widest">Opérationnel</p>
+                             <p className={`text-[9px] font-black ${mStyle.color}`}>0 / {squad.length}</p>
                           </div>
-                          <div className="flex gap-1.5 h-2.5 px-0.5">
+                          <div className="flex gap-1 h-1.5 px-0.5">
                              {[1,2,3,4,5,6,7,8].map(s => (
                                <div key={s} className="flex-1 rounded-sm bg-white/10 border border-white/5" />
                              ))}
@@ -198,23 +191,24 @@ export default function DashboardPage() {
 
                        <button
                          onClick={() => router.push('/events')}
-                         className={`w-full py-5 rounded-[2rem] font-black uppercase italic text-[11px] flex items-center justify-center gap-4 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow border-t-4 border-white/20`}
+                         className={`w-full py-4 rounded-2xl font-black uppercase italic text-[10px] flex items-center justify-center gap-3 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow mb-1`}
                        >
-                         Consulter Mission <ArrowRight size={16} strokeWidth={4} />
+                         Consulter Mission <ArrowRight size={14} strokeWidth={4} />
                        </button>
                     </div>
                  </div>
               </div>
             );
           }) : (
-            <Link href="/events/new" className="min-w-[85%] snap-center block p-16 border-2 border-dashed border-white/10 rounded-[3rem] text-center opacity-30 active:scale-95">
-               <Plus size={32} className="mx-auto mb-3 text-neon-cyan" />
-               <p className="text-[10px] font-black uppercase tracking-widest text-center w-full">Initialiser Mission...</p>
+            <Link href="/events/new" className="min-w-[85%] snap-center block p-12 border-2 border-dashed border-white/10 rounded-[2.5rem] text-center opacity-30 active:scale-95">
+               <Plus size={32} className="mx-auto mb-2 text-neon-cyan" />
+               <p className="text-[9px] font-black uppercase tracking-widest">Planifier Mission...</p>
             </Link>
           )}
         </div>
       </section>
 
+      {/* ACTIONS RAPIDES TOUJOURS VISIBLES */}
       <ActionCenter isPro={isPro} onAction={() => {}} />
       <SquadOverview players={squad} selectedIds={[]} onSelect={() => {}} isPro={isPro} />
     </div>
