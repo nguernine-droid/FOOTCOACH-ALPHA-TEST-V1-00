@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Shield, ChevronRight, Calendar, Loader2, Trophy, Activity, Zap, Users, Radar, ArrowRight, MessageCircle, X, CheckCircle2, Landmark, Plus, Send, Layers, Timer, Minus, Play, Target, Brain, Flame
+  Shield, ChevronRight, Calendar, Loader2, Trophy, Activity, Zap, Users, Radar, ArrowRight, MessageCircle, X, CheckCircle2, Landmark, Clock, Plus, Send, Layers, Timer, Minus, Play, Target, Brain, Flame
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { ActionModal } from '@/components/ui/ActionModal';
@@ -20,8 +20,11 @@ export default function DashboardPage() {
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
   const [radarStats, setRadarStats] = useState({ match: 0, tournament: 0, plateau: 0 });
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [activeWidget, setActiveWidget] = useState<any>(null);
-  const [dismissedId, setDismissedId] = useState<string | null>(null);
+
+  // --- ÉTATS DU CARROUSEL ---
+  const [events, setEvents] = useState<any[]>([]);
+  const [activeWidget, setActiveWidget] = useState<any>(null); // Pour les Alertes Radar
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchDashboardData = useCallback(async () => {
     if (!teamInfo?.id) return;
@@ -37,35 +40,42 @@ export default function DashboardPage() {
       const { data: catReqs } = await supabase.from('match_requests').select('type').eq('category', teamInfo.category).eq('status', 'OPEN').neq('coach_id', user.id);
       if (catReqs) setRadarStats({ match: catReqs.filter(r => r.type === 'Match Amical').length, tournament: catReqs.filter(r => r.type === 'Tournoi').length, plateau: catReqs.filter(r => r.type === 'Plateau').length });
 
-      // 3. Priorité Hub
-      const today = new Date().toISOString().split('T')[0];
+      // 3. Fetch All Events for Carousel
+      const { data: allEvts } = await supabase.from('events').select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)').order('date', { ascending: true });
+      setEvents(allEvts || []);
+
+      // 4. Alertes Radar Prioritaires (Défis)
       const { data: response } = await supabase.from('match_requests').select('*, respondent:respondent_id(nickname, first_name, clubs:club_id(name, logo_url))').eq('coach_id', user.id).eq('status', 'PENDING').maybeSingle();
-      const { data: future } = await supabase.from('events').select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)').gte('date', today).neq('status', 'finished').order('date', { ascending: true }).limit(1);
-      const nextEvt = future?.[0];
+      if (response) setActiveWidget({ type: 'CHALLENGE', data: response });
+      else setActiveWidget(null);
 
-      if (response && dismissedId !== response.id) {
-        setActiveWidget({ type: 'CHALLENGE', data: response });
-      } else if (nextEvt) {
-        setActiveWidget({ type: 'NEXT', data: nextEvt });
-      } else {
-        setActiveWidget(null);
-      }
     } catch (err) { console.error(err); } finally { setIsDataLoading(false); }
-  }, [teamInfo?.id, teamInfo?.category, dismissedId]);
+  }, [teamInfo?.id, teamInfo?.category]);
 
+  // AUTO-SCROLL VERS LA MISSION LA PLUS PROCHE
   useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 300000);
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
+    if (events.length > 0 && scrollRef.current) {
+      const today = new Date().toISOString().split('T')[0];
+      const closestIdx = events.findIndex(e => e.date >= today);
+      const targetIdx = closestIdx === -1 ? events.length - 1 : closestIdx;
 
-  // Configuration visuelle
+      setTimeout(() => {
+        if (scrollRef.current) {
+           const cardWidth = scrollRef.current.offsetWidth * 0.85; // Taille d'une carte
+           scrollRef.current.scrollTo({ left: targetIdx * (cardWidth + 16), behavior: 'smooth' });
+        }
+      }, 500);
+    }
+  }, [events]);
+
+  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+
   const getStyle = (type: string) => {
     const t = type?.toLowerCase() || '';
-    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_20px_#f97316]', label: 'COMPÉTITION' };
-    if (t.includes('match') || t.includes('amical')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_20px_#39FF14]', label: 'AMICAL' };
-    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_20px_#a855f7]', label: 'PLATEAU' };
-    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_20px_#0ea5e9]', label: 'ENTRAÎNEMENT' };
+    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_15px_#f97316]' };
+    if (t.includes('match')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_15px_#39FF14]' };
+    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_15px_#a855f7]' };
+    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_15px_#0ea5e9]' };
   };
 
   const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white', text: 'text-gray-900' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white' };
@@ -73,125 +83,105 @@ export default function DashboardPage() {
   if (isContextLoading || (isDataLoading && teamInfo?.id)) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-black">
       <Loader2 size={40} className="animate-spin text-neon-cyan" />
-      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40">NEXUS_LINK_START...</p>
+      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40">NEXUS_TIMELINE_SYNC...</p>
     </div>
   );
 
-  const mStyle = getStyle(activeWidget?.data?.type || '');
-
   return (
-    <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-8 ${styles.mainBg}`}>
+    <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-6 ${styles.mainBg}`}>
 
-      {/* HUB COMMANDEMENT */}
-      <section className={`p-6 border rounded-[2.5rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
-         <div className="relative z-10 text-left">
-            <div className="flex justify-between items-center mb-6">
-               <div className="text-left"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Unité_Opérationnelle</p><h3 className={`text-xl font-black uppercase italic leading-none mt-1 ${styles.text}`}>Bonjour {teamInfo?.coachName}</h3></div>
-               <div className="w-2 h-2 rounded-full bg-[#39FF14] shadow-[0_0_10px_#39FF14]" />
+      {/* HUB COMMANDEMENT COMPACT */}
+      <section className={`p-5 border rounded-[2rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
+         <div className="relative z-10 text-left space-y-4">
+            <div className="flex justify-between items-center">
+               <div className="text-left"><p className="text-[9px] font-black uppercase text-gray-500">Unité_Opérationnelle</p><h3 className={`text-lg font-black uppercase italic leading-none mt-1 ${styles.text}`}>Bonjour {teamInfo?.coachName}</h3></div>
+               <div className="w-2 h-2 rounded-full bg-[#39FF14] shadow-[0_0_8px_#39FF14]" />
             </div>
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex items-center justify-between mb-4">
-               <div className="flex items-center gap-3"><Layers size={16} className="text-neon-cyan" /><p className="text-[9px] font-black uppercase text-gray-400">Radar {teamInfo?.category}</p></div>
-               <div className="flex gap-4">
-                  <div className="text-center"><p className="text-xs font-black text-white">{radarStats.match}</p><p className="text-[6px] text-gray-500 uppercase">Matchs</p></div>
-                  <div className="text-center"><p className="text-xs font-black text-white">{radarStats.plateau}</p><p className="text-[6px] text-gray-500 uppercase">Plateaux</p></div>
+            <div className="bg-white/5 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+               <div className="flex items-center gap-2"><Layers size={14} className="text-neon-cyan" /><p className="text-[8px] font-black uppercase text-gray-400">Radar {teamInfo?.category}</p></div>
+               <div className="flex gap-3">
+                  <div className="text-center"><p className="text-xs font-black text-white">{radarStats.match}</p><p className="text-[5px] text-gray-500 uppercase">Matchs</p></div>
+                  <div className="text-center"><p className="text-xs font-black text-white">{radarStats.plateau}</p><p className="text-[5px] text-gray-500 uppercase">Plateaux</p></div>
                </div>
             </div>
          </div>
       </section>
 
-      {/* NEXUS HUB MASTER V14 */}
-      <section className="space-y-4 text-left relative">
-        <h3 className={`text-[10px] font-black uppercase tracking-widest text-gray-500 px-1`}>
-          { activeWidget?.type === 'CHALLENGE' ? '🚩 Alerte_Radar' : '📅 Prochaine_Mission' }
-        </h3>
+      {/* DECISION HUB : ALERTES RADAR (Fixe) */}
+      {activeWidget?.type === 'CHALLENGE' && (
+        <section className="animate-in slide-in-from-top-4 duration-500">
+           <div className="bg-[#0A0A0A] border-2 border-neon-orange rounded-[2rem] p-6 shadow-2xl relative">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-2xl border-2 border-neon-orange bg-black flex items-center justify-center overflow-hidden"><Trophy className="text-neon-orange" size={24} /></div>
+                 <div className="text-left flex-1 min-w-0">
+                    <p className="text-[9px] font-black text-neon-orange uppercase italic">Défi Relevé !</p>
+                    <h4 className="text-base font-black text-white uppercase italic truncate">{activeWidget.data.respondent?.clubs?.name}</h4>
+                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-5">
+                 <button onClick={() => router.push('/comms')} className="bg-white/5 text-white py-3 rounded-xl font-black uppercase text-[8px] border border-white/10">Discuter</button>
+                 <button onClick={() => router.push('/radar')} className="bg-neon-orange text-black py-3 rounded-xl font-black uppercase text-[8px] shadow-lg">Accepter</button>
+              </div>
+           </div>
+        </section>
+      )}
 
-        {activeWidget ? (
-          <div className={`relative rounded-[3rem] overflow-hidden border-2 border-white/10 shadow-2xl animate-in zoom-in duration-500`}>
+      {/* CARROUSEL DE MISSIONS (Style Photo 2 Compact) */}
+      <section className="space-y-3 text-left">
+        <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500 px-1">Missions_&_Événements</h3>
 
-             {/* BACKGROUND STADIUM IMMERSIF */}
-             {activeWidget.data.type?.toLowerCase().includes('match') ? (
-               <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }}>
-                  <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" />
-               </div>
-             ) : (
-               <div className="absolute inset-0 bg-[#0A0A0A]" />
-             )}
-
-             <div className="relative z-10 p-8">
-                {/* DATE & HEURE PILULE */}
-                <div className="flex justify-between items-start mb-10">
-                   <div className="px-4 py-1.5 rounded-full border border-white/20 bg-black/40 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-md">
-                      {new Date(activeWidget.data.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {activeWidget.data.time}
+        <div ref={scrollRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-4 -mx-4 px-4 pb-4">
+          {events.length > 0 ? events.map((ev, i) => {
+            const mStyle = getStyle(ev.type);
+            const isMatch = ev.type?.toLowerCase().includes('match');
+            return (
+              <div key={i} className="min-w-[85%] snap-center relative rounded-[2.5rem] overflow-hidden border-2 border-white/5 shadow-2xl h-64 flex flex-col justify-end group transition-all active:scale-95">
+                 {/* FOND STADE IMMERSIF */}
+                 {isMatch ? (
+                   <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }}>
+                      <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px]" />
                    </div>
-                   <Zap size={20} className={mStyle.color} fill="currentColor" />
-                </div>
+                 ) : (
+                   <div className="absolute inset-0 bg-[#0A0A0A]" />
+                 )}
 
-                {/* DUEL DE BLASONS XXL (Pour les Matchs) */}
-                {activeWidget.data.type?.toLowerCase().includes('match') ? (
-                  <div className="flex justify-center items-center gap-6 mb-12">
-                     <div className="flex flex-col items-center gap-3">
-                        <div className={`w-24 h-24 rounded-[2rem] border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center shadow-2xl backdrop-blur-md overflow-hidden`}>
-                           {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={48} className="text-gray-600" />}
-                        </div>
-                        <p className="text-[10px] font-black uppercase italic text-white/50">{teamInfo?.clubName}</p>
-                     </div>
+                 <div className="relative z-10 p-6 flex flex-col h-full justify-between">
+                    <div className="flex justify-between items-start">
+                       <div className="px-3 py-1 rounded-full border border-white/20 bg-black/40 text-[8px] font-black uppercase tracking-widest text-white backdrop-blur-md">
+                          {new Date(ev.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {ev.time}
+                       </div>
+                       <Zap size={16} className={mStyle.color} fill="currentColor" />
+                    </div>
 
-                     <div className="text-4xl font-black italic text-white/20 tracking-tighter transform -rotate-12">VS</div>
+                    <div className="text-left">
+                       <h4 className="text-3xl font-black text-white uppercase italic leading-none truncate mb-1">
+                          {isMatch ? `VS ${ev.away_club?.name || 'ADV'}` : ev.title}
+                       </h4>
+                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><Landmark size={12} className={mStyle.color} /> {ev.location}</p>
+                    </div>
 
-                     <div className="flex flex-col items-center gap-3">
-                        <div className={`w-24 h-24 rounded-[2rem] border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center shadow-2xl backdrop-blur-md overflow-hidden`}>
-                           {activeWidget.data.away_club?.logo_url ? <img src={activeWidget.data.away_club.logo_url} className="w-full h-full object-contain" /> : <Shield size={48} className="text-gray-600" />}
-                        </div>
-                        <p className="text-[10px] font-black uppercase italic text-white/50">{activeWidget.data.away_club?.name || 'Adversaire'}</p>
-                     </div>
-                  </div>
-                ) : (
-                  /* AFFICHAGE ENTRAÎNEMENT / PLATEAU */
-                  <div className="flex items-center gap-6 mb-12">
-                     <div className={`w-20 h-20 rounded-3xl bg-white/5 border-2 border-white/10 flex items-center justify-center ${mStyle.color}`}>
-                        {activeWidget.data.type === 'training' ? <Target size={40} /> : <Trophy size={40} />}
-                     </div>
-                     <div className="text-left">
-                        <h4 className="text-4xl font-black italic text-white leading-none uppercase">{activeWidget.data.title || 'Mission'}</h4>
-                        <p className={`text-[10px] font-black uppercase mt-2 tracking-widest ${mStyle.color}`}>{mStyle.label}</p>
-                     </div>
-                  </div>
-                )}
-
-                {/* TITRE & LIEU */}
-                {activeWidget.data.type?.toLowerCase().includes('match') && (
-                   <h4 className="text-3xl font-black text-white uppercase italic leading-none mb-3 text-left">VS {activeWidget.data.away_club?.name || 'ADVERSAIRE'}</h4>
-                )}
-                <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-10 text-left">
-                   <Landmark size={14} className={mStyle.color} /> {activeWidget.data.location || 'Bassin d\'unité'}
-                </div>
-
-                {/* JAUGE DE PUISSANCE BIONIQUE */}
-                <div className="space-y-3 mb-10">
-                   <div className="flex justify-between items-end px-1">
-                      <p className="text-[9px] font-black uppercase text-white/40 tracking-widest">Effectif_Opérationnel</p>
-                      <p className={`text-sm font-black ${mStyle.color}`}>0 / {squad.length}</p>
-                   </div>
-                   <div className="flex gap-1 h-3">
-                      {[1,2,3,4,5,6,7,8].map(i => (
-                        <div key={i} className={`flex-1 rounded-sm border border-white/5 bg-white/5 transition-all duration-1000`} />
-                      ))}
-                   </div>
-                </div>
-
-                {/* BOUTON AURA PULSE */}
-                <button
-                  onClick={() => router.push('/events')}
-                  className={`w-full py-6 rounded-[2rem] font-black uppercase italic text-sm flex items-center justify-center gap-4 transition-all active:scale-95 ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow`}
-                >
-                  <Users size={18} strokeWidth={3} />
-                  Consulter Effectif
-                </button>
-             </div>
-          </div>
-        ) : (
-          <Link href="/events/new" className="block p-16 border-2 border-dashed border-white/10 rounded-[3rem] text-center opacity-30 active:scale-[0.98] transition-all"><Plus size={32} className="mx-auto mb-3" /><p className="text-[11px] font-black uppercase tracking-widest text-center">Initialiser_Nouvelle_Mission...</p></Link>
-        )}
+                    <div className="space-y-4">
+                       <div className="flex justify-between items-end px-1">
+                          <p className="text-[8px] font-black uppercase text-white/30 tracking-widest">Disponibilités</p>
+                          <p className={`text-[10px] font-black ${mStyle.color}`}>0 / {squad.length}</p>
+                       </div>
+                       <button
+                         onClick={() => router.push('/events')}
+                         className={`w-full py-4 rounded-2xl font-black uppercase italic text-[9px] flex items-center justify-center gap-3 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow`}
+                       >
+                         Consulter Effectif <ArrowRight size={12} strokeWidth={4} />
+                       </button>
+                    </div>
+                 </div>
+              </div>
+            );
+          }) : (
+            <Link href="/events/new" className="min-w-[85%] snap-center block p-12 border-2 border-dashed border-white/10 rounded-[2.5rem] text-center opacity-30 active:scale-95">
+               <Plus size={32} className="mx-auto mb-2 text-neon-cyan" />
+               <p className="text-[9px] font-black uppercase tracking-widest">Planifier Mission...</p>
+            </Link>
+          )}
+        </div>
       </section>
 
       <ActionCenter isPro={isPro} onAction={() => {}} />
@@ -204,7 +194,7 @@ function StatBox({ label, val, color }: { label: string, val: number, color: str
   return (
     <div className="bg-white/[0.02] border border-white/5 p-3 rounded-2xl text-center">
        <p className={`text-lg font-black ${color} leading-none mb-1 text-center`}>{val}</p>
-       <p className="text-[6px] font-black uppercase text-gray-500 tracking-tighter text-center">{label}</p>
+       <p className="text-[5px] font-black uppercase text-gray-500 tracking-tighter text-center">{label}</p>
     </div>
   );
 }
