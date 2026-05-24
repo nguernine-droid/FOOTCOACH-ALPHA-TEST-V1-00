@@ -120,7 +120,10 @@ export default function NewEventPage() {
       if (!user) throw new Error("Session expirée");
 
       const typeMapping: Record<EventType, string> = {
-        training: 'Entraînement', match: 'Match', plateau: 'Plateau', tournament: 'Tournoi'
+        training: 'training',
+        match: 'match',
+        plateau: 'plateau',
+        tournament: 'tournament'
       };
 
       // --- LOGIQUE DE RÉPÉTITIVITÉ ---
