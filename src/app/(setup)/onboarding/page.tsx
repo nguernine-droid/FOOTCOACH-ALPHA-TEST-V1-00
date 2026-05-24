@@ -59,14 +59,14 @@ export default function OnboardingPage() {
 
   const filteredClubs = useMemo(() => {
     if (!clubSearch.trim()) return [];
-    return allClubs.filter(c => c.name.toLowerCase().includes(clubSearch.toLowerCase())).slice(0, 5);
+    return allClubs.filter(c => c.name.toLowerCase().includes(clubSearch.toLowerCase())).slice(0, 20); // LIMITE AUGMENTÉE
   }, [allClubs, clubSearch]);
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
-      const { data } = await supabase.from('clubs').select('id, name, category').order('name');
+      const { data } = await supabase.from('clubs').select('id, name, category').order('name').limit(300); // FETCH LARGE
       if (data) setClubs(data);
     };
     init();

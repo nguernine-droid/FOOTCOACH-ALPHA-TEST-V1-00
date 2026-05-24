@@ -1,54 +1,44 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import { ShieldCheck, User, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, User, Bell } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { GlitchText } from '@/components/ui/cyber/GlitchText';
 import Link from 'next/link';
-
+import { supabase } from '@/lib/supabase/client';
 import { CURRENT_APP_VERSION } from '@/components/VersionGuard';
 
 /**
- * TOP_BAR (v9.6 - VISIBLE VERSION)
+ * TOP_BAR (v10.0 - SMART SYNC)
+ * Version avec badge clignotant si mise à jour dispo.
+ * Suppression de l'appui long sur l'avatar.
  */
 export function TopBar() {
   const { teamInfo, theme } = useTeam();
-  const [isSyncing, setIsSyncing] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isOutdated, setIsOutdated] = useState(false);
 
   const isPro = theme === 'classic';
   const accentColor = isPro ? 'text-neon-orange' : 'text-neon-cyan';
   const accentBorder = isPro ? 'border-neon-orange/30' : 'border-neon-cyan/30';
 
-  const coachStatus: 'Actif' | 'Inactif' | 'Toujours Partant' = 'Actif';
-
-  // LOGIQUE DE SYNCHRONISATION PAR APPUI LONG
-  const startPress = () => {
-    timerRef.current = setTimeout(() => {
-      setIsSyncing(true);
-      if (navigator.vibrate) navigator.vibrate(50); // Petit retour haptique
-      window.location.reload();
-    }, 800); // 800ms pour déclencher
-  };
-
-  const endPress = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-  };
-
-  const getStatusBorder = () => {
-    switch (coachStatus as any) {
-      case 'Actif': return 'border-[#39FF14] shadow-[0_0_15px_#39FF1466]';
-      case 'Inactif': return 'border-gray-500 opacity-50';
-      case 'Toujours Partant': return 'border-red-500 shadow-[0_0_15px_#EF444466]';
-      default: return accentBorder;
-    }
-  };
+  // Vérification silencieuse de la version pour le clignotement
+  useEffect(() => {
+    const checkVer = async () => {
+      const { data } = await supabase.from('app_config').select('value').eq('key', 'min_version').single();
+      if (data && data.value !== CURRENT_APP_VERSION) {
+        setIsOutdated(true);
+      }
+    };
+    checkVer();
+    const interval = setInterval(checkVer, 60000); // Check toutes les minutes
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <header className="flex-shrink-0 bg-black/80 backdrop-blur-xl border-b border-white/10 p-3 z-40 sticky top-0 overflow-hidden">
       <div className="grid grid-cols-[60px_1fr_60px] gap-3 items-center">
 
-        {/* COLONNE GAUCHE : LOGO CLUB | CATEGORIE */}
+        {/* LOGO CLUB */}
         <div className="flex flex-col gap-1.5">
           <Link href="/profile" className="block">
             <div className={`aspect-square w-full rounded-xl overflow-hidden border-2 flex items-center justify-center bg-black/40 ${accentBorder} shadow-lg`}>
@@ -64,7 +54,7 @@ export function TopBar() {
           </div>
         </div>
 
-        {/* COLONNE CENTRE : INFOS */}
+        {/* CENTRE : INFOS & VERSION */}
         <Link href="/profile" className="flex flex-col gap-1 justify-center cursor-pointer">
           <div className="text-center">
             <GlitchText
@@ -78,29 +68,21 @@ export function TopBar() {
             </p>
           </div>
           <div className="text-center flex flex-col items-center gap-1">
-             <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027</p>
-             <div className={`px-4 py-1 rounded-full border-2 ${isPro ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan shadow-[0_0_10px_#00F0FF33]'} text-[10px] font-black tracking-widest animate-pulse`}>
-                V.{CURRENT_APP_VERSION}
+             {/* BADGE VERSION CLIGNOTANT SI MAJ */}
+             <div className={`px-3 py-0.5 rounded-full border ${
+               isOutdated
+               ? 'bg-red-500 border-red-400 text-white animate-pulse shadow-[0_0_15px_#ef4444]'
+               : (isPro ? 'bg-orange-600/20 border-orange-400/40 text-orange-400' : 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan')
+             } text-[8px] font-black tracking-widest transition-all duration-500`}>
+                {isOutdated ? 'MAJ DISPONIBLE' : `V.${CURRENT_APP_VERSION}`}
              </div>
           </div>
         </Link>
 
-        {/* COLONNE DROITE : PHOTO PROFIL (AVEC GESTURE SYNC) */}
+        {/* PHOTO PROFIL (SIMPLE CLIC) */}
         <div className="flex flex-col items-center">
-          <div
-            onMouseDown={startPress}
-            onMouseUp={endPress}
-            onTouchStart={startPress}
-            onTouchEnd={endPress}
-            className={`aspect-square w-full rounded-xl border-2 transition-all active:scale-90 ${getStatusBorder()} bg-black/40 shadow-lg relative overflow-hidden cursor-pointer`}
-          >
-            {isSyncing ? (
-              <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-50">
-                <Loader2 size={24} className={`animate-spin ${accentColor}`} />
-              </div>
-            ) : null}
-
-            <Link href="/profile" className="block w-full h-full">
+          <Link href="/profile" className="block w-full">
+            <div className={`aspect-square w-full rounded-xl border-2 transition-all active:scale-90 border-[#39FF14] shadow-[0_0_15px_#39FF1444] bg-black/40 relative overflow-hidden`}>
               {teamInfo?.coachPhoto ? (
                 <img src={teamInfo.coachPhoto} alt="Coach" className="w-full h-full object-cover" />
               ) : (
@@ -109,9 +91,9 @@ export function TopBar() {
               <div className={`absolute bottom-0 inset-x-0 py-0.5 text-center text-[5px] font-black uppercase bg-black/60 text-white`}>
                 COACH
               </div>
-            </Link>
-          </div>
-          <p className="text-[5px] font-bold text-gray-600 uppercase mt-1 tracking-tighter">Appui long: Sync</p>
+            </div>
+          </Link>
+          <p className="text-[5px] font-bold text-gray-600 uppercase mt-1 tracking-tighter">Profil</p>
         </div>
 
       </div>
