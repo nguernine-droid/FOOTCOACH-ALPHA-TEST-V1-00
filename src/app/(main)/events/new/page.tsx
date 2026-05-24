@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronLeft, Play, Trophy, Zap, Calendar, Clock, MapPin, Save, Shield, Check, Search, CheckCircle2, Plus, Loader2, ListOrdered, Settings2, Timer, Info, AlertTriangle, Target, Brain, Flame, Layout, Repeat, Activity
 } from 'lucide-react';
@@ -11,8 +11,11 @@ import { supabase } from '@/lib/supabase/client';
 type EventType = 'training' | 'match' | 'plateau' | 'tournament';
 interface Club { id: string; name: string; }
 
-export default function NewEventPage() {
+function NewEventContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+
   const { teamInfo } = useTeam();
   const [type, setType] = useState<EventType>('training');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -32,6 +35,27 @@ export default function NewEventPage() {
   const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [plateauOpponents, setPlateauOpponents] = useState(['', '', '']);
   const [plateauSearchIndex, setPlateauSearchIndex] = useState<number | null>(null);
+
+  // CHARGEMENT MODE ÉDITION
+  useEffect(() => {
+    if (editId) {
+      const fetchEvent = async () => {
+        const { data, error } = await supabase.from('events').select('*').eq('id', editId).single();
+        if (data && !error) {
+          setType(data.type as EventType);
+          setStartDate(data.date);
+          setStartTime(data.time);
+          setLocation(data.location || '');
+          setInstructions(data.description || '');
+          setIsOfficial(data.tournament_config?.is_official || false);
+          if (data.type === 'training') setTrainingTheme(data.training_theme || 'Technique');
+          if (data.type === 'match') setOpponentSearch(data.title.replace('VS ', ''));
+          if (data.type === 'plateau') setPlateauOpponents(data.tournament_config?.opponents || ['', '', '']);
+        }
+      };
+      fetchEvent();
+    }
+  }, [editId]);
 
   useEffect(() => {
     const fetchClubs = async () => {
@@ -70,7 +94,7 @@ export default function NewEventPage() {
     setIsLoading(true);
     try {
       const finalOpponent = selectedOpponent ? selectedOpponent.name : opponentSearch;
-      const eventsToInsert = [{
+      const eventData = {
           title: type === 'match' ? `vs ${finalOpponent || 'ADVERSAIRE'}` : (type === 'training' ? `Séance ${trainingTheme}` : type.toUpperCase()),
           type, date: startDate, time: startTime,
           location: location.toUpperCase() || 'À DÉFINIR',
@@ -79,8 +103,14 @@ export default function NewEventPage() {
           description: instructions.toUpperCase(),
           training_theme: type === 'training' ? trainingTheme : null,
           tournament_config: { is_official: isOfficial, opponents: type === 'plateau' ? plateauOpponents : null }
-      }];
-      await supabase.from('events').insert(eventsToInsert);
+      };
+
+      if (editId) {
+        await supabase.from('events').update(eventData).eq('id', editId);
+      } else {
+        await supabase.from('events').insert([eventData]);
+      }
+
       setShowSuccess(true);
       setTimeout(() => router.push('/events'), 1500);
     } catch (err: any) { alert(err.message); } finally { setIsLoading(false); }
@@ -95,7 +125,7 @@ export default function NewEventPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans">
       <main className="max-w-md mx-auto pb-44 p-6 space-y-8">
-        <div className="flex items-center gap-4 mb-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">Nouveau_Planning</h1></div>
+        <div className="flex items-center gap-4 mb-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl active:scale-90 transition-transform"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">{editId ? 'Modifier_Planning' : 'Nouveau_Planning'}</h1></div>
 
         {/* CARROUSEL DES TYPES */}
         <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-[3rem] border border-white/10 h-44 shadow-2xl relative">
@@ -104,7 +134,6 @@ export default function NewEventPage() {
               <h2 className="text-3xl font-black uppercase italic leading-none mb-1">{t.label}</h2>
 
               {t.id === 'match' && (
-                /* BATTLE SWITCH : VERSION BOUTON PRIORITAIRE */
                 <button
                   type="button"
                   onPointerDown={(e) => {
@@ -182,5 +211,13 @@ export default function NewEventPage() {
         <button onClick={handleSave} className="fixed bottom-28 left-6 right-6 bg-neon-cyan text-black font-black py-6 rounded-[3rem] shadow-[0_0_30px_rgba(0,240,255,0.4)] uppercase italic text-xl active:scale-95 transition-all z-[90]">VALIDER</button>
       </main>
     </div>
+  );
+}
+
+export default function NewEventPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-neon-cyan font-black uppercase">Chargement_Nexus...</div>}>
+      <NewEventContent />
+    </Suspense>
   );
 }
