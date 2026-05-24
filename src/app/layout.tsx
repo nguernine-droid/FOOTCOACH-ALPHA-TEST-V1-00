@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
-import { PWAUpdater } from "@/components/PWAUpdater";
+import { VersionGuard } from "@/components/VersionGuard";
+import { UpdatePrompt } from "@/components/UpdatePrompt";
+import { ClientGuard } from "@/components/ClientGuard";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ScanlinesOverlay } from "@/components/ui/cyber/ScanlinesOverlay";
-import { ClientGuard } from "@/components/ClientGuard";
 import { TeamProvider } from "@/lib/context/TeamContext";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -67,12 +68,14 @@ export default function RootLayout({
       </head>
       <body className="antialiased bg-black min-h-screen">
         <TeamProvider>
-          <ClientGuard>
-            <PWAUpdater />
-            <ScanlinesOverlay />
-            <PWAInstallPrompt />
-            {children}
-          </ClientGuard>
+          <VersionGuard>
+            <ClientGuard>
+              <UpdatePrompt />
+              <ScanlinesOverlay />
+              <PWAInstallPrompt />
+              {children}
+            </ClientGuard>
+          </VersionGuard>
         </TeamProvider>
       </body>
     </html>

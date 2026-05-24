@@ -130,6 +130,18 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refreshData();
+
+    // --- NOUVEAU : NEXUS DATA PULSE (Toutes les 5mn sur raccourci) ---
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+
+    if (isStandalone) {
+      const pulseInterval = setInterval(() => {
+        console.log("📡 Nexus Data Pulse: Synchronisation des données clubs...");
+        refreshData();
+      }, 5 * 60 * 1000); // 5 minutes
+
+      return () => clearInterval(pulseInterval);
+    }
   }, [refreshData]);
 
   const setRole = (newRole: Role) => {
