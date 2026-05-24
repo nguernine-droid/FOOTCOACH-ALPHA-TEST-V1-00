@@ -4,8 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Loader2, AlertTriangle, ShieldCheck, RefreshCw, CheckCircle2 } from 'lucide-react';
 
-// ON PASSE EN 215 POUR LA SYNCHRO FINALE
-export const CURRENT_APP_VERSION = '1.0.215';
+// ON PASSE EN 220 POUR LE DÉPLOIEMENT RÉUSSI DU HUB
+export const CURRENT_APP_VERSION = '1.0.220';
 
 export function VersionGuard({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'blocked' | 'syncing'>('loading');

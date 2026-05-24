@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const [dismissedId, setDismissedId] = useState<string | null>(null);
 
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [actionType, setActionType] = useState<ActionType>('message');
 
   const fetchDashboardData = useCallback(async () => {
     if (!teamInfo?.id) return;
@@ -92,7 +95,11 @@ export default function DashboardPage() {
   const startMatch = async (id: string) => { await supabase.from('events').update({ status: 'live' }).eq('id', id); fetchDashboardData(); };
   const stopMatch = async (id: string) => { await supabase.from('events').update({ status: 'finished' }).eq('id', id); fetchDashboardData(); };
 
-  const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white border-gray-200', text: 'text-gray-900', accent: 'text-orange-600' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white', accent: 'text-neon-cyan' };
+  const handleSelectPlayer = (id: string) => {
+    setSelectedPlayerIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
+  };
+
+  const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white border-gray-200 shadow-sm', text: 'text-gray-900', accent: 'text-orange-600' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white', accent: 'text-neon-cyan' };
 
   if (isContextLoading || (isDataLoading && teamInfo?.id)) return (
     <div className={`min-h-screen flex flex-col items-center justify-center ${styles.mainBg}`}>
@@ -133,19 +140,19 @@ export default function DashboardPage() {
 
         {activeWidget?.type === 'LIVE' && (
           /* --- ÉTAT : MATCH LIVE --- */
-          <div className="bg-[#050505] border-2 border-red-600 rounded-[3rem] p-8 shadow-[0_0_40px_rgba(239,68,68,0.2)] animate-in zoom-in duration-500 relative">
-             <div className="flex justify-between items-center mb-8 text-center">
-                <div className="w-1/3">
+          <div className="bg-[#050505] border-2 border-red-600 rounded-[3rem] p-8 shadow-[0_0_40px_rgba(239,68,68,0.2)] animate-in zoom-in duration-500 relative text-center">
+             <div className="flex justify-between items-center mb-8">
+                <div className="w-1/3 text-center">
                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mx-auto mb-3 flex items-center justify-center overflow-hidden">
                       {activeWidget.data.home_club?.logo_url ? <img src={activeWidget.data.home_club.logo_url} className="w-full h-full object-contain p-1" /> : <Shield size={24} className="text-gray-600" />}
                    </div>
                    <div className="text-3xl font-black italic text-white leading-none">{activeWidget.data.home_score}</div>
                 </div>
-                <div className="w-1/4">
+                <div className="w-1/4 text-center">
                    <div className="text-[10px] font-black text-red-500 animate-pulse uppercase tracking-[0.3em] mb-2">En Direct</div>
                    <div className="text-gray-600 font-bold italic text-sm">VS</div>
                 </div>
-                <div className="w-1/3">
+                <div className="w-1/3 text-center">
                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mx-auto mb-3 flex items-center justify-center overflow-hidden">
                       {activeWidget.data.away_club?.logo_url ? <img src={activeWidget.data.away_club.logo_url} className="w-full h-full object-contain p-1" /> : <Shield size={24} className="text-gray-600" />}
                    </div>
@@ -200,14 +207,14 @@ export default function DashboardPage() {
           /* --- ÉTAT : MISSION FOCUS --- */
           <div className={`${styles.cardBg} border-2 p-8 rounded-[3rem] relative overflow-hidden group`}>
              <div className="absolute top-0 right-0 p-10 opacity-[0.03] rotate-12 group-hover:rotate-45 transition-transform duration-1000"><Calendar size={120} /></div>
-             <div className="flex justify-between items-start mb-8">
+             <div className="flex justify-between items-start mb-8 text-left">
                 <div className={`px-4 py-1.5 rounded-lg border ${isPro ? 'bg-orange-50 border-orange-100 text-orange-600' : 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan'} text-[10px] font-black uppercase tracking-widest`}>
                    {new Date(activeWidget.data.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {activeWidget.data.time}
                 </div>
                 <Zap size={20} className={isPro ? 'text-orange-400' : 'text-neon-cyan'} fill="currentColor" />
              </div>
-             <h4 className="text-3xl font-black text-white uppercase italic leading-none mb-3">{activeWidget.data.title}</h4>
-             <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-10">
+             <h4 className="text-3xl font-black text-white uppercase italic leading-none mb-3 text-left">{activeWidget.data.title}</h4>
+             <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-10 text-left">
                 <Landmark size={14} className={styles.accent} /> {activeWidget.data.location || 'Terrain Nexus'}
              </div>
              <div className="grid grid-cols-2 gap-3">
@@ -220,13 +227,16 @@ export default function DashboardPage() {
         {!activeWidget && (
           /* --- ÉTAT VIDE --- */
           <Link href="/events/new" className="block p-16 border-2 border-dashed border-white/10 rounded-[3rem] text-center opacity-30 hover:opacity-100 transition-opacity active:scale-[0.98]">
-             <Plus size={32} className="mx-auto mb-3" />
+             <PlusIcon size={32} className="mx-auto mb-3" />
              <p className="text-[11px] font-black uppercase tracking-widest">Planifier_Mission...</p>
           </Link>
         )}
       </section>
 
       <ActionCenter isPro={isPro} onAction={(type) => { setActionType(type); setIsActionModalOpen(true); }} />
+
+      {/* 4. SQUAD OVERVIEW */}
+      <SquadOverview players={squad} selectedIds={selectedPlayerIds} onSelect={handleSelectPlayer} isPro={isPro} />
 
       <ActionModal isOpen={isActionModalOpen} onClose={() => { setIsActionModalOpen(false); setSelectedPlayerIds([]); }} selectedPlayers={squad.filter(p => selectedPlayerIds.includes(p.id)).map(p => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }))} onSend={() => setIsActionModalOpen(false)} actionType={actionType} />
     </div>
@@ -235,11 +245,11 @@ export default function DashboardPage() {
 
 function StatBox({ label, val, color }: { label: string, val: number, color: string }) {
   return (
-    <div className="bg-white/[0.02] border border-white/5 p-3 rounded-2xl">
+    <div className="bg-white/[0.02] border border-white/5 p-3 rounded-2xl text-center">
        <p className={`text-lg font-black ${color} leading-none mb-1`}>{val}</p>
        <p className="text-[6px] font-black uppercase text-gray-500 tracking-tighter">{label}</p>
     </div>
   );
 }
 
-function Plus({ size, className }: any) { return <Send size={size} className={className} />; }
+function PlusIcon({ size, className }: any) { return <Send size={size} className={className} />; }
