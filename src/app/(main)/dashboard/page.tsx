@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Shield, Camera, ChevronRight, Calendar, Loader2, Trophy, MessageSquare, Activity, Zap, Users, Radar, Bell, ArrowRight, MessageCircle, X, CheckCircle2, Play, Pause, Check, Landmark, Clock, Plus, Minus, Timer, AlertCircle, Target, Brain, Flame, Layout
+  Shield, ChevronRight, Calendar, Loader2, Trophy, Activity, Zap, Users, Radar, ArrowRight, MessageCircle, X, CheckCircle2, Landmark, Plus, Send, Layers, Timer, Minus, Play, Target, Brain, Flame
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { ActionModal } from '@/components/ui/ActionModal';
@@ -18,17 +18,10 @@ export default function DashboardPage() {
   const isPro = theme === 'classic';
 
   const [squad, setSquad] = useState<SquadPlayer[]>([]);
-  const [radarStats, setRadarStats] = useState({ match: 0, tournament: 0 });
+  const [radarStats, setRadarStats] = useState({ match: 0, tournament: 0, plateau: 0 });
   const [isDataLoading, setIsDataLoading] = useState(true);
-
-  // --- ÉTATS DU HUB ---
   const [activeWidget, setActiveWidget] = useState<any>(null);
   const [dismissedId, setDismissedId] = useState<string | null>(null);
-
-  // MATCH CONFIG & LIVE
-  const [matchChrono, setMatchChrono] = useState(0);
-  const [isPaused, setIsPaused] = useState(true);
-  const [currentHalf, setCurrentHalf] = useState(1);
 
   const fetchDashboardData = useCallback(async () => {
     if (!teamInfo?.id) return;
@@ -36,191 +29,171 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // 1. Fetch Effectif
       const { data: players } = await supabase.from('club_players').select(`id, poste, status, profiles (id, first_name, last_name, avatar_url)`).eq('club_id', teamInfo.id);
       if (players) setSquad(players.map((p: any) => ({ id: p.profiles?.id, name: `${p.profiles?.first_name} ${p.profiles?.last_name?.charAt(0)}.`, status: p.status === 'Actif' ? 'active' : p.status === 'Inactif' ? 'inactive' : 'doubt', avatarUrl: p.profiles?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${p.profiles?.id}`, poste: p.poste || 'MIL' })));
 
-      const now = new Date();
-      const { data: liveEvent } = await supabase.from('events').select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)').eq('status', 'live').limit(1).maybeSingle();
-      const { data: pendingChallenge } = await supabase.from('match_requests').select('*, respondent:respondent_id(nickname, first_name, clubs:club_id(name, logo_url))').eq('coach_id', user.id).eq('status', 'PENDING').maybeSingle();
-      const { data: futureEvents } = await supabase.from('events').select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)').neq('status', 'finished').order('date', { ascending: true }).order('time', { ascending: true }).limit(1);
-      const nextEvt = futureEvents?.[0];
+      // 2. Intelligence Radar
+      const { data: catReqs } = await supabase.from('match_requests').select('type').eq('category', teamInfo.category).eq('status', 'OPEN').neq('coach_id', user.id);
+      if (catReqs) setRadarStats({ match: catReqs.filter(r => r.type === 'Match Amical').length, tournament: catReqs.filter(r => r.type === 'Tournoi').length, plateau: catReqs.filter(r => r.type === 'Plateau').length });
 
-      if (liveEvent) {
-        setActiveWidget({ type: 'LIVE', data: liveEvent });
-      } else if (pendingChallenge && dismissedId !== pendingChallenge.id) {
-        setActiveWidget({ type: 'CHALLENGE', data: pendingChallenge });
+      // 3. Priorité Hub
+      const today = new Date().toISOString().split('T')[0];
+      const { data: response } = await supabase.from('match_requests').select('*, respondent:respondent_id(nickname, first_name, clubs:club_id(name, logo_url))').eq('coach_id', user.id).eq('status', 'PENDING').maybeSingle();
+      const { data: future } = await supabase.from('events').select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)').gte('date', today).neq('status', 'finished').order('date', { ascending: true }).limit(1);
+      const nextEvt = future?.[0];
+
+      if (response && dismissedId !== response.id) {
+        setActiveWidget({ type: 'CHALLENGE', data: response });
       } else if (nextEvt) {
         setActiveWidget({ type: 'NEXT', data: nextEvt });
       } else {
         setActiveWidget(null);
       }
     } catch (err) { console.error(err); } finally { setIsDataLoading(false); }
-  }, [teamInfo?.id, dismissedId]);
+  }, [teamInfo?.id, teamInfo?.category, dismissedId]);
 
-  useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
-
-  // --- LOGIQUE VISUELLE PAR TYPE ---
-  const getMissionConfig = (evtType: string) => {
-    const type = evtType?.toLowerCase() || '';
-    if (type.includes('match') && activeWidget?.data?.tournament_config?.is_official)
-      return { color: 'text-orange-500', bg: 'bg-orange-500', label: 'OFFICIEL' };
-    if (type.includes('match'))
-      return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', label: 'AMICAL' };
-    if (type.includes('plateau'))
-      return { color: 'text-purple-500', bg: 'bg-purple-500', label: 'PLATEAU' };
-    return { color: 'text-sky-500', bg: 'bg-sky-500', label: 'ENTRAÎNEMENT' };
-  };
-
-  const stopMission = async () => {
-    await supabase.from('events').update({ status: 'finished' }).eq('id', activeWidget.data.id);
+  useEffect(() => {
     fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 300000);
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
+
+  // Configuration visuelle
+  const getStyle = (type: string) => {
+    const t = type?.toLowerCase() || '';
+    if (t.includes('officiel')) return { color: 'text-orange-500', bg: 'bg-orange-600', glow: 'shadow-[0_0_20px_#f97316]', label: 'COMPÉTITION' };
+    if (t.includes('match') || t.includes('amical')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', glow: 'shadow-[0_0_20px_#39FF14]', label: 'AMICAL' };
+    if (t.includes('plateau')) return { color: 'text-purple-500', bg: 'bg-purple-600', glow: 'shadow-[0_0_20px_#a855f7]', label: 'PLATEAU' };
+    return { color: 'text-sky-400', bg: 'bg-sky-500', glow: 'shadow-[0_0_20px_#0ea5e9]', label: 'ENTRAÎNEMENT' };
   };
 
-  const changeScore = async (side: 'home' | 'away', amount: number) => {
-    const current = side === 'home' ? activeWidget.data.home_score : activeWidget.data.away_score;
-    await supabase.from('events').update({ [`${side}_score`]: Math.max(0, current + amount) }).eq('id', activeWidget.data.id);
-    fetchDashboardData();
-  };
-
-  const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white border-gray-200 shadow-sm', text: 'text-gray-900', accent: 'text-orange-600' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white', accent: 'text-neon-cyan' };
+  const styles = isPro ? { mainBg: 'bg-gray-50', cardBg: 'bg-white', text: 'text-gray-900' } : { mainBg: 'bg-[#050510]', cardBg: 'bg-white/5 border-white/10', text: 'text-white' };
 
   if (isContextLoading || (isDataLoading && teamInfo?.id)) return (
-    <div className={`min-h-screen flex flex-col items-center justify-center ${styles.mainBg}`}>
-      <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
-      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40 text-center animate-pulse">Synchronisation_Hub_Master...</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black">
+      <Loader2 size={40} className="animate-spin text-neon-cyan" />
+      <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-neon-cyan opacity-40">NEXUS_LINK_START...</p>
     </div>
   );
 
-  const mConfig = getMissionConfig(activeWidget?.data?.type);
+  const mStyle = getStyle(activeWidget?.data?.type || '');
 
   return (
     <div className={`min-h-screen pb-32 animate-in fade-in duration-500 px-4 pt-4 space-y-8 ${styles.mainBg}`}>
 
-      {/* 1. HUB DE COMMANDEMENT */}
+      {/* HUB COMMANDEMENT */}
       <section className={`p-6 border rounded-[2.5rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
-         <div className="relative z-10 space-y-6 text-left">
-            <div className="flex justify-between items-center text-left">
-               <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 opacity-60">Unité_Opérationnelle</p>
-                  <h3 className={`text-xl font-black uppercase italic leading-none mt-1 ${styles.text}`}>Bonjour {teamInfo?.coachName || 'Coach'}</h3>
-               </div>
+         <div className="relative z-10 text-left">
+            <div className="flex justify-between items-center mb-6">
+               <div className="text-left"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Unité_Opérationnelle</p><h3 className={`text-xl font-black uppercase italic leading-none mt-1 ${styles.text}`}>Bonjour {teamInfo?.coachName}</h3></div>
                <div className="w-2 h-2 rounded-full bg-[#39FF14] shadow-[0_0_10px_#39FF14]" />
             </div>
-            <div className="grid grid-cols-4 gap-2 text-center">
-               <StatBox label="Amicaux" val={0} color="text-orange-600" />
-               <StatBox label="Tournois" val={0} color="text-indigo-600" />
-               <StatBox label="Réponses" val={0} color="text-neon-orange" />
-               <StatBox label="Effectif" val={squad.length} color="text-blue-600" />
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex items-center justify-between mb-4">
+               <div className="flex items-center gap-3"><Layers size={16} className="text-neon-cyan" /><p className="text-[9px] font-black uppercase text-gray-400">Radar {teamInfo?.category}</p></div>
+               <div className="flex gap-4">
+                  <div className="text-center"><p className="text-xs font-black text-white">{radarStats.match}</p><p className="text-[6px] text-gray-500 uppercase">Matchs</p></div>
+                  <div className="text-center"><p className="text-xs font-black text-white">{radarStats.plateau}</p><p className="text-[6px] text-gray-500 uppercase">Plateaux</p></div>
+               </div>
             </div>
          </div>
       </section>
 
-      {/* 2. LE NEXUS HUB MASTER (Style Photo 2) */}
+      {/* NEXUS HUB MASTER V14 */}
       <section className="space-y-4 text-left relative">
         <h3 className={`text-[10px] font-black uppercase tracking-widest text-gray-500 px-1`}>
-          { activeWidget?.type === 'LIVE' ? '⏱️ Mission_En_Cours' : activeWidget?.type === 'CHALLENGE' ? '🚩 Alerte_Radar' : '📅 Focus_Mission' }
+          { activeWidget?.type === 'CHALLENGE' ? '🚩 Alerte_Radar' : '📅 Prochaine_Mission' }
         </h3>
 
         {activeWidget ? (
-          <div className={`relative rounded-[3rem] overflow-hidden border-2 shadow-2xl transition-all duration-700 ${mConfig.bg === 'bg-red-600' ? 'border-red-600' : 'border-white/10'} ${styles.cardBg}`}>
+          <div className={`relative rounded-[3rem] overflow-hidden border-2 border-white/10 shadow-2xl animate-in zoom-in duration-500`}>
 
-             {/* FOND STADIUM DYNAMIQUE (Si Match ou Live) */}
-             {(activeWidget.type === 'LIVE' || activeWidget.data.type?.toLowerCase().includes('match')) && (
-               <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }}>
-                  <div className="absolute inset-0 bg-black/60" />
+             {/* BACKGROUND STADIUM IMMERSIF */}
+             {activeWidget.data.type?.toLowerCase().includes('match') ? (
+               <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }}>
+                  <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" />
                </div>
+             ) : (
+               <div className="absolute inset-0 bg-[#0A0A0A]" />
              )}
 
              <div className="relative z-10 p-8">
-                {/* 1. BARRE DATE/HEURE PILULE */}
+                {/* DATE & HEURE PILULE */}
                 <div className="flex justify-between items-start mb-10">
-                   <div className={`px-4 py-1.5 rounded-full border ${mConfig.bg}/10 ${mConfig.color} border-${mConfig.color}/30 text-[10px] font-black uppercase tracking-widest bg-white/5`}>
+                   <div className="px-4 py-1.5 rounded-full border border-white/20 bg-black/40 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-md">
                       {new Date(activeWidget.data.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {activeWidget.data.time}
                    </div>
-                   <Zap size={20} className={mConfig.color} fill="currentColor" />
+                   <Zap size={20} className={mStyle.color} fill="currentColor" />
                 </div>
 
-                {/* 2. COEUR DU HUB : DUEL OU COALITION */}
-                <div className="flex justify-center items-center gap-6 mb-10">
-                   {/* BLASON DOMICILE */}
-                   <div className="flex flex-col items-center gap-3">
-                      <div className={`w-20 h-20 rounded-3xl border-2 ${mConfig.bg}/30 bg-black/40 p-2 flex items-center justify-center shadow-lg overflow-hidden`}>
-                         {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={40} className="text-gray-600" />}
-                      </div>
-                      <p className="text-[10px] font-black uppercase italic text-white/40 line-clamp-1">{teamInfo?.clubName || 'Nexus'}</p>
-                   </div>
-
-                   {/* INTERFACE CENTRALE (VS ou SCORE) */}
-                   <div className="flex flex-col items-center">
-                      {activeWidget.type === 'LIVE' ? (
-                        <div className="flex items-center gap-2">
-                           <div className="text-5xl font-black italic text-white">{activeWidget.data.home_score}</div>
-                           <div className="text-xs font-black text-red-500 animate-pulse">:</div>
-                           <div className="text-5xl font-black italic text-white">{activeWidget.data.away_score}</div>
-                        </div>
-                      ) : activeWidget.data.type?.toLowerCase().includes('match') ? (
-                        <div className="text-2xl font-black italic text-white/20 tracking-tighter">VS</div>
-                      ) : activeWidget.data.type?.toLowerCase().includes('plateau') ? (
-                        <Plus size={20} className="text-purple-500" />
-                      ) : (
-                        <Activity size={24} className="text-sky-500" />
-                      )}
-                   </div>
-
-                   {/* BLASON ADVERSAIRE (Sauf Entraînement) */}
-                   {activeWidget.data.type?.toLowerCase() !== 'training' && (
+                {/* DUEL DE BLASONS XXL (Pour les Matchs) */}
+                {activeWidget.data.type?.toLowerCase().includes('match') ? (
+                  <div className="flex justify-center items-center gap-6 mb-12">
                      <div className="flex flex-col items-center gap-3">
-                        <div className={`w-20 h-20 rounded-3xl border-2 ${mConfig.bg}/30 bg-black/40 p-2 flex items-center justify-center shadow-lg overflow-hidden`}>
-                           {activeWidget.data.away_club?.logo_url ? <img src={activeWidget.data.away_club.logo_url} className="w-full h-full object-contain" /> : <Shield size={40} className="text-gray-600" />}
+                        <div className={`w-24 h-24 rounded-[2rem] border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center shadow-2xl backdrop-blur-md overflow-hidden`}>
+                           {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={48} className="text-gray-600" />}
                         </div>
-                        <p className="text-[10px] font-black uppercase italic text-white/40 line-clamp-1">{activeWidget.data.away_club?.name || 'Adversaire'}</p>
+                        <p className="text-[10px] font-black uppercase italic text-white/50">{teamInfo?.clubName}</p>
                      </div>
-                   )}
-                </div>
 
-                {/* 3. TITRE IMPACT */}
-                <h4 className="text-3xl font-black text-white uppercase italic leading-none mb-3 text-left">
-                   {activeWidget.data.title || 'Mission_Nexus'}
-                </h4>
+                     <div className="text-4xl font-black italic text-white/20 tracking-tighter transform -rotate-12">VS</div>
+
+                     <div className="flex flex-col items-center gap-3">
+                        <div className={`w-24 h-24 rounded-[2rem] border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center shadow-2xl backdrop-blur-md overflow-hidden`}>
+                           {activeWidget.data.away_club?.logo_url ? <img src={activeWidget.data.away_club.logo_url} className="w-full h-full object-contain" /> : <Shield size={48} className="text-gray-600" />}
+                        </div>
+                        <p className="text-[10px] font-black uppercase italic text-white/50">{activeWidget.data.away_club?.name || 'Adversaire'}</p>
+                     </div>
+                  </div>
+                ) : (
+                  /* AFFICHAGE ENTRAÎNEMENT / PLATEAU */
+                  <div className="flex items-center gap-6 mb-12">
+                     <div className={`w-20 h-20 rounded-3xl bg-white/5 border-2 border-white/10 flex items-center justify-center ${mStyle.color}`}>
+                        {activeWidget.data.type === 'training' ? <Target size={40} /> : <Trophy size={40} />}
+                     </div>
+                     <div className="text-left">
+                        <h4 className="text-4xl font-black italic text-white leading-none uppercase">{activeWidget.data.title || 'Mission'}</h4>
+                        <p className={`text-[10px] font-black uppercase mt-2 tracking-widest ${mStyle.color}`}>{mStyle.label}</p>
+                     </div>
+                  </div>
+                )}
+
+                {/* TITRE & LIEU */}
+                {activeWidget.data.type?.toLowerCase().includes('match') && (
+                   <h4 className="text-3xl font-black text-white uppercase italic leading-none mb-3 text-left">VS {activeWidget.data.away_club?.name || 'ADVERSAIRE'}</h4>
+                )}
                 <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-10 text-left">
-                   <Landmark size={14} className={mConfig.color} /> {activeWidget.data.location || 'Terrain Nexus'}
+                   <Landmark size={14} className={mStyle.color} /> {activeWidget.data.location || 'Bassin d\'unité'}
                 </div>
 
-                {/* 4. BARRE DE DISPONIBILITÉ (Style Photo 2) */}
-                <div className="space-y-2 mb-10">
+                {/* JAUGE DE PUISSANCE BIONIQUE */}
+                <div className="space-y-3 mb-10">
                    <div className="flex justify-between items-end px-1">
-                      <p className="text-[9px] font-black uppercase text-gray-400">Effectif opérationnel</p>
-                      <p className={`text-xs font-black ${mConfig.color}`}>0 / {squad.length}</p>
+                      <p className="text-[9px] font-black uppercase text-white/40 tracking-widest">Effectif_Opérationnel</p>
+                      <p className={`text-sm font-black ${mStyle.color}`}>0 / {squad.length}</p>
                    </div>
-                   <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner">
-                      <div className={`h-full ${mConfig.bg} shadow-[0_0_15px_currentColor] transition-all duration-1000`} style={{ width: '0%' }} />
+                   <div className="flex gap-1 h-3">
+                      {[1,2,3,4,5,6,7,8].map(i => (
+                        <div key={i} className={`flex-1 rounded-sm border border-white/5 bg-white/5 transition-all duration-1000`} />
+                      ))}
                    </div>
                 </div>
 
-                {/* 5. BOUTONS D'ACTION MASSIFS */}
-                <div className="grid grid-cols-2 gap-3">
-                   <button onClick={() => router.push('/events')} className="bg-white/5 border border-white/10 text-white py-5 rounded-[1.5rem] font-black uppercase text-[10px] active:scale-95 transition-all">Consulter</button>
-                   {role === 'coach' && (
-                     <button
-                       onClick={() => activeWidget.type === 'LIVE' ? stopMission() : router.push('/events')}
-                       className={`${mConfig.bg} text-black py-5 rounded-[1.5rem] font-black uppercase text-[10px] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2`}
-                     >
-                       {activeWidget.type === 'LIVE' ? 'Terminer' : 'Démarrer'} <ArrowRight size={14} strokeWidth={4} />
-                     </button>
-                   )}
-                </div>
+                {/* BOUTON AURA PULSE */}
+                <button
+                  onClick={() => router.push('/events')}
+                  className={`w-full py-6 rounded-[2rem] font-black uppercase italic text-sm flex items-center justify-center gap-4 transition-all active:scale-95 ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow`}
+                >
+                  <Users size={18} strokeWidth={3} />
+                  Consulter Effectif
+                </button>
              </div>
           </div>
         ) : (
-          /* ÉTAT VIDE : PLANIFIER MISSION */
-          <Link href="/events/new" className="block p-16 border-2 border-dashed border-white/10 rounded-[3rem] text-center opacity-30 active:scale-[0.98] transition-all group">
-             <Shield size={32} className="mx-auto mb-3 group-hover:scale-110 transition-transform" />
-             <p className="text-[11px] font-black uppercase tracking-widest text-center w-full">Initialiser_Nouvelle_Mission...</p>
-          </Link>
+          <Link href="/events/new" className="block p-16 border-2 border-dashed border-white/10 rounded-[3rem] text-center opacity-30 active:scale-[0.98] transition-all"><Plus size={32} className="mx-auto mb-3" /><p className="text-[11px] font-black uppercase tracking-widest text-center">Initialiser_Nouvelle_Mission...</p></Link>
         )}
       </section>
 
-      {/* 3. ACTIONS RAPIDES & EFFECTIF (Reste inchangé pour stabilité) */}
       <ActionCenter isPro={isPro} onAction={() => {}} />
       <SquadOverview players={squad} selectedIds={[]} onSelect={() => {}} isPro={isPro} />
     </div>
