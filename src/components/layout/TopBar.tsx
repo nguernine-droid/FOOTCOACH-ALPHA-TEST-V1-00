@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, User, Zap } from 'lucide-react';
+import { ShieldCheck, User, RefreshCw } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { GlitchText } from '@/components/ui/cyber/GlitchText';
 import Link from 'next/link';
@@ -11,6 +11,7 @@ import { CURRENT_APP_VERSION } from '@/components/VersionGuard';
 export function TopBar() {
   const { teamInfo, theme } = useTeam();
   const [isOutdated, setIsOutdated] = useState(false);
+  const [targetVersion, setTargetVersion] = useState('');
 
   const isPro = theme === 'classic';
   const accentColor = isPro ? 'text-neon-orange' : 'text-neon-cyan';
@@ -19,14 +20,18 @@ export function TopBar() {
   useEffect(() => {
     const checkVer = async () => {
       const { data } = await supabase.from('app_config').select('value').eq('key', 'min_version').single();
-      if (data && data.value.trim() !== CURRENT_APP_VERSION) {
-        setIsOutdated(true);
-      } else {
-        setIsOutdated(false);
+      if (data) {
+        const vMaster = data.value.trim();
+        setTargetVersion(vMaster);
+        if (vMaster !== CURRENT_APP_VERSION) {
+          setIsOutdated(true);
+        } else {
+          setIsOutdated(false);
+        }
       }
     };
     checkVer();
-    const interval = setInterval(checkVer, 60000);
+    const interval = setInterval(checkVer, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -65,15 +70,21 @@ export function TopBar() {
           </Link>
 
           <div className="text-center flex flex-col items-center gap-1 mt-1">
-             <div
-               onClick={() => isOutdated && window.location.reload()}
-               className={`px-3 py-1 rounded-full border transition-all duration-500 cursor-pointer ${
-               isOutdated
-               ? 'bg-red-600 border-red-400 text-white animate-pulse shadow-[0_0_15px_#ef4444]'
-               : (isPro ? 'bg-orange-600/20 border-orange-400/40 text-orange-400' : 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan')
-             } text-[8px] font-black tracking-widest`}>
-                {isOutdated ? 'MAJ DISPONIBLE' : `V.${CURRENT_APP_VERSION}`}
-             </div>
+             {isOutdated ? (
+               <div
+                 onClick={() => window.location.reload()}
+                 className="flex flex-col items-center gap-0.5"
+               >
+                 <div className="px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white animate-pulse shadow-[0_0_15px_#ef4444] text-[8px] font-black tracking-widest cursor-pointer">
+                    MAJ DISPONIBLE (V.{targetVersion})
+                 </div>
+                 <p className="text-[6px] text-gray-500 font-bold uppercase">Locale: V.{CURRENT_APP_VERSION}</p>
+               </div>
+             ) : (
+               <div className={`px-3 py-0.5 rounded-full border ${isPro ? 'bg-orange-600/20 border-orange-400/40 text-orange-400' : 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan'} text-[8px] font-black tracking-widest`}>
+                 V.{CURRENT_APP_VERSION} (À JOUR)
+               </div>
+             )}
           </div>
         </div>
 
