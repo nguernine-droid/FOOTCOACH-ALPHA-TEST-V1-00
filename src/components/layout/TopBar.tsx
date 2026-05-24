@@ -77,10 +77,10 @@ export function TopBar() {
               {teamInfo?.coachName || 'COACH'}
             </p>
           </div>
-          <div className="text-center flex flex-col items-center gap-0.5">
+          <div className="text-center flex flex-col items-center gap-1">
              <p className="text-[7px] font-bold text-gray-500 uppercase tracking-[0.3em]">S. 2026-2027</p>
-             <div className={`px-2 py-0.5 rounded-full border ${isPro ? 'bg-orange-600/10 border-orange-600/30 text-orange-600' : 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan'} text-[8px] font-black tracking-widest`}>
-                ALPHA_V.{CURRENT_APP_VERSION}
+             <div className={`px-4 py-1 rounded-full border-2 ${isPro ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan shadow-[0_0_10px_#00F0FF33]'} text-[10px] font-black tracking-widest animate-pulse`}>
+                V.{CURRENT_APP_VERSION}
              </div>
           </div>
         </Link>
