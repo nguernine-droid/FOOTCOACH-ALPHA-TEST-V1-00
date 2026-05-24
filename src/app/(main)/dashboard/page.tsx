@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Shield, ChevronRight, Calendar, Loader2, Trophy, Activity, Zap, Users, Radar, ArrowRight, MessageCircle, X, CheckCircle2, Landmark, Clock, Plus, Send, Layers, Timer, Minus, Play, Target, Brain, Flame
+  Shield, ChevronRight, Calendar, Loader2, Trophy, Activity, Zap, Users, Radar, ArrowRight, MessageCircle, X, CheckCircle2, Landmark, Clock, Plus, Send, Layers, Timer, Minus, Play, Target, Brain, Flame, MapPin
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { ActionModal } from '@/components/ui/ActionModal';
@@ -175,15 +175,15 @@ export default function DashboardPage() {
                     )}
 
                     {/* BAS : INFOS & JAUGE & ACTION */}
-                    <div className="space-y-3">
-                       <div className="flex items-center justify-center gap-2 text-[10px] font-black text-white/80 uppercase tracking-widest drop-shadow-lg">
-                          <Landmark size={14} className={mStyle.color} /> {ev.location}
+                    <div className="space-y-4">
+                       <div className="flex items-center justify-center gap-3 text-sm font-black text-white uppercase tracking-[0.2em] drop-shadow-2xl bg-black/30 py-2 rounded-xl backdrop-blur-sm border border-white/5">
+                          <MapPin size={18} className={mStyle.color} strokeWidth={3} /> {ev.location}
                        </div>
 
-                       <div className="space-y-1.5">
+                       <div className="space-y-1.5 pt-1">
                           <div className="flex justify-between items-end px-1">
-                             <p className="text-[7px] font-black uppercase text-white/30 tracking-widest">Effectif</p>
-                             <p className={`text-[10px] font-black ${mStyle.color}`}>0 / {squad.length}</p>
+                             <p className="text-[7px] font-black uppercase text-white/30 tracking-widest">Capacité</p>
+                             <p className={`text-[9px] font-black ${mStyle.color}`}>0 / {squad.length}</p>
                           </div>
                           <div className="flex gap-1 h-1.5 px-0.5">
                              {[1,2,3,4,5,6,7,8].map(s => (
@@ -194,9 +194,9 @@ export default function DashboardPage() {
 
                        <button
                          onClick={() => router.push('/events')}
-                         className={`w-full py-4 rounded-2xl font-black uppercase italic text-[11px] flex items-center justify-center gap-3 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow mb-1 border-t-2 border-white/20`}
+                         className={`w-full py-4 rounded-2xl font-black uppercase italic text-[10px] flex items-center justify-center gap-3 transition-all ${mStyle.bg} ${mStyle.glow} text-black animate-pulse-slow mb-1 border-t-2 border-white/20`}
                        >
-                         Consulter Mission <ArrowRight size={16} strokeWidth={4} />
+                         Consulter Mission <ArrowRight size={14} strokeWidth={4} />
                        </button>
                     </div>
                  </div>
