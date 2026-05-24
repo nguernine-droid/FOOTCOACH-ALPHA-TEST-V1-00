@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Shield, Camera, ChevronRight, Calendar, Loader2, Megaphone, Trophy, MessageSquare, Activity, Zap, Users, Radar, Bell, ArrowRight, MessageCircle, X, CheckCircle2, Send, Users2, Play, Pause, Check, Landmark, Plus, Minus
+  Shield, Camera, ChevronRight, Calendar, Loader2, Megaphone, Trophy, MessageSquare, Activity, Zap, Users, Radar, Bell, ArrowRight, MessageCircle, X, CheckCircle2, Send, Users2, Landmark, Play, Pause, Check
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { ActionModal } from '@/components/ui/ActionModal';
@@ -66,8 +66,6 @@ export default function DashboardPage() {
       }
 
       // 3. LOGIQUE SMART WIDGET & MATCH CENTER
-
-      // A. PRIORITÉ ABSOLUE : MATCH EN DIRECT
       const today = new Date().toISOString().split('T')[0];
       const { data: currentMatch } = await supabase
         .from('events')
@@ -79,7 +77,6 @@ export default function DashboardPage() {
 
       if (currentMatch) {
         setLiveMatch(currentMatch);
-        // On récupère les événements du match (buts, coms)
         const { data: mevs } = await supabase
           .from('match_events')
           .select('*, profiles:author_id(first_name, nickname, role)')
@@ -90,7 +87,6 @@ export default function DashboardPage() {
         setLiveMatch(null);
       }
 
-      // B. ALERTE RADAR / MESSAGES (Si pas de match live)
       if (!currentMatch) {
         const { data: pendingChallenge } = await supabase
           .from('match_requests')
@@ -153,10 +149,6 @@ export default function DashboardPage() {
       setSelectedPlayerIds(squad.filter(p => p.status !== 'inactive').map(p => p.id));
     }
     setIsActionModalOpen(true);
-  };
-
-  const handleSelectPlayer = (id: string) => {
-    setSelectedPlayerIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]);
   };
 
   const startMatch = async (id: string) => {
@@ -223,7 +215,7 @@ export default function DashboardPage() {
       {/* 1. HUB DE COMMANDEMENT */}
       <section className={`p-6 border rounded-[2.5rem] shadow-xl relative overflow-hidden ${styles.cardBg}`}>
          <div className="relative z-10 space-y-6 text-left">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center text-left">
                <div>
                   <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${styles.textSub}`}>Unité_Connectée</p>
                   <h3 className={`text-xl font-black uppercase italic leading-none mt-1 ${styles.text}`}>Bonjour {teamInfo?.coachName || 'Coach'}</h3>
@@ -247,13 +239,13 @@ export default function DashboardPage() {
 
         {liveMatch ? (
           <div className="bg-[#050505] border-2 border-red-600 rounded-[2.5rem] p-6 shadow-2xl overflow-hidden">
-             <div className="flex justify-between items-center mb-8">
-                <div className="text-center w-1/3">
+             <div className="flex justify-between items-center mb-8 text-center">
+                <div className="w-1/3">
                    <p className="text-[8px] font-black text-white/40 uppercase mb-2 truncate">{liveMatch.home_club?.name || 'Home'}</p>
                    <div className="text-5xl font-black italic text-white leading-none">{liveMatch.home_score}</div>
                 </div>
-                <div className="text-center w-1/4"><div className="text-xs font-black text-red-500 animate-pulse">VS</div></div>
-                <div className="text-center w-1/3">
+                <div className="w-1/4"><div className="text-xs font-black text-red-500 animate-pulse">VS</div></div>
+                <div className="w-1/3">
                    <p className="text-[8px] font-black text-white/40 uppercase mb-2 truncate">{liveMatch.away_club?.name || 'Away'}</p>
                    <div className="text-5xl font-black italic text-white leading-none">{liveMatch.away_score}</div>
                 </div>
@@ -310,6 +302,14 @@ export default function DashboardPage() {
                 <div><p className={`text-sm font-black uppercase italic ${styles.text}`}>Calendrier Officiel</p><p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-1">Gérer les missions de l'unité</p></div>
               </div>
             </Link>
+            {role === 'coach' && events.find(e => new Date(e.date).toDateString() === new Date().toDateString() && e.status !== 'finished' && e.status !== 'live') && (
+              <button
+                onClick={() => startMatch(events.find(e => new Date(e.date).toDateString() === new Date().toDateString()).id)}
+                className="w-full py-5 bg-neon-cyan text-black rounded-2xl font-black uppercase italic text-xs shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center gap-3 active:scale-95 transition-all"
+              >
+                <Play size={18} fill="currentColor" /> DÉMARRER LA MISSION DU JOUR
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -355,7 +355,7 @@ function RecentActivity({ styles, isPro, activities }: { styles: any, isPro: boo
             <div key={i} onClick={() => router.push(item.type === 'calendar' ? '/events' : '/comms')} className={`flex items-center justify-between p-4 border border-transparent ${isPro ? 'hover:bg-gray-50' : 'hover:bg-white/[0.06]'} rounded-xl transition-all cursor-pointer group text-left`}>
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 ${getColor(item.type)}`}>
-                   {item.type === 'match' ? <Trophy size={16} /> : <Megaphone size={16} />}
+                   {item.type === 'match' ? <Trophy size={16} /> : item.type === 'calendar' ? <Calendar size={16} /> : <Megaphone size={16} />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-xs font-black uppercase italic truncate ${styles.text}`}>{item.title}</p>
