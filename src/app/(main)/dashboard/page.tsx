@@ -149,12 +149,12 @@ export default function DashboardPage() {
                     {isMatch ? (
                       <div className="flex justify-center items-center gap-4 my-1">
                          <div className="flex flex-col items-center gap-2 flex-1">
-                            <div className="w-14 h-14 rounded-2xl border-2 border-white/10 bg-black/40 p-2 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
-                               {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={24} className="text-gray-600" />}
+                            <div className="w-20 h-20 rounded-3xl border-2 border-white/10 bg-black/40 p-3 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
+                               {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={36} className="text-gray-600" />}
                             </div>
                             <p className="text-[7px] font-black uppercase italic text-white/40 line-clamp-1">{teamInfo?.clubName}</p>
                          </div>
-                         <div className="text-2xl font-black italic text-white/20 tracking-tighter transform -rotate-12">VS</div>
+                         <div className="text-3xl font-black italic text-white/20 tracking-tighter transform -rotate-12">VS</div>
                          <div className="flex flex-col items-center gap-2 flex-1">
                             <div className="w-14 h-14 rounded-2xl border-2 border-white/10 bg-black/40 p-2 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
                                {ev.away_club?.logo_url ? <img src={ev.away_club.logo_url} className="w-full h-full object-contain" /> : <Shield size={24} className="text-gray-600" />}
@@ -164,8 +164,8 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2 my-1">
-                         <div className={`w-12 h-12 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center ${mStyle.color}`}>
-                            {ev.type === 'training' ? <Target size={28} /> : <Trophy size={28} />}
+                         <div className={`w-18 h-18 rounded-full bg-white/5 border-2 border-white/10 flex items-center justify-center ${mStyle.color}`}>
+                            {ev.type === 'training' ? <Target size={32} /> : <Trophy size={32} />}
                          </div>
                          <h4 className="text-xl font-black text-white uppercase italic leading-none drop-shadow-2xl">{ev.title}</h4>
                       </div>
