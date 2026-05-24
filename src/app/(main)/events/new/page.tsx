@@ -136,28 +136,50 @@ export default function NewEventPage() {
         training: 'Entraînement', match: 'Match', plateau: 'Plateau', tournament: 'Tournoi'
       };
 
-      // 3. Sauvegarde réelle dans Supabase
-      const { error: eventError } = await supabase
-        .from('events')
-        .insert([{
+      // --- LOGIQUE DE RÉPÉTITIVITÉ ---
+      const eventsToInsert = [];
+      const startDate = new Date(date);
+      const endDate = isRecurring && recurrenceEndDate ? new Date(recurrenceEndDate) : startDate;
+
+      let currentDate = new Date(startDate);
+
+      while (currentDate <= endDate) {
+        eventsToInsert.push({
           title: type === 'training' ? `[${trainingTheme}] ${finalTitle}` : finalTitle,
           type: typeMapping[type],
-          date,
+          date: currentDate.toISOString().split('T')[0],
           time: time || '00:00',
           location: location || 'Stade Municipal',
-          home_club_id: teamInfo?.id, // Le coach qui crée reçoit par défaut
-          away_club_id: selectedOpponent?.id || null, // ID si club existant
-          match_request_id: null // Pas lié au radar ici
-        }]);
+          home_club_id: teamInfo?.id,
+          away_club_id: selectedOpponent?.id || null,
+          match_request_id: null
+        });
+
+        if (!isRecurring) break;
+
+        // Avancer la date selon la fréquence
+        if (recurrenceFrequency === 'weekly') {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else {
+          currentDate.setDate(currentDate.getDate() + 14);
+        }
+      }
+
+      // Insertion massive dans Supabase
+      const { error: eventError } = await supabase
+        .from('events')
+        .insert(eventsToInsert);
 
       if (eventError) throw eventError;
 
-      // 4. Création du message système local (Briefing)
+      // Message de briefing unique pour signaler la planification
       const newMessage = {
         id: Date.now(),
         title: `${typeMapping[type]} : ${finalTitle}`,
         lastSender: "Système",
-        lastMessage: `Nouveau RDV le ${new Date(date).toLocaleDateString()} à ${time || '00:00'}.`,
+        lastMessage: isRecurring
+          ? `Planification effectuée jusqu'au ${new Date(recurrenceEndDate).toLocaleDateString()}.`
+          : `Nouveau RDV le ${new Date(date).toLocaleDateString()} à ${time || '00:00'}.`,
         type: 'info',
         date: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
         isSystem: true
@@ -313,7 +335,10 @@ export default function NewEventPage() {
             {type === 'training' && (
               <div className={`${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'} rounded-[2.5rem] p-7 shadow-sm border space-y-6`}>
                 <div className="flex items-center justify-between">
-                  <label className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}><Repeat size={14} className="text-brand-orange" /> Répétition Hebdo</label>
+                  <div className="text-left">
+                    <label className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}><Repeat size={14} className="text-brand-orange" /> Répétition Hebdo</label>
+                    <p className="text-[8px] text-gray-500 uppercase font-bold mt-1">Planifier sur plusieurs semaines</p>
+                  </div>
                   <button onClick={() => setIsRecurring(!isRecurring)} className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${isRecurring ? 'bg-brand-orange' : (isPro ? 'bg-gray-200' : 'bg-white/10')}`}><span className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-xl transition-transform ${isRecurring ? 'translate-x-7' : 'translate-x-1'}`} /></button>
                 </div>
                 {isRecurring && (
@@ -321,6 +346,10 @@ export default function NewEventPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <button type="button" onClick={() => setRecurrenceFrequency('weekly')} className={`p-4 rounded-2xl text-[10px] font-black uppercase border-2 ${recurrenceFrequency === 'weekly' ? 'bg-brand-orange border-brand-orange text-white' : (isPro ? 'bg-gray-50 border-gray-100 text-gray-400' : 'bg-white/5 border-white/5 text-gray-600')}`}>Hebdo</button>
                       <button type="button" onClick={() => setRecurrenceFrequency('biweekly')} className={`p-4 rounded-2xl text-[10px] font-black uppercase border-2 ${recurrenceFrequency === 'biweekly' ? 'bg-brand-orange border-brand-orange text-white' : (isPro ? 'bg-gray-50 border-gray-100 text-gray-400' : 'bg-white/5 border-white/5 text-gray-600')}`}>Bimensuel</button>
+                    </div>
+                    <div className="space-y-3">
+                      <label className={`text-[10px] font-black uppercase block ml-2 flex items-center gap-2 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}><Calendar size={14} className="text-brand-orange" /> Jusqu'à quelle date ?</label>
+                      <input type="date" value={recurrenceEndDate} onChange={(e) => setRecurrenceEndDate(e.target.value)} required={isRecurring} className={`w-full ${isPro ? 'bg-gray-50 text-gray-900' : 'bg-black/40 text-white'} rounded-2xl p-4 text-sm font-black outline-none border border-transparent focus:border-brand-orange/20`} />
                     </div>
                   </div>
                 )}
