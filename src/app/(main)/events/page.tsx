@@ -12,7 +12,8 @@ import {
   Zap,
   Star,
   Trophy,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -129,6 +130,31 @@ export default function CalendarPage() {
       .slice(0, 5);
   }, [events]);
 
+  const handleDeleteEvent = async (e: React.MouseEvent, eventId: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm("Supprimer cet événement ?")) return;
+
+    try {
+      if (typeof eventId === 'string') {
+        // Supabase deletion
+        const { error } = await supabase.from('events').delete().eq('id', eventId);
+        if (error) throw error;
+      } else {
+        // LocalStorage deletion
+        const stored = JSON.parse(localStorage.getItem('team_events') || '[]');
+        const updated = stored.filter((evt: any) => evt.id !== eventId);
+        localStorage.setItem('team_events', JSON.stringify(updated));
+      }
+
+      // Update local state
+      setEvents(prev => prev.filter(evt => evt.id !== eventId));
+    } catch (err: any) {
+      alert("Erreur lors de la suppression : " + err.message);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-dark-bg text-white pb-32 max-w-md mx-auto shadow-2xl">
       <header className="bg-dark-bg py-4 px-6 sticky top-0 z-30 border-b border-white/5 flex items-center justify-between">
@@ -209,7 +235,15 @@ export default function CalendarPage() {
                           <p className="text-[9px] text-gray-500 font-bold uppercase">{ev.location || 'Lieu non défini'}</p>
                         </div>
                       </div>
-                      <p className="font-black text-white">{ev.time || '--:--'}</p>
+                      <div className="flex items-center gap-4">
+                        <p className="font-black text-white">{ev.time || '--:--'}</p>
+                        <button
+                          onClick={(e) => handleDeleteEvent(e, ev.id)}
+                          className="p-2 text-gray-600 hover:text-red-500 transition-colors active:scale-90"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -242,7 +276,15 @@ export default function CalendarPage() {
                       </p>
                     </div>
                   </div>
-                  <ChevronRight size={18} className="text-gray-600" />
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={(e) => handleDeleteEvent(e, item.id)}
+                      className="p-2 text-gray-700 hover:text-red-500 transition-colors active:scale-90"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                    <ChevronRight size={18} className="text-gray-600" />
+                  </div>
                 </div>
               );
             })}
