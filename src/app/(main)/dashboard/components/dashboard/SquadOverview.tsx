@@ -55,7 +55,7 @@ export function SquadOverview({ players, selectedIds = [], onSelect, isPro }: Sq
         <div className="flex items-center gap-3">
           <Users size={16} className={isPro ? 'text-orange-600' : 'text-neon-orange'} />
           <h3 className={`text-xs font-black uppercase tracking-widest ${isPro ? 'text-gray-900' : 'text-white'}`}>
-            L'Effectif
+            Fil d'Info
           </h3>
           <span className={`text-[9px] font-mono font-black px-2 py-0.5 rounded-full border ${
             isPro ? 'border-gray-200 text-gray-500 bg-gray-100' : 'border-white/10 text-gray-400 bg-white/5'
