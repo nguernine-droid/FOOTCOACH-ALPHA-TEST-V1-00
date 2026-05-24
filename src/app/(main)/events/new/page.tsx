@@ -100,12 +100,29 @@ export default function NewEventPage() {
   };
 
   const handleSave = async () => {
-    const finalTitle = type === 'match'
-      ? `vs ${selectedOpponent ? selectedOpponent.name : clubSearch.trim()}`
-      : title;
+    // 1. Préparation du titre intelligent
+    let finalTitle = title.trim();
 
-    if (!date || (!finalTitle && type !== 'match') || (type === 'match' && !selectedOpponent && !clubSearch.trim())) {
-      alert('Veuillez renseigner les informations obligatoires (Equipe adverse / Titre et Date).');
+    if (type === 'match') {
+      const opponent = selectedOpponent ? selectedOpponent.name : clubSearch.trim();
+      if (!opponent) {
+        alert("Veuillez indiquer l'équipe adverse.");
+        return;
+      }
+      finalTitle = `vs ${opponent}`;
+    } else if (type === 'training' && !finalTitle) {
+      // Si entraînement sans titre, on utilise le thème par défaut
+      finalTitle = `Séance ${trainingTheme}`;
+    }
+
+    // 2. Vérification de la date (Obligatoire pour tout)
+    if (!date) {
+      alert("Veuillez sélectionner une date.");
+      return;
+    }
+
+    if (!finalTitle) {
+      alert("Veuillez donner un nom à cet événement.");
       return;
     }
 
@@ -119,15 +136,15 @@ export default function NewEventPage() {
         training: 'Entraînement', match: 'Match', plateau: 'Plateau', tournament: 'Tournoi'
       };
 
-      // 1. Sauvegarde réelle dans Supabase
+      // 3. Sauvegarde réelle dans Supabase
       const { error: eventError } = await supabase
         .from('events')
         .insert([{
           title: type === 'training' ? `[${trainingTheme}] ${finalTitle}` : finalTitle,
           type: typeMapping[type],
           date,
-          time,
-          location: location || 'À définir',
+          time: time || '00:00',
+          location: location || 'Stade Municipal',
           home_club_id: teamInfo?.id, // Le coach qui crée reçoit par défaut
           away_club_id: selectedOpponent?.id || null, // ID si club existant
           match_request_id: null // Pas lié au radar ici
@@ -135,12 +152,12 @@ export default function NewEventPage() {
 
       if (eventError) throw eventError;
 
-      // 2. Création du message système local (Briefing)
+      // 4. Création du message système local (Briefing)
       const newMessage = {
         id: Date.now(),
-        title: `${type === 'training' ? 'Entraînement' : 'Match'} : ${finalTitle}`,
+        title: `${typeMapping[type]} : ${finalTitle}`,
         lastSender: "Système",
-        lastMessage: `Nouveau RDV le ${new Date(date).toLocaleDateString()} à ${time}.`,
+        lastMessage: `Nouveau RDV le ${new Date(date).toLocaleDateString()} à ${time || '00:00'}.`,
         type: 'info',
         date: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
         isSystem: true
