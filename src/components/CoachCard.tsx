@@ -11,12 +11,17 @@ interface CoachCardProps {
   clubLogo?: string;
   coachPhoto?: string;
   category: string;
+  level: string;
   points: number;
   status: 'inactif' | 'actif' | 'toujours_pret';
   matchesPlayed: number;
   announcementsSent: number;
   contactsMade: number;
   engagementRate: number;
+  grade?: string;
+  matchDist?: number;
+  plateauDist?: number;
+  tournamentReach?: string;
 }
 
 /**

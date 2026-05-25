@@ -14,6 +14,7 @@ export interface TeamInfo {
   coachName: string;
   coachPhoto?: string;
   clubLogo?: string;
+  clubAcronym?: string;
   clubCity?: string;
   clubStadium?: string;
   userFirstName?: string;
@@ -104,17 +105,17 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         setIsProfileComplete(isComplete);
 
         // MAPPING DE PRÉCISION
-        setTeamInfoState({
-          id: profile.clubs?.id,
-          clubName: profile.clubs?.name || 'MON CLUB',
-          category: profile.coach_category || 'SÉNIORS',
-          level: profile.coach_level || 'D1',
-          // PRIORITÉ : NICKNAME SI DIFFERENT DE "COACH", SINON PRENOM
-          coachName: (profile.nickname && profile.nickname !== 'COACH') ? profile.nickname : (profile.first_name || 'COACH'),
-          coachPhoto: profile.avatar_url,
-          clubLogo: profile.clubs?.logo_url,
-          clubCity: profile.clubs?.city || '',
-          clubStadium: profile.clubs?.stadium || '',
+          setTeamInfoState({
+            id: profile.clubs?.id,
+            clubName: profile.clubs?.name || 'MON CLUB',
+            category: profile.coach_category || 'SÉNIORS',
+            level: profile.coach_level || 'D1',
+            coachName: (profile.nickname && profile.nickname !== 'COACH') ? profile.nickname : (profile.first_name || 'COACH'),
+            coachPhoto: profile.avatar_url,
+            clubLogo: profile.clubs?.logo_url,
+            clubAcronym: profile.clubs?.acronym || '',
+            clubCity: profile.clubs?.city || '',
+            clubStadium: profile.clubs?.stadium || '',
           userFirstName: profile.first_name || '',
           userLastName: profile.last_name || '',
           bio: profile.bio || '',
