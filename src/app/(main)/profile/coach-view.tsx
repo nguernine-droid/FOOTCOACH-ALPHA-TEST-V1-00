@@ -18,9 +18,9 @@ interface CoachViewProps {
 type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | null;
 
 /**
- * COACH_VIEW (v27.0 - MASTER CLASSIC FINAL WITH ACRONYM)
- * Système "Tout-en-Un" : Carte de Prestige XXL + Dossier Interactif.
- * Ajout du champ ACRONYME dans la section Club.
+ * COACH_VIEW (v28.0 - MASTER CLASSIC FINAL WITH REF CATS DROPDOWN)
+ * Déplacement des Catégories de Référence dans l'Identité Coach.
+ * Intégration d'un menu de sélection pour les catégories.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
@@ -30,13 +30,18 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  // --- ÉTATS LOCAUX POUR FORMULAIRE ---
+  // --- ÉTATS LOCAUX ---
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', nickname: '', phone: '', licenseNumber: '', bio: '', coachStatus: 'actif',
-    clubName: '', clubAcronym: '', category: '', level: '', refCatsText: '',
+    clubName: '', clubAcronym: '', category: '', level: '',
+    refCategories: [] as string[],
     city: '', stadium: '',
     matchDist: 30, plateauDist: 20, tournamentReach: 'departemental'
   });
+
+  const availableCategories = [
+    'U6/U7', 'U8/U9', 'U10/U11', 'U12/U13', 'U14/U15', 'U16/U17', 'U18/U19', 'SÉNIORS', 'VÉTÉRANS'
+  ];
 
   // Sync Data
   useEffect(() => {
@@ -53,7 +58,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         clubAcronym: teamInfo.clubAcronym || '',
         category: teamInfo.category || '',
         level: teamInfo.level || '',
-        refCatsText: teamInfo.refCategories?.join(', ') || '',
+        refCategories: teamInfo.refCategories || [],
         city: teamInfo.clubCity || '',
         stadium: teamInfo.clubStadium || '',
         matchDist: teamInfo.matchDistMax || 30,
@@ -63,7 +68,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     }
   }, [teamInfo]);
 
-  // Stats simulées
   const stats = { matchesPlayed: 12, announcementsSent: 8, contactsMade: 15, engagementRate: 100 };
 
   const handleSaveSection = async (section: EditingSection) => {
@@ -81,10 +85,10 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         updates.license_number = formData.licenseNumber;
         updates.coach_status = formData.coachStatus;
         updates.bio = formData.bio.toUpperCase();
+        updates.ref_categories = formData.refCategories; // Sauvé dans Identité
       } else if (section === 'club') {
         updates.coach_category = formData.category.toUpperCase();
         updates.coach_level = formData.level.toUpperCase();
-        updates.ref_categories = formData.refCatsText.split(',').map(s => s.trim()).filter(s => s !== '');
       } else if (section === 'ranges') {
         updates.match_dist_max = formData.matchDist;
         updates.plateau_dist_max = formData.plateauDist;
@@ -94,23 +98,33 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       const { error } = await supabase.from('profiles').upsert([updates]);
       if (error) throw error;
 
-      // Logistique & Acronyme (Table Clubs)
-      if ((section === 'logistics' || section === 'club') && teamInfo?.id) {
-        const clubUpdates: any = {};
-        if (section === 'logistics') {
-          clubUpdates.city = formData.city.toUpperCase();
-          clubUpdates.stadium = formData.stadium.toUpperCase();
-        }
-        if (section === 'club') {
-          clubUpdates.acronym = formData.clubAcronym.toUpperCase();
-        }
-        await supabase.from('clubs').update(clubUpdates).eq('id', teamInfo.id);
+      if (section === 'logistics' && teamInfo?.id) {
+        await supabase.from('clubs').update({
+          city: formData.city.toUpperCase(),
+          stadium: formData.stadium.toUpperCase()
+        }).eq('id', teamInfo.id);
+      }
+
+      if (section === 'club' && teamInfo?.id) {
+        await supabase.from('clubs').update({
+          acronym: formData.clubAcronym.toUpperCase()
+        }).eq('id', teamInfo.id);
       }
 
       await refreshData();
       setEditingSection(null);
       if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
     } catch (err: any) { alert(err.message); } finally { setIsSaving(false); }
+  };
+
+  const toggleCategory = (cat: string) => {
+    setFormData(prev => {
+      const exists = prev.refCategories.includes(cat);
+      const newCats = exists
+        ? prev.refCategories.filter(c => c !== cat)
+        : [...prev.refCategories, cat];
+      return { ...prev, refCategories: newCats };
+    });
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'logo') => {
@@ -125,11 +139,9 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${id}-${Date.now()}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
-
       const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
-
       if (type === 'avatar') {
         await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
       } else {
@@ -140,15 +152,10 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   };
 
   const handleBack = () => {
-    if (editingSection) {
-      setEditingSection(null);
-    } else {
-      setShowFullProfile(false);
-      if (navigator.vibrate) navigator.vibrate(10);
-    }
+    if (editingSection) setEditingSection(null);
+    else setShowFullProfile(false);
   };
 
-  // --- RENDU 1 : LA CARTE DE PRESTIGE XXL ---
   if (!showFullProfile) {
     return (
       <div className="fixed inset-0 z-10 flex flex-col items-center justify-center bg-[#050510] overflow-hidden animate-in fade-in duration-1000">
@@ -176,7 +183,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
   const inputStyle = "w-full bg-gray-50 border-2 border-gray-200 rounded-2xl p-4 text-xs font-black uppercase outline-none focus:border-orange-500 transition-all text-gray-900 shadow-inner";
 
-  // --- RENDU 2 : LE DOSSIER INTERACTIF ---
   return (
     <div className="fixed inset-0 z-[70] bg-gray-100 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
 
@@ -205,8 +211,8 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
            <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl">
               {editingSection === 'user' ? (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                   <div className="flex justify-center mb-6">
+                <div className="space-y-6 animate-in fade-in duration-300">
+                   <div className="flex justify-center mb-4">
                       <div className="relative">
                         <div className="w-24 h-24 rounded-[2rem] border-4 border-orange-100 overflow-hidden flex items-center justify-center bg-gray-50 shadow-2xl relative">
                           {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-200" />}
@@ -224,9 +230,22 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                    <input placeholder="Slogan / Devise" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className={inputStyle} />
                    <input placeholder="Téléphone (Privé)" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={inputStyle} />
 
-                   <div className="grid grid-cols-3 gap-1 pt-2 bg-gray-100 p-1.5 rounded-2xl border-2 border-gray-200">
-                      {['inactif', 'actif', 'toujours_pret'].map(s => (
-                        <button key={s} type="button" onClick={() => setFormData({...formData, coachStatus: s as any})} className={`py-3 rounded-xl text-[8px] font-black transition-all ${formData.coachStatus === s ? 'bg-orange-600 text-white shadow-md' : 'text-gray-400'}`}>{s.toUpperCase()}</button>
+                   <div className="pt-2">
+                      <label className="text-[10px] font-black uppercase text-gray-400 mb-3 block">Expertise (Catégories de Référence)</label>
+                      <div className="grid grid-cols-3 gap-2">
+                         {availableCategories.map(cat => (
+                           <button key={cat} type="button" onClick={() => toggleCategory(cat)} className={`py-3 rounded-xl text-[8px] font-black border-2 transition-all ${formData.refCategories.includes(cat) ? 'bg-orange-600 border-orange-600 text-white shadow-md scale-105' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>{cat}</button>
+                         ))}
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
+                      {[
+                        { id: 'inactif', label: 'INACTIF', color: 'bg-blue-500', text: 'text-white' },
+                        { id: 'actif', label: 'ACTIF', color: 'bg-[#39FF14]', text: 'text-black' },
+                        { id: 'toujours_pret', label: 'PRÊT 🔥', color: 'bg-red-600', text: 'text-white' }
+                      ].map(s => (
+                        <button key={s.id} type="button" onClick={() => setFormData({...formData, coachStatus: s.id as any})} className={`py-4 rounded-xl text-[8px] font-black transition-all ${formData.coachStatus === s.id ? `${s.color} ${s.text} shadow-lg` : 'text-gray-400 hover:text-gray-600'}`}>{s.label}</button>
                       ))}
                    </div>
                 </div>
@@ -242,9 +261,16 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                         <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[8px] font-black uppercase shadow-sm inline-block">{teamInfo?.coachGrade || 'Coach Engagé'}</span>
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100 shadow-inner">
+                  <div className="bg-gray-50 rounded-2xl p-5 space-y-4 border border-gray-100 shadow-inner">
                      <div className="flex items-center gap-3"><Trophy size={14} className="text-orange-500" /><p className="text-[10px] font-black text-gray-900 uppercase">Slogan: <span className="italic text-gray-500 ml-1">"{teamInfo?.bio || "Droit au but !"}"</span></p></div>
                      <div className="flex items-center gap-3"><Fingerprint size={14} className="text-orange-500" /><p className="text-[10px] font-black text-gray-900 uppercase">Licence: <span className="text-gray-500 ml-1">{teamInfo?.licenseNumber || "Non renseignée"}</span></p></div>
+                     {teamInfo?.refCategories && teamInfo.refCategories.length > 0 && (
+                       <div className="flex flex-wrap gap-2 pt-2">
+                          {teamInfo.refCategories.map(cat => (
+                            <span key={cat} className="px-3 py-1 bg-white rounded-lg border border-gray-200 text-[8px] font-black text-gray-500 uppercase">{cat}</span>
+                          ))}
+                       </div>
+                     )}
                      <div className="flex items-center gap-3 border-t border-gray-200 pt-3 mt-1"><Phone size={14} className="text-gray-400" /><p className="text-[10px] font-black text-gray-900 uppercase">Contact: <span className="text-gray-500 ml-1">{teamInfo?.phone || "Masqué"}</span> <span className="ml-2 text-[8px] text-gray-300">🔒 (Privé)</span></p></div>
                   </div>
                 </div>
@@ -282,7 +308,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                       <input placeholder="Catégorie" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value.toUpperCase()})} className={inputStyle} />
                       <input placeholder="Niveau" value={formData.level} onChange={e => setFormData({...formData, level: e.target.value.toUpperCase()})} className={inputStyle} />
                    </div>
-                   <input placeholder="Catégories de Référence (virgule)" value={formData.refCatsText} onChange={e => setFormData({...formData, refCatsText: e.target.value.toUpperCase()})} className={inputStyle} />
                 </div>
               ) : (
                 <>
@@ -362,9 +387,9 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                       <div className="flex justify-between text-[11px] font-black mb-2 uppercase"><span>Plateau</span> <span className="text-blue-600 text-lg">{formData.plateauDist} KM</span></div>
                       <input type="range" min="5" max="100" step="5" value={formData.plateauDist} onChange={e => setFormData({...formData, plateauDist: parseInt(e.target.value)})} className="w-full h-3 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                    </div>
-                   <div className="grid grid-cols-3 gap-2 pt-6 border-t border-gray-100">
+                   <div className="grid grid-cols-2 gap-3 pt-6 border-t border-gray-100">
                       {['departemental', 'regional', 'national'].map(r => (
-                        <button key={r} type="button" onClick={() => setFormData({...formData, tournamentReach: r as any})} className={`py-4 rounded-2xl text-[8px] font-black border-2 transition-all ${formData.tournamentReach === r ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg scale-105' : 'bg-gray-50 border-transparent text-gray-400'}`}>{r.toUpperCase()}</button>
+                        <button key={r} type="button" onClick={() => setFormData({...formData, tournamentReach: r as any})} className={`py-4 rounded-2xl text-[9px] font-black border-2 transition-all ${formData.tournamentReach === r ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg scale-105' : 'bg-gray-50 border-transparent text-gray-400'}`}>{r.toUpperCase()}</button>
                       ))}
                    </div>
                 </div>
