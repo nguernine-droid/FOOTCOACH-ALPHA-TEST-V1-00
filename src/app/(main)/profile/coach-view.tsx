@@ -21,8 +21,8 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   return (
     <div className="min-h-[75vh] flex flex-col items-center justify-center animate-in fade-in duration-1000">
 
-      {/* 1. LA FICHE MAÎTRE (CENTRE DE L'ÉCRAN) */}
-      <div className="w-full flex justify-center px-4">
+      {/* 1. LA FICHE MAÎTRE (CENTRE DE L'ÉCRAN XXL) */}
+      <div className="w-full flex justify-center px-1">
         <CoachCard
           name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
           coachPhoto={teamInfo?.coachPhoto} // FIX PHOTO MANQUANTE
