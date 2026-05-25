@@ -11,9 +11,9 @@ interface CoachViewProps {
 }
 
 /**
- * COACH_VIEW (v17.0 - MASTER FLIP EXPERIENCE)
+ * COACH_VIEW (v18.0 - MASTER FLIP DOSSIER)
  * Immersion totale. Fiche XXL centrée.
- * Flip 3D pour voir les détails et le bouton Modifier.
+ * Flip 3D révélant le DOSSIER TACTIQUE COMPLET.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
@@ -33,19 +33,24 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         <ChevronLeft size={24} strokeWidth={3} />
       </button>
 
-      {/* LE COCKPIT MASTER FLIP */}
+      {/* LE COCKPIT MASTER FLIP - DOSSIER COMPLET AU VERSO */}
       <div className="w-full flex justify-center px-6">
         <CoachCard
           name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
+          firstName={teamInfo?.userFirstName}
+          lastName={teamInfo?.userLastName}
           coachPhoto={teamInfo?.coachPhoto}
           clubName={teamInfo?.clubName || 'UNITÉ_TACTIQUE'}
           clubLogo={teamInfo?.clubLogo}
           category={teamInfo?.category || 'SÉNIORS'}
-          points={teamInfo?.xp || 0}
+          level={teamInfo?.level || 'D1'}
+          grade={teamInfo?.coachGrade || 'COACH ENGAGÉ'}
           status={teamInfo?.coachStatus || 'actif'}
           bio={teamInfo?.bio}
           city={teamInfo?.clubCity}
           stadium={teamInfo?.clubStadium}
+          phone={teamInfo?.phone}
+          refCategories={teamInfo?.refCategories}
           matchesPlayed={stats.matchesPlayed}
           announcementsSent={stats.announcementsSent}
           contactsMade={stats.contactsMade}
@@ -53,12 +58,8 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
           // Rayons (Verso)
           matchDist={teamInfo?.matchDistMax || 30}
           plateauDist={teamInfo?.plateauDistMax || 20}
-          tournamentReach={
-            teamInfo?.tournamentReach === 'departemental' ? 'DÉPARTEMENT' :
-            teamInfo?.tournamentReach === 'regional' ? 'RÉGIONAL' :
-            teamInfo?.tournamentReach === 'national' ? 'NATIONAL' :
-            `${teamInfo?.tournamentDistMax} KM`
-          }
+          tournamentReach={teamInfo?.tournamentReach || 'departemental'}
+          tournamentDistMax={teamInfo?.tournamentDistMax}
           onEdit={() => router.push('/profile/edit')}
         />
       </div>
