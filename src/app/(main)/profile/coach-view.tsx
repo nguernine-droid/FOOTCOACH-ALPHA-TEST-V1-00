@@ -18,9 +18,8 @@ interface CoachViewProps {
 type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | null;
 
 /**
- * COACH_VIEW (v22.0 - MASTER CLASSIC INTEGRATED EDIT)
- * Vue 1 : Carte de Prestige XXL.
- * Vue 2 : Dossier Profil avec Édition Inline.
+ * COACH_VIEW (v23.0 - MASTER CLASSIC FINAL)
+ * Immersion Totale, Visibilité Maximale, Couleurs de Statut Corrigées.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
@@ -94,7 +93,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       const { error } = await supabase.from('profiles').upsert([updates]);
       if (error) throw error;
 
-      // Logistique (Table Clubs)
       if (section === 'logistics' && teamInfo?.id) {
         await supabase.from('clubs').update({
           city: formData.city.toUpperCase(),
@@ -104,11 +102,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
       await refreshData();
       setEditingSection(null);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsSaving(false);
-    }
+    } catch (err: any) { alert(err.message); } finally { setIsSaving(false); }
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'logo') => {
@@ -120,14 +114,12 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       const bucket = type === 'avatar' ? 'coach-avatars' : 'club-logos';
       const folder = type === 'avatar' ? 'avatars' : 'logos';
       const id = type === 'avatar' ? user?.id : teamInfo?.id;
-
       const fileExt = file.name.split('.').pop();
       const fileName = `${id}-${Date.now()}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
       if (uploadError) throw uploadError;
-
       const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
 
       if (type === 'avatar') {
@@ -135,13 +127,8 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       } else {
         await supabase.from('clubs').update({ logo_url: publicUrl }).eq('id', teamInfo?.id);
       }
-
       await refreshData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsUploading(false);
-    }
+    } catch (err: any) { alert(err.message); } finally { setIsUploading(false); }
   };
 
   // --- RENDU 1 : LA CARTE DE PRESTIGE ---
@@ -165,69 +152,81 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
             engagementRate={stats.engagementRate}
           />
         </div>
-        <p className="mt-8 text-white/20 font-black uppercase text-[10px] tracking-[0.4em] animate-pulse">Toucher pour ouvrir le dossier</p>
+        <p className="mt-12 text-white/20 font-black uppercase text-[11px] tracking-[0.5em] animate-pulse">Toucher_Pour_Ouvrir</p>
       </div>
     );
   }
 
-  const inputStyle = "w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-black uppercase outline-none focus:border-orange-500 transition-all";
+  const inputStyle = "w-full bg-gray-50 border-2 border-gray-200 rounded-2xl p-5 text-sm font-black uppercase outline-none focus:border-orange-500 transition-all text-gray-900 placeholder:text-gray-300 shadow-inner";
 
   // --- RENDU 2 : LE DOSSIER INTERACTIF ---
   return (
-    <div className="fixed inset-0 z-[70] bg-gray-50 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
-      <header className="bg-white border-b border-gray-200 p-6 sticky top-0 z-[80] flex items-center gap-4 shadow-sm">
-        <button onClick={() => setShowFullProfile(false)} className="text-gray-900 active:scale-90 p-2 bg-gray-100 rounded-xl"><ChevronLeft size={24} strokeWidth={3} /></button>
-        <h1 className="text-xl font-black uppercase italic tracking-tighter text-gray-900">Profil_Dossier</h1>
-      </header>
+    <div className="fixed inset-0 z-[70] bg-gray-100 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
 
-      <main className="p-5 max-w-2xl mx-auto space-y-8 pb-48 text-left">
+      {/* HEADER IMMERSIF (PAGE) */}
+      <div className="p-8 pb-4 flex items-center justify-between bg-gray-100/80 backdrop-blur-md sticky top-0 z-[90]">
+         <button onClick={() => setShowFullProfile(false)} className="text-gray-900 p-3 bg-white rounded-2xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={24} strokeWidth={3} /></button>
+         <h1 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 drop-shadow-sm">Profil_Dossier</h1>
+         <div className="w-12 h-12 rounded-xl bg-orange-600/10 flex items-center justify-center border border-orange-600/20"><User size={20} className="text-orange-600" /></div>
+      </div>
+
+      <main className="p-5 max-w-2xl mx-auto space-y-10 pb-48 text-left">
 
         {/* 1. UTILISATEUR */}
         <section className="space-y-4">
-           <div className="flex items-center justify-between">
-             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><User size={14} className="text-orange-600" /> Utilisateur</label>
+           <div className="flex items-center justify-between px-2">
+             <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><User size={14} className="text-orange-600" /> Identité Coach</label>
              {editingSection !== 'user' ? (
-               <button onClick={() => setEditingSection('user')} className="p-2 bg-orange-100 text-orange-600 rounded-lg text-xs font-black flex items-center gap-1"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={() => setEditingSection('user')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
-                 <button onClick={() => setEditingSection(null)} className="p-2 bg-gray-100 text-gray-400 rounded-lg"><X size={14}/></button>
-                 <button onClick={() => handleSaveSection('user')} className="p-2 bg-green-600 text-white rounded-lg"><Check size={14}/></button>
+                 <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
+                 <button onClick={() => handleSaveSection('user')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
-           <div className="bg-white rounded-[2.5rem] p-6 border border-gray-200 shadow-md">
+           <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl">
               {editingSection === 'user' ? (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                   <div className="flex justify-center mb-4">
+                <div className="space-y-6 animate-in fade-in duration-300">
+                   <div className="flex justify-center mb-6">
                       <div className="relative">
-                        <div className="w-20 h-20 rounded-3xl border-4 border-orange-100 overflow-hidden flex items-center justify-center bg-gray-50">
-                          {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={30} className="text-gray-200" />}
+                        <div className="w-28 h-28 rounded-[2.5rem] border-4 border-orange-100 overflow-hidden flex items-center justify-center bg-gray-50 shadow-2xl relative">
+                          {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-200" />}
+                          {isUploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-white" /></div>}
                         </div>
-                        <label className="absolute -bottom-2 -right-2 bg-orange-600 text-white p-2 rounded-xl cursor-pointer shadow-lg"><Camera size={14}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'avatar')} /></label>
+                        <label className="absolute -bottom-2 -right-2 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'avatar')} /></label>
                       </div>
                    </div>
-                   <div className="grid grid-cols-2 gap-2">
+                   <div className="grid grid-cols-2 gap-3">
                       <input placeholder="Prénom" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className={inputStyle} />
                       <input placeholder="Nom" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className={inputStyle} />
                    </div>
                    <input placeholder="Surnom" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} className={inputStyle} />
                    <input placeholder="Téléphone (Privé)" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={inputStyle} />
-                   <div className="grid grid-cols-3 gap-1 pt-2">
-                      {['inactif', 'actif', 'toujours_pret'].map(s => (
-                        <button key={s} onClick={() => setFormData({...formData, coachStatus: s as any})} className={`py-2 rounded-lg text-[7px] font-black ${formData.coachStatus === s ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-400'}`}>{s.toUpperCase()}</button>
+
+                   {/* STATUTS COULEURS CORRIGÉES */}
+                   <div className="grid grid-cols-3 gap-2 pt-2 bg-gray-100 p-1.5 rounded-2xl border-2 border-gray-200 shadow-inner">
+                      {[
+                        { id: 'inactif', label: 'INACTIF', color: 'bg-blue-500', text: 'text-white' },
+                        { id: 'actif', label: 'ACTIF', color: 'bg-[#39FF14]', text: 'text-black' },
+                        { id: 'toujours_pret', label: 'PRÊT 🔥', color: 'bg-red-600', text: 'text-white' }
+                      ].map(s => (
+                        <button key={s.id} type="button" onClick={() => setFormData({...formData, coachStatus: s.id as any})} className={`py-4 rounded-xl text-[9px] font-black transition-all ${formData.coachStatus === s.id ? `${s.color} ${s.text} shadow-lg scale-105` : 'text-gray-400 hover:text-gray-600'}`}>{s.label}</button>
                       ))}
                    </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-5">
-                   <div className="w-24 h-24 rounded-3xl border-4 border-orange-100 overflow-hidden bg-gray-50 flex items-center justify-center flex-shrink-0">
-                      {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-300" />}
+                <div className="flex items-center gap-6">
+                   <div className="w-24 h-24 rounded-[2rem] border-4 border-orange-100 overflow-hidden bg-white flex items-center justify-center flex-shrink-0 shadow-lg">
+                      {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={44} className="text-gray-300" />}
                    </div>
-                   <div className="space-y-1">
-                      <p className="text-lg font-black uppercase text-gray-900 leading-tight">{teamInfo?.userFirstName} {teamInfo?.userLastName}</p>
-                      <p className="text-xs font-bold text-orange-600 uppercase italic">👤 {teamInfo?.coachName}</p>
-                      <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[8px] font-black uppercase inline-block">{teamInfo?.coachGrade || 'Coach Engagé'}</span>
+                   <div className="space-y-1.5">
+                      <p className="text-2xl font-black uppercase text-gray-900 leading-none">{teamInfo?.userFirstName} {teamInfo?.userLastName}</p>
+                      <p className="text-sm font-bold text-orange-600 uppercase italic">👤 {teamInfo?.coachName}</p>
+                      <div className="flex gap-2 pt-1">
+                        <span className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-full text-[9px] font-black uppercase shadow-sm">{teamInfo?.coachGrade || 'Coach Engagé'}</span>
+                      </div>
                    </div>
                 </div>
               )}
@@ -236,28 +235,29 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
         {/* 2. LE CLUB */}
         <section className="space-y-4">
-           <div className="flex items-center justify-between">
-             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Shield size={14} className="text-orange-600" /> Mon Club</label>
+           <div className="flex items-center justify-between px-2">
+             <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Shield size={14} className="text-orange-600" /> Mon Club</label>
              {editingSection !== 'club' ? (
-               <button onClick={() => setEditingSection('club')} className="p-2 bg-orange-100 text-orange-600 rounded-lg text-xs font-black flex items-center gap-1"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={() => setEditingSection('club')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
-                 <button onClick={() => setEditingSection(null)} className="p-2 bg-gray-100 text-gray-400 rounded-lg"><X size={14}/></button>
-                 <button onClick={() => handleSaveSection('club')} className="p-2 bg-green-600 text-white rounded-lg"><Check size={14}/></button>
+                 <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
+                 <button onClick={() => handleSaveSection('club')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
-           <div className="bg-white rounded-[2.5rem] p-8 border border-gray-200 shadow-md flex flex-col items-center text-center space-y-4">
+           <div className="bg-white rounded-[3rem] p-10 border-2 border-white shadow-xl flex flex-col items-center text-center space-y-6">
               {editingSection === 'club' ? (
-                <div className="w-full space-y-4 animate-in fade-in duration-300">
+                <div className="w-full space-y-6 animate-in fade-in duration-300">
                    <div className="relative mb-4">
-                      <div className="w-20 h-20 rounded-3xl border-2 border-gray-100 overflow-hidden flex items-center justify-center bg-white mx-auto">
-                        {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain p-2" /> : <Shield size={30} className="text-gray-100" />}
+                      <div className="w-24 h-24 rounded-[2rem] border-2 border-gray-100 overflow-hidden flex items-center justify-center bg-white mx-auto shadow-2xl relative">
+                        {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain p-2" /> : <Shield size={40} className="text-gray-100" />}
+                        {isUploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-white" /></div>}
                       </div>
-                      <label className="absolute bottom-0 right-1/2 translate-x-12 bg-orange-600 text-white p-2 rounded-xl cursor-pointer shadow-lg"><Camera size={14}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'logo')} /></label>
+                      <label className="absolute bottom-0 right-1/2 translate-x-12 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'logo')} /></label>
                    </div>
-                   <div className="grid grid-cols-2 gap-2">
+                   <div className="grid grid-cols-2 gap-3">
                       <input placeholder="Catégorie" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value.toUpperCase()})} className={inputStyle} />
                       <input placeholder="Niveau" value={formData.level} onChange={e => setFormData({...formData, level: e.target.value.toUpperCase()})} className={inputStyle} />
                    </div>
@@ -265,14 +265,14 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                 </div>
               ) : (
                 <>
-                  <div className="w-40 h-40 bg-white rounded-[2.5rem] p-4 border-4 border-orange-100 shadow-lg flex items-center justify-center">
-                     {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={80} className="text-gray-200" />}
+                  <div className="w-44 h-44 bg-white rounded-[3rem] p-6 border-4 border-orange-50 shadow-2xl flex items-center justify-center">
+                     {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={90} className="text-gray-200" />}
                   </div>
-                  <div className="space-y-2">
-                     <h2 className="text-2xl font-black uppercase italic text-gray-900 tracking-tighter">{teamInfo?.clubName}</h2>
+                  <div className="space-y-3">
+                     <h2 className="text-3xl font-black uppercase italic text-gray-900 tracking-tighter">{teamInfo?.clubName || 'VOTRE CLUB'}</h2>
                      <div className="flex justify-center gap-6 text-[10px] font-black uppercase pt-2">
-                       <span className="px-4 py-2 bg-orange-50 text-orange-700 rounded-lg">🏛️ {teamInfo?.category}</span>
-                       <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">⚡ {teamInfo?.level}</span>
+                       <span className="px-5 py-3 bg-orange-50 text-orange-700 rounded-2xl shadow-sm border border-orange-100">🏛️ {teamInfo?.category}</span>
+                       <span className="px-5 py-3 bg-blue-50 text-blue-700 rounded-2xl shadow-sm border border-blue-100">⚡ {teamInfo?.level}</span>
                      </div>
                   </div>
                 </>
@@ -282,19 +282,19 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
         {/* 3. LOGISTIQUE */}
         <section className="space-y-4">
-           <div className="flex items-center justify-between">
-             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><MapPin size={14} className="text-orange-600" /> Logistique_QG</label>
+           <div className="flex items-center justify-between px-2">
+             <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><MapPin size={14} className="text-orange-600" /> Logistique_QG</label>
              {editingSection !== 'logistics' ? (
-               <button onClick={() => setEditingSection('logistics')} className="p-2 bg-orange-100 text-orange-600 rounded-lg text-xs font-black flex items-center gap-1"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={() => setEditingSection('logistics')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
-                 <button onClick={() => setEditingSection(null)} className="p-2 bg-gray-100 text-gray-400 rounded-lg"><X size={14}/></button>
-                 <button onClick={() => handleSaveSection('logistics')} className="p-2 bg-green-600 text-white rounded-lg"><Check size={14}/></button>
+                 <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
+                 <button onClick={() => handleSaveSection('logistics')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
-           <div className="bg-white rounded-[2.5rem] p-6 border border-gray-200 shadow-md space-y-4">
+           <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl space-y-4">
               {editingSection === 'logistics' ? (
                 <div className="space-y-4 animate-in fade-in duration-300">
                    <input placeholder="Ma Ville" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value.toUpperCase()})} className={inputStyle} />
@@ -302,13 +302,13 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                 </div>
               ) : (
                 <>
-                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
-                     <span className="text-[10px] font-black uppercase text-gray-500">📍 Ma Ville</span>
-                     <span className="text-sm font-black text-gray-900 uppercase italic">{teamInfo?.clubCity || "À définir"}</span>
+                  <div className="flex justify-between items-center p-5 bg-gray-50 rounded-2xl shadow-inner border border-gray-100 transition-all hover:bg-gray-100">
+                     <span className="text-[10px] font-black uppercase text-gray-400">📍 Ma Ville</span>
+                     <span className="text-sm font-black text-gray-900 uppercase italic tracking-wider">{teamInfo?.clubCity || "À définir"}</span>
                   </div>
-                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
-                     <span className="text-[10px] font-black uppercase text-gray-500">🏟️ Mon Stade</span>
-                     <span className="text-sm font-black text-gray-900 uppercase italic text-right truncate ml-4">{teamInfo?.clubStadium || "À définir"}</span>
+                  <div className="flex justify-between items-center p-5 bg-gray-50 rounded-2xl shadow-inner border border-gray-100 transition-all hover:bg-gray-100">
+                     <span className="text-[10px] font-black uppercase text-gray-400">🏟️ Mon Stade</span>
+                     <span className="text-sm font-black text-gray-900 uppercase italic text-right truncate ml-4 tracking-wider">{teamInfo?.clubStadium || "À définir"}</span>
                   </div>
                 </>
               )}
@@ -316,54 +316,54 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         </section>
 
         {/* 4. RAYONS D'ACTION */}
-        <section className="space-y-4">
-           <div className="flex items-center justify-between">
-             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Navigation size={14} className="text-orange-600" /> Rayons d'Action</label>
+        <section className="space-y-4 pb-20">
+           <div className="flex items-center justify-between px-2">
+             <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Navigation size={14} className="text-orange-600" /> Rayons d'Action</label>
              {editingSection !== 'ranges' ? (
-               <button onClick={() => setEditingSection('ranges')} className="p-2 bg-orange-100 text-orange-600 rounded-lg text-xs font-black flex items-center gap-1"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={() => setEditingSection('ranges')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
-                 <button onClick={() => setEditingSection(null)} className="p-2 bg-gray-100 text-gray-400 rounded-lg"><X size={14}/></button>
-                 <button onClick={() => handleSaveSection('ranges')} className="p-2 bg-green-600 text-white rounded-lg"><Check size={14}/></button>
+                 <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
+                 <button onClick={() => handleSaveSection('ranges')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+           <div className="grid grid-cols-1 gap-4">
               {editingSection === 'ranges' ? (
-                <div className="col-span-full space-y-6 bg-white p-6 rounded-[2rem] border border-gray-200 animate-in fade-in duration-300">
-                   <div>
-                      <div className="flex justify-between text-[10px] font-black mb-2 uppercase"><span>Match Amical</span> <span className="text-orange-600">{formData.matchDist} KM</span></div>
-                      <input type="range" min="5" max="100" step="5" value={formData.matchDist} onChange={e => setFormData({...formData, matchDist: parseInt(e.target.value)})} className="w-full h-2 bg-gray-100 rounded-lg appearance-none accent-orange-600" />
+                <div className="space-y-10 bg-white p-10 rounded-[3rem] border-2 border-white shadow-xl animate-in fade-in duration-300">
+                   <div className="space-y-4">
+                      <div className="flex justify-between text-[11px] font-black mb-2 uppercase"><span>Match Amical</span> <span className="text-orange-600 text-lg">{formData.matchDist} KM</span></div>
+                      <input type="range" min="5" max="100" step="5" value={formData.matchDist} onChange={e => setFormData({...formData, matchDist: parseInt(e.target.value)})} className="w-full h-3 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-600" />
                    </div>
-                   <div>
-                      <div className="flex justify-between text-[10px] font-black mb-2 uppercase"><span>Plateau</span> <span className="text-blue-600">{formData.plateauDist} KM</span></div>
-                      <input type="range" min="5" max="100" step="5" value={formData.plateauDist} onChange={e => setFormData({...formData, plateauDist: parseInt(e.target.value)})} className="w-full h-2 bg-gray-100 rounded-lg appearance-none accent-blue-600" />
+                   <div className="space-y-4">
+                      <div className="flex justify-between text-[11px] font-black mb-2 uppercase"><span>Plateau</span> <span className="text-blue-600 text-lg">{formData.plateauDist} KM</span></div>
+                      <input type="range" min="5" max="100" step="5" value={formData.plateauDist} onChange={e => setFormData({...formData, plateauDist: parseInt(e.target.value)})} className="w-full h-3 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
                    </div>
-                   <div className="grid grid-cols-2 gap-2 pt-2">
+                   <div className="grid grid-cols-2 gap-3 pt-6 border-t border-gray-100">
                       {['departemental', 'regional', 'national'].map(r => (
-                        <button key={r} type="button" onClick={() => setFormData({...formData, tournamentReach: r as any})} className={`py-3 rounded-xl text-[8px] font-black border-2 transition-all ${formData.tournamentReach === r ? 'bg-yellow-500 border-yellow-500 text-black' : 'bg-gray-100 border-transparent text-gray-400'}`}>{r.toUpperCase()}</button>
+                        <button key={r} type="button" onClick={() => setFormData({...formData, tournamentReach: r as any})} className={`py-4 rounded-2xl text-[9px] font-black border-2 transition-all ${formData.tournamentReach === r ? 'bg-yellow-500 border-yellow-500 text-black shadow-xl scale-105' : 'bg-gray-50 border-transparent text-gray-400'}`}>{r.toUpperCase()}</button>
                       ))}
                    </div>
                 </div>
               ) : (
-                <>
-                  <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-[2rem] border-2 border-green-200 shadow-md">
-                     <p className="text-[8px] font-black uppercase text-green-600 mb-2">⚽ Match Amical</p>
-                     <p className="text-2xl font-black text-green-600 italic">{teamInfo?.matchDistMax || 30} KM</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-[2.5rem] border-2 border-green-200 shadow-xl transition-transform hover:scale-105">
+                     <p className="text-[9px] font-black uppercase text-green-600 mb-2 flex items-center gap-2">⚽ Match Amical</p>
+                     <p className="text-3xl font-black text-green-600 italic leading-none">{teamInfo?.matchDistMax || 30} <span className="text-[10px] uppercase not-italic ml-1">KM</span></p>
                   </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-[2rem] border-2 border-blue-200 shadow-md">
-                     <p className="text-[8px] font-black uppercase text-blue-600 mb-2">🎪 Plateau</p>
-                     <p className="text-2xl font-black text-blue-600 italic">{teamInfo?.plateauDistMax || 20} KM</p>
+                  <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-[2.5rem] border-2 border-blue-200 shadow-xl transition-transform hover:scale-105">
+                     <p className="text-[9px] font-black uppercase text-blue-600 mb-2 flex items-center gap-2">🎪 Plateau</p>
+                     <p className="text-3xl font-black text-blue-600 italic leading-none">{teamInfo?.plateauDistMax || 20} <span className="text-[10px] uppercase not-italic ml-1">KM</span></p>
                   </div>
-                  <div className="col-span-full bg-gradient-to-br from-orange-50 to-white p-6 rounded-[2rem] border-2 border-orange-200 shadow-md flex justify-between items-center">
-                     <div>
-                       <p className="text-[8px] font-black uppercase text-orange-600 mb-2">🏆 Tournoi</p>
-                       <p className="text-sm font-black text-orange-600 uppercase italic">{teamInfo?.tournamentReach}</p>
+                  <div className="col-span-full bg-gradient-to-br from-orange-50 to-white p-6 rounded-[2.5rem] border-2 border-orange-200 shadow-xl flex justify-between items-center px-10">
+                     <div className="space-y-1">
+                       <p className="text-[9px] font-black uppercase text-orange-600 mb-1 flex items-center gap-2">🏆 Tournoi</p>
+                       <p className="text-lg font-black text-orange-600 uppercase italic tracking-tighter">{teamInfo?.tournamentReach || 'DÉPARTEMENTAL'}</p>
                      </div>
-                     <Trophy size={32} className="text-orange-400" />
+                     <Trophy size={40} className="text-orange-400 opacity-50" />
                   </div>
-                </>
+                </div>
               )}
            </div>
         </section>
