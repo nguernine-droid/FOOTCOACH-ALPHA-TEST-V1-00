@@ -18,8 +18,9 @@ interface CoachViewProps {
 type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | null;
 
 /**
- * COACH_VIEW (v23.0 - MASTER CLASSIC FINAL)
- * Immersion Totale, Visibilité Maximale, Couleurs de Statut Corrigées.
+ * COACH_VIEW (v24.0 - MASTER FOLDABLE DOSSIER)
+ * Vue 1 : Carte de Prestige XXL.
+ * Vue 2 : Dossier Profil Complet avec repliement intelligent.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
@@ -61,7 +62,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     }
   }, [teamInfo]);
 
-  // Stats simulées
   const stats = { matchesPlayed: 12, announcementsSent: 8, contactsMade: 15, engagementRate: 100 };
 
   const handleSaveSection = async (section: EditingSection) => {
@@ -69,7 +69,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée");
-
       const updates: any = { id: user.id };
 
       if (section === 'user') {
@@ -131,6 +130,15 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     } catch (err: any) { alert(err.message); } finally { setIsUploading(false); }
   };
 
+  const handleBack = () => {
+    if (editingSection) {
+      setEditingSection(null);
+    } else {
+      setShowFullProfile(false);
+      if (navigator.vibrate) navigator.vibrate(10);
+    }
+  };
+
   // --- RENDU 1 : LA CARTE DE PRESTIGE ---
   if (!showFullProfile) {
     return (
@@ -163,9 +171,12 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   return (
     <div className="fixed inset-0 z-[70] bg-gray-100 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
 
-      {/* HEADER IMMERSIF (PAGE) */}
-      <div className="p-8 pb-4 flex items-center justify-between bg-gray-100/80 backdrop-blur-md sticky top-0 z-[90]">
-         <button onClick={() => setShowFullProfile(false)} className="text-gray-900 p-3 bg-white rounded-2xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={24} strokeWidth={3} /></button>
+      {/* HEADER RÉTRACTABLE */}
+      <div
+        onClick={handleBack}
+        className="p-8 pb-4 flex items-center justify-between bg-gray-100/80 backdrop-blur-md sticky top-0 z-[90] cursor-pointer active:bg-gray-200/50 transition-colors"
+      >
+         <button className="text-gray-900 p-3 bg-white rounded-2xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={24} strokeWidth={3} /></button>
          <h1 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 drop-shadow-sm">Profil_Dossier</h1>
          <div className="w-12 h-12 rounded-xl bg-orange-600/10 flex items-center justify-center border border-orange-600/20"><User size={20} className="text-orange-600" /></div>
       </div>
@@ -177,7 +188,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            <div className="flex items-center justify-between px-2">
              <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><User size={14} className="text-orange-600" /> Identité Coach</label>
              {editingSection !== 'user' ? (
-               <button onClick={() => setEditingSection('user')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={(e) => { e.stopPropagation(); setEditingSection('user'); }} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
@@ -205,7 +216,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                    <input placeholder="Surnom" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} className={inputStyle} />
                    <input placeholder="Téléphone (Privé)" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={inputStyle} />
 
-                   {/* STATUTS COULEURS CORRIGÉES */}
                    <div className="grid grid-cols-3 gap-2 pt-2 bg-gray-100 p-1.5 rounded-2xl border-2 border-gray-200 shadow-inner">
                       {[
                         { id: 'inactif', label: 'INACTIF', color: 'bg-blue-500', text: 'text-white' },
@@ -238,7 +248,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            <div className="flex items-center justify-between px-2">
              <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Shield size={14} className="text-orange-600" /> Mon Club</label>
              {editingSection !== 'club' ? (
-               <button onClick={() => setEditingSection('club')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={(e) => { e.stopPropagation(); setEditingSection('club'); }} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
@@ -285,7 +295,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            <div className="flex items-center justify-between px-2">
              <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><MapPin size={14} className="text-orange-600" /> Logistique_QG</label>
              {editingSection !== 'logistics' ? (
-               <button onClick={() => setEditingSection('logistics')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={(e) => { e.stopPropagation(); setEditingSection('logistics'); }} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
@@ -320,7 +330,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            <div className="flex items-center justify-between px-2">
              <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Navigation size={14} className="text-orange-600" /> Rayons d'Action</label>
              {editingSection !== 'ranges' ? (
-               <button onClick={() => setEditingSection('ranges')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
+               <button onClick={(e) => { e.stopPropagation(); setEditingSection('ranges'); }} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all"><Edit3 size={12} /> ÉDITER</button>
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
