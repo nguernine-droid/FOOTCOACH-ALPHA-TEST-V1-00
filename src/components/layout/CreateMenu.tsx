@@ -57,7 +57,6 @@ export function CreateMenu({ isOpen, onClose, context }: CreateMenuProps) {
     switch (context) {
       case 'profile':
         items = [
-          { label: 'Modifier Profil', desc: 'Mettre à jour mes informations', color: 'bg-orange-600', icon: <Edit3 size={24} />, href: '/profile/edit' },
           { label: 'Mon Agenda', desc: 'Consulter mes matchs et tournois', color: 'bg-white text-gray-900 border-gray-200', icon: <Calendar size={24} className="text-orange-600" />, href: '/events' },
           { label: 'Paramètres', desc: 'Options de l\'application', color: 'bg-gray-100 text-gray-600', icon: <Settings size={24} />, href: '/settings' },
         ];
