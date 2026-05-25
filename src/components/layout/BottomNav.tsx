@@ -77,7 +77,12 @@ export function BottomNav() {
       <CreateMenu
         isOpen={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
-        context={pathname === '/radar' ? 'radar' : pathname === '/team' ? 'team' : 'default'}
+        context={
+          pathname === '/radar' ? 'radar' :
+          pathname === '/team' ? 'team' :
+          pathname === '/profile' ? 'profile' :
+          'default'
+        }
       />
     </>
   );

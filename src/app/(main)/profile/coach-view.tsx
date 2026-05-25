@@ -4,27 +4,28 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { CoachCard } from '@/components/CoachCard';
-import { Settings, Edit3, Calendar, Share2 } from 'lucide-react';
+import { Settings, Share2 } from 'lucide-react';
 
 interface CoachViewProps {
   onActivateParent?: () => void;
 }
 
 /**
- * COACH_VIEW (v11.0 - MASTER CLASSIC UNIQUE CARD)
- * Affichage exclusif de la Fiche Coach avec système de Flip.
+ * COACH_VIEW (v12.0 - MASTER CLASSIC CLEAN CARD)
+ * Affichage exclusif de la Fiche Coach. Actions déportées dans le menu central (+).
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
-  const { teamInfo, theme } = useTeam();
+  const { teamInfo } = useTeam();
 
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center space-y-10 animate-in fade-in duration-1000">
+    <div className="min-h-[75vh] flex flex-col items-center justify-center animate-in fade-in duration-1000">
 
       {/* 1. LA FICHE MAÎTRE (CENTRE DE L'ÉCRAN) */}
       <div className="w-full flex justify-center px-4">
         <CoachCard
           name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
+          coachPhoto={teamInfo?.coachPhoto} // FIX PHOTO MANQUANTE
           slogan={teamInfo?.bio || "DROIT AU BUT"}
           clubName={teamInfo?.clubName || 'MON CLUB'}
           clubLogo={teamInfo?.clubLogo}
@@ -43,42 +44,25 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         />
       </div>
 
-      {/* 2. COMMANDES TACTIQUES (DISCRÈTES EN BAS) */}
-      <section className="w-full max-w-sm space-y-4 px-6 pb-10">
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            onClick={() => router.push('/profile/edit')}
-            className="bg-orange-600 text-white py-5 rounded-[2.5rem] font-black uppercase italic text-xs shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3"
-          >
-            <Edit3 size={18} /> Modifier
-          </button>
-
-          <button
-            onClick={() => router.push('/events')}
-            className="bg-white border-2 border-gray-100 text-gray-900 py-5 rounded-[2.5rem] font-black uppercase italic text-xs shadow-sm active:scale-95 transition-all flex items-center justify-center gap-3"
-          >
-            <Calendar size={18} /> Mon Agenda
-          </button>
-        </div>
-
-        {/* Bouton de Partage rapide */}
+      {/* 2. PIED DE PAGE DISCRET */}
+      <section className="w-full max-w-sm mt-8 px-6 pb-10">
         <button
           onClick={() => {
             if (navigator.share) {
               navigator.share({
                 title: `Fiche Coach - ${teamInfo?.coachName}`,
-                text: `Découvrez mon profil coach sur Team Nexus !`,
+                text: `Découvrez mon profil sur FootCoach !`,
                 url: window.location.href,
               });
             }
           }}
-          className="w-full py-4 flex items-center justify-center gap-2 text-gray-400 font-black uppercase text-[9px] tracking-[0.3em] active:opacity-50 transition-opacity"
+          className="w-full py-4 flex items-center justify-center gap-2 text-gray-400 font-black uppercase text-[8px] tracking-[0.3em] active:opacity-50 transition-opacity"
         >
-          <Share2 size={14} /> Diffuser ma carte d'identité
+          <Share2 size={12} /> Diffuser ma carte d'identité
         </button>
       </section>
 
-      {/* Accès discret aux réglages */}
+      {/* Accès discret réglages (Haut Droite) */}
       <button
         onClick={() => router.push('/settings')}
         className="fixed top-6 right-6 p-3 rounded-2xl bg-black/5 text-gray-400 active:scale-90 transition-all z-50"
