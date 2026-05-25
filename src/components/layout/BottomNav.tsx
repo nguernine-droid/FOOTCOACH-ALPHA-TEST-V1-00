@@ -30,26 +30,30 @@ export function BottomNav() {
     return 'bg-[#39FF14] shadow-[0_0_15px_#39FF14]';
   };
 
+  const isProfilePage = pathname === '/profile';
+
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-black/90 backdrop-blur-xl border-t border-white/10 px-4 py-3 flex justify-between items-end z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.8)]">
+      <nav className={`fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-black/90 backdrop-blur-xl border-t border-white/10 px-4 py-3 flex justify-between items-end z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.8)] ${isProfilePage ? 'bg-transparent border-none shadow-none' : ''}`}>
 
         {/* Gauche : Fil & Radar */}
-        <div className="flex justify-around flex-1">
-          {navItems.slice(0, 2).map((link) => (
-            <NavItem
-              key={link.path}
-              href={link.path}
-              icon={<link.icon size={20} />}
-              label={link.label}
-              active={pathname === link.path}
-              theme={theme}
-            />
-          ))}
-        </div>
+        {!isProfilePage && (
+          <div className="flex justify-around flex-1">
+            {navItems.slice(0, 2).map((link) => (
+              <NavItem
+                key={link.path}
+                href={link.path}
+                icon={<link.icon size={20} />}
+                label={link.label}
+                active={pathname === link.path}
+                theme={theme}
+              />
+            ))}
+          </div>
+        )}
 
         {/* CENTRAL : BOUTON PLUS */}
-        <div className="flex flex-col items-center -mt-10 px-2">
+        <div className="flex flex-col items-center -mt-10 px-2 flex-1 justify-center">
           <button
             onClick={() => setIsMenuOpen(true)}
             className={`${getPlusColor()} text-black p-4 rounded-2xl active:scale-90 transition-all mb-2 border-2 border-black relative group overflow-hidden shadow-2xl`}
@@ -59,19 +63,21 @@ export function BottomNav() {
         </div>
 
         {/* Droite : Équipe (Bloqué) & Annonces */}
-        <div className="flex justify-around flex-1">
-          {navItems.slice(2, 4).map((link) => (
-            <NavItem
-              key={link.path}
-              href={link.path}
-              icon={link.locked ? <Lock size={18} /> : <link.icon size={20} />}
-              label={link.label}
-              active={pathname === link.path}
-              theme={theme}
-              locked={link.locked}
-            />
-          ))}
-        </div>
+        {!isProfilePage && (
+          <div className="flex justify-around flex-1">
+            {navItems.slice(2, 4).map((link) => (
+              <NavItem
+                key={link.path}
+                href={link.path}
+                icon={link.locked ? <Lock size={18} /> : <link.icon size={20} />}
+                label={link.label}
+                active={pathname === link.path}
+                theme={theme}
+                locked={link.locked}
+              />
+            ))}
+          </div>
+        )}
       </nav>
 
       <CreateMenu

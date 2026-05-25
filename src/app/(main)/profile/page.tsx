@@ -31,6 +31,7 @@ export default function ProfilePage() {
 
   const getBackgroundClass = () => {
     if (showWelcome) return 'bg-black text-white';
+    if (role === 'coach') return 'bg-[#050510] text-white p-0'; // NOIR PROFOND POUR COACH
     if (role === 'parent' || role === 'supporter') return 'bg-gray-50 text-gray-900';
     return theme === 'nexus' ? 'bg-black text-white' : 'bg-gray-50 text-gray-900';
   };
