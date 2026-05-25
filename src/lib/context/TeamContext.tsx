@@ -23,6 +23,7 @@ export interface TeamInfo {
   userLastName?: string;
   bio?: string;
   phone?: string;
+  licenseNumber?: string;
   // RPG Stats
   doctrine: number;
   synergie: number;
@@ -119,6 +120,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             userLastName: profile.last_name,
             bio: profile.bio,
             phone: profile.phone,
+            licenseNumber: profile.license_number,
             doctrine: profile.coach_doctrine || 0,
             synergie: profile.coach_synergie || 0,
             influence: profile.coach_influence || 0,
