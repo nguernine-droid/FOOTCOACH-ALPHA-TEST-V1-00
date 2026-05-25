@@ -4,44 +4,56 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { CoachCard } from '@/components/CoachCard';
-import { ChevronLeft, Share2 } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 interface CoachViewProps {
   onActivateParent?: () => void;
 }
 
 /**
- * COACH_VIEW (v13.0 - FULL IMMERSION MODE)
- * Immersion totale : TopBar et BottomNav masqués.
- * Fiche XXL centrée sur fond noir pur.
+ * COACH_VIEW (v14.0 - FULL COCKPIT INTEGRATION)
+ * Immersion 100% : Cockpit de commandement intégral.
+ * Zéro boutons superflus. Navigation via le bouton (+) central.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
   const { teamInfo } = useTeam();
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#050510] relative animate-in fade-in duration-1000">
+  // Stats simulées pour la démo (À brancher sur Supabase plus tard)
+  const stats = {
+    matchesPlayed: 12,
+    announcementsSent: 8,
+    contactsMade: 15,
+    engagementRate: 100
+  };
 
-      {/* BOUTON RETOUR (Indispensable car TopBar masquée) */}
+  return (
+    <div className="fixed inset-0 z-10 flex flex-col bg-black overflow-hidden animate-in fade-in duration-1000">
+
+      {/* BOUTON RETOUR (DISCRET) */}
       <button
         onClick={() => router.push('/dashboard')}
-        className="absolute top-8 left-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-white active:scale-90 transition-all z-50 shadow-2xl"
+        className="absolute top-10 left-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-white active:scale-90 transition-all z-[60] shadow-2xl backdrop-blur-md"
       >
         <ChevronLeft size={24} strokeWidth={3} />
       </button>
 
-      {/* 1. LA FICHE MAÎTRE XXL */}
-      <div className="w-full flex justify-center px-2">
+      {/* LE COCKPIT INTÉGRAL (CARTE FULL SCREEN) */}
+      <div className="flex-1 flex flex-col">
         <CoachCard
           name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
           coachPhoto={teamInfo?.coachPhoto}
-          slogan={teamInfo?.bio || "DROIT AU BUT"}
-          clubName={teamInfo?.clubName || 'MON CLUB'}
+          clubName={teamInfo?.clubName || 'UNITÉ_TACTIQUE'}
           clubLogo={teamInfo?.clubLogo}
           category={teamInfo?.category || 'SÉNIORS'}
           points={teamInfo?.xp || 0}
-          grade={teamInfo?.grade || 'COACH ENGAGÉ'}
           status={teamInfo?.coachStatus || 'actif'}
+          // Stats intégrées
+          matchesPlayed={stats.matchesPlayed}
+          announcementsSent={stats.announcementsSent}
+          contactsMade={stats.contactsMade}
+          engagementRate={stats.engagementRate}
+          // Rayons d'action (Verso)
           matchDist={teamInfo?.matchDistMax || 30}
           plateauDist={teamInfo?.plateauDistMax || 20}
           tournamentReach={
@@ -51,24 +63,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
             `${teamInfo?.tournamentDistMax} KM`
           }
         />
-      </div>
-
-      {/* 2. PIED DE PAGE DISCRET (PARTAGE) */}
-      <div className="mt-4 pb-20">
-        <button
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: `Fiche Coach - ${teamInfo?.coachName}`,
-                text: `Découvrez mon profil sur FootCoach !`,
-                url: window.location.href,
-              });
-            }
-          }}
-          className="flex items-center gap-2 text-white/20 font-black uppercase text-[10px] tracking-[0.4em] active:opacity-100 transition-opacity"
-        >
-          <Share2 size={14} /> Partager
-        </button>
       </div>
 
     </div>
