@@ -78,7 +78,7 @@ export function FifaCard({
           </div>
 
           <div className="mt-8 grid grid-cols-3 gap-x-8 gap-y-4 w-full px-4">
-            {currentStats(stats).map((stat) => (
+            {stats.slice(0, 6).map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className={`text-lg font-black ${textColor}`}>{stat.value}</div>
                 <div className={`text-[8px] font-black ${textColor} opacity-50 uppercase`}>{stat.label}</div>
@@ -93,9 +93,4 @@ export function FifaCard({
       </div>
     </div>
   );
-}
-
-// Sécurité pour ne pas casser l'affichage si trop de stats
-function currentStats(stats: any[]) {
-  return stats.slice(0, 6);
 }
