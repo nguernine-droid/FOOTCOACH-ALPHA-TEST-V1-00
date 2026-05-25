@@ -23,8 +23,8 @@ interface CoachCardProps {
 }
 
 /**
- * COACH_CARD (v15.0 - REFINED ELITE BADGE)
- * Design "Objet Précieux" avec marges et équilibre visuel recalibré.
+ * COACH_CARD (v15.1 - XXL REFINED BADGE)
+ * Design "Objet Précieux" agrandi en hauteur pour une immersion totale.
  */
 export function CoachCard({
   name, clubName, clubLogo, coachPhoto, category, points, status,
@@ -59,7 +59,7 @@ export function CoachCard({
 
   return (
     <div
-      className="w-full max-w-[340px] h-[580px] relative perspective-1000 cursor-pointer"
+      className="w-full max-w-[340px] h-[640px] relative perspective-1000 cursor-pointer"
       onClick={() => setIsFlipped(!isFlipped)}
     >
       <motion.div
@@ -73,7 +73,7 @@ export function CoachCard({
 
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none" />
 
-          <div className="relative flex-1 flex flex-col p-6 space-y-6 z-10">
+          <div className="relative h-full flex flex-col p-6 space-y-7 z-10">
 
             {/* 1. SOMMET ÉQUILIBRÉ */}
             <div className="flex justify-between items-start w-full">
@@ -101,22 +101,22 @@ export function CoachCard({
 
             {/* 3. PHOTO XXL (CENTRE) */}
             <div className="flex-1 flex items-center justify-center py-2">
-               <div className={`relative w-48 h-44 rounded-full border-4 ${theme.border} p-1 shadow-2xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-white/5 to-transparent`}>
+               <div className={`relative w-52 h-52 rounded-full border-4 ${theme.border} p-1 shadow-2xl overflow-hidden flex items-center justify-center bg-gradient-to-b from-white/5 to-transparent`}>
                   {coachPhoto ? (
                     <img src={coachPhoto} className="w-full h-full object-cover" alt="Coach" />
                   ) : (
-                    <User size={60} className="text-white/10" />
+                    <User size={70} className="text-white/10" />
                   )}
-                  <div className={`absolute bottom-3 right-3 w-8 h-8 rounded-full border-2 border-black flex items-center justify-center ${theme.indicator} animate-pulse`}>
-                     {status === 'toujours_pret' ? <Flame size={16} className="text-white" /> : <CheckCircle2 size={16} className="text-white" />}
+                  <div className={`absolute bottom-4 right-4 w-9 h-9 rounded-full border-2 border-black flex items-center justify-center ${theme.indicator} animate-pulse`}>
+                     {status === 'toujours_pret' ? <Flame size={18} className="text-white" /> : <CheckCircle2 size={18} className="text-white" />}
                   </div>
                </div>
             </div>
 
             {/* 4. BLOC BAS : STATS & QR */}
-            <div className="grid grid-cols-[1fr_auto] gap-4 pt-4 border-t border-white/5">
+            <div className="grid grid-cols-[1fr_auto] gap-4 pt-6 border-t border-white/5">
                {/* COL GAUCHE : STATS */}
-               <div className="space-y-2">
+               <div className="space-y-2.5">
                   <CompactStatRow icon={<Zap size={10}/>} label="MATCHS" value={matchesPlayed} />
                   <CompactStatRow icon={<Star size={10}/>} label="ANNONCES" value={announcementsSent} />
                   <CompactStatRow icon={<CheckCircle2 size={10}/>} label="CONTACTS" value={contactsMade} />
@@ -128,10 +128,10 @@ export function CoachCard({
 
                {/* COL DROITE : QR CODE */}
                <div className="flex flex-col items-center justify-center pr-2">
-                  <div className="p-2.5 bg-white rounded-2xl shadow-xl">
-                     <QRCodeSVG value={`fc-id-${name}`} size={65} fgColor="#000000" />
+                  <div className="p-3 bg-white rounded-2xl shadow-xl">
+                     <QRCodeSVG value={`fc-id-${name}`} size={75} fgColor="#000000" />
                   </div>
-                  <p className="text-[5px] font-black text-gray-500 uppercase tracking-[0.2em] mt-2 italic">Sceau Officiel</p>
+                  <p className="text-[5px] font-black text-gray-400 uppercase tracking-[0.2em] mt-2 italic text-center">Sceau de validation</p>
                </div>
             </div>
           </div>
@@ -139,37 +139,37 @@ export function CoachCard({
 
         {/* --- VERSO : PÉRIMÈTRES --- */}
         <div className={`absolute inset-0 backface-hidden bg-gray-950 flex flex-col p-1 border-4 ${theme.border} ${theme.glow} rounded-[2.5rem] overflow-hidden`} style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-           <div className="relative h-full flex flex-col justify-center p-8 space-y-8 text-white text-left">
-              <h3 className={`text-center text-lg font-black uppercase italic ${theme.accent} border-b border-white/10 pb-4`}>Zones de Mission</h3>
+           <div className="relative h-full flex flex-col justify-center p-8 space-y-10 text-white text-left">
+              <h3 className={`text-center text-xl font-black uppercase italic ${theme.accent} border-b border-white/10 pb-6`}>Zones de Mission</h3>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 rounded-lg bg-green-500/10 text-[#39FF14] flex items-center justify-center border border-[#39FF14]/20"><Navigation size={20} /></div>
-                       <span className="font-black uppercase italic text-xs tracking-tight">Match Amical</span>
+                    <div className="flex items-center gap-5">
+                       <div className={`w-12 h-12 rounded-lg bg-green-500/10 text-[#39FF14] flex items-center justify-center border border-[#39FF14]/20`}><Navigation size={24} /></div>
+                       <span className="font-black uppercase italic text-sm tracking-tight">Match Amical</span>
                     </div>
-                    <span className="text-lg font-black text-[#39FF14]">{matchDist} KM</span>
+                    <span className="text-xl font-black text-[#39FF14] italic">{matchDist} KM</span>
                  </div>
 
                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20"><Layers size={20} /></div>
-                       <span className="font-black uppercase italic text-xs tracking-tight">Plateau</span>
+                    <div className="flex items-center gap-5">
+                       <div className={`w-12 h-12 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center border border-blue-500/20`}><Layers size={24} /></div>
+                       <span className="font-black uppercase italic text-sm tracking-tight">Plateau</span>
                     </div>
-                    <span className="text-lg font-black text-blue-500">{plateauDist} KM</span>
+                    <span className="text-xl font-black text-blue-500 italic">{plateauDist} KM</span>
                  </div>
 
                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 rounded-lg bg-yellow-500/10 text-yellow-500 flex items-center justify-center border border-yellow-500/20"><Trophy size={20} /></div>
-                       <span className="font-black uppercase italic text-xs tracking-tight">Tournois</span>
+                    <div className="flex items-center gap-5">
+                       <div className={`w-12 h-12 rounded-lg bg-yellow-500/10 text-yellow-500 flex items-center justify-center border border-yellow-500/20`}><Trophy size={24} /></div>
+                       <span className="font-black uppercase italic text-sm tracking-tight">Tournois</span>
                     </div>
-                    <span className="text-sm font-black text-yellow-500 uppercase">{tournamentReach}</span>
+                    <span className="text-lg font-black text-yellow-500 uppercase italic tracking-tighter">{tournamentReach}</span>
                  </div>
               </div>
 
-              <div className="mt-auto text-center opacity-20">
-                 <p className="text-[8px] font-black uppercase tracking-[0.3em]">Toucher pour retourner</p>
+              <div className="mt-auto text-center opacity-20 pt-10">
+                 <p className="text-[10px] font-black uppercase tracking-[0.3em]">Toucher pour retourner la fiche</p>
               </div>
            </div>
         </div>
@@ -181,10 +181,10 @@ export function CoachCard({
 
 function CompactStatRow({ icon, label, value }: { icon: React.ReactNode, label: string, value: number }) {
   return (
-    <div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+    <div className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 shadow-inner">
        <div className="flex items-center gap-2 text-white/30">
           {icon}
-          <span className="text-[7px] font-black uppercase">{label}</span>
+          <span className="text-[7px] font-black uppercase tracking-widest">{label}</span>
        </div>
        <span className="text-[10px] font-black text-white italic">{value}</span>
     </div>
