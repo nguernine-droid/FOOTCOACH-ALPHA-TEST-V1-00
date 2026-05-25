@@ -105,9 +105,17 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
         {/* 1. UTILISATEUR */}
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: '100ms' }}>
-           <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
-              <User size={14} className="text-orange-600" /> Utilisateur
-           </label>
+           <div className="flex items-center justify-between">
+             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
+                <User size={14} className="text-orange-600" /> Utilisateur
+             </label>
+             <button
+               onClick={() => router.push('/profile/edit?section=user')}
+               className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 active:scale-90 transition-all text-xs font-black flex items-center gap-1"
+             >
+               <Edit3 size={12} /> ÉDITER
+             </button>
+           </div>
            <div className="bg-white rounded-[2.5rem] p-6 border border-gray-200 shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-5">
                  <div className="w-24 h-24 rounded-3xl border-4 border-orange-100 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center flex-shrink-0 shadow-md">
@@ -146,9 +154,17 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
         {/* 2. LE CLUB (UNITÉ) */}
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: '200ms' }}>
-           <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
-              <Shield size={14} className="text-orange-600" /> Mon Club
-           </label>
+           <div className="flex items-center justify-between">
+             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
+                <Shield size={14} className="text-orange-600" /> Mon Club
+             </label>
+             <button
+               onClick={() => router.push('/profile/edit?section=club')}
+               className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 active:scale-90 transition-all text-xs font-black flex items-center gap-1"
+             >
+               <Edit3 size={12} /> ÉDITER
+             </button>
+           </div>
            <div className="bg-white rounded-[2.5rem] p-8 border border-gray-200 shadow-md hover:shadow-lg transition-shadow flex flex-col items-center text-center space-y-4">
               <div className="w-40 h-40 bg-gradient-to-br from-gray-50 to-white rounded-[2.5rem] p-4 border-4 border-orange-100 shadow-lg flex items-center justify-center">
                  {teamInfo?.clubLogo ? (
@@ -184,9 +200,17 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
         {/* 3. LOGISTIQUE QG */}
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: '300ms' }}>
-           <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
-              <MapPin size={14} className="text-orange-600" /> Logistique_QG
-           </label>
+           <div className="flex items-center justify-between">
+             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
+                <MapPin size={14} className="text-orange-600" /> Logistique_QG
+             </label>
+             <button
+               onClick={() => router.push('/profile/edit?section=logistics')}
+               className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 active:scale-90 transition-all text-xs font-black flex items-center gap-1"
+             >
+               <Edit3 size={12} /> ÉDITER
+             </button>
+           </div>
            <div className="bg-white rounded-[2.5rem] p-6 border border-gray-200 shadow-md hover:shadow-lg transition-shadow space-y-4">
               <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
                  <span className="text-[10px] font-black uppercase text-gray-500">📍 Ma Ville</span>
@@ -201,9 +225,17 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
         {/* 4. RAYONS D'ACTION */}
         <section className="space-y-4 animate-in fade-in slide-in-from-bottom duration-500" style={{ animationDelay: '400ms' }}>
-           <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
-              <Navigation size={14} className="text-orange-600" /> Rayons de Déplacement
-           </label>
+           <div className="flex items-center justify-between">
+             <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2">
+                <Navigation size={14} className="text-orange-600" /> Rayons de Déplacement
+             </label>
+             <button
+               onClick={() => router.push('/profile/edit?section=ranges')}
+               className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 active:scale-90 transition-all text-xs font-black flex items-center gap-1"
+             >
+               <Edit3 size={12} /> ÉDITER
+             </button>
+           </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-[2rem] border-2 border-green-200 shadow-md hover:shadow-lg transition-all hover:scale-105">
                  <p className="text-[8px] font-black uppercase text-green-600 mb-2 flex items-center gap-2">
