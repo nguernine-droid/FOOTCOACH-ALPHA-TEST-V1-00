@@ -139,7 +139,14 @@ function NewSignalContent() {
              <div className="space-y-6">
                 <div className="flex flex-wrap gap-2">
                    {currentCategories.map(cat => (
-                     <button key={cat.value} type="button" onClick={() => updateQuota(cat.value, (quotas[cat.value] ? -quotas[cat.value] : 1))} className={`px-4 py-3 rounded-2xl text-[10px] font-black transition-all ${quotas[cat.value] > 0 ? `${m.primary} text-black shadow-lg scale-110` : 'bg-white/5 text-white/30 hover:bg-white/10'}`}>{cat.label}</button>
+                     <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => updateQuota(cat.value, (quotas[cat.value] ? -quotas[cat.value] : 1))}
+                        className={`px-4 py-3 rounded-2xl text-[10px] font-black transition-all ${quotas[cat.value] > 0 ? `${m.primary} text-black shadow-lg scale-110` : 'bg-white/10 text-white hover:bg-white/20 border border-white/5'}`}
+                     >
+                        {cat.label}
+                     </button>
                    ))}
                 </div>
                 {Object.keys(quotas).filter(k => quotas[k] > 0).map(k => (
