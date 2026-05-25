@@ -10,16 +10,21 @@ interface CoachCardProps {
   clubLogo?: string;
   coachPhoto?: string;
   category: string;
+  level: string;
   points: number;
   status: 'inactif' | 'actif' | 'toujours_pret';
   matchesPlayed: number;
   announcementsSent: number;
   contactsMade: number;
   engagementRate: number;
+  grade?: string;
+  matchDist?: number;
+  plateauDist?: number;
+  tournamentReach?: string;
 }
 
 /**
- * COACH_CARD (v21.0 - PRESTIGE BADGE ONLY)
+ * COACH_CARD (v21.1 - PRESTIGE BADGE ONLY)
  * Fiche de prestige pure, sans rotation.
  * L'interaction est gérée par le parent (CoachView).
  */
@@ -37,16 +42,10 @@ export function CoachCard({
   const theme = statusThemes[status] || statusThemes['actif'];
 
   return (
-    <div className={`w-full max-w-[340px] h-[640px] bg-black flex flex-col p-1 border-[5px] ${theme.border} ${theme.glow} rounded-[3rem] overflow-hidden relative shadow-2xl transform transition-all duration-500 hover:scale-105 [transform-style:preserve-3d] [transform:perspective(1200px)_rotateX(-2deg)_rotateY(1deg)] hover:[transform:perspective(1200px)_rotateX(0deg)_rotateY(0deg)] group animate-in zoom-in-95 fade-in duration-1000`}>
+    <div className={`w-full max-w-[340px] h-[640px] bg-black flex flex-col p-1 border-[5px] ${theme.border} ${theme.glow} rounded-[3rem] overflow-hidden relative shadow-2xl transition-all duration-500 hover:scale-[1.02] group`}>
 
       {/* TEXTURE CARBONE */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none" />
-
-      {/* Badge Statut Connecté */}
-      <div className="absolute top-6 right-6 z-20 flex items-center gap-2 bg-[#39FF14]/10 border-2 border-[#39FF14]/50 rounded-full px-4 py-2 backdrop-blur-sm shadow-lg animate-pulse">
-        <div className="w-2.5 h-2.5 rounded-full bg-[#39FF14] animate-pulse [animation-duration:1.5s]" />
-        <span className="text-[8px] font-black text-[#39FF14] uppercase tracking-widest">CONNECTÉ</span>
-      </div>
 
       <div className="relative flex-1 flex flex-col p-6 space-y-6 z-10">
 
@@ -74,7 +73,7 @@ export function CoachCard({
 
         {/* 3. PHOTO XXL (CENTRE) */}
         <div className="flex-1 flex items-center justify-center py-2">
-           <div className={`relative w-48 h-48 rounded-full border-4 ${theme.border} p-1 shadow-2xl overflow-hidden flex items-center justify-center bg-white/5 transform transition-all duration-500 group-hover:scale-110 animate-bounce [animation-duration:3s]`}>
+           <div className={`relative w-48 h-48 rounded-full border-4 ${theme.border} p-1 shadow-2xl overflow-hidden flex items-center justify-center bg-white/5 transition-transform duration-500 group-hover:scale-105`}>
               {coachPhoto ? (
                 <img src={coachPhoto} className="w-full h-full object-cover" alt="Coach" />
               ) : (
