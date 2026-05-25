@@ -1,198 +1,210 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  User, ShieldCheck, Upload, Loader2, Camera, Settings, Share2, QrCode, Edit3
+  User, Shield, MapPin, Navigation, Trophy, Calendar,
+  MessageCircle, Settings, Edit3, Camera, Flame, CheckCircle2,
+  ChevronRight, Globe, Layers, Zap
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
-import { FifaCard } from '@/components/FifaCard';
-import { ModalPartage } from '@/components/ui/ModalPartage';
-import { StatExplainer } from '@/components/ui/StatExplainer';
-import { TerminalControl } from './terminal-control';
-import { Brain, Users as UsersIcon, Zap as ZapIcon, Info, TrendingUp, Timer, ClipboardCheck } from 'lucide-react';
 
 interface CoachViewProps {
-  onActivateParent: () => void;
+  onActivateParent?: () => void;
 }
 
 /**
- * COACH_VIEW (v8.6 - ALPHA TEST V1)
- * Données brutes supprimées. Blason sur carte OK.
+ * COACH_VIEW (v10.0 - MASTER CLASSIC)
+ * Profil d'identité club & terrain. Stratégie de réseau fermé.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
   const { teamInfo, theme, refreshData } = useTeam();
   const isPro = theme === 'classic';
 
-  const [isUploading, setIsUploading] = useState(false);
-  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [explainerType, setExplainerType] = useState<'DOC' | 'SYN' | 'INF' | null>(null);
-  const [coachCode, setCoachCode] = useState("NEXUS-V1-BETA");
-
-  useEffect(() => {
-    const saved = localStorage.getItem('user_coach_code');
-    if (saved) setCoachCode(saved);
-  }, []);
-
-  const shareLink = `https://nexus-os.app/coach/${coachCode}`;
-
-  const styles = isPro ? {
-    cardBg: 'bg-white',
-    border: 'border-gray-200',
-    text: 'text-gray-900',
-    textSub: 'text-gray-500',
-    accent: 'text-orange-600',
-  } : {
-    cardBg: 'bg-[#0A0A0A]',
-    border: 'border-white/10',
-    text: 'text-white',
-    textSub: 'text-gray-400',
-    accent: 'text-[#39FF14]',
+  // --- CONFIGURATION DES STATUTS ---
+  const statusConfig = {
+    'inactif': { label: 'INACTIF', color: 'bg-blue-500', glow: 'shadow-[0_0_15px_#3b82f6]', text: 'text-blue-400' },
+    'actif': { label: 'ACTIF', color: 'bg-[#39FF14]', glow: 'shadow-[0_0_15px_#39FF14]', text: 'text-[#39FF14]' },
+    'toujours_pret': { label: 'TOUJOURS PRÊT', color: 'bg-orange-600', glow: 'shadow-[0_0_15px_#f97316]', text: 'text-orange-500' }
   };
 
-  const coachStatus = 'Actif';
+  const currentStatus = statusConfig[teamInfo?.coachStatus || 'inactif'];
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!teamInfo?.id) return;
-    setIsUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${teamInfo.id}-${Date.now()}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
-      const { error: uploadError } = await supabase.storage.from('club-logos').upload(filePath, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('club-logos').getPublicUrl(filePath);
-      await supabase.from('clubs').update({ logo_url: publicUrl }).eq('id', teamInfo.id);
-      await refreshData();
-      alert("✅ Blason mis à jour !");
-    } catch (error: any) {
-      alert("Erreur upload blason.");
-    } finally { setIsUploading(false); }
-  };
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsAvatarUploading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-      const { error: uploadError } = await supabase.storage.from('coach-avatars').upload(filePath, file);
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('coach-avatars').getPublicUrl(filePath);
-      await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
-      await refreshData();
-      alert("✅ Photo mise à jour !");
-    } catch (error: any) {
-      alert("Erreur upload photo.");
-    } finally { setIsAvatarUploading(false); }
+  const styles = {
+    card: 'bg-white border-gray-100 rounded-[2.5rem] p-6 shadow-sm border space-y-4',
+    label: 'text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2',
+    value: 'text-sm font-black text-gray-900 uppercase italic',
+    badge: 'px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest'
   };
 
   return (
-    <div className="space-y-10 text-left">
-      <div className="flex justify-end gap-3 -mb-6 px-2 relative z-20">
-        <button onClick={() => router.push('/profile/edit')} className={`flex items-center gap-2 px-4 py-2 rounded-2xl border transition-all active:scale-90 ${styles.cardBg} ${styles.border} ${styles.accent} hover:bg-orange-50 font-black uppercase text-[9px] tracking-widest shadow-lg`}>
-          <Edit3 size={16} /> Modifier Profil
-        </button>
-        <button onClick={() => router.push('/settings')} className={`p-3 rounded-2xl border transition-all active:scale-90 ${styles.cardBg} ${styles.border} ${styles.textSub} hover:text-white shadow-lg`}>
-          <Settings size={20} />
-        </button>
-      </div>
+    <div className="space-y-8 animate-in fade-in duration-700">
 
-      {/* CARTE FIFA AVEC BLASON ET SANS STATS BRUTES */}
-      <div className="relative">
-        <FifaCard
-          name={teamInfo?.coachName || (isPro ? 'COACH' : 'COMMANDANT')}
-          team={`${teamInfo?.clubName || 'UNITÉ_NEXUS'} - ${teamInfo?.category || ''} ${teamInfo?.level || ''}`}
-          score={teamInfo?.xp ? 85 : 0} // Score à 0 si pas d'XP pour éviter le "85" en dur
-          label={teamInfo?.grade || (isPro ? 'COACH' : 'COMMANDANT')}
-          stats={[]} // Stats vides pour cette version
-          image={teamInfo?.coachPhoto}
-          clubLogo={teamInfo?.clubLogo}
-          color="from-[#FF6B00] via-[#CC5500] to-black"
-          textColor="text-white"
-        />
-        <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 bg-[#39FF14]/20 text-[#39FF14]`}>
-          <ShieldCheck size={10} />
-          {coachStatus}
-        </div>
-      </div>
+      {/* 1. HEADER IMMERSIF (ARÈNE) */}
+      <section className="relative -mx-4 -mt-4 h-64 overflow-hidden rounded-b-[3rem] shadow-2xl">
+         <img
+           src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800"
+           className="w-full h-full object-cover"
+           alt="Arena"
+         />
+         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
 
-      {teamInfo?.bio && (
-        <section className="space-y-3 px-2">
-          <div className="flex items-center gap-3 border-b border-white/10 pb-2">
-            <User size={14} className={styles.accent} />
-            <h3 className={`text-[10px] font-black ${styles.text} uppercase tracking-[0.2em]`}>Je_Me_Présente</h3>
-          </div>
-          <div className={`${styles.cardBg} p-5 rounded-3xl border ${styles.border} shadow-sm`}>
-            <p className={`text-xs ${isPro ? 'text-gray-700' : 'text-gray-300'} leading-relaxed italic`}>"{teamInfo.bio}"</p>
-          </div>
-        </section>
-      )}
+         {/* Boutons d'action rapides */}
+         <div className="absolute top-8 right-6 flex gap-3">
+            <button onClick={() => router.push('/settings')} className="p-3 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white active:scale-90 transition-all shadow-xl">
+               <Settings size={20} />
+            </button>
+         </div>
 
-      {/* SECTIONS STATS SUPPRIMÉES POUR CETTE VERSION (BUGG 11) */}
-
-      <section className="grid grid-cols-2 gap-4">
-        <div className={`${styles.cardBg} p-5 rounded-[2.5rem] border ${styles.border} flex flex-col items-center justify-center text-center transition-all hover:border-white/20 relative shadow-sm`}>
-           <div className="relative mb-3">
-              <div className={`w-20 h-20 rounded-2xl border-2 overflow-hidden flex items-center justify-center ${styles.cardBg} shadow-2xl`}>
-                {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} alt="Coach" className="w-full h-full object-cover" /> : <User size={32} className="opacity-20" />}
-                {isAvatarUploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl"><Loader2 size={20} className="animate-spin text-white" /></div>}
-              </div>
-              <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" id="avatar-upload" disabled={isAvatarUploading} />
-              <label htmlFor="avatar-upload" className={`absolute -bottom-2 -right-2 w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer transition-all shadow-2xl active:scale-90 ${isAvatarUploading ? 'opacity-50' : 'hover:scale-110'} ${isPro ? 'bg-orange-600 text-white' : 'bg-[#39FF14] text-black'}`}>
-                <Camera size={16} strokeWidth={3} />
-              </label>
-           </div>
-           <p className={`text-[10px] font-black ${styles.text} uppercase italic tracking-tighter leading-tight`}>Ma_Photo</p>
-        </div>
-
-        <div className={`${styles.cardBg} p-5 rounded-[2.5rem] border ${styles.border} flex flex-col items-center justify-center text-center transition-all hover:border-white/20 relative shadow-sm`}>
-           <div className="relative mb-3">
-              <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload" disabled={isUploading} />
-              <label htmlFor="logo-upload" className="cursor-pointer block group">
-                <div className={`w-20 h-20 rounded-2xl border-2 overflow-hidden flex items-center justify-center ${styles.cardBg} shadow-2xl relative transition-transform active:scale-95`}>
-                  {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} alt="Club" className="w-full h-full object-contain p-2" /> : <ShieldCheck size={32} className="opacity-20" />}
-                  {isUploading && <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl"><Loader2 size={20} className="animate-spin text-white" /></div>}
-                </div>
-                <div className={`absolute -bottom-2 -right-2 w-9 h-9 rounded-xl flex items-center justify-center shadow-2xl ${isUploading ? 'opacity-50' : ''} ${isPro ? 'bg-orange-600 text-white' : 'bg-neon-orange text-black'}`}>
-                  <Upload size={16} strokeWidth={3} />
-                </div>
-              </label>
-           </div>
-           <p className={`text-[10px] font-black ${styles.text} uppercase italic tracking-tighter leading-tight`}>Blason_Club</p>
-        </div>
+         {/* BLASON XXL & STATUT */}
+         <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
+            <div className="w-32 h-32 rounded-[2.5rem] border-4 border-white bg-white p-4 shadow-2xl relative">
+               {teamInfo?.clubLogo ? (
+                 <img src={teamInfo.clubLogo} className="w-full h-full object-contain" alt="Club" />
+               ) : (
+                 <Shield size={60} className="text-gray-200 mx-auto mt-4" />
+               )}
+               {/* Badge de statut pulsant */}
+               <div className={`absolute -bottom-2 -right-2 ${currentStatus.color} ${currentStatus.glow} p-2 rounded-xl border-2 border-white animate-pulse`}>
+                  {teamInfo?.coachStatus === 'toujours_pret' ? <Flame size={16} className="text-white" /> : <CheckCircle2 size={16} className="text-white" />}
+               </div>
+            </div>
+         </div>
       </section>
 
+      {/* 2. IDENTITÉ DU COACH */}
+      <section className="pt-8 text-center space-y-2">
+         <h2 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900">{teamInfo?.coachName}</h2>
+         <div className="flex items-center justify-center gap-2">
+            <span className="bg-orange-100 text-orange-700 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-orange-200 shadow-sm">
+               {teamInfo?.coachGrade || 'Coach engagé'}
+            </span>
+            <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${currentStatus.text} bg-white shadow-sm`}>
+               {currentStatus.label}
+            </span>
+         </div>
+         <p className="text-sm font-black text-gray-400 uppercase tracking-widest mt-2">{teamInfo?.clubName}</p>
+      </section>
+
+      {/* 3. ACTIONS PRIORITAIRES (RÉSEAU FERMÉ) */}
+      <section className="grid grid-cols-2 gap-4 px-2">
+         <button
+           onClick={() => router.push('/comms')}
+           className="bg-orange-600 text-white py-5 rounded-[2rem] font-black uppercase italic text-xs shadow-xl shadow-orange-200 active:scale-95 transition-all flex items-center justify-center gap-3"
+         >
+            <MessageCircle size={18} /> Proposer Match
+         </button>
+         <button
+           onClick={() => router.push('/events')}
+           className="bg-white border-2 border-gray-100 text-gray-900 py-5 rounded-[2rem] font-black uppercase italic text-xs shadow-sm active:scale-95 transition-all flex items-center justify-center gap-3"
+         >
+            <Calendar size={18} /> Mon Agenda
+         </button>
+      </section>
+
+      {/* 4. PARAMÈTRES UNITÉ (AUTO-PILOT) */}
       <section className="space-y-4">
-        <div className={`flex items-center gap-3 border-b-2 ${styles.border} pb-2`}>
-          <Share2 size={16} className={styles.accent} />
-          <h3 className={`text-xs font-black ${styles.text} uppercase tracking-[0.2em]`}>Nexus_Network</h3>
-        </div>
-        <div className={`${styles.cardBg} p-6 rounded-[2rem] border-2 ${isPro ? 'border-orange-200' : 'border-neon-orange/20'} relative overflow-hidden shadow-sm`}>
-           <div className="flex justify-between items-start mb-4 text-left">
-              <div>
-                <p className={`text-[8px] font-black ${styles.textSub} uppercase tracking-widest`}>Code_Signal</p>
-                <p className="text-xl font-black font-mono tracking-tighter text-neon-orange">{coachCode}</p>
+         <div className="flex items-center gap-2 px-2 border-b border-gray-100 pb-2">
+            <Layers size={14} className="text-orange-600" />
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Structure_Unité</h3>
+         </div>
+
+         <div className={styles.card}>
+            <div className="grid grid-cols-2 gap-6">
+               <div className="space-y-1">
+                  <p className={styles.label}>Ma Catégorie</p>
+                  <p className={styles.value}>{teamInfo?.category}</p>
+               </div>
+               <div className="space-y-1 text-right">
+                  <p className={styles.label}>Niveau</p>
+                  <p className={styles.value}>{teamInfo?.level}</p>
+               </div>
+            </div>
+            {teamInfo?.refCategories && teamInfo.refCategories.length > 0 && (
+              <div className="pt-4 border-t border-gray-50">
+                 <p className={styles.label}>Références</p>
+                 <div className="flex flex-wrap gap-2 mt-2">
+                    {teamInfo.refCategories.map(cat => (
+                      <span key={cat} className="bg-gray-100 text-gray-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase">{cat}</span>
+                    ))}
+                 </div>
               </div>
-              <QrCode size={32} className="text-neon-orange" />
-           </div>
-           <button onClick={() => setShowShareModal(true)} className={`w-full py-4 flex items-center justify-center gap-3 rounded-xl font-black uppercase italic transition-all active:scale-95 ${isPro ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-neon-orange text-black shadow-[0_0_20px_#FF6B00]'}`}>
-             <Share2 size={16} /> Diffuser Ma Carte
-           </button>
-        </div>
+            )}
+         </div>
       </section>
 
-      <ModalPartage isOpen={showShareModal} onClose={() => setShowShareModal(false)} title="Code_Signal" subtitle="Réseau Coach" shareLink={shareLink} accentColor="orange" />
-      <TerminalControl />
+      {/* 5. PÉRIMÈTRES DE MISSION (RAYONS) */}
+      <section className="space-y-4">
+         <div className="flex items-center gap-2 px-2 border-b border-gray-100 pb-2">
+            <Navigation size={14} className="text-orange-600" />
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Rayon_Action</h3>
+         </div>
+
+         <div className="space-y-3">
+            {/* Match Amical */}
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-green-50 text-[#39FF14] flex items-center justify-center border border-[#39FF14]/20"><Zap size={20} /></div>
+                  <div><p className="text-[10px] font-black text-gray-900 uppercase">Match Amical</p><p className="text-[8px] text-gray-400 uppercase">Distance Max</p></div>
+               </div>
+               <p className="text-lg font-black text-[#39FF14] italic">{teamInfo?.matchDistMax || 30} KM</p>
+            </div>
+
+            {/* Plateau */}
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center border border-blue-500/20"><Layers size={20} /></div>
+                  <div><p className="text-[10px] font-black text-gray-900 uppercase">Plateau</p><p className="text-[8px] text-gray-400 uppercase">Distance Max</p></div>
+               </div>
+               <p className="text-lg font-black text-blue-500 italic">{teamInfo?.plateauDistMax || 20} KM</p>
+            </div>
+
+            {/* Tournoi */}
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-yellow-50 text-yellow-500 flex items-center justify-center border border-yellow-500/20"><Trophy size={20} /></div>
+                  <div><p className="text-[10px] font-black text-gray-900 uppercase">Tournoi</p><p className="text-[8px] text-gray-400 uppercase">Projection</p></div>
+               </div>
+               <p className="text-sm font-black text-yellow-600 italic uppercase">
+                 {teamInfo?.tournamentReach === 'departemental' ? 'Départemental' :
+                  teamInfo?.tournamentReach === 'regional' ? 'Régional' :
+                  teamInfo?.tournamentReach === 'national' ? 'National' :
+                  `${teamInfo?.tournamentDistMax} KM`}
+               </p>
+            </div>
+         </div>
+      </section>
+
+      {/* 6. LOGISTIQUE QG */}
+      <section className="space-y-4">
+         <div className="flex items-center gap-2 px-2 border-b border-gray-100 pb-2">
+            <MapPin size={14} className="text-orange-600" />
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Logistique_QG</h3>
+         </div>
+         <div className={styles.card}>
+            <div className="space-y-4">
+               <div className="flex justify-between items-center">
+                  <p className={styles.label}>Ma Ville</p>
+                  <p className={styles.value}>{teamInfo?.clubCity || 'À renseigner'}</p>
+               </div>
+               <div className="flex justify-between items-center">
+                  <p className={styles.label}>Mon Stade</p>
+                  <p className={styles.value}>{teamInfo?.clubStadium || 'À renseigner'}</p>
+               </div>
+            </div>
+         </div>
+      </section>
+
+      {/* BOUTON MODIFIER FINAL */}
+      <button
+        onClick={() => router.push('/profile/edit')}
+        className="w-full bg-orange-600 text-white font-black py-7 rounded-[3rem] shadow-2xl shadow-orange-200 active:scale-95 transition-all uppercase italic text-2xl"
+      >
+        MODIFIER MON PROFIL
+      </button>
+
     </div>
   );
 }

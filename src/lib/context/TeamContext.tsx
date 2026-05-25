@@ -30,6 +30,14 @@ export interface TeamInfo {
   lvl: number;
   xp: number;
   grade: string;
+  // Master Profile Fields
+  coachStatus?: 'inactif' | 'actif' | 'toujours_pret';
+  coachGrade?: 'Coach engagé' | 'Coach contributeur' | 'Coach ambassadeur';
+  refCategories?: string[];
+  matchDistMax?: number;
+  plateauDistMax?: number;
+  tournamentReach?: 'departemental' | 'regional' | 'national' | 'distance';
+  tournamentDistMax?: number;
 }
 
 interface TeamContextType {
@@ -116,7 +124,15 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             influence: profile.coach_influence || 0,
             lvl: profile.coach_lvl || 1,
             xp: profile.coach_xp || 0,
-            grade: profile.coach_grade || (profile.theme_preference === 'classic' ? 'COACH' : 'COMMANDANT')
+            grade: profile.coach_grade || (profile.theme_preference === 'classic' ? 'COACH' : 'COMMANDANT'),
+            // New Fields Mapping
+            coachStatus: profile.coach_status || 'inactif',
+            coachGrade: profile.coach_grade || 'Coach engagé',
+            refCategories: profile.ref_categories || [],
+            matchDistMax: profile.match_dist_max || 30,
+            plateauDistMax: profile.plateau_dist_max || 20,
+            tournamentReach: profile.tournament_reach || 'departemental',
+            tournamentDistMax: profile.tournament_dist_max || 50
           });
         }
       }

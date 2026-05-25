@@ -1,23 +1,18 @@
 -- ==========================================
--- TEAM NEXUS OS : MASTER STRUCTURE V8.0 (STABLE)
+-- TEAM NEXUS OS : MASTER STRUCTURE V12.2 (SAFE MIGRATION)
+-- ==========================================
+-- Ce fichier utilise le protocole "Zéro Perte"
+-- Les tables existantes ne sont jamais supprimées.
 -- ==========================================
 
--- 0. NETTOYAGE TOTAL
-DROP TABLE IF EXISTS public.match_events CASCADE;
-DROP TABLE IF EXISTS public.events CASCADE;
-DROP TABLE IF EXISTS public.match_requests CASCADE;
-DROP TABLE IF EXISTS public.profiles CASCADE;
-DROP TABLE IF EXISTS public.clubs CASCADE;
-DROP TABLE IF EXISTS public.app_config CASCADE;
-DROP TABLE IF EXISTS public.feed_posts CASCADE;
-DROP TABLE IF EXISTS public.messages CASCADE;
+-- 1. TABLES DE BASE (SI NON EXISTANTES)
+CREATE TABLE IF NOT EXISTS public.app_config (
+  key text PRIMARY KEY,
+  value text NOT NULL,
+  updated_at timestamp with time zone DEFAULT now()
+);
 
--- 1. CONFIGURATION
-CREATE TABLE public.app_config (key text PRIMARY KEY, value text NOT NULL);
-INSERT INTO public.app_config (key, value) VALUES ('min_version', '1.0.207');
-
--- 2. CLUBS
-CREATE TABLE public.clubs (
+CREATE TABLE IF NOT EXISTS public.clubs (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   name text UNIQUE NOT NULL,
   city text,
@@ -27,10 +22,9 @@ CREATE TABLE public.clubs (
   created_at timestamp with time zone DEFAULT now()
 );
 
--- 3. PROFILS
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  role text DEFAULT 'coach',
+  role text DEFAULT 'coach' CHECK (role IN ('coach', 'player', 'parent', 'supporter', 'admin')),
   first_name text,
   last_name text,
   nickname text,
@@ -44,79 +38,55 @@ CREATE TABLE public.profiles (
   created_at timestamp with time zone DEFAULT now()
 );
 
--- 4. ÉVÉNEMENTS (LA VERSION COMPLÈTE)
-CREATE TABLE public.events (
+-- 2. MATCH REQUESTS (Radar)
+CREATE TABLE IF NOT EXISTS public.match_requests (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  match_request_id uuid REFERENCES public.match_requests(id) ON DELETE SET NULL, -- LIEN RADAR
+  coach_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type text NOT NULL DEFAULT 'Match Amical' CHECK (type IN ('Match Amical', 'Tournoi', 'Plateau')),
+  category text,
+  desired_level text DEFAULT 'Espoir',
+  availability_window text,
+  date date,
+  time time,
+  city text,
+  stadium text,
+  location text,
+  travel_preference text DEFAULT 'home' CHECK (travel_preference IN ('home', 'away', 'both')),
+  radius_km integer,
+  quotas jsonb,
+  comment text,
+  status text DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'PENDING', 'MATCHED', 'CANCELLED')),
+  respondent_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- 3. ÉVÉNEMENTS (LA VERSION COMPLÈTE)
+CREATE TABLE IF NOT EXISTS public.events (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  match_request_id uuid REFERENCES public.match_requests(id) ON DELETE SET NULL,
   title text NOT NULL,
-  type text DEFAULT 'Match',
+  type text NOT NULL CHECK (type IN ('training', 'match', 'tournament', 'plateau', 'convocation')),
   date date NOT NULL,
   time time NOT NULL,
-  location text,
+  location text NOT NULL,
+  city text,
+  stadium_name text,
   home_club_id uuid REFERENCES public.clubs(id),
   away_club_id uuid REFERENCES public.clubs(id),
   home_score integer DEFAULT 0,
   away_score integer DEFAULT 0,
-  status text DEFAULT 'scheduled',
+  status text DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'live', 'finished')),
+  tournament_config jsonb,
   created_at timestamp with time zone DEFAULT now()
 );
 
--- 5. MATCH EVENTS (Live Score)
-CREATE TABLE public.match_events (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  match_id uuid REFERENCES public.events(id) ON DELETE CASCADE,
-  author_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
-  type text NOT NULL,
-  team text,
-  content text,
-  status text DEFAULT 'pending',
-  created_at timestamp with time zone DEFAULT now()
-);
-
--- 6. MATCH REQUESTS (Radar)
-CREATE TABLE public.match_requests (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  coach_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
-  type text DEFAULT 'Match Amical',
-  category text,
-  date date,
-  time time,
-  location text,
-  status text DEFAULT 'OPEN',
-  respondent_id uuid REFERENCES public.profiles(id),
-  created_at timestamp with time zone DEFAULT now()
-);
-
--- 7. MESSAGES & FEED
-CREATE TABLE public.messages (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  match_request_id uuid REFERENCES public.match_requests(id) ON DELETE CASCADE,
-  sender_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
-  text text NOT NULL,
-  created_at timestamp with time zone DEFAULT now()
-);
-
-CREATE TABLE public.feed_posts (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  author_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
-  content text NOT NULL,
-  created_at timestamp with time zone DEFAULT now()
-);
-
--- 8. FONCTION SCORE
-CREATE OR REPLACE FUNCTION increment_score(row_id uuid, column_name text)
-RETURNS void AS $$ BEGIN
-  EXECUTE format('UPDATE events SET %I = %I + 1 WHERE id = %L', column_name, column_name, row_id);
+-- 4. FONCTIONS ET TRIGGERS (REMPLACEMENT SÉCURISÉ)
+CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, role, theme_preference) VALUES (new.id, 'coach', 'classic');
+  RETURN NEW;
 END; $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 9. AUTO-PROFIL TRIGGER
-CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger AS $$ BEGIN
-  INSERT INTO public.profiles (id, role) VALUES (new.id, 'coach'); RETURN NEW;
-END; $$ LANGUAGE plpgsql SECURITY DEFINER;
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- 10. REALTIME & PERMISSIONS
-ALTER PUBLICATION supabase_realtime ADD TABLE match_events, events, feed_posts, match_requests, messages;
+-- 5. REALTIME & PERMISSIONS
 GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, authenticated, anon, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, authenticated, anon, service_role;
