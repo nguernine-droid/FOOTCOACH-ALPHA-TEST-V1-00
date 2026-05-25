@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Shield, Flame, CheckCircle2, Zap, Star, TrendingUp, User } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { User } from 'lucide-react';
 
 interface CoachCardProps {
   name: string;
@@ -10,7 +9,7 @@ interface CoachCardProps {
   clubLogo?: string;
   coachPhoto?: string;
   category: string;
-  level: string;
+  level?: string;
   points: number;
   status: 'inactif' | 'actif' | 'toujours_pret';
   matchesPlayed: number;
@@ -24,95 +23,116 @@ interface CoachCardProps {
 }
 
 /**
- * COACH_CARD (v21.1 - PRESTIGE BADGE ONLY)
- * Fiche de prestige pure, sans rotation.
- * L'interaction est gérée par le parent (CoachView).
+ * COACH_CARD (v22.0 - FIFA ULTIMATE TEAM STYLE)
+ * Carte prestige FIFA avec rareté selon grade.
+ * - Silver: Coach Engagé
+ * - Gold: Coach Contributeur
+ * - Elite: Coach Ambassadeur
  */
 export function CoachCard({
   name, clubName, clubLogo, coachPhoto, category, points, status,
-  matchesPlayed, announcementsSent, contactsMade, engagementRate
+  matchesPlayed, announcementsSent, contactsMade, engagementRate, 
+  grade = 'Coach Engagé', level = 'D1'
 }: CoachCardProps) {
 
-  const statusThemes = {
-    'inactif': { border: 'border-blue-500', glow: 'shadow-[0_0_40px_rgba(59,130,246,0.3)]', accent: 'text-blue-400', indicator: 'bg-blue-500' },
-    'actif': { border: 'border-[#39FF14]', glow: 'shadow-[0_0_40px_rgba(57,255,20,0.2)]', accent: 'text-[#39FF14]', indicator: 'bg-[#39FF14]' },
-    'toujours_pret': { border: 'border-red-600', glow: 'shadow-[0_0_40px_rgba(220,38,38,0.3)]', accent: 'text-red-500', indicator: 'bg-red-600' }
+  // Mapping des stats FIFA (0-99)
+  const stats = {
+    pac: Math.min(99, matchesPlayed * 5),        // Pace: matchesPlayed
+    dri: Math.min(99, announcementsSent * 8),    // Dribbling: initiatives
+    sho: Math.min(99, engagementRate),            // Shooting: engagement rate
+    def: Math.min(99, parseInt(level.replace(/[D]/g, '')) * 15 + 70), // Defense: niveau
+    pas: Math.min(99, Math.floor(points / 10)),   // Passing: points/expérience
+    phy: Math.min(99, contactsMade * 4)           // Physical: contacts
   };
 
-  const theme = statusThemes[status] || statusThemes['actif'];
+  const overall = Math.round((stats.pac + stats.dri + stats.sho + stats.def + stats.pas + stats.phy) / 6);
+
+  // Système de rareté
+  const rarityThemes = {
+    'Coach Engagé': {
+      border: 'border-gray-400',
+      bg: 'from-gray-600 to-gray-700',
+      accent: 'text-gray-200',
+      bgCard: 'bg-gradient-to-br from-gray-700 to-gray-800',
+      rarityBadge: '🥈 Silver'
+    },
+    'Coach Contributeur': {
+      border: 'border-yellow-500',
+      bg: 'from-yellow-600 to-yellow-700',
+      accent: 'text-yellow-100',
+      bgCard: 'bg-gradient-to-br from-yellow-700 to-yellow-800',
+      rarityBadge: '🟡 Gold'
+    },
+    'Coach Ambassadeur': {
+      border: 'border-orange-400',
+      bg: 'from-orange-600 to-orange-700',
+      accent: 'text-orange-100',
+      bgCard: 'bg-gradient-to-br from-orange-700 to-orange-800',
+      rarityBadge: '🏆 Elite'
+    }
+  };
+
+  const rarity = rarityThemes[grade as keyof typeof rarityThemes] || rarityThemes['Coach Engagé'];
 
   return (
-    <div className={`w-full max-w-[340px] h-[640px] bg-black flex flex-col p-1 border-[5px] ${theme.border} ${theme.glow} rounded-[3rem] overflow-hidden relative shadow-2xl transition-all duration-500 hover:scale-[1.02] group`}>
-
-      {/* TEXTURE CARBONE */}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none" />
-
-      <div className="relative flex-1 flex flex-col p-6 space-y-6 z-10">
-
-        {/* 1. SOMMET : POINTS | NOM | LOGO */}
-        <div className="flex justify-between items-start w-full">
-           <div className="text-left">
-              <p className="text-4xl font-black italic text-white leading-none">{points}</p>
-              <p className={`text-[7px] font-black ${theme.accent} tracking-[0.3em] uppercase mt-1`}>Points FIFA</p>
-           </div>
-           <div className="flex-1 px-4 text-center">
-              <h2 className="text-[10px] font-black italic text-white/80 uppercase tracking-tighter line-clamp-1">{clubName}</h2>
-           </div>
-           <div className="w-14 h-14 bg-white rounded-2xl p-2 shadow-2xl flex items-center justify-center shrink-0 border-2 border-white/10">
-              {clubLogo ? <img src={clubLogo} className="w-full h-full object-contain" alt="Club" /> : <Shield className="text-gray-200" size={24} />}
-           </div>
+    <div className={`w-full max-w-[320    <div className={`w-full max-w-[320    <div className={`w-full max-w-[320    <div className={`w-full m{rarity.border} relative group cursor-pointer transform transition-all duration-500 hover:scale-105 hover:shadow-2xl animate-in zoom-in-95 fade-in duration-1000`}>
+      
+      {/* Texture Pattern */}
+      <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" hei      <div className="absolute inset-0 op"100\" height=\"100\"/><circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"%23000\" opacity=\"0.05\"/></svg>      <div className="absoame="relativ      <div classNameol">
+        
+        {/* HEADER */}
+                        flex justify-between items-start p-4 pb-2">
+          {/* Position & Overall */}
+          <div className="flex flex-col items-center">
+            <div className="text-xs font-black text-white/70 uppercase tracking-wider">COACH</div>
+            <div className={`text-4xl font-            <div className={`text-4xl font-            <div className={`text-4xl font-            <div className={`text-4xl font-            <div className={`text-4xl font-            <div className={`text-4xl font-            <div className={`text-4xl font-            <div classNaclubLogo} className="w-full h-full object-contain" alt="Club" />
+            ) : (
+              <div className="w-full h-full bg-gray-200 rounded flex items-center justify-center">
+                <User size={20} className="text-gray-600" />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 2. IDENTITÉ & CATÉGORIE */}
-        <div className="flex items-center gap-3 w-full border-b border-white/5 pb-2">
-           <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white truncate">{name}</h1>
-           <div className={`px-2.5 py-1 rounded-md bg-white/5 border ${theme.border}/40 text-[9px] font-black uppercase text-white shadow-inner`}>
-              {category}
-           </div>
+        {/* PLAYER NAME & CATEGORY */}
+        <div className="px-4 py-2">
+          <h2 className={`text-lg font-black uppercas          <h2 className={`text-lg font-black uppercas          <h2            <h2 className={`text-lg f        <p className="text-[10px] font-bold text-white/60          <h2 className={`text-lg font-black uppercas          <h2 className={`text-lg font-b   {/*          <h2 className={`text-lg font-black uppercas          <h2 className={`text-lg font-black uppercas          <h2            <h2 className={`text-lg f        <p className="text-[10px] font-bold text-white/60          <h2 className={`text-lg font-black uppercas          <h2 className={`text-lg font-b   {/*          <h2 className={`text-lg font-black uppercas          <h2 classNamect-cover" alt={name} />
+            ) : (
+              <User size={60} className="text-white/20" />
+            )}
+          </div>
         </div>
 
-        {/* 3. PHOTO XXL (CENTRE) */}
-        <div className="flex-1 flex items-center justify-center py-2">
-           <div className={`relative w-48 h-48 rounded-full border-4 ${theme.border} p-1 shadow-2xl overflow-hidden flex items-center justify-center bg-white/5 transition-transform duration-500 group-hover:scale-105`}>
-              {coachPhoto ? (
-                <img src={coachPhoto} className="w-full h-full object-cover" alt="Coach" />
-              ) : (
-                <User size={80} className="text-white/10" />
-              )}
-              {/* Badge Statut Pulsant */}
-              <div className={`absolute bottom-3 right-3 w-10 h-10 rounded-full border-4 border-black flex items-center justify-center ${theme.indicator} animate-pulse shadow-lg`}>
-                 {status === 'toujours_pret' ? <Flame size={18} className="text-white" /> : <CheckCircle2 size={18} className="text-white" />}
-              </div>
-           </div>
-        </div>
-
-        {/* 4. BAS DE FICHE : STATS & QR */}
-        <div className="grid grid-cols-[1.1fr_0.9fr] gap-4 pt-6 border-t border-white/5 pb-4">
-           {/* STATS À GAUCHE */}
-           <div className="space-y-2">
-              <div className="flex justify-between items-center p-2 rounded-lg bg-white/5 border border-white/5">
-                 <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Matchs</span>
-                 <span className="text-[10px] font-black text-white italic">{matchesPlayed}</span>
-              </div>
-              <div className="flex justify-between items-center p-2 rounded-lg bg-white/5 border border-white/5">
-                 <span className="text-[7px] font-black text-white/30 uppercase tracking-widest">Annonces</span>
-                 <span className="text-[10px] font-black text-white italic">{announcementsSent}</span>
-              </div>
-              <div className={`flex items-center justify-between p-2 rounded-lg bg-white/5 border ${theme.border}/20`}>
-                 <TrendingUp size={10} className={theme.accent} />
-                 <span className={`text-[10px] font-black ${theme.accent}`}>{engagementRate}%</span>
-              </div>
-           </div>
-
-           {/* QR CODE À DROITE */}
-           <div className="flex flex-col items-center justify-center">
-              <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-black/5">
-                 <QRCodeSVG value={`fc-auth-${name}`} size={70} fgColor="#000000" />
-              </div>
-              <p className="text-[5px] font-black text-gray-500 uppercase tracking-[0.2em] mt-2 italic underline text-center">Sceau de validation</p>
-           </div>
+        {/* STATS GRID (2x3) */}
+        <div className="px-3 pb-4 space-y-2">
+          {/* Row 1 */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatBo            <StatB     {/* Grade Info */}
+        <div className="px-3 pb-3">
+          <p className="text-[9px] font-black text-white/80 uppercase tracking-widest text-center">
+            {grade}
+          </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Composant StatBox pour afficher une stat FIFA
+ */
+function StatBox({ label, value }: { label: string; value: number }) {
+  const getStatColor = (val: number) => {
+    if (val >= 85) return 'text-green-400 font-black';
+    if (val >= 70) return 'text-yellow-300 font-black';
+    if (val >= 50) return 'text-orange-400 font-black';
+    return 'text-red-400 font-black';
+  };
+
+  return (
+    <div className="bg-black/40 rounded-lg p-2 border border-white/10 flex flex-col items-center">
+      <p className="text-[8px] font-bold text-white/70 uppercase tracking-wider">{label}</p>
+      <p className={`text-base font-black mt-1 ${getStatColor(value)}`}>{Math.min(99, value)}</p>
     </div>
   );
 }
