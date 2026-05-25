@@ -11,15 +11,15 @@ interface CoachViewProps {
 }
 
 /**
- * COACH_VIEW (v14.0 - FULL COCKPIT INTEGRATION)
- * Immersion 100% : Cockpit de commandement intégral.
- * Zéro boutons superflus. Navigation via le bouton (+) central.
+ * COACH_VIEW (v15.0 - REFINED FLOATING CARD)
+ * Carte "Objet Précieux" centrée avec marges.
+ * Immersion totale : TopBar et BottomNav masqués.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
   const { teamInfo } = useTeam();
 
-  // Stats simulées pour la démo (À brancher sur Supabase plus tard)
+  // Stats simulées (À brancher sur Supabase plus tard)
   const stats = {
     matchesPlayed: 12,
     announcementsSent: 8,
@@ -28,18 +28,18 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-10 flex flex-col bg-black overflow-hidden animate-in fade-in duration-1000">
+    <div className="fixed inset-0 z-10 flex flex-col items-center justify-center bg-black overflow-hidden animate-in fade-in duration-1000">
 
-      {/* BOUTON RETOUR (DISCRET) */}
+      {/* BOUTON RETOUR DISCRET (HAUT GAUCHE - SANS OVERLAP) */}
       <button
         onClick={() => router.push('/dashboard')}
-        className="absolute top-10 left-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-white active:scale-90 transition-all z-[60] shadow-2xl backdrop-blur-md"
+        className="absolute top-12 left-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-white active:scale-90 transition-all z-[60] shadow-2xl"
       >
         <ChevronLeft size={24} strokeWidth={3} />
       </button>
 
-      {/* LE COCKPIT INTÉGRAL (CARTE FULL SCREEN) */}
-      <div className="flex-1 flex flex-col">
+      {/* LA FICHE MAÎTRE (FLOTTANTE AVEC MARGES) */}
+      <div className="w-full flex justify-center px-6">
         <CoachCard
           name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
           coachPhoto={teamInfo?.coachPhoto}
@@ -48,12 +48,12 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
           category={teamInfo?.category || 'SÉNIORS'}
           points={teamInfo?.xp || 0}
           status={teamInfo?.coachStatus || 'actif'}
-          // Stats intégrées
+          // Stats
           matchesPlayed={stats.matchesPlayed}
           announcementsSent={stats.announcementsSent}
           contactsMade={stats.contactsMade}
           engagementRate={stats.engagementRate}
-          // Rayons d'action (Verso)
+          // Rayons (Verso)
           matchDist={teamInfo?.matchDistMax || 30}
           plateauDist={teamInfo?.plateauDistMax || 20}
           tournamentReach={
