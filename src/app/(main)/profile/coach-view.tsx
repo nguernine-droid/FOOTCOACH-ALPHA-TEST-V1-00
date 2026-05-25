@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase/client';
 import {
   ChevronLeft, User, Shield, MapPin, Navigation,
   Phone, Layers, Trophy, Edit3, CheckCircle2, Star, Zap,
-  Save, X, Loader2, Camera, Flame, Check
+  Save, X, Loader2, Camera, Flame, Check, Fingerprint, Info
 } from 'lucide-react';
 
 interface CoachViewProps {
@@ -18,9 +18,9 @@ interface CoachViewProps {
 type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | null;
 
 /**
- * COACH_VIEW (v24.0 - MASTER FOLDABLE DOSSIER)
- * Vue 1 : Carte de Prestige XXL.
- * Vue 2 : Dossier Profil Complet avec repliement intelligent.
+ * COACH_VIEW (v25.0 - MASTER QUALITY CONTROL)
+ * Steps 3, 4, 5 Verifiées et Validées.
+ * Affichage intégral de tous les renseignements en mode consultation.
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
@@ -99,8 +99,9 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         }).eq('id', teamInfo.id);
       }
 
-      await refreshData();
-      setEditingSection(null);
+      await refreshData(); // Action 3 : Sync Cerveau
+      setEditingSection(null); // Action 4 : Retour Consultation
+      if (navigator.vibrate) navigator.vibrate([10, 50, 10]); // Vibration Succès
     } catch (err: any) { alert(err.message); } finally { setIsSaving(false); }
   };
 
@@ -139,7 +140,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     }
   };
 
-  // --- RENDU 1 : LA CARTE DE PRESTIGE ---
   if (!showFullProfile) {
     return (
       <div className="fixed inset-0 z-10 flex flex-col items-center justify-center bg-[#050510] overflow-hidden animate-in fade-in duration-1000">
@@ -160,14 +160,13 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
             engagementRate={stats.engagementRate}
           />
         </div>
-        <p className="mt-12 text-white/20 font-black uppercase text-[11px] tracking-[0.5em] animate-pulse">Toucher_Pour_Ouvrir</p>
+        <p className="mt-12 text-white/20 font-black uppercase text-[11px] tracking-[0.5em] animate-pulse text-center">Toucher_Pour_Ouvrir</p>
       </div>
     );
   }
 
   const inputStyle = "w-full bg-gray-50 border-2 border-gray-200 rounded-2xl p-5 text-sm font-black uppercase outline-none focus:border-orange-500 transition-all text-gray-900 placeholder:text-gray-300 shadow-inner";
 
-  // --- RENDU 2 : LE DOSSIER INTERACTIF ---
   return (
     <div className="fixed inset-0 z-[70] bg-gray-100 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
 
@@ -214,6 +213,8 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                       <input placeholder="Nom" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className={inputStyle} />
                    </div>
                    <input placeholder="Surnom" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} className={inputStyle} />
+                   <input placeholder="Numéro de Licence" value={formData.licenseNumber} onChange={e => setFormData({...formData, licenseNumber: e.target.value})} className={inputStyle} />
+                   <input placeholder="Slogan / Phrase d'accroche" value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} className={inputStyle} />
                    <input placeholder="Téléphone (Privé)" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={inputStyle} />
 
                    <div className="grid grid-cols-3 gap-2 pt-2 bg-gray-100 p-1.5 rounded-2xl border-2 border-gray-200 shadow-inner">
@@ -227,17 +228,34 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                    </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-6">
-                   <div className="w-24 h-24 rounded-[2rem] border-4 border-orange-100 overflow-hidden bg-white flex items-center justify-center flex-shrink-0 shadow-lg">
-                      {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={44} className="text-gray-300" />}
-                   </div>
-                   <div className="space-y-1.5">
-                      <p className="text-2xl font-black uppercase text-gray-900 leading-none">{teamInfo?.userFirstName} {teamInfo?.userLastName}</p>
-                      <p className="text-sm font-bold text-orange-600 uppercase italic">👤 {teamInfo?.coachName}</p>
-                      <div className="flex gap-2 pt-1">
-                        <span className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-full text-[9px] font-black uppercase shadow-sm">{teamInfo?.coachGrade || 'Coach Engagé'}</span>
-                      </div>
-                   </div>
+                <div className="space-y-6">
+                  <div className="flex items-center gap-6">
+                    <div className="w-24 h-24 rounded-[2rem] border-4 border-orange-100 overflow-hidden bg-white flex items-center justify-center flex-shrink-0 shadow-lg">
+                        {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={44} className="text-gray-300" />}
+                    </div>
+                    <div className="space-y-1.5 flex-1">
+                        <p className="text-2xl font-black uppercase text-gray-900 leading-none">{teamInfo?.userFirstName} {teamInfo?.userLastName}</p>
+                        <p className="text-sm font-bold text-orange-600 uppercase italic">👤 {teamInfo?.coachName}</p>
+                        <div className="flex gap-2 pt-1">
+                          <span className="px-4 py-1.5 bg-orange-100 text-orange-700 rounded-full text-[9px] font-black uppercase shadow-sm">{teamInfo?.coachGrade || 'Coach Engagé'}</span>
+                        </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100 shadow-inner">
+                     <div className="flex items-center gap-3">
+                        <Trophy size={14} className="text-orange-500" />
+                        <p className="text-[10px] font-black text-gray-900 uppercase">Slogan: <span className="italic text-gray-500 ml-1">"{teamInfo?.bio || "Droit au but !"}"</span></p>
+                     </div>
+                     <div className="flex items-center gap-3">
+                        <Fingerprint size={14} className="text-orange-500" />
+                        <p className="text-[10px] font-black text-gray-900 uppercase">Licence: <span className="text-gray-500 ml-1">{teamInfo?.licenseNumber || "Non renseignée"}</span></p>
+                     </div>
+                     <div className="flex items-center gap-3 border-t border-gray-200 pt-3 mt-1">
+                        <Phone size={14} className="text-gray-400" />
+                        <p className="text-[10px] font-black text-gray-900 uppercase">Contact Privé: <span className="text-gray-500 ml-1">{teamInfo?.phone || "Masqué"}</span> <span className="ml-2 text-[8px] text-gray-300">🔒 (Invisible aux tiers)</span></p>
+                     </div>
+                  </div>
                 </div>
               )}
            </div>
@@ -284,6 +302,13 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                        <span className="px-5 py-3 bg-orange-50 text-orange-700 rounded-2xl shadow-sm border border-orange-100">🏛️ {teamInfo?.category}</span>
                        <span className="px-5 py-3 bg-blue-50 text-blue-700 rounded-2xl shadow-sm border border-blue-100">⚡ {teamInfo?.level}</span>
                      </div>
+                     {teamInfo?.refCategories && teamInfo.refCategories.length > 0 && (
+                       <div className="flex flex-wrap justify-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                          {teamInfo.refCategories.map(cat => (
+                            <span key={cat} className="px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-[8px] font-black text-gray-500 uppercase">{cat}</span>
+                          ))}
+                       </div>
+                     )}
                   </div>
                 </>
               )}
