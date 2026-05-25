@@ -162,8 +162,19 @@ function NewSignalContent() {
                    </button>
                    {isCategoryOpen && (
                      <div className="absolute z-50 top-full left-0 right-0 mt-3 bg-[#111120] rounded-[2rem] border-2 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
-                        {currentCategories.map(cat => (
-                          <button key={cat.value} type="button" onClick={() => { setCategory(cat.value); setIsCategoryOpen(false); }} className={`w-full p-5 text-left text-xs font-black uppercase border-b border-white/5 hover:bg-white/5 ${mainCategory === cat.value ? m.text : 'text-white/40'}`}>{cat.label}</button>
+                        {currentCategories.map((cat, idx) => (
+                          <button
+                            key={cat.value}
+                            type="button"
+                            onClick={() => { setCategory(cat.value); setIsCategoryOpen(false); }}
+                            className={`w-full p-5 text-left text-xs font-black uppercase flex items-center justify-between transition-colors
+                              ${idx !== currentCategories.length - 1 ? 'border-b border-white/5' : ''}
+                              ${mainCategory === cat.value ? `bg-white/10 ${m.text}` : 'text-white hover:bg-white/5'}
+                            `}
+                          >
+                            <span>{cat.label}</span>
+                            {mainCategory === cat.value && <Check size={14} className={m.text} />}
+                          </button>
                         ))}
                      </div>
                    )}
