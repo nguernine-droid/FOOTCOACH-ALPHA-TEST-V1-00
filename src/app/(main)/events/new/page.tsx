@@ -12,11 +12,12 @@ type EventType = 'training' | 'match' | 'plateau' | 'tournament';
 interface Club { id: string; name: string; }
 
 // --- MOTEUR DE COHÉRENCE COULEURS ---
-const MISSION_THEME: Record<EventType, { border: string; glow: string; text: string; primary: string }> = {
-  'training': { border: 'border-sky-500', glow: 'shadow-[0_0_15px_#0ea5e944]', text: 'text-sky-400', primary: 'bg-sky-500' },
-  'match': { border: 'border-[#39FF14]', glow: 'shadow-[0_0_15px_#39FF1444]', text: 'text-[#39FF14]', primary: 'bg-[#39FF14]' },
-  'plateau': { border: 'border-blue-500', glow: 'shadow-[0_0_15px_#3b82f644]', text: 'text-blue-500', primary: 'bg-blue-500' },
-  'tournament': { border: 'border-red-600', glow: 'shadow-[0_0_15px_#dc262644]', text: 'text-red-600', primary: 'bg-red-600' }
+const MISSION_THEME: Record<string, { border: string; glow: string; text: string; primary: string; bgSoft: string }> = {
+  'training': { border: 'border-sky-500', glow: 'shadow-[0_0_15px_#0ea5e944]', text: 'text-sky-400', primary: 'bg-sky-500', bgSoft: 'bg-sky-950/20' },
+  'amical': { border: 'border-[#39FF14]', glow: 'shadow-[0_0_25px_#39FF1466]', text: 'text-[#39FF14]', primary: 'bg-[#39FF14]', bgSoft: 'bg-[#39FF14]/5' },
+  'officiel': { border: 'border-red-600', glow: 'shadow-[0_0_25px_#dc262666]', text: 'text-red-600', primary: 'bg-red-600', bgSoft: 'bg-red-950/20' },
+  'plateau': { border: 'border-blue-500', glow: 'shadow-[0_0_15px_#3b82f644]', text: 'text-blue-500', primary: 'bg-blue-500', bgSoft: 'bg-blue-950/20' },
+  'tournament': { border: 'border-yellow-500', glow: 'shadow-[0_0_15px_#eab30844]', text: 'text-yellow-500', primary: 'bg-yellow-500', bgSoft: 'bg-yellow-950/10' }
 };
 
 function NewEventContent() {
@@ -43,9 +44,10 @@ function NewEventContent() {
   const [isOpponentMenuOpen, setIsOpponentMenuOpen] = useState(false);
   const [allClubs, setAllClubs] = useState<Club[]>([]);
   const [plateauOpponents, setPlateauOpponents] = useState(['', '', '']);
-  const [plateauSearchIndex, setPlateauSearchIndex] = useState<number | null>(null);
 
-  const m = MISSION_THEME[type];
+  // Logique de couleur dynamique (Amical/Officiel)
+  const currentKey = type === 'match' ? (isOfficial ? 'officiel' : 'amical') : type;
+  const m = MISSION_THEME[currentKey] || MISSION_THEME['training'];
 
   useEffect(() => {
     if (editId) {
@@ -77,16 +79,15 @@ function NewEventContent() {
   }, []);
 
   const filteredClubs = useMemo(() => {
-    const search = plateauSearchIndex !== null ? plateauOpponents[plateauSearchIndex] : opponentSearch;
-    if (!search?.trim()) return [];
-    return allClubs.filter(c => c.name.toLowerCase().includes(search.toLowerCase())).slice(0, 10);
-  }, [allClubs, opponentSearch, plateauOpponents, plateauSearchIndex]);
+    if (!opponentSearch?.trim()) return [];
+    return allClubs.filter(c => c.name.toLowerCase().includes(opponentSearch.toLowerCase())).slice(0, 10);
+  }, [allClubs, opponentSearch]);
 
   const eventTypes = [
     { id: 'training', label: 'Entraînement', desc: 'Séance technique', icon: <Play size={24} />, color: 'bg-sky-500' },
     { id: 'match', label: 'Match', desc: 'Rencontre de combat', icon: <Trophy size={24} />, color: 'bg-red-600' },
     { id: 'plateau', label: 'Plateau', desc: '3 Matchs max', icon: <Zap size={24} />, color: 'bg-purple-700' },
-    { id: 'tournament', label: 'Tournoi', desc: 'Compétition complète', icon: <Shield size={24} />, color: 'bg-red-600' }, // CHANGÉ EN ROUGE
+    { id: 'tournament', label: 'Tournoi', desc: 'Compétition complète', icon: <Shield size={24} />, color: 'bg-yellow-500' },
   ];
 
   const handleScroll = () => {
@@ -108,8 +109,7 @@ function NewEventContent() {
       const eventData = {
           title: type === 'match' ? `vs ${finalOpponent || 'ADVERSAIRE'}` : (type === 'training' ? `Séance ${trainingTheme}` : type.toUpperCase()),
           type, date: startDate, time: startTime,
-          city: city.toUpperCase(),
-          stadium_name: stadiumName.toUpperCase(),
+          city: city.toUpperCase(), stadium_name: stadiumName.toUpperCase(),
           location: `${stadiumName} ${city}`.trim(),
           home_club_id: teamInfo?.id,
           away_club_id: type === 'match' ? selectedOpponent?.id : null,
@@ -131,39 +131,48 @@ function NewEventContent() {
   };
 
   return (
-    <div className="min-h-screen max-w-md mx-auto pb-44 bg-[#050510] font-sans">
+    <div className={`min-h-screen max-w-md mx-auto pb-44 ${m.bgSoft} transition-colors duration-700 font-sans`}>
       <main className="p-6 space-y-8 animate-in fade-in duration-700">
         <div className="flex items-center gap-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl active:scale-90 transition-transform"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">{editId ? 'Modifier_Planning' : 'Nouveau_Planning'}</h1></div>
 
-        {/* TYPE SELECTOR (CAROUSEL) */}
-        <div ref={scrollRef} onScroll={handleScroll} className={`flex overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-[3rem] border-2 ${m.border} h-44 shadow-2xl transition-all duration-500`}>
+        {/* TYPE SELECTOR (CAROUSEL DYNAMIQUE) */}
+        <div ref={scrollRef} onScroll={handleScroll} className={`flex overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-[3rem] border-4 ${m.border} h-48 shadow-2xl transition-all duration-500`}>
           {eventTypes.map((t) => (
-            <div key={t.id} className={`min-w-full snap-center ${type === 'tournament' ? 'bg-red-600' : t.color} p-8 flex flex-col justify-center text-left relative overflow-hidden`}>
-              <h2 className="text-4xl font-black uppercase italic leading-none">{t.label}</h2>
+            <div key={t.id} className={`min-w-full snap-center ${t.id === 'match' ? m.primary : t.color} p-8 flex flex-col justify-center text-left relative overflow-hidden transition-colors duration-500`}>
+              <h2 className={`text-5xl font-black uppercase italic leading-none ${t.id === 'match' && !isOfficial ? 'text-black' : 'text-white'}`}>{t.label}</h2>
+
               {t.id === 'match' && (
-                <button type="button" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsOfficial(!isOfficial); }} className={`mt-4 w-48 h-10 rounded-full bg-black/40 border-2 transition-all duration-500 p-1 flex relative items-center z-[100] ${isOfficial ? 'border-orange-500' : 'border-[#39FF14]'}`}>
-                   <div className={`flex-1 text-[7px] font-black z-10 transition-opacity ${isOfficial ? 'opacity-30' : 'text-[#39FF14]'}`}>AMICAL</div>
-                   <div className={`flex-1 text-[7px] font-black z-10 transition-opacity ${!isOfficial ? 'opacity-30' : 'text-orange-500'}`}>OFFICIEL</div>
-                   <div className={`absolute top-1 bottom-1 w-[48%] bg-white rounded-full shadow-2xl transition-all duration-300 ${isOfficial ? 'left-[50%]' : 'left-[1%]'}`} />
+                /* BATTLE SWITCH XXL */
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    setIsOfficial(!isOfficial);
+                    if (navigator.vibrate) navigator.vibrate(15);
+                  }}
+                  className={`mt-6 w-56 h-12 rounded-full bg-black/40 border-2 transition-all duration-500 p-1 flex relative items-center z-[100] shadow-2xl ${isOfficial ? 'border-white/40' : 'border-black/20'}`}
+                >
+                   <div className={`flex-1 text-[11px] font-black z-10 transition-all duration-500 ${isOfficial ? 'text-white/20' : 'text-black italic'}`}>AMICAL</div>
+                   <div className={`flex-1 text-[11px] font-black z-10 transition-all duration-500 ${!isOfficial ? 'text-white/20' : 'text-white italic'}`}>OFFICIEL</div>
+                   <div className={`absolute top-1 bottom-1 w-[48%] bg-white rounded-full shadow-2xl transition-all duration-500 transform ${isOfficial ? 'left-[50%]' : 'left-[1%]'}`} />
                 </button>
               )}
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] mt-2 opacity-70">{t.desc}</p>
+              <p className={`text-[10px] font-black uppercase tracking-[0.2em] mt-3 opacity-60 ${t.id === 'match' && !isOfficial ? 'text-black' : 'text-white'}`}>{t.desc}</p>
             </div>
           ))}
         </div>
 
         <div className="space-y-6">
-          {/* 1. CONFIGURATION SPÉCIFIQUE */}
           <section className={styles.card}>
             {type === 'match' && (
               <div className="relative">
                 <label className={styles.label}>Équipe Adverse</label>
                 <div className="relative">
                   <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input placeholder="RECHERCHER..." value={selectedOpponent ? selectedOpponent.name : opponentSearch} onChange={(e) => { setOpponentSearch(e.target.value.toUpperCase()); setIsOpponentMenuOpen(true); if (selectedOpponent) setSelectedOpponent(null); }} className={`${styles.input} pl-12 ${selectedOpponent ? 'border-neon-green text-neon-green' : ''}`} />
+                  <input placeholder="NOM DU CLUB..." value={selectedOpponent ? selectedOpponent.name : opponentSearch} onChange={(e) => { setOpponentSearch(e.target.value.toUpperCase()); setIsOpponentMenuOpen(true); if (selectedOpponent) setSelectedOpponent(null); }} className={`${styles.input} pl-12 ${selectedOpponent ? 'border-white/40' : ''}`} />
                 </div>
                 {isOpponentMenuOpen && opponentSearch.trim() && (
-                  <div className="absolute z-[200] w-full mt-2 bg-[#111] border-2 border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="absolute z-[200] w-full mt-2 bg-[#111120] border-2 border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                     {filteredClubs.map(club => (<button key={club.id} type="button" onClick={() => { setSelectedOpponent(club); setOpponentSearch(''); setIsOpponentMenuOpen(false); }} className="w-full p-5 text-left border-b border-white/5 hover:bg-white/5 transition-colors text-xs font-black uppercase text-white">{club.name}</button>))}
                   </div>
                 )}
@@ -179,7 +188,6 @@ function NewEventContent() {
             )}
           </section>
 
-          {/* 2. LOGISTIQUE & ARÈNE */}
           <section className={styles.card}>
              <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -198,7 +206,6 @@ function NewEventContent() {
              </div>
           </section>
 
-          {/* 3. CONSIGNES */}
           <section className={styles.card}>
              <label className={styles.label}>Consignes & Détails</label>
              <textarea placeholder="EX: RDV 13H00. MAILLOTS BLEUS..." value={instructions} onChange={e => setInstructions(e.target.value)} className={`${styles.input} min-h-[100px] resize-none text-sm`} />

@@ -11,7 +11,6 @@ import { supabase } from '@/lib/supabase/client';
 
 type AnnouncementType = 'Match Amical' | 'Tournoi' | 'Plateau';
 
-// --- COULEURS TACTIQUES (LE DESIGN VALIDÉ) ---
 const THEME: Record<AnnouncementType, {
   primary: string;
   glow: string;
@@ -29,7 +28,6 @@ function NewSignalContent() {
   const { teamInfo } = useTeam();
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- ÉTATS DU FORMULAIRE ---
   const [type, setType] = useState<AnnouncementType>('Match Amical');
   const [mainCategory, setCategory] = useState(teamInfo?.category || '');
   const [desiredLevel, setDesiredLevel] = useState('Espoir');
@@ -45,16 +43,22 @@ function NewSignalContent() {
 
   const m = THEME[type];
 
-  // --- LISTES CATÉGORIES (DISTRICT COMPLIANT) ---
+  // --- LISTES CATÉGORIES CORRIGÉES (VALEURS COMPLÈTES) ---
   const categoriesAmical = [
-    { label: 'U12/U13', value: 'U13' }, { label: 'U14/U15', value: 'U15' },
-    { label: 'U16/U17', value: 'U17' }, { label: 'SÉNIORS', value: 'SÉNIORS' },
+    { label: 'U12/U13', value: 'U12/U13' },
+    { label: 'U14/U15', value: 'U14/U15' },
+    { label: 'U16/U17', value: 'U16/U17' },
+    { label: 'SÉNIORS', value: 'SÉNIORS' },
     { label: 'VÉTÉRANS', value: 'VÉTÉRANS' }
   ];
+
   const categoriesPlateau = [
-    { label: 'U6/U7', value: 'U7' }, { label: 'U8/U9', value: 'U9' },
-    { label: 'U10/U11', value: 'U11' }, { label: 'U12/U13', value: 'U13' }
+    { label: 'U6/U7', value: 'U6/U7' },
+    { label: 'U8/U9', value: 'U8/U9' },
+    { label: 'U10/U11', value: 'U10/U11' },
+    { label: 'U12/U13', value: 'U12/U13' }
   ];
+
   const categoriesTournoi = Array.from({ length: 12 }, (_, i) => ({ label: `U${i + 6}`, value: `U${i + 6}` }));
 
   const currentCategories = type === 'Plateau' ? categoriesPlateau : type === 'Tournoi' ? categoriesTournoi : categoriesAmical;
@@ -98,7 +102,7 @@ function NewSignalContent() {
         comment: comment.toUpperCase(), status: 'OPEN'
       }]);
       if (error) throw error;
-      alert("✅ SIGNAL ENVOYÉ !");
+      alert("✅ ANNONCE PUBLIÉE !");
       router.push('/radar');
     } catch (err: any) { alert(err.message); } finally { setIsLoading(false); }
   };
@@ -118,8 +122,6 @@ function NewSignalContent() {
       </header>
 
       <form onSubmit={handleSubmit} className="p-5 space-y-10 text-left animate-in fade-in duration-700">
-
-        {/* 1. JE PROPOSE (TYPE) */}
         <section className={styles.card}>
            <div className="space-y-4">
               <label className={styles.label}><Trophy size={14}/> JE PROPOSE</label>
@@ -131,29 +133,20 @@ function NewSignalContent() {
            </div>
         </section>
 
-        {/* 2. CATÉGORIE & QUOTAS */}
         <section className={styles.card}>
            <label className={styles.label}><Layers size={14}/> CATÉGORIE</label>
-
            {type === 'Tournoi' ? (
              <div className="space-y-6">
                 <div className="flex flex-wrap gap-2">
                    {currentCategories.map(cat => (
-                     <button
-                        key={cat.value}
-                        type="button"
-                        onClick={() => updateQuota(cat.value, (quotas[cat.value] ? -quotas[cat.value] : 1))}
-                        className={`px-4 py-3 rounded-2xl text-[10px] font-black transition-all ${quotas[cat.value] > 0 ? `${m.primary} text-black shadow-lg scale-110` : 'bg-white/10 text-white hover:bg-white/20 border border-white/5'}`}
-                     >
-                        {cat.label}
-                     </button>
+                     <button key={cat.value} type="button" onClick={() => updateQuota(cat.value, (quotas[cat.value] ? -quotas[cat.value] : 1))} className={`px-4 py-3 rounded-2xl text-[10px] font-black transition-all ${quotas[cat.value] > 0 ? `${m.primary} text-black shadow-lg scale-110` : 'bg-white/10 text-white hover:bg-white/20 border border-white/5'}`}>{cat.label}</button>
                    ))}
                 </div>
                 {Object.keys(quotas).filter(k => quotas[k] > 0).map(k => (
                   <div key={k} className={`flex items-center justify-between p-4 bg-black/40 rounded-2xl border ${m.border}/20 animate-in slide-in-from-bottom-2`}>
                      <span className={`text-sm font-black ${m.text}`}>{k}</span>
                      <div className="flex items-center gap-5">
-                        <button type="button" onClick={() => updateQuota(k, -1)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 active:bg-red-500/20"><Minus size={16}/></button>
+                        <button type="button" onClick={() => updateQuota(k, -1)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40"><Minus size={16}/></button>
                         <span className="text-xl font-black w-6 text-center text-white">{quotas[k]}</span>
                         <button type="button" onClick={() => updateQuota(k, 1)} className={`w-10 h-10 rounded-xl ${m.primary} flex items-center justify-center text-black shadow-lg`}><Plus size={16}/></button>
                      </div>
@@ -168,17 +161,9 @@ function NewSignalContent() {
                       <ChevronDown size={20} className={`${m.text} transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`} />
                    </button>
                    {isCategoryOpen && (
-                     <div className="absolute z-50 top-full left-0 right-0 mt-3 bg-[#111120] rounded-[2rem] border-2 border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+                     <div className="absolute z-50 top-full left-0 right-0 mt-3 bg-[#111120] rounded-[2rem] border-2 border-white/10 shadow-2xl overflow-hidden">
                         {currentCategories.map((cat, idx) => (
-                          <button
-                            key={cat.value}
-                            type="button"
-                            onClick={() => { setCategory(cat.value); setIsCategoryOpen(false); }}
-                            className={`w-full p-5 text-left text-xs font-black uppercase flex items-center justify-between transition-colors
-                              ${idx !== currentCategories.length - 1 ? 'border-b border-white/5' : ''}
-                              ${mainCategory === cat.value ? `bg-white/10 ${m.text}` : 'text-white hover:bg-white/5'}
-                            `}
-                          >
+                          <button key={cat.value} type="button" onClick={() => { setCategory(cat.value); setIsCategoryOpen(false); }} className={`w-full p-5 text-left text-xs font-black uppercase flex items-center justify-between transition-colors ${idx !== currentCategories.length - 1 ? 'border-b border-white/5' : ''} ${mainCategory === cat.value ? `bg-white/10 ${m.text}` : 'text-white hover:bg-white/5'}`}>
                             <span>{cat.label}</span>
                             {mainCategory === cat.value && <Check size={14} className={m.text} />}
                           </button>
@@ -200,7 +185,6 @@ function NewSignalContent() {
            )}
         </section>
 
-        {/* 3. LIEU & GPS */}
         <section className={styles.card}>
            <label className={styles.label}><Navigation size={14}/> LIEU</label>
            <div className="flex gap-2 p-1 bg-black/40 rounded-2xl border border-white/5">
@@ -211,7 +195,7 @@ function NewSignalContent() {
            {travelPreference === 'away' ? (
              <div className="pt-4 space-y-4">
                 <div className="flex justify-between items-end">
-                   <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Rayon de projection</label>
+                   <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Rayon Max</label>
                    <span className={`text-2xl font-black ${m.text} italic`}>{distanceMax} KM</span>
                 </div>
                 <input type="range" min="5" max="100" step="5" value={distanceMax} onChange={e => setDistanceMax(parseInt(e.target.value))} className={`w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-current ${m.text}`} />
@@ -224,7 +208,6 @@ function NewSignalContent() {
            )}
         </section>
 
-        {/* 4. DATE ET HEURE */}
         <section className={styles.card}>
            <label className={styles.label}><Clock size={14}/> DATE ET HEURE</label>
            <div className="grid grid-cols-2 gap-4">
@@ -234,9 +217,8 @@ function NewSignalContent() {
            <input placeholder="FENÊTRE (EX: MERCREDI PROCHAIN)" value={availability} onChange={e => setAvailability(e.target.value)} className={styles.input} />
         </section>
 
-        {/* 5. BRIEFING */}
         <section className="space-y-4">
-          <label className={styles.label}>INFORMATIONS COMPLÉMENTAIRES</label>
+          <label className={styles.label}>CONSIGNES & DÉTAILS</label>
           <textarea placeholder="EX: FOOT À 11, NIVEAU EXCELLENCE, PRÉVOIR PIQUE-NIQUE..." value={comment} onChange={e => setComment(e.target.value)} className={`w-full h-40 bg-[#0A0A15] border-2 ${m.border}/20 rounded-[2.5rem] p-8 text-sm font-medium text-white outline-none focus:${m.border} transition-all shadow-inner`} />
         </section>
 
