@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Shield, Flame, CheckCircle2, Navigation, Zap, Trophy, Layers, Share2 } from 'lucide-react';
+import { Shield, Flame, CheckCircle2, Navigation, Zap, Trophy, Layers, Share2, User } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion } from 'framer-motion';
 
@@ -10,6 +10,7 @@ interface CoachCardProps {
   slogan: string;
   clubName: string;
   clubLogo?: string;
+  coachPhoto?: string;
   category: string;
   points: number;
   grade: string;
@@ -20,7 +21,7 @@ interface CoachCardProps {
 }
 
 export function CoachCard({
-  name, slogan, clubName, clubLogo, category, points, grade, status,
+  name, slogan, clubName, clubLogo, coachPhoto, category, points, grade, status,
   matchDist, plateauDist, tournamentReach
 }: CoachCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -56,8 +57,12 @@ export function CoachCard({
 
               {/* PHOTO DU COACH */}
               <div className="relative mt-2">
-                 <div className="w-44 h-44 rounded-full border-4 border-orange-600 p-1 bg-gradient-to-b from-orange-500 to-transparent shadow-2xl overflow-hidden">
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nono" className="w-full h-full object-cover" alt="Coach" />
+                 <div className="w-44 h-44 rounded-full border-4 border-orange-600 p-1 bg-gradient-to-b from-orange-500 to-transparent shadow-2xl overflow-hidden flex items-center justify-center">
+                    {coachPhoto ? (
+                      <img src={coachPhoto} className="w-full h-full object-cover" alt="Coach" />
+                    ) : (
+                      <User size={64} className="text-white/20" />
+                    )}
                  </div>
                  {/* Badge Statut */}
                  <div className={`absolute bottom-2 right-2 w-10 h-10 rounded-full border-4 border-black flex items-center justify-center ${statusColors[status]} animate-pulse`}>
