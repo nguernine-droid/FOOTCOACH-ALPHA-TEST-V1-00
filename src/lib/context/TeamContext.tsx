@@ -17,6 +17,8 @@ export interface TeamInfo {
   coachName: string;
   coachPhoto?: string;
   clubLogo?: string;
+  clubCity?: string;
+  clubStadium?: string;
   userFirstName?: string;
   userLastName?: string;
   bio?: string;
@@ -103,6 +105,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             coachName: profile.nickname || profile.first_name || 'COACH',
             coachPhoto: profile.avatar_url,
             clubLogo: profile.clubs?.logo_url,
+            clubCity: profile.clubs?.city,
+            clubStadium: profile.clubs?.stadium,
             userFirstName: profile.first_name,
             userLastName: profile.last_name,
             bio: profile.bio,
