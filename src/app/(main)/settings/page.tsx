@@ -26,9 +26,10 @@ import {
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
+import { CURRENT_APP_VERSION } from '@/components/VersionGuard';
 
 /**
- * SETTINGS_PAGE (v7.5 - ALPHA TEST V1)
+ * SETTINGS_PAGE (v7.6 - ALPHA TEST V1)
  * Centralisation des réglages techniques, session et Feedback.
  */
 export default function SettingsPage() {
@@ -441,7 +442,7 @@ export default function SettingsPage() {
         </section>
 
         <p className="text-[7px] font-black text-center text-gray-700 uppercase tracking-[0.5em] pt-4 pb-10">
-          FootCoach Alpha V1 // Build 7.5.0
+          FootCoach Alpha V1 // Build {CURRENT_APP_VERSION}
         </p>
       </div>
     </main>

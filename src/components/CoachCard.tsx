@@ -140,7 +140,6 @@ export function CoachCard({
              <motion.div
                initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.5, y: 100 }}
                className="bg-white p-8 rounded-[3rem] shadow-[0_0_60px_rgba(255,255,255,0.2)]"
-               onClick={(e) => e.stopPropagation()}
              >
                 <QRCodeSVG value={qrValue} size={260} fgColor="#000000" />
              </motion.div>
