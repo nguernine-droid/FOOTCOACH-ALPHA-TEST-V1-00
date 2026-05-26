@@ -24,7 +24,7 @@ type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | null;
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
-  const { teamInfo, refreshData } = useTeam();
+  const { teamInfo, refreshData, theme, setTheme } = useTeam();
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -187,10 +187,18 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     <div className="fixed inset-0 z-[70] bg-gray-100 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
 
       {/* HEADER RÉTRACTABLE */}
-      <div onClick={handleBack} className="p-8 pb-4 flex items-center justify-between bg-gray-100/80 backdrop-blur-md sticky top-0 z-[90] cursor-pointer active:bg-gray-200/50 transition-colors">
+      <div onClick={handleBack} className="p-8 pb-4 flex items-center justify-between bg-gray-100/80 backdrop-blur-md sticky top-0 z-[90] cursor-pointer active:bg-gray-200/50 transition-colors border-b border-gray-200">
          <button className="text-gray-900 p-3 bg-white rounded-2xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={24} strokeWidth={3} /></button>
          <h1 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 drop-shadow-sm">Profil_Dossier</h1>
-         <div className="w-12 h-12 rounded-xl bg-orange-600/10 flex items-center justify-center border border-orange-600/20"><User size={20} className="text-orange-600" /></div>
+         <div className="flex items-center gap-2">
+           <button
+             onClick={(e) => { e.stopPropagation(); setTheme(theme === 'classic' ? 'nexus' : 'classic'); }}
+             className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase transition-all shadow-sm border ${theme === 'nexus' ? 'bg-black text-neon-cyan border-neon-cyan' : 'bg-white text-gray-400 border-gray-200'}`}
+           >
+             {theme === 'nexus' ? 'MODE NEXUS' : 'MODE CLASSIC'}
+           </button>
+           <div className="w-12 h-12 rounded-xl bg-orange-600/10 flex items-center justify-center border border-orange-600/20"><User size={20} className="text-orange-600" /></div>
+         </div>
       </div>
 
       <main className="p-5 max-w-2xl mx-auto space-y-10 pb-48 text-left">
