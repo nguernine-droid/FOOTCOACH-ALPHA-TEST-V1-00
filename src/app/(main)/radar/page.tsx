@@ -109,6 +109,20 @@ export default function RadarPage() {
 
   const styles = isPro ? { accent: 'text-orange-600', btnPrimary: 'bg-orange-600 text-white shadow-lg', tabActive: 'bg-orange-600 text-white', tabInactive: 'bg-gray-100 text-gray-500' } : { accent: 'text-neon-cyan', btnPrimary: 'bg-neon-cyan text-black shadow-lg', tabActive: 'bg-neon-cyan text-black', tabInactive: 'bg-white/5 text-gray-500' };
 
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm("⚠️ Confirmer la suppression de cette annonce ?")) return;
+    try {
+      const { error } = await supabase.from('match_requests').delete().eq('id', id);
+      if (error) throw error;
+      setRequests(prev => prev.filter(r => r.id !== id));
+      if (navigator.vibrate) navigator.vibrate(50);
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleEditRequest = (id: string) => {
+    router.push(`/radar/new?id=${id}`);
+  };
+
   return (
     <main className={`min-h-screen pb-32 max-w-md mx-auto p-4 space-y-6 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
       <div className="flex justify-between items-center gap-4">
@@ -154,7 +168,20 @@ export default function RadarPage() {
         </section>
       ) : (
         <div className="space-y-6">
-           {filteredRequests.map(req => <MatchRequestCard key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId} onInterested={()=>{}} onAccept={()=>{}} onRefuse={()=>{}} onChat={(r) => setSelectedChatRequest(r)} />)}
+           {filteredRequests.map(req => (
+             <MatchRequestCard
+               key={req.id}
+               request={req}
+               isPro={isPro}
+               currentCoachId={currentUserId}
+               onInterested={()=>{}}
+               onAccept={()=>{}}
+               onRefuse={()=>{}}
+               onChat={(r) => setSelectedChatRequest(r)}
+               onDelete={handleDeleteRequest}
+               onEdit={handleEditRequest}
+             />
+           ))}
            {filteredRequests.length === 0 && <div className="py-20 text-center opacity-30 italic uppercase text-[10px]">Aucun signal détecté</div>}
         </div>
       )}
