@@ -65,7 +65,12 @@ export default function RadarPage() {
 
       if (error) throw error;
 
-      const formatted: MatchRequest[] = (data || []).map((item: any) => ({
+      // SÉCURITÉ ANTI-DOUBLONS VISUELS (V1.0.299)
+      const uniqueData = (data || []).filter((v, i, a) =>
+        a.findIndex(t => t.id === v.id) === i
+      );
+
+      const formatted: MatchRequest[] = uniqueData.map((item: any) => ({
         id: item.id,
         coachId: item.coach_id,
         coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
