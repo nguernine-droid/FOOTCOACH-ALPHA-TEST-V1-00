@@ -61,7 +61,8 @@ export default function RadarPage() {
         .from('match_requests')
         .select(`*, profiles:coach_id (first_name, last_name, clubs:club_id (name, logo_url))`)
         .neq('status', 'EXPIRED')
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: true }) // Tri par date d'événement (ordre chronologique)
+        .order('time', { ascending: true }); // Puis par heure
 
       if (error) throw error;
 
