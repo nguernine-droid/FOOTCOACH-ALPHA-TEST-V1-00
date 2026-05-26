@@ -2,8 +2,8 @@
 
 import React from 'react';
 import {
-  MapPin, Clock, Shield, Zap,
-  CheckCircle2, XCircle, Activity, MessageSquare, Wifi, Landmark
+  Shield, Zap, Star, MessageSquare, Clock, MapPin,
+  CheckCircle2, XCircle, Wifi, Trophy, Layers, ChevronRight
 } from 'lucide-react';
 import { MatchRequest } from './page';
 
@@ -18,154 +18,115 @@ interface MatchRequestCardProps {
 }
 
 /**
- * MATCH_REQUEST_CARD (v8.4 - ALPHA TEST V1)
- * Affichage du stade si disponible.
+ * MATCH_REQUEST_CARD (v27.0 - MASTER CLASSIC ELITE)
+ * Design "Mini-Carte" avec Blasons XXL et Hiérarchie de Terrain.
  */
 export function MatchRequestCard({
-  request,
-  isPro,
-  currentCoachId,
-  onInterested,
-  onAccept,
-  onRefuse,
-  onChat
+  request, isPro, currentCoachId, onInterested, onAccept, onRefuse, onChat
 }: MatchRequestCardProps) {
+
   const isMine = request.coachId === currentCoachId;
   const isPending = request.status === 'PENDING';
   const isMatched = request.status === 'MATCHED';
   const amIRespondent = request.respondentId === currentCoachId;
 
-  const accentColor = isPro ? 'text-orange-600' : 'text-neon-cyan';
-  const accentBorder = isPro ? 'border-gray-200' : 'border-neon-cyan/30';
-  const cardBg = isPro ? 'bg-white' : 'bg-[#0A0A0A]';
-
-  const getTypeStyles = () => {
-    switch (request.type) {
-      case 'Match Amical': return 'bg-orange-500/10 text-orange-500 border-orange-500/30';
-      case 'Tournoi': return 'bg-purple-500/10 text-purple-500 border-purple-500/30';
-      case 'Plateau': return 'bg-green-500/10 text-green-500 border-green-500/30';
-      default: return 'bg-blue-500/10 text-blue-500 border-blue-500/30';
-    }
+  // --- COULEURS TACTIQUES ---
+  const typeThemes = {
+    'Match Amical': { border: 'border-[#16a34a]', glow: 'shadow-[0_0_15px_rgba(22,163,74,0.3)]', accent: 'text-[#16a34a]', bg: 'bg-[#16a34a]/10', icon: <Zap size={14}/> },
+    'Plateau': { border: 'border-blue-600', glow: 'shadow-[0_0_15px_rgba(37,99,235,0.3)]', accent: 'text-blue-500', bg: 'bg-blue-600/10', icon: <Layers size={14}/> },
+    'Tournoi': { border: 'border-red-600', glow: 'shadow-[0_0_15px_rgba(220,38,38,0.3)]', accent: 'text-red-500', bg: 'bg-red-600/10', icon: <Trophy size={14}/> }
   };
 
-  return (
-    <div className={`p-5 rounded-3xl border-2 transition-all group ${cardBg} ${accentBorder} shadow-xl relative overflow-hidden`}>
-      {!isPro && <div className="absolute inset-0 bg-neon-cyan/[0.03] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />}
+  const t = typeThemes[request.type as keyof typeof typeThemes] || typeThemes['Match Amical'];
 
-      <div className="relative z-10 space-y-4 text-left">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center ${isPro ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/10'}`}>
-              {request.coachLogo ? (
-                <img src={request.coachLogo} alt="Logo" className="w-full h-full object-contain p-1.5" />
-              ) : (
-                <Shield size={24} className={isMine ? 'text-orange-600' : accentColor} />
-              )}
+  return (
+    <div className={`w-full bg-white rounded-[2.5rem] border-[3px] ${t.border} ${t.glow} overflow-hidden relative transition-all active:scale-[0.98] group`}>
+
+      {/* 1. SOMMET : CLUB & TYPE */}
+      <div className="flex justify-between items-center p-5 pb-3 border-b border-gray-100">
+         <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white rounded-xl p-1.5 shadow-md border border-gray-100 flex items-center justify-center">
+               {request.coachLogo ? <img src={request.coachLogo} className="w-full h-full object-contain" /> : <Shield className="text-gray-200" size={24} />}
             </div>
             <div className="text-left">
-              <h4 className={`text-sm font-black uppercase italic ${isPro ? 'text-gray-900' : 'text-white'}`}>
-                {request.coachClub}
-              </h4>
-              <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
-                {request.coachName} • {request.category}
-              </p>
+               <h3 className="text-xs font-black uppercase italic tracking-tighter text-gray-900 line-clamp-1">{request.coachClub}</h3>
+               <div className={`px-2 py-0.5 rounded flex items-center gap-1.5 text-[8px] font-black uppercase ${t.bg} ${t.accent}`}>
+                  {t.icon} {request.type}
+               </div>
             </div>
-          </div>
-          <div className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase border ${getTypeStyles()}`}>
-            {request.type}
-          </div>
-        </div>
-
-        <div className={`p-3 rounded-xl ${isPro ? 'bg-gray-50 border-gray-100' : 'bg-black/40 border-white/5'} border space-y-2`}>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400">
-              <Clock size={12} className={accentColor} />
-              <span>{new Date(request.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} @ {request.time}</span>
-            </div>
-            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400">
-              <MapPin size={12} className={accentColor} />
-              <span className="truncate">{request.location}</span>
-            </div>
-          </div>
-          {request.stadium && (
-            <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 border-t border-white/5 pt-2">
-               <Landmark size={12} className={accentColor} />
-               <span className="truncate uppercase italic">{request.stadium}</span>
-            </div>
-          )}
-        </div>
-
-        {request.comment && (
-           <p className={`text-[10px] italic ${isPro ? 'text-gray-600' : 'text-gray-400'} px-1 line-clamp-2`}>
-             "{request.comment}"
-           </p>
-        )}
-
-        <div className="pt-2">
-          {isMatched ? (
-            <div className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-3 bg-[#39FF14]/10 text-[#39FF14] border border-[#39FF14]/30 shadow-[0_0_15px_#39FF141A]`}>
-               <CheckCircle2 size={16} /> Mission_Conclue
-               <button onClick={() => onChat(request)} className="ml-4 p-2 bg-[#39FF14] text-black rounded-lg active:scale-90 transition-all">
-                  <MessageSquare size={16} strokeWidth={3} />
-               </button>
-            </div>
-          ) : isMine ? (
-            <div className="space-y-3">
-              {isPending ? (
-                <div className={`p-4 rounded-2xl border-2 border-dashed ${isPro ? 'bg-orange-50 border-orange-200' : 'bg-orange-600/10 border-orange-600/30'}`}>
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="text-left">
-                      <p className={`text-[8px] font-black uppercase tracking-widest ${isPro ? 'text-orange-700' : 'text-orange-500'}`}>Réponse Reçue de :</p>
-                      <p className="text-xs font-black text-white italic">{request.respondentName}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => onChat(request)} className={`p-2.5 rounded-xl border transition-all active:scale-90 ${isPro ? 'bg-white border-gray-200 text-blue-600' : 'bg-white/5 border-white/10 text-neon-cyan'}`}>
-                        <MessageSquare size={20} strokeWidth={3} />
-                      </button>
-                      <button onClick={() => onAccept(request.id)} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90 transition-all">
-                        <CheckCircle2 size={20} strokeWidth={3} />
-                      </button>
-                      <button onClick={() => onRefuse(request.id)} className="p-2.5 bg-red-500 text-white rounded-xl shadow-lg active:scale-90 transition-all">
-                        <XCircle size={20} strokeWidth={3} />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-[7px] font-black text-gray-500 uppercase tracking-widest text-center italic">Validation requise</p>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-3 p-4 bg-white/5 border border-dashed border-white/10 rounded-2xl">
-                  <Activity size={14} className="text-gray-600 animate-pulse" />
-                  <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest">Attente d'adversaire</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              {isPending ? (
-                <div className="flex flex-col gap-3">
-                   <div className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 ${amIRespondent ? 'bg-neon-orange/20 text-neon-orange border-neon-orange/30' : 'bg-gray-100 text-gray-400 border-gray-200'} border border-dashed`}>
-                      {amIRespondent ? <><Wifi size={14} /> Défi_Envoyé_En_Attente</> : 'Signal_Occupé'}
-                   </div>
-                   {amIRespondent && (
-                     <button onClick={() => onChat(request)} className={`w-full py-4 rounded-2xl font-black uppercase italic text-[10px] flex items-center justify-center gap-3 transition-all active:scale-95 ${isPro ? 'bg-blue-50 text-blue-600' : 'bg-white/5 text-neon-cyan border border-white/10'}`}>
-                        <MessageSquare size={16} /> Discuter avec le coach
-                     </button>
-                   )}
-                </div>
-              ) : (
-                <button
-                  onClick={() => onInterested(request.id)}
-                  className={`w-full py-5 rounded-2xl font-black uppercase italic text-xs tracking-[0.2em] flex items-center justify-center gap-3 transition-all active:scale-95
-                    ${isPro ? 'bg-orange-600 text-white shadow-lg' : 'bg-neon-cyan text-black shadow-[0_0_15px_#00F0FF33]'}
-                  `}
-                >
-                  <Zap size={18} fill="currentColor" /> Proposer Match
-                </button>
-              )}
-            </>
-          )}
-        </div>
+         </div>
+         <div className="text-right">
+            <p className="text-sm font-black italic text-gray-900 leading-none">V.{request.category}</p>
+            <p className="text-[7px] font-bold text-gray-400 uppercase tracking-widest mt-1">Catégorie</p>
+         </div>
       </div>
+
+      {/* 2. CENTRE : IDENTITÉ & LOGISTIQUE */}
+      <div className="p-6 space-y-4">
+         <div className="flex items-end justify-between gap-4">
+            <div className="text-left">
+               <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Coach Responsable</p>
+               <h2 className="text-xl font-black uppercase italic text-gray-900 tracking-tighter">{request.coachName}</h2>
+            </div>
+            <div className="flex flex-col items-end">
+               <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-900 italic">
+                  <Clock size={12} className={t.accent} /> {new Date(request.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} • {request.time}
+               </div>
+            </div>
+         </div>
+
+         {/* BLOC LIEU */}
+         <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <div className={`w-10 h-10 rounded-xl ${t.bg} flex items-center justify-center ${t.accent}`}><MapPin size={18} /></div>
+               <div className="text-left">
+                  <p className="text-[10px] font-black text-gray-900 uppercase italic leading-none">{request.location}</p>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase mt-1 truncate max-w-[150px]">{request.stadium || "Arène à définir"}</p>
+               </div>
+            </div>
+            <div className="text-right">
+               <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">30 KM</span>
+            </div>
+         </div>
+
+         {request.comment && (
+            <p className="text-[10px] italic text-gray-500 px-1 border-l-2 border-gray-200 py-1">"{request.comment}"</p>
+         )}
+      </div>
+
+      {/* 3. ACTIONS PIED DE PAGE */}
+      <div className="px-5 pb-5">
+         {isMatched ? (
+            <div className="w-full bg-[#16a34a] text-white py-4 rounded-2xl font-black uppercase italic text-xs flex items-center justify-center gap-3 shadow-lg">
+               <CheckCircle2 size={18} /> MATCH_VALIDÉ
+               <button onClick={(e) => { e.stopPropagation(); onChat(request); }} className="ml-4 p-2 bg-white/20 rounded-lg active:scale-90 transition-all"><MessageSquare size={16}/></button>
+            </div>
+         ) : isMine ? (
+            <div className="w-full bg-gray-100 py-4 rounded-2xl text-center">
+               {isPending ? (
+                 <div className="flex items-center justify-between px-6">
+                    <p className="text-[9px] font-black text-orange-600 uppercase">Réponse reçue !</p>
+                    <div className="flex gap-2">
+                       <button onClick={(e) => { e.stopPropagation(); onChat(request); }} className="p-2 bg-white rounded-lg text-blue-600 shadow-sm"><MessageSquare size={16}/></button>
+                       <button onClick={(e) => { e.stopPropagation(); onAccept(request.id); }} className="p-2 bg-[#16a34a] text-white rounded-lg shadow-sm"><CheckCircle2 size={16}/></button>
+                    </div>
+                 </div>
+               ) : (
+                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center justify-center gap-2 animate-pulse"><Wifi size={12}/> Signal_En_Émission...</p>
+               )}
+            </div>
+         ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); isPending ? onChat(request) : onInterested(request.id); }}
+              className={`w-full py-5 rounded-2xl font-black uppercase italic text-xs transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl
+                ${isPending ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-orange-600 text-white shadow-orange-100'}
+              `}
+            >
+               {isPending ? <><MessageSquare size={18}/> CONTACTER LE COACH</> : <><Zap size={18} fill="currentColor"/> PROPOSER MATCH</>}
+            </button>
+         )}
+      </div>
+
     </div>
   );
 }
