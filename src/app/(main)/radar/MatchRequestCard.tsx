@@ -121,7 +121,12 @@ export function MatchRequestCard({
                     <p className="text-[8px] font-bold text-gray-400 uppercase mt-1 truncate max-w-[150px]">{request.stadium || "Arène à définir"}</p>
                  </div>
               </div>
-              {isMine && <span className="text-[7px] font-black text-orange-500 uppercase animate-pulse">Slide pour éditer</span>}
+              <div className="text-right flex flex-col items-end gap-1">
+                 <span className="text-[10px] font-black text-orange-600 uppercase tracking-widest italic">
+                   {request.distanceKm ? `${request.distanceKm.toFixed(0)} KM` : 'PROCHE'}
+                 </span>
+                 {isMine && <span className="text-[7px] font-black text-gray-400 uppercase animate-pulse">Slide pour éditer</span>}
+              </div>
            </div>
 
            {request.comment && (

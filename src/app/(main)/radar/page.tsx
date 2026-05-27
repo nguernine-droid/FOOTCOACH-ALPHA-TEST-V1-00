@@ -29,12 +29,28 @@ export interface MatchRequest {
   stadium?: string;
   latitude?: number;
   longitude?: number;
+  distanceKm?: number;
   x?: number;
   y?: number;
 }
 
 /**
- * RADAR_PAGE (v30.0 - UNIFIED VIEW)
+ * Calcule la distance entre deux points GPS (en KM)
+ */
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Rayon de la Terre en km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+/**
+ * RADAR_PAGE (v30.1 - DISTANCE SORTING)
  * Affiche le Sonar Nexus et les Annonces sur la même page.
  * Système de filtrage intégré.
  */
@@ -76,39 +92,53 @@ export default function RadarPage() {
         a.findIndex(t => t.id === v.id) === i
       );
 
-      const formatted: MatchRequest[] = uniqueData.map((item: any) => ({
-        id: item.id,
-        coachId: item.coach_id,
-        coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
-        coachName: item.profiles ? `${item.profiles.first_name} ${item.profiles.last_name}` : 'Coach Inconnu',
-        coachLogo: item.profiles?.clubs?.logo_url,
-        stadium: item.profiles?.clubs?.stadium,
-        type: item.type,
-        category: item.category,
-        status: item.status,
-        date: item.date,
-        time: item.time,
-        location: item.location,
-        comment: item.comment,
-        latitude: item.profiles?.clubs?.latitude,
-        longitude: item.profiles?.clubs?.longitude,
-        x: 20 + (Math.random() * 60), // Simulation de position pour le sonar visuel
-        y: 20 + (Math.random() * 60),
-      }));
+      const formatted: MatchRequest[] = uniqueData.map((item: any) => {
+        const itemLat = item.profiles?.clubs?.latitude;
+        const itemLng = item.profiles?.clubs?.longitude;
+        let distanceKm;
+
+        if (itemLat && itemLng && teamInfo?.latitude && teamInfo?.longitude) {
+          distanceKm = calculateDistance(teamInfo.latitude, teamInfo.longitude, itemLat, itemLng);
+        }
+
+        return {
+          id: item.id,
+          coachId: item.coach_id,
+          coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
+          coachName: item.profiles ? `${item.profiles.first_name} ${item.profiles.last_name}` : 'Coach Inconnu',
+          coachLogo: item.profiles?.clubs?.logo_url,
+          stadium: item.profiles?.clubs?.stadium,
+          type: item.type,
+          category: item.category,
+          status: item.status,
+          date: item.date,
+          time: item.time,
+          location: item.location,
+          comment: item.comment,
+          latitude: itemLat,
+          longitude: itemLng,
+          distanceKm: distanceKm,
+          x: 20 + (Math.random() * 60),
+          y: 20 + (Math.random() * 60),
+        };
+      });
 
       setRequests(formatted);
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
-  }, []);
+  }, [teamInfo]);
 
   useEffect(() => { fetchRadarData(); }, [fetchRadarData]);
 
-  // FILTRAGE
+  // FILTRAGE ET TRI PAR DISTANCE
   const filteredRequests = useMemo(() => {
-    return requests.filter(req => {
-      const matchCat = filterCategory === 'TOUS' || req.category === filterCategory;
-      return matchCat;
-    });
-  }, [requests, filterCategory]);
+    return requests
+      .filter(req => {
+        const matchCat = filterCategory === 'TOUS' || req.category === filterCategory;
+        const matchDist = !req.distanceKm || req.distanceKm <= filterDistance;
+        return matchCat && matchDist;
+      })
+      .sort((a, b) => (a.distanceKm || 999) - (b.distanceKm || 999)); // Tri du plus proche au plus loin
+  }, [requests, filterCategory, filterDistance]);
 
   const sonarSignals = useMemo(() => {
     return filteredRequests.filter(req => req.coachId !== currentUserId);
