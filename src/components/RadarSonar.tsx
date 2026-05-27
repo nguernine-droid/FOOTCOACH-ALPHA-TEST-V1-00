@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MatchRequest } from '@/app/(main)/radar/page';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldCheck, MapPin, Maximize2, Navigation, Radio, Target, Zap } from 'lucide-react';
+import { ShieldCheck, Radio, Target, Zap, Layers, Trophy } from 'lucide-react';
 
 interface RadarSonarProps {
   signals: MatchRequest[];
@@ -12,134 +12,143 @@ interface RadarSonarProps {
   theme: 'classic' | 'nexus';
 }
 
+/**
+ * RADAR_SONAR (v26.0 - UNIFIED NEXUS SONAR)
+ * Unification du design pour tout le monde : Balayage tactique et Blips Blasons.
+ */
 export function RadarSonar({ signals, onSignalClick, isScanning, theme }: RadarSonarProps) {
-  const isPro = theme === 'classic';
   const [rotation, setRotation] = useState(0);
+  const isPro = theme === 'classic';
 
-  // Animation de balayage (Sonar)
+  // Animation de balayage laser (Rotation 360°)
   useEffect(() => {
     if (!isScanning) return;
     const interval = setInterval(() => {
       setRotation(prev => (prev + 2) % 360);
-    }, 30);
+    }, 25);
     return () => clearInterval(interval);
   }, [isScanning]);
 
-  if (isPro) {
-    // ==========================================
-    // RENDU MODE CLASSIC : STATION TACTIQUE XXL
-    // ==========================================
-    return (
-      <div className="relative w-full h-[500px] overflow-hidden rounded-[2.5rem] bg-[#e5e7eb] shadow-2xl border-2 border-white/10">
+  // Détection de "collision" pour faire briller les blasons au passage du laser
+  const getActiveState = (x: number = 50, y: number = 50) => {
+    const angle = (Math.atan2(y - 50, x - 50) * 180) / Math.PI;
+    const normalizedAngle = (angle + 450) % 360;
+    const diff = Math.abs(normalizedAngle - rotation);
+    return diff < 15;
+  };
 
-        {/* CARTE FOND (Immersion) */}
-        <div className="absolute inset-0 z-0">
-           <iframe
-             width="100%" height="100%" frameBorder="0" scrolling="no"
-             src="https://www.openstreetmap.org/export/embed.html?bbox=3.70,43.35,3.95,43.55&layer=mapnik"
-             className="opacity-70 grayscale-[0.3] contrast-[1.2] scale-110"
-           />
-           {/* Vignettage Sombre */}
-           <div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(0,0,0,0.4)] pointer-events-none" />
-        </div>
+  const accentColor = isPro ? '#F97316' : '#00F0FF';
 
-        {/* OVERLAY : MINI RADAR DE BALAYAGE (HAUT DROITE) */}
-        <div className="absolute top-6 right-6 z-50 w-20 h-20 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center overflow-hidden">
-           <div className="absolute inset-0 flex items-center justify-center opacity-20">
-              <div className="w-full h-px bg-[#39FF14]" />
-              <div className="h-full w-px bg-[#39FF14]" />
-           </div>
-           {/* Faisceau tournant */}
-           <div
-             className="absolute inset-0"
-             style={{
-               transform: `rotate(${rotation}deg)`,
-               background: 'conic-gradient(from 0deg at 50% 50%, rgba(57,255,20,0.4) 0%, transparent 25%)'
-             }}
-           />
-           <Radio size={24} className="text-[#39FF14] animate-pulse" />
-        </div>
+  return (
+    <div className="relative w-full aspect-square flex items-center justify-center bg-[#050510] rounded-[3rem] overflow-hidden border-4 border-white/5 shadow-2xl">
 
-        {/* SIGNAUX BLASONS XXL SUR LA CARTE */}
-        <div className="absolute inset-0 z-30">
-          {signals.map((sig) => {
-            const statusColor = sig.type === 'Match Amical' ? '#16a34a' : sig.type === 'Plateau' ? '#2563eb' : '#dc2626';
-            return (
-              <div
-                key={sig.id}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${sig.x}%`, top: `${sig.y}%` }}
-              >
-                <motion.div
-                  initial={{ scale: 0 }} animate={{ scale: 1 }}
-                  className="relative cursor-pointer group"
-                  onClick={() => onSignalClick(sig)}
-                >
-                   {/* Halo Pulsant Couleur Match */}
-                   <div
-                     className="absolute inset-[-10px] rounded-full animate-ping opacity-20"
+      {/* 1. GRILLE TACTIQUE DE FOND */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/grid-me.png')]" />
+
+      {/* 2. CERCLES CONCENTRIQUES (RÉSEAU) */}
+      {[15, 30, 45, 60, 75].map((size, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full border border-white/5"
+          style={{ width: `${size * 1.3}%`, height: `${size * 1.3}%` }}
+        />
+      ))}
+
+      {/* 3. LE RAYON LASER (SCANNER) */}
+      <div
+        className="absolute inset-0 z-20 pointer-events-none"
+        style={{
+          transform: `rotate(${rotation}deg)`,
+          background: `conic-gradient(from 270deg at 50% 50%, ${accentColor}33 0%, transparent 25%)`
+        }}
+      >
+        <div
+          className="absolute top-0 left-1/2 w-[2px] h-1/2 -translate-x-1/2"
+          style={{ backgroundColor: accentColor, boxShadow: `0 0 15px ${accentColor}` }}
+        />
+      </div>
+
+      {/* 4. LES BLIPS (SIGNAUX DÉTECTÉS) */}
+      {signals.map((sig) => {
+        const x = sig.x || 50;
+        const y = sig.y || 50;
+        const isHit = getActiveState(x, y);
+        const statusColor = sig.type === 'Match Amical' ? '#16a34a' : sig.type === 'Plateau' ? '#2563eb' : '#dc2626';
+
+        return (
+          <div
+            key={sig.id}
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-30 transition-all duration-300"
+            style={{ left: `${x}%`, top: `${y}%` }}
+          >
+            <motion.div
+              animate={{
+                scale: isHit ? 1.2 : 1,
+                opacity: isHit ? 1 : 0.4
+              }}
+              className="relative cursor-pointer group"
+              onClick={() => onSignalClick(sig)}
+            >
+               {/* Halo de détection */}
+               <AnimatePresence>
+                 {isHit && (
+                   <motion.div
+                     initial={{ scale: 0.5, opacity: 0 }}
+                     animate={{ scale: 2, opacity: 0 }}
+                     exit={{ opacity: 0 }}
+                     className="absolute inset-0 rounded-full"
                      style={{ backgroundColor: statusColor }}
                    />
+                 )}
+               </AnimatePresence>
 
-                   {/* Bulle d'identité flottante */}
-                   <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white px-3 py-1 rounded-xl text-[7px] font-black uppercase whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity border border-white/20">
-                      {sig.coachClub}
-                   </div>
+               {/* Blason XXL */}
+               <div
+                 className={`w-14 h-14 rounded-full bg-white border-4 p-1 shadow-2xl transition-all ${isHit ? 'shadow-[0_0_20px_white]' : ''}`}
+                 style={{ borderColor: isHit ? 'white' : statusColor }}
+               >
+                  {sig.coachLogo ? (
+                    <img src={sig.coachLogo} className="w-full h-full object-contain" alt="Logo" />
+                  ) : (
+                    <ShieldCheck className="text-gray-200 w-full h-full" />
+                  )}
+               </div>
 
-                   {/* Blason XXL Cercle */}
-                   <div
-                     className="w-14 h-14 rounded-full bg-white border-4 p-1 shadow-2xl transition-transform group-hover:scale-110 active:scale-90"
-                     style={{ borderColor: statusColor }}
-                   >
-                      {sig.coachLogo ? (
-                        <img src={sig.coachLogo} className="w-full h-full object-contain" />
-                      ) : (
-                        <ShieldCheck className="text-gray-300 w-full h-full" />
-                      )}
-                   </div>
+               {/* Icône Type de Match */}
+               <div
+                 className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-lg"
+                 style={{ backgroundColor: statusColor }}
+               >
+                  {sig.type === 'Match Amical' ? <Zap size={10} className="text-white" fill="currentColor" /> :
+                   sig.type === 'Plateau' ? <Layers size={10} className="text-white" fill="currentColor" /> :
+                   <Trophy size={10} className="text-white" fill="currentColor" />}
+               </div>
 
-                   {/* Badge Type de Match (Petit) */}
-                   <div
-                     className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-lg"
-                     style={{ backgroundColor: statusColor }}
-                   >
-                      <Zap size={10} className="text-white" fill="currentColor" />
-                   </div>
-                </motion.div>
-              </div>
-            );
-          })}
-        </div>
+               {/* Nom du Club (Affiché au passage du scan) */}
+               <div className={`absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 backdrop-blur-md border border-white/20 rounded-lg whitespace-nowrap transition-opacity duration-500 ${isHit ? 'opacity-100' : 'opacity-0'}`}>
+                  <p className="text-[7px] font-black uppercase text-white tracking-widest">{sig.coachClub}</p>
+               </div>
+            </motion.div>
+          </div>
+        );
+      })}
 
-        {/* MA POSITION (QG) */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
-           <div className="relative">
-              <div className="absolute inset-[-20px] rounded-full border border-blue-500/30 animate-ping" />
-              <div className="w-10 h-10 bg-blue-600 rounded-full border-4 border-white shadow-[0_0_20px_rgba(37,99,235,0.6)] flex items-center justify-center">
-                 <Navigation size={18} className="text-white rotate-45" fill="currentColor" />
-              </div>
-           </div>
-        </div>
-
-        {/* LÉGENDE INFÉRIEURE */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 bg-black/80 backdrop-blur-xl px-6 py-3 rounded-full border border-white/10 shadow-2xl flex items-center gap-4">
-           <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-[#39FF14] rounded-full animate-pulse shadow-[0_0_8px_#39FF14]" />
-              <span className="text-[9px] font-black text-white uppercase tracking-widest">{signals.length} UNITÉS ACTIVES</span>
-           </div>
-           <div className="h-4 w-px bg-white/10" />
-           <p className="text-[8px] font-bold text-gray-400 uppercase italic">Secteur Montpellier / Sète</p>
-        </div>
+      {/* 5. CENTRE DU SYSTÈME (QG) */}
+      <div className="relative z-40">
+         <div className={`w-12 h-12 rounded-full border-4 border-black flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] bg-white`}>
+            <Target size={24} className={isPro ? 'text-orange-600' : 'text-neon-cyan'} />
+         </div>
+         <div className="absolute inset-[-10px] rounded-full border border-white/10 animate-ping" />
       </div>
-    );
-  }
 
-  // Rendu Nexus (Inchangé pour l'instant)
-  return (
-    <div className="relative aspect-square w-full flex items-center justify-center bg-black/20 rounded-full border-2 border-white/5">
-       <Target size={100} className="text-neon-cyan opacity-5 animate-pulse" />
-       <div className="absolute inset-0 rounded-full" style={{ transform: `rotate(${rotation}deg)`, background: 'conic-gradient(from 0deg at 50% 50%, rgba(0,240,255,0.2) 0%, transparent 20%)' }} />
-       <p className="text-neon-cyan font-black uppercase text-[10px] tracking-[0.5em] animate-pulse">Scanning...</p>
+      {/* 6. LÉGENDE SECTEUR */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
+         <div className="bg-black/60 backdrop-blur-xl px-6 py-2.5 rounded-full border border-white/10 shadow-2xl flex items-center gap-3">
+            <div className="w-2 h-2 bg-[#39FF14] rounded-full animate-pulse shadow-[0_0_8px_#39FF14]" />
+            <span className="text-[9px] font-black text-white uppercase tracking-[0.3em]">{signals.length} SIGNAUX DÉTECTÉS</span>
+         </div>
+      </div>
+
     </div>
   );
 }

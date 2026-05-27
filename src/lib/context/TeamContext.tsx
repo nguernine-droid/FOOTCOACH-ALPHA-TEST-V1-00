@@ -17,6 +17,8 @@ export interface TeamInfo {
   clubAcronym?: string;
   clubCity?: string;
   clubStadium?: string;
+  latitude?: number;
+  longitude?: number;
   userFirstName?: string;
   userLastName?: string;
   bio?: string;

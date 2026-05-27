@@ -27,6 +27,8 @@ export interface MatchRequest {
   respondentName?: string;
   respondentLogo?: string;
   stadium?: string;
+  latitude?: number;
+  longitude?: number;
   x?: number;
   y?: number;
 }
@@ -59,10 +61,10 @@ export default function RadarPage() {
 
       const { data, error } = await supabase
         .from('match_requests')
-        .select(`*, profiles:coach_id (first_name, last_name, clubs:club_id (name, logo_url))`)
+        .select(`*, profiles:coach_id (first_name, last_name, clubs:club_id (name, logo_url, latitude, longitude, city, stadium))`)
         .neq('status', 'EXPIRED')
-        .order('date', { ascending: true }) // Tri par date d'événement (ordre chronologique)
-        .order('time', { ascending: true }); // Puis par heure
+        .order('date', { ascending: true })
+        .order('time', { ascending: true });
 
       if (error) throw error;
 
@@ -85,8 +87,10 @@ export default function RadarPage() {
         time: item.time,
         location: item.location,
         comment: item.comment,
-        x: 50 + (Math.cos(item.id.charCodeAt(0)) * (15 + (item.id.charCodeAt(1) % 30))),
-        y: 50 + (Math.sin(item.id.charCodeAt(2)) * (15 + (item.id.charCodeAt(3) % 30))),
+        latitude: item.profiles?.clubs?.latitude,
+        longitude: item.profiles?.clubs?.longitude,
+        x: 50, // x/y seront calculés dynamiquement par le composant RadarSonar
+        y: 50,
       }));
 
       setRequests(formatted);
@@ -164,8 +168,19 @@ export default function RadarPage() {
       )}
 
       {viewMode === 'sonar' ? (
-        <section className={`rounded-[2.5rem] border-2 p-8 relative overflow-hidden transition-all duration-700 ${isPro ? 'bg-white border-gray-200 shadow-xl' : 'bg-[#050505] border-white/5 shadow-2xl'}`}>
-           {isLoading ? <Loader2 size={40} className={`animate-spin m-auto ${styles.accent}`} /> : <RadarSonar signals={sonarSignals} onSignalClick={() => setViewMode('list')} isScanning={isScanning} theme={theme} />}
+        <section className={`rounded-[2.5rem] border-2 p-0 relative overflow-hidden transition-all duration-700 ${isPro ? 'bg-white border-gray-200 shadow-xl' : 'bg-[#050505] border-white/5 shadow-2xl'}`}>
+           {isLoading ? (
+             <div className="h-[500px] flex items-center justify-center">
+               <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
+             </div>
+           ) : (
+             <RadarSonar
+               signals={sonarSignals}
+               onSignalClick={(r) => setViewMode('list')}
+               isScanning={isScanning}
+               theme={theme as any}
+             />
+           )}
         </section>
       ) : (
         <div className="space-y-6">
