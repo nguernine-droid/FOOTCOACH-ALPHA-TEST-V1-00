@@ -121,13 +121,17 @@ export default function DashboardPage() {
                     {isMatch ? (
                       <div className="flex justify-center items-center gap-2">
                          <div className="flex flex-col items-center gap-2 flex-1">
-                            <div className="w-20 h-20 rounded-3xl border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl group-hover:scale-105 transition-transform"><img src={teamInfo?.clubLogo} className="w-full h-full object-contain" /></div>
-                            <p className="text-[9px] font-black uppercase italic text-white drop-shadow-2xl line-clamp-1">{teamInfo?.clubName}</p>
+                            <div className="w-20 h-20 rounded-3xl border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl group-hover:scale-105 transition-transform">
+                               <img src={ev.home_club?.logo_url || '/placeholder-club.png'} className="w-full h-full object-contain" />
+                            </div>
+                            <p className="text-[9px] font-black uppercase italic text-white drop-shadow-2xl line-clamp-1">{ev.home_club?.name || 'DOMICILE'}</p>
                          </div>
                          <div className="text-4xl font-black italic text-white/20 tracking-tighter transform -rotate-12 px-1">VS</div>
                          <div className="flex flex-col items-center gap-2 flex-1">
-                            <div className="w-20 h-20 rounded-3xl border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl"><img src={ev.away_club?.logo_url} className="w-full h-full object-contain" /></div>
-                            <p className="text-[9px] font-black uppercase italic text-white drop-shadow-2xl line-clamp-1">{ev.away_club?.name || 'ADVERSAIRE'}</p>
+                            <div className="w-20 h-20 rounded-3xl border-2 border-white/20 bg-black/40 p-3 flex items-center justify-center backdrop-blur-md overflow-hidden shadow-2xl">
+                               <img src={ev.away_club?.logo_url || '/placeholder-club.png'} className="w-full h-full object-contain" />
+                            </div>
+                            <p className="text-[9px] font-black uppercase italic text-white drop-shadow-2xl line-clamp-1">{ev.away_club?.name || 'EXTÉRIEUR'}</p>
                          </div>
                       </div>
                     ) : (
