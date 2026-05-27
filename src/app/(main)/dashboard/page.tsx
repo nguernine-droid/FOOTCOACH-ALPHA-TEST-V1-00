@@ -32,7 +32,11 @@ export default function DashboardPage() {
       if (players) setSquad(players.map((p: any) => ({ id: p.profiles?.id, name: `${p.profiles?.first_name} ${p.profiles?.last_name?.charAt(0)}.`, status: p.status === 'active' ? 'active' : 'inactive', avatarUrl: p.profiles?.avatar_url || '', poste: p.poste })));
       const { data: catReqs } = await supabase.from('match_requests').select('type').eq('category', teamInfo.category).eq('status', 'OPEN').neq('coach_id', user.id);
       if (catReqs) setRadarStats({ match: catReqs.filter(r => r.type === 'Match Amical').length, tournament: catReqs.filter(r => r.type === 'Tournoi').length, plateau: catReqs.filter(r => r.type === 'Plateau').length });
-      const { data: allEvts } = await supabase.from('events').select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)').order('date', { ascending: true });
+      const { data: allEvts } = await supabase
+        .from('events')
+        .select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)')
+        .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`) // FILTRE DE SÉCURITÉ PAR CLUB
+        .order('date', { ascending: true });
       setEvents(allEvts || []);
     } catch (err) { console.error(err); } finally { setIsDataLoading(false); }
   }, [teamInfo?.id, teamInfo?.category]);
