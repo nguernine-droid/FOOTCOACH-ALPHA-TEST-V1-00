@@ -8,6 +8,7 @@ export type Theme = 'nexus' | 'classic';
 
 export interface TeamInfo {
   id?: string;
+  coachId?: string;
   clubName: string;
   category: string;
   level: string;
@@ -107,8 +108,9 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         setIsProfileComplete(isComplete);
 
         // MAPPING DE PRÉCISION
-          setTeamInfoState({
+        setTeamInfoState({
             id: profile.clubs?.id,
+            coachId: profile.id,
             clubName: profile.clubs?.name || 'MON CLUB',
             category: profile.coach_category || 'SÉNIORS',
             level: profile.coach_level || 'D1',

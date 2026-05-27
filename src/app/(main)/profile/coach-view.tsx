@@ -163,6 +163,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         <div className="w-full flex justify-center px-6 cursor-pointer transition-all duration-300 active:scale-95 group" onClick={() => setShowFullProfile(true)}>
           <CoachCard
             name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
+            coachId={teamInfo?.coachId}
             clubName={teamInfo?.clubAcronym || teamInfo?.clubName || 'UNITÉ_TACTIQUE'}
             clubLogo={teamInfo?.clubLogo}
             coachPhoto={teamInfo?.coachPhoto}
