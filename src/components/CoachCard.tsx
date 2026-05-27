@@ -44,8 +44,8 @@ export function CoachCard({
 
   const theme = statusThemes[status] || statusThemes['actif'];
 
-  // URL de secours pour le site officiel
-  const qrValue = `https://footcoach-app.vercel.app`;
+  // URL officielle TeamNexus
+  const qrValue = `https://teamnexus.fr`;
 
   return (
     <>
