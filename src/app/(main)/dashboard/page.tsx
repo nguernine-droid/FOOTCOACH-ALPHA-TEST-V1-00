@@ -35,9 +35,15 @@ export default function DashboardPage() {
       const { data: allEvts } = await supabase
         .from('events')
         .select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)')
-        .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`) // FILTRE DE SÉCURITÉ PAR CLUB
+        .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`)
         .order('date', { ascending: true });
-      setEvents(allEvts || []);
+
+      // SÉCURITÉ ANTI-DOUBLONS VISUELS (V1.0.315)
+      const uniqueEvts = (allEvts || []).filter((v, i, a) =>
+        a.findIndex(t => t.id === v.id) === i
+      );
+
+      setEvents(uniqueEvts);
     } catch (err) { console.error(err); } finally { setIsDataLoading(false); }
   }, [teamInfo?.id, teamInfo?.category]);
 
