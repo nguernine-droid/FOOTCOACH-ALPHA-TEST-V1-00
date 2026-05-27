@@ -168,6 +168,46 @@ export default function RadarPage() {
     router.push(`/radar/new?id=${id}`);
   };
 
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+
+  const handleAcceptMatch = async (requestId: string) => {
+    if (isProcessingAction) return;
+    setIsProcessingAction(true);
+    try {
+      const { data: request, error: fetchError } = await supabase
+        .from('match_requests')
+        .select('*, profiles:coach_id(club_id)')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError || !request) throw new Error("Impossible de récupérer la demande.");
+
+      // CRÉATION DE L'ÉVÉNEMENT AVEC SÉCURITÉ UPSERT
+      const { error: eventError } = await supabase.from('events').upsert([{
+        home_club_id: request.profiles.club_id,
+        away_club_id: teamInfo.id,
+        date: request.date,
+        time: request.time,
+        title: `MATCH vs ${teamInfo.clubName}`,
+        type: request.type,
+        location: request.location,
+        stadium_name: request.stadium
+      }], { onConflict: 'date,time,home_club_id' });
+
+      if (eventError) throw eventError;
+
+      // MISE À JOUR DE LA DEMANDE
+      await supabase.from('match_requests').update({ status: 'MATCHED', respondent_id: currentUserId }).eq('id', requestId);
+
+      await fetchRadarData();
+      alert("✅ MATCH CONCLU ET AJOUTÉ À L'AGENDA !");
+    } catch (err: any) {
+      alert("Erreur : " + err.message);
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
   return (
     <main className={`min-h-screen pb-40 max-w-2xl mx-auto p-4 space-y-10 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
 
