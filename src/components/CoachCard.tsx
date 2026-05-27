@@ -44,8 +44,8 @@ export function CoachCard({
 
   const theme = statusThemes[status] || statusThemes['actif'];
 
-  // URL Dynamique pour les 3 fonctions (Validation / Partage / Parrainage)
-  const qrValue = `https://footcoach-app.vercel.app/coach/${coachId || 'unknown'}?ref=${name}`;
+  // URL de secours pour le site officiel
+  const qrValue = `https://footcoach-app.vercel.app`;
 
   return (
     <>
