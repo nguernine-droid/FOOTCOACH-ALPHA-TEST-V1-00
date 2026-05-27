@@ -46,10 +46,17 @@ export default function CalendarPage() {
   // CHARGEMENT DES ÉVÉNEMENTS
   useEffect(() => {
     const fetchEvents = async () => {
-      if (!teamInfo?.id) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !teamInfo?.id) return;
+
       setIsLoading(true);
       try {
-        const { data } = await supabase.from('events').select('*').or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`);
+        // RÉCUPÉRATION : Matchs du club OU événements créés par l'utilisateur
+        const { data } = await supabase
+          .from('events')
+          .select('*')
+          .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id},created_by.eq.${user.id}`);
+
         setEvents(data || []);
       } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };

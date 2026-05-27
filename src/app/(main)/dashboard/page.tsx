@@ -35,7 +35,7 @@ export default function DashboardPage() {
       const { data: allEvts } = await supabase
         .from('events')
         .select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)')
-        .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`)
+        .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id},created_by.eq.${user.id}`)
         .order('date', { ascending: true });
 
       // SÉCURITÉ ANTI-DOUBLONS VISUELS (V1.0.315)
