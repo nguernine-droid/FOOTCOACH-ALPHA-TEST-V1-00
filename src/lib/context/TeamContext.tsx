@@ -2,8 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
+import { User } from '@supabase/supabase-js';
 
-export type Role = 'coach' | 'player' | 'parent' | 'supporter';
+export type Role = 'coach' | 'player' | 'parent' | 'supporter' | 'admin';
 export type Theme = 'nexus' | 'classic';
 
 export interface TeamInfo {
@@ -41,6 +42,7 @@ export interface TeamInfo {
 }
 
 interface TeamContextType {
+  session: User | null;
   role: Role;
   setRole: (role: Role) => void;
   theme: Theme;
@@ -53,11 +55,13 @@ interface TeamContextType {
   isProfileComplete: boolean;
   hasSeenWelcome: boolean;
   setHasSeenWelcome: (seen: boolean) => void;
+  switchRole: (role: Role) => void;
 }
 
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export function TeamProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<User | null>(null);
   const [role, setRoleState] = useState<Role>('coach');
   const [theme, setThemeState] = useState<Theme>('classic');
   const [hasSeenWelcome, setHasSeenWelcomeState] = useState(false);
@@ -77,52 +81,71 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
 
-  const refreshData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
+  // 1. GESTION DE SESSION & PERSISTANCE DU ROLE (FIX ANTI-AMNÉSIE)
+  useEffect(() => {
+    // Session initiale
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) {
+        // Restaurer le rôle sauvegardé
+        const savedRole = localStorage.getItem('nexus_active_role') as Role;
+        if (savedRole) setRoleState(savedRole);
+        refreshData();
+      } else {
         setIsLoading(false);
-        return;
       }
+    });
 
-      // RÉCUPÉRATION FORCEE AVEC TOUTES LES RELATIONS
+    // Écouteur de changement (Login/Logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        refreshData();
+      } else {
+        localStorage.removeItem('nexus_active_role');
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const refreshData = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data: profile, error: pError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          clubs:club_id (*)
-        `)
+        .select('*, clubs:club_id (*)')
         .eq('id', user.id)
         .single();
 
-      if (pError) {
-        console.error("Fetch Profile Error:", pError.message);
-      }
-
       if (profile) {
-        setRoleState(profile.role as Role);
+        // Si aucun rôle n'est stocké en local, on prend celui de la DB
+        if (!localStorage.getItem('nexus_active_role')) {
+          setRoleState(profile.role as Role);
+          localStorage.setItem('nexus_active_role', profile.role);
+        }
+
         setThemeState(profile.theme_preference as Theme || 'classic');
+        setIsProfileComplete(!!(profile.first_name && profile.last_name));
 
-        const isComplete = !!(profile.first_name && profile.last_name);
-        setIsProfileComplete(isComplete);
-
-        // MAPPING DE PRÉCISION
         setTeamInfoState({
-            id: profile.clubs?.id,
-            coachId: profile.id,
-            clubName: profile.clubs?.name || 'MON CLUB',
-            category: profile.coach_category || 'SÉNIORS',
-            level: profile.coach_level || 'D1',
-            coachName: (profile.nickname && profile.nickname !== 'COACH') ? profile.nickname : (profile.first_name || 'COACH'),
-            coachPhoto: profile.avatar_url,
-            clubLogo: profile.clubs?.logo_url,
-            clubAcronym: profile.clubs?.acronym || '',
-            clubCity: profile.clubs?.city || '',
-            clubStadium: profile.clubs?.stadium || '',
-            latitude: profile.clubs?.latitude,
-            longitude: profile.clubs?.longitude,
-            userFirstName: profile.first_name || '',
+          id: profile.clubs?.id,
+          coachId: profile.id,
+          clubName: profile.clubs?.name || 'MON CLUB',
+          category: profile.coach_category || 'SÉNIORS',
+          level: profile.coach_level || 'D1',
+          coachName: (profile.nickname && profile.nickname !== 'COACH') ? profile.nickname : (profile.first_name || 'COACH'),
+          coachPhoto: profile.avatar_url,
+          clubLogo: profile.clubs?.logo_url,
+          clubAcronym: profile.clubs?.acronym || '',
+          clubCity: profile.clubs?.city || '',
+          clubStadium: profile.clubs?.stadium || '',
+          latitude: profile.clubs?.latitude,
+          longitude: profile.clubs?.longitude,
+          userFirstName: profile.first_name || '',
           userLastName: profile.last_name || '',
           bio: profile.bio || '',
           phone: profile.phone || '',
@@ -148,27 +171,23 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    refreshData();
-  }, [refreshData]);
-
-  const setHasSeenWelcome = (seen: boolean) => {
-    setHasSeenWelcomeState(seen);
-    localStorage.setItem('has_seen_welcome', seen ? 'true' : 'false');
-  };
-
-  const setRole = (newRole: Role) => {
+  const switchRole = (newRole: Role) => {
     setRoleState(newRole);
-    localStorage.setItem('user_role', newRole);
+    localStorage.setItem('nexus_active_role', newRole);
   };
+
+  const setRole = (newRole: Role) => switchRole(newRole);
 
   const setTheme = async (newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem('app_theme', newTheme);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('profiles').update({ theme_preference: newTheme }).eq('id', user.id);
-    }
+    if (user) await supabase.from('profiles').update({ theme_preference: newTheme }).eq('id', user.id);
+  };
+
+  const setHasSeenWelcome = (seen: boolean) => {
+    setHasSeenWelcomeState(seen);
+    localStorage.setItem('has_seen_welcome', seen ? 'true' : 'false');
   };
 
   const setTeamInfo = (info: TeamInfo) => { setTeamInfoState(info); };
@@ -176,8 +195,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <TeamContext.Provider value={{
-      role, setRole, theme, setTheme, teamInfo, setTeamInfo, isPro, refreshData, isLoading, isProfileComplete,
-      hasSeenWelcome, setHasSeenWelcome
+      session, role, setRole, theme, setTheme, teamInfo, setTeamInfo, isPro, refreshData, isLoading, isProfileComplete,
+      hasSeenWelcome, setHasSeenWelcome, switchRole
     }}>
       {children}
     </TeamContext.Provider>
