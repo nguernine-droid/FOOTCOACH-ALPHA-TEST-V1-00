@@ -8,19 +8,19 @@ import { supabase } from '@/lib/supabase/client';
 import {
   ChevronLeft, User, Shield, MapPin, Navigation,
   Phone, Layers, Trophy, Edit3, CheckCircle2, Star, Zap,
-  Save, X, Loader2, Camera, Flame, Check, Fingerprint, Info, Globe, MessageSquare, TrendingUp
+  Save, X, Loader2, Camera, Flame, Check, Fingerprint, Info, Globe, MessageSquare, TrendingUp,
+  Briefcase, GraduationCap, Lightbulb, Trash2, PlusCircle
 } from 'lucide-react';
 
 interface CoachViewProps {
   onActivateParent?: () => void;
 }
 
-type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | null;
+type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | 'cv' | null;
 
 /**
- * COACH_VIEW (v28.0 - MASTER CLASSIC FINAL WITH REF CATS DROPDOWN)
- * Déplacement des Catégories de Référence dans l'Identité Coach.
- * Intégration d'un menu de sélection pour les catégories.
+ * COACH_VIEW (v29.0 - MASTER CLASSIC FINAL WITH CV & SYNC)
+ * Intégration du CV Coach (Diplômes, Expériences, Philosophie).
  */
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
@@ -29,6 +29,10 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+
+  // --- ÉTATS CV ---
+  const [cvItems, setCvItems] = useState<any[]>([]);
+  const [newCvItem, setNewItem] = useState({ type: 'Diplôme', title: '', year: '', description: '' });
 
   // --- ÉTATS LOCAUX ---
   const [formData, setFormData] = useState({
@@ -65,8 +69,43 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         plateauDist: teamInfo.plateauDistMax || 20,
         tournamentReach: teamInfo.tournamentReach || 'departemental'
       });
+      fetchCV();
     }
   }, [teamInfo]);
+
+  const fetchCV = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('cv_items').select('*').eq('coach_id', user.id).order('year', { ascending: false });
+      if (data) setCvItems(data);
+    } catch (err) { console.error("CV Fetch Error:", err); }
+  };
+
+  const handleAddCvItem = async () => {
+    if (!newCvItem.title) return;
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('cv_items').insert([{
+        coach_id: user?.id,
+        type: newCvItem.type,
+        title: newCvItem.title.toUpperCase(),
+        year: newCvItem.year,
+        description: newCvItem.description.toUpperCase()
+      }]);
+      if (error) throw error;
+      setNewItem({ type: 'Diplôme', title: '', year: '', description: '' });
+      await fetchCV();
+    } catch (err: any) { alert(err.message); } finally { setIsSaving(false); }
+  };
+
+  const handleDeleteCvItem = async (id: string) => {
+    try {
+      await supabase.from('cv_items').delete().eq('id', id);
+      await fetchCV();
+    } catch (err: any) { alert(err.message); }
+  };
 
   const stats = { matchesPlayed: 12, announcementsSent: 8, contactsMade: 15, engagementRate: 100 };
 
@@ -85,7 +124,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         updates.license_number = formData.licenseNumber;
         updates.coach_status = formData.coachStatus;
         updates.bio = formData.bio.toUpperCase();
-        updates.ref_categories = formData.refCategories; // Sauvé dans Identité
+        updates.ref_categories = formData.refCategories;
       } else if (section === 'club') {
         updates.coach_category = formData.category.toUpperCase();
         updates.coach_level = formData.level.toUpperCase();
@@ -120,9 +159,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   const toggleCategory = (cat: string) => {
     setFormData(prev => {
       const exists = prev.refCategories.includes(cat);
-      const newCats = exists
-        ? prev.refCategories.filter(c => c !== cat)
-        : [...prev.refCategories, cat];
+      const newCats = exists ? prev.refCategories.filter(c => c !== cat) : [...prev.refCategories, cat];
       return { ...prev, refCategories: newCats };
     });
   };
@@ -163,7 +200,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         <div className="w-full flex justify-center px-6 cursor-pointer transition-all duration-300 active:scale-95 group" onClick={() => setShowFullProfile(true)}>
           <CoachCard
             name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
-            coachId={teamInfo?.coachId}
             clubName={teamInfo?.clubAcronym || teamInfo?.clubName || 'UNITÉ_TACTIQUE'}
             clubLogo={teamInfo?.clubLogo}
             coachPhoto={teamInfo?.coachPhoto}
@@ -175,6 +211,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
             announcementsSent={stats.announcementsSent}
             contactsMade={stats.contactsMade}
             engagementRate={stats.engagementRate}
+            coachId={teamInfo?.coachId}
           />
         </div>
         <p className="mt-12 text-white/20 font-black uppercase text-[11px] tracking-[0.5em] animate-pulse text-center">Toucher_Pour_Ouvrir</p>
@@ -221,7 +258,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl">
               {editingSection === 'user' ? (
                 <div className="space-y-6 animate-in fade-in duration-300">
-                   <div className="flex justify-center mb-4">
+                   <div className="flex justify-center mb-6">
                       <div className="relative">
                         <div className="w-24 h-24 rounded-[2rem] border-4 border-orange-100 overflow-hidden flex items-center justify-center bg-gray-50 shadow-2xl relative">
                           {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-200" />}
@@ -287,7 +324,54 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            </div>
         </section>
 
-        {/* 2. LE CLUB */}
+        {/* 2. CV COACH (DIPLÔMES & EXPÉREINCES) */}
+        <section className="space-y-4">
+           <div className="flex items-center justify-between px-2">
+             <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Briefcase size={14} className="text-orange-600" /> CV Coach Expert</label>
+             <button onClick={() => setEditingSection(editingSection === 'cv' ? null : 'cv')} className="p-2.5 bg-orange-600 text-white rounded-xl text-[9px] font-black flex items-center gap-1 shadow-lg active:scale-90 transition-all">
+                {editingSection === 'cv' ? <><X size={12}/> FERMER</> : <><PlusCircle size={12}/> AJOUTER</>}
+             </button>
+           </div>
+
+           <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl space-y-6">
+              {editingSection === 'cv' && (
+                <div className="space-y-4 p-4 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 animate-in zoom-in duration-300">
+                   <div className="grid grid-cols-3 gap-2">
+                      {['Diplôme', 'Expérience', 'Philosophie'].map(t => (
+                        <button key={t} onClick={() => setNewItem({...newCvItem, type: t})} className={`py-2 rounded-xl text-[8px] font-black border transition-all ${newCvItem.type === t ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-gray-200 text-gray-400'}`}>{t.toUpperCase()}</button>
+                      ))}
+                   </div>
+                   <input placeholder="Titre (ex: BMF, Coach U15...)" value={newCvItem.title} onChange={e => setNewItem({...newCvItem, title: e.target.value})} className={inputStyle} />
+                   <div className="grid grid-cols-2 gap-2">
+                      <input placeholder="Année" value={newCvItem.year} onChange={e => setNewItem({...newCvItem, year: e.target.value})} className={inputStyle} />
+                      <button onClick={handleAddCvItem} disabled={isSaving} className="bg-[#39FF14] text-black rounded-2xl font-black uppercase italic text-xs shadow-lg active:scale-95">Ajouter au CV</button>
+                   </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                 {cvItems.length > 0 ? cvItems.map((item) => (
+                   <div key={item.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 relative group">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.type === 'Diplôme' ? 'bg-blue-100 text-blue-600' : item.type === 'Expérience' ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600'}`}>
+                         {item.type === 'Diplôme' ? <GraduationCap size={20}/> : item.type === 'Expérience' ? <Briefcase size={20}/> : <Lightbulb size={20}/>}
+                      </div>
+                      <div className="flex-1">
+                         <div className="flex justify-between items-start">
+                            <p className="text-[10px] font-black text-gray-900 uppercase italic leading-none">{item.title}</p>
+                            <span className="text-[8px] font-bold text-gray-400">{item.year}</span>
+                         </div>
+                         <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.type}</p>
+                      </div>
+                      <button onClick={() => handleDeleteCvItem(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-all"><Trash2 size={14}/></button>
+                   </div>
+                 )) : (
+                   <p className="text-center py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest">Aucun élément dans votre palmarès</p>
+                 )}
+              </div>
+           </div>
+        </section>
+
+        {/* 3. LE CLUB */}
         <section className="space-y-4">
            <div className="flex items-center justify-between px-2">
              <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Shield size={14} className="text-orange-600" /> Mon Club</label>
@@ -336,7 +420,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            </div>
         </section>
 
-        {/* 3. LOGISTIQUE */}
+        {/* 4. LOGISTIQUE */}
         <section className="space-y-4">
            <div className="flex items-center justify-between px-2">
              <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><MapPin size={14} className="text-orange-600" /> Logistique_QG</label>
@@ -371,7 +455,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            </div>
         </section>
 
-        {/* 4. RAYONS D'ACTION */}
+        {/* 5. RAYONS D'ACTION */}
         <section className="space-y-4 pb-20">
            <div className="flex items-center justify-between px-2">
              <label className="text-[11px] font-black uppercase text-gray-400 tracking-widest flex items-center gap-2"><Navigation size={14} className="text-orange-600" /> Rayons d'Action</label>
