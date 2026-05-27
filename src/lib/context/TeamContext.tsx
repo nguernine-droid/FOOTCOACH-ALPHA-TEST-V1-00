@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 
 export type Role = 'coach' | 'player' | 'parent' | 'supporter' | 'admin';
 export type Theme = 'nexus' | 'classic';
@@ -42,7 +42,7 @@ export interface TeamInfo {
 }
 
 interface TeamContextType {
-  session: User | null;
+  session: Session | null;
   role: Role;
   setRole: (role: Role) => void;
   theme: Theme;
@@ -61,7 +61,7 @@ interface TeamContextType {
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export function TeamProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [role, setRoleState] = useState<Role>('coach');
   const [theme, setThemeState] = useState<Theme>('classic');
   const [hasSeenWelcome, setHasSeenWelcomeState] = useState(false);
