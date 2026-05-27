@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Wifi, Activity, Plus, Loader2, List, Radar as RadarIcon, Filter, MapPin, Search } from 'lucide-react';
+import { Plus, Loader2, Filter, Wifi } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { RadarSonar } from '@/components/RadarSonar';
@@ -33,12 +33,16 @@ export interface MatchRequest {
   y?: number;
 }
 
+/**
+ * RADAR_PAGE (v30.0 - UNIFIED VIEW)
+ * Affiche le Sonar Nexus et les Annonces sur la même page.
+ * Système de filtrage intégré.
+ */
 export default function RadarPage() {
   const router = useRouter();
   const { theme, teamInfo } = useTeam();
   const isPro = theme === 'classic';
 
-  const [viewMode, setViewMode] = useState<'sonar' | 'list'>('sonar');
   const [isScanning, setIsScanning] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [requests, setRequests] = useState<MatchRequest[]>([]);
@@ -48,7 +52,7 @@ export default function RadarPage() {
   // FILTERS
   const [showFilters, setShowFilters] = useState(false);
   const [filterCategory, setFilterCategory] = useState('TOUS');
-  const [filterDistance, setFilterDistance] = useState(50); // km
+  const [filterDistance, setFilterDistance] = useState(50);
 
   const categories = ['TOUS', 'U6/U7', 'U8/U9', 'U10/U11', 'U12/U13', 'U14/U15', 'U16/U17', 'U18', 'SÉNIORS', 'VÉTÉRANS'];
 
@@ -68,7 +72,6 @@ export default function RadarPage() {
 
       if (error) throw error;
 
-      // SÉCURITÉ ANTI-DOUBLONS VISUELS (V1.0.299)
       const uniqueData = (data || []).filter((v, i, a) =>
         a.findIndex(t => t.id === v.id) === i
       );
@@ -89,8 +92,8 @@ export default function RadarPage() {
         comment: item.comment,
         latitude: item.profiles?.clubs?.latitude,
         longitude: item.profiles?.clubs?.longitude,
-        x: 50, // x/y seront calculés dynamiquement par le composant RadarSonar
-        y: 50,
+        x: 20 + (Math.random() * 60), // Simulation de position pour le sonar visuel
+        y: 20 + (Math.random() * 60),
       }));
 
       setRequests(formatted);
@@ -103,16 +106,23 @@ export default function RadarPage() {
   const filteredRequests = useMemo(() => {
     return requests.filter(req => {
       const matchCat = filterCategory === 'TOUS' || req.category === filterCategory;
-      return matchCat; // La distance est simulée pour l'Alpha
+      return matchCat;
     });
   }, [requests, filterCategory]);
 
-  // BUG FIX: On retire l'utilisateur du radar sonar pour ne pas apparaître 2 fois
   const sonarSignals = useMemo(() => {
     return filteredRequests.filter(req => req.coachId !== currentUserId);
   }, [filteredRequests, currentUserId]);
 
-  const styles = isPro ? { accent: 'text-orange-600', btnPrimary: 'bg-orange-600 text-white shadow-lg', tabActive: 'bg-orange-600 text-white', tabInactive: 'bg-gray-100 text-gray-500' } : { accent: 'text-neon-cyan', btnPrimary: 'bg-neon-cyan text-black shadow-lg', tabActive: 'bg-neon-cyan text-black', tabInactive: 'bg-white/5 text-gray-500' };
+  const styles = isPro ? {
+    accent: 'text-orange-600',
+    btnPrimary: 'bg-orange-600 text-white shadow-lg',
+    card: 'bg-white border-gray-200 shadow-xl'
+  } : {
+    accent: 'text-neon-cyan',
+    btnPrimary: 'bg-neon-cyan text-black shadow-lg',
+    card: 'bg-[#050505] border-white/5 shadow-2xl'
+  };
 
   const handleDeleteRequest = async (id: string) => {
     if (!confirm("⚠️ Confirmer la suppression de cette annonce ?")) return;
@@ -129,61 +139,70 @@ export default function RadarPage() {
   };
 
   return (
-    <main className={`min-h-screen pb-32 max-w-md mx-auto p-4 space-y-6 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
-      <div className="flex justify-between items-center gap-4">
-        <div className={`flex-1 p-1 rounded-2xl flex border ${isPro ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
-          <button onClick={() => setViewMode('sonar')} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${viewMode === 'sonar' ? styles.tabActive : styles.tabInactive}`}>
-            <RadarIcon size={16} /> <span className="text-[10px] font-black uppercase italic">Radar</span>
+    <main className={`min-h-screen pb-40 max-w-2xl mx-auto p-4 space-y-10 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
+
+      {/* HEADER ACTION */}
+      <div className="flex justify-between items-center px-2">
+        <h1 className={`text-3xl font-black uppercase italic tracking-tighter ${isPro ? 'text-gray-900' : 'text-white'}`}>
+          Radar_Tactique
+        </h1>
+        <div className="flex gap-3">
+          <button onClick={() => setShowFilters(!showFilters)} className={`p-4 rounded-2xl border ${showFilters ? styles.btnPrimary : (isPro ? 'bg-white' : 'bg-white/5')} transition-all active:scale-90`}>
+             <Filter size={20} />
           </button>
-          <button onClick={() => setViewMode('list')} className={`flex-1 py-3 rounded-xl flex items-center justify-center gap-2 transition-all ${viewMode === 'list' ? styles.tabActive : styles.tabInactive}`}>
-            <List size={16} /> <span className="text-[10px] font-black uppercase italic">Annonces</span>
+          <button onClick={() => router.push('/radar/new')} className={`p-4 rounded-2xl transition-all active:scale-90 ${styles.btnPrimary}`}>
+            <Plus size={24} strokeWidth={4} />
           </button>
         </div>
-        <button onClick={() => setShowFilters(!showFilters)} className={`p-4 rounded-2xl border ${showFilters ? styles.btnPrimary : (isPro ? 'bg-white' : 'bg-white/5')} transition-all`}>
-           <Filter size={20} />
-        </button>
-        <button onClick={() => router.push('/radar/new')} className={`p-4 rounded-2xl transition-all active:scale-90 ${styles.btnPrimary}`}>
-          <Plus size={24} strokeWidth={4} />
-        </button>
       </div>
 
+      {/* 1. LE SONAR NEXUS (TOUJOURS VISIBLE) */}
+      <section className={`rounded-[3rem] border-2 p-0 relative overflow-hidden transition-all duration-700 ${styles.card}`}>
+         {isLoading ? (
+           <div className="h-[400px] flex items-center justify-center">
+             <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
+           </div>
+         ) : (
+           <RadarSonar
+             signals={sonarSignals}
+             onSignalClick={() => {}}
+             isScanning={isScanning}
+             theme={theme as any}
+           />
+         )}
+      </section>
+
+      {/* 2. FILTRES DYNAMIQUES */}
       {showFilters && (
-        <section className={`p-6 rounded-3xl border ${isPro ? 'bg-white' : 'bg-white/5'} animate-in fade-in zoom-in duration-300 space-y-6`}>
-           <div className="space-y-3">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Filtrer par catégorie</h3>
+        <section className={`p-8 rounded-[2.5rem] border ${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'} animate-in slide-in-from-top-4 duration-500 space-y-8 shadow-inner`}>
+           <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Filtrer par catégorie</label>
               <div className="flex flex-wrap gap-2">
                  {categories.map(cat => (
-                   <button key={cat} onClick={() => setFilterCategory(cat)} className={`px-3 py-1.5 rounded-lg text-[8px] font-black border transition-all ${filterCategory === cat ? styles.btnPrimary : 'border-white/10 text-gray-500'}`}>{cat}</button>
+                   <button key={cat} onClick={() => setFilterCategory(cat)} className={`px-4 py-2 rounded-xl text-[9px] font-black border transition-all ${filterCategory === cat ? styles.btnPrimary : 'bg-gray-50 border-gray-100 text-gray-400'}`}>{cat}</button>
                  ))}
               </div>
            </div>
-           <div className="space-y-3 text-left">
+           <div className="space-y-4 text-left">
               <div className="flex justify-between items-center">
-                 <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500">Distance Maximale</h3>
-                 <span className={`text-[10px] font-bold ${styles.accent}`}>{filterDistance} KM</span>
+                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Rayon de détection</label>
+                 <span className={`text-xs font-black italic ${styles.accent}`}>{filterDistance} KM</span>
               </div>
-              <input type="range" min="5" max="200" step="5" value={filterDistance} onChange={(e) => setFilterDistance(parseInt(e.target.value))} className="w-full accent-orange-600" />
+              <input type="range" min="5" max="200" step="5" value={filterDistance} onChange={(e) => setFilterDistance(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600" />
            </div>
         </section>
       )}
 
-      {viewMode === 'sonar' ? (
-        <section className={`rounded-[2.5rem] border-2 p-0 relative overflow-hidden transition-all duration-700 ${isPro ? 'bg-white border-gray-200 shadow-xl' : 'bg-[#050505] border-white/5 shadow-2xl'}`}>
-           {isLoading ? (
-             <div className="h-[500px] flex items-center justify-center">
-               <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
-             </div>
-           ) : (
-             <RadarSonar
-               signals={sonarSignals}
-               onSignalClick={(r) => setViewMode('list')}
-               isScanning={isScanning}
-               theme={theme as any}
-             />
-           )}
-        </section>
-      ) : (
-        <div className="space-y-6">
+      {/* 3. LISTE DES ANNONCES (SOUS LE RADAR) */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-2 border-b border-gray-200 pb-2">
+           <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 flex items-center gap-2">
+              <Wifi size={14} className={styles.accent} /> Flux de Missions
+           </h3>
+           <span className="text-[9px] font-bold text-gray-400 uppercase italic">{filteredRequests.length} Résultats</span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
            {filteredRequests.map(req => (
              <MatchRequestCard
                key={req.id}
@@ -198,11 +217,26 @@ export default function RadarPage() {
                onEdit={handleEditRequest}
              />
            ))}
-           {filteredRequests.length === 0 && <div className="py-20 text-center opacity-30 italic uppercase text-[10px]">Aucun signal détecté</div>}
-        </div>
-      )}
 
-      {selectedChatRequest && <NegotiationChat isOpen={!!selectedChatRequest} onClose={() => setSelectedChatRequest(null)} matchRequestId={selectedChatRequest.id} currentUserId={currentUserId} otherCoachName={selectedChatRequest.coachName} theme={theme as any} />}
+           {filteredRequests.length === 0 && !isLoading && (
+             <div className="py-20 text-center opacity-30 italic uppercase text-[10px] space-y-4">
+                <p>Aucun signal détecté dans ce périmètre</p>
+                <button onClick={() => setFilterCategory('TOUS')} className="text-orange-600 underline">Réinitialiser les filtres</button>
+             </div>
+           )}
+        </div>
+      </div>
+
+      {selectedChatRequest && (
+        <NegotiationChat
+          isOpen={!!selectedChatRequest}
+          onClose={() => setSelectedChatRequest(null)}
+          matchRequestId={selectedChatRequest.id}
+          currentUserId={currentUserId}
+          otherCoachName={selectedChatRequest.coachName}
+          theme={theme as any}
+        />
+      )}
     </main>
   );
 }
