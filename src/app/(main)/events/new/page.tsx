@@ -105,6 +105,9 @@ function NewEventContent() {
     if (!startDate || !startTime) { alert("Date et heure obligatoires."); return; }
     setIsLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non connecté");
+
       const finalOpponent = selectedOpponent ? selectedOpponent.name : opponentSearch;
       const eventData = {
           title: type === 'match' ? `vs ${finalOpponent || 'ADVERSAIRE'}` : (type === 'training' ? `Séance ${trainingTheme}` : type.toUpperCase()),
@@ -115,7 +118,8 @@ function NewEventContent() {
           away_club_id: type === 'match' ? selectedOpponent?.id : null,
           description: instructions.toUpperCase(),
           training_theme: type === 'training' ? trainingTheme : null,
-          tournament_config: { is_official: isOfficial, opponents: type === 'plateau' ? plateauOpponents : null }
+          tournament_config: { is_official: isOfficial, opponents: type === 'plateau' ? plateauOpponents : null },
+          created_by: user.id // EMPREINTE DIGITALE DU CRÉATEUR
       };
       if (editId) await supabase.from('events').update(eventData).eq('id', editId);
       else await supabase.from('events').insert([eventData]);

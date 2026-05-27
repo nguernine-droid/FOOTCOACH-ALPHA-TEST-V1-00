@@ -43,25 +43,23 @@ export default function CalendarPage() {
   const monthShort = viewDate.toLocaleDateString('fr-FR', { month: 'short' });
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // CHARGEMENT DES ÉVÉNEMENTS
+  // CHARGEMENT DES ÉVÉNEMENTS (MODE ALPHA SANS FILTRE)
   useEffect(() => {
     const fetchEvents = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !teamInfo?.id) return;
-
       setIsLoading(true);
       try {
-        // RÉCUPÉRATION : Matchs du club OU événements créés par l'utilisateur
-        const { data } = await supabase
+        // ON RÉCUPÈRE TOUT POUR ÊTRE SÛR DE NE RIEN PERDRE
+        const { data, error } = await supabase
           .from('events')
           .select('*')
-          .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id},created_by.eq.${user.id}`);
+          .order('date', { ascending: true });
 
+        if (error) throw error;
         setEvents(data || []);
       } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };
     fetchEvents();
-  }, [teamInfo?.id]);
+  }, []);
 
   const getEventStyle = (ev: any) => {
     const type = ev.type?.toLowerCase() || '';
