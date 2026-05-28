@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Loader2, Filter, Wifi } from 'lucide-react';
+import { Plus, Loader2, Filter, Wifi, Radio, User, History } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { RadarSonar } from '@/components/RadarSonar';
@@ -35,32 +35,19 @@ export interface MatchRequest {
 }
 
 /**
- * Calcule la distance entre deux points GPS (en KM)
- */
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Rayon de la Terre en km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-/**
- * RADAR_PAGE (v30.1 - DISTANCE SORTING)
- * Affiche le Sonar Nexus et les Annonces sur la même page.
- * Système de filtrage intégré.
+ * RADAR_PAGE (v31.0 - DUAL FEED & ACTION FIX)
+ * Sépare le Sonar (Adversaires) et la Gestion (Mes annonces).
+ * Réparation du bouton "Proposer Match".
  */
 export default function RadarPage() {
   const router = useRouter();
   const { theme, teamInfo } = useTeam();
   const isPro = theme === 'classic';
 
+  const [activeTab, setActiveTab] = useState<'radar' | 'my_signals'>('radar');
   const [isScanning, setIsScanning] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [requests, setRequests] = useState<MatchRequest[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [selectedChatRequest, setSelectedChatRequest] = useState<MatchRequest | null>(null);
@@ -81,230 +68,176 @@ export default function RadarPage() {
 
       const { data, error } = await supabase
         .from('match_requests')
-        .select(`*, profiles:coach_id (first_name, last_name, clubs:club_id (name, logo_url, latitude, longitude, city, stadium))`)
+        .select(`*, profiles:coach_id (first_name, last_name, nickname, avatar_url, clubs:club_id (name, logo_url, latitude, longitude, city, stadium))`)
         .neq('status', 'EXPIRED')
-        .order('date', { ascending: true })
-        .order('time', { ascending: true });
+        .order('date', { ascending: true });
 
       if (error) throw error;
 
-      const uniqueData = (data || []).filter((v, i, a) =>
-        a.findIndex(t => t.id === v.id) === i
-      );
+      // Anti-doublons visuels
+      const uniqueData = (data || []).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 
-      const formatted: MatchRequest[] = uniqueData.map((item: any) => {
-        const itemLat = item.profiles?.clubs?.latitude;
-        const itemLng = item.profiles?.clubs?.longitude;
-        let distanceKm;
-
-        if (itemLat && itemLng && teamInfo?.latitude && teamInfo?.longitude) {
-          distanceKm = calculateDistance(teamInfo.latitude, teamInfo.longitude, itemLat, itemLng);
-        }
-
-        return {
-          id: item.id,
-          coachId: item.coach_id,
-          coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
-          coachName: item.profiles ? `${item.profiles.first_name} ${item.profiles.last_name}` : 'Coach Inconnu',
-          coachLogo: item.profiles?.clubs?.logo_url,
-          stadium: item.profiles?.clubs?.stadium,
-          type: item.type,
-          category: item.category,
-          status: item.status,
-          date: item.date,
-          time: item.time,
-          location: item.location,
-          comment: item.comment,
-          latitude: itemLat,
-          longitude: itemLng,
-          distanceKm: distanceKm,
-          x: 20 + (Math.random() * 60),
-          y: 20 + (Math.random() * 60),
-        };
-      });
+      const formatted: MatchRequest[] = uniqueData.map((item: any) => ({
+        id: item.id,
+        coachId: item.coach_id,
+        coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
+        coachName: item.profiles?.nickname || `${item.profiles?.first_name} ${item.profiles?.last_name}` || 'Coach Inconnu',
+        coachLogo: item.profiles?.clubs?.logo_url,
+        stadium: item.profiles?.clubs?.stadium,
+        type: item.type,
+        category: item.category,
+        status: item.status,
+        date: item.date,
+        time: item.time,
+        location: item.location,
+        comment: item.comment,
+        latitude: item.profiles?.clubs?.latitude,
+        longitude: item.profiles?.clubs?.longitude,
+        respondentId: item.respondent_id,
+        x: 20 + (Math.random() * 60),
+        y: 20 + (Math.random() * 60),
+      }));
 
       setRequests(formatted);
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
-  }, [teamInfo]);
+  }, []);
 
   useEffect(() => { fetchRadarData(); }, [fetchRadarData]);
 
-  // FILTRAGE ET TRI PAR DISTANCE
-  const filteredRequests = useMemo(() => {
-    return requests
-      .filter(req => {
-        const matchCat = filterCategory === 'TOUS' || req.category === filterCategory;
-        const matchDist = !req.distanceKm || req.distanceKm <= filterDistance;
-        return matchCat && matchDist;
-      })
-      .sort((a, b) => (a.distanceKm || 999) - (b.distanceKm || 999)); // Tri du plus proche au plus loin
-  }, [requests, filterCategory, filterDistance]);
+  // --- LOGIQUE DE SÉPARATION ---
 
-  const sonarSignals = useMemo(() => {
-    return filteredRequests.filter(req => req.coachId !== currentUserId);
-  }, [filteredRequests, currentUserId]);
+  // 1. LES ADVERSAIRES (POUR LE SONAR ET LE FLUX RADAR)
+  const enemyRequests = useMemo(() => {
+    return requests.filter(req =>
+      req.coachId !== currentUserId &&
+      (filterCategory === 'TOUS' || req.category === filterCategory)
+    );
+  }, [requests, currentUserId, filterCategory]);
 
-  const styles = isPro ? {
-    accent: 'text-orange-600',
-    btnPrimary: 'bg-orange-600 text-white shadow-lg',
-    card: 'bg-white border-gray-200 shadow-xl'
-  } : {
-    accent: 'text-neon-cyan',
-    btnPrimary: 'bg-neon-cyan text-black shadow-lg',
-    card: 'bg-[#050505] border-white/5 shadow-2xl'
-  };
+  // 2. MES ANNONCES (POUR L'ONGLET GESTION)
+  const myRequests = useMemo(() => {
+    return requests.filter(req => req.coachId === currentUserId);
+  }, [requests, currentUserId]);
 
-  const handleDeleteRequest = async (id: string) => {
-    if (!confirm("⚠️ Confirmer la suppression de cette annonce ?")) return;
+  // --- ACTIONS ---
+
+  const handleProposeMatch = async (requestId: string) => {
+    if (isProcessing) return;
+    setIsProcessing(true);
     try {
-      const { error } = await supabase.from('match_requests').delete().eq('id', id);
-      if (error) throw error;
-      setRequests(prev => prev.filter(r => r.id !== id));
-      if (navigator.vibrate) navigator.vibrate(50);
-    } catch (err: any) { alert(err.message); }
-  };
-
-  const handleEditRequest = (id: string) => {
-    router.push(`/radar/new?id=${id}`);
-  };
-
-  const [isProcessingAction, setIsProcessingAction] = useState(false);
-
-  const handleAcceptMatch = async (requestId: string) => {
-    if (isProcessingAction) return;
-    setIsProcessingAction(true);
-    try {
-      const { data: request, error: fetchError } = await supabase
+      // 1. On passe la requête en PENDING
+      const { error } = await supabase
         .from('match_requests')
-        .select('*, profiles:coach_id(club_id)')
-        .eq('id', requestId)
-        .single();
+        .update({
+          status: 'PENDING',
+          respondent_id: currentUserId
+        })
+        .eq('id', requestId);
 
-      if (fetchError || !request) throw new Error("Impossible de récupérer la demande.");
+      if (error) throw error;
 
-      // CRÉATION DE L'ÉVÉNEMENT AVEC SÉCURITÉ UPSERT
-      const { error: eventError } = await supabase.from('events').upsert([{
-        home_club_id: request.profiles.club_id,
-        away_club_id: teamInfo.id,
-        date: request.date,
-        time: request.time,
-        title: `MATCH vs ${teamInfo.clubName}`,
-        type: request.type,
-        location: request.location,
-        stadium_name: request.stadium
-      }], { onConflict: 'date,time,home_club_id' });
-
-      if (eventError) throw eventError;
-
-      // MISE À JOUR DE LA DEMANDE
-      await supabase.from('match_requests').update({ status: 'MATCHED', respondent_id: currentUserId }).eq('id', requestId);
+      // 2. On ouvre le chat automatiquement
+      const target = requests.find(r => r.id === requestId);
+      if (target) setSelectedChatRequest(target);
 
       await fetchRadarData();
-      alert("✅ MATCH CONCLU ET AJOUTÉ À L'AGENDA !");
+      if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
     } catch (err: any) {
-      alert("Erreur : " + err.message);
+      alert(err.message);
     } finally {
-      setIsProcessingAction(false);
+      setIsProcessing(false);
     }
   };
 
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm("⚠️ Confirmer la suppression ?")) return;
+    try {
+      await supabase.from('match_requests').delete().eq('id', id);
+      setRequests(prev => prev.filter(r => r.id !== id));
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const styles = isPro ? { accent: 'text-orange-600', btn: 'bg-orange-600 text-white', card: 'bg-white border-gray-100 shadow-xl' }
+                       : { accent: 'text-neon-cyan', btn: 'bg-neon-cyan text-black', card: 'bg-[#050505] border-white/5 shadow-2xl' };
+
   return (
-    <main className={`min-h-screen pb-40 max-w-2xl mx-auto p-4 space-y-10 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
+    <main className={`min-h-screen pb-40 max-w-2xl mx-auto p-4 space-y-8 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
 
-      {/* HEADER ACTION */}
+      {/* 1. SWITCH DE VUE TACTIQUE */}
       <div className="flex justify-between items-center px-2">
-        <h1 className={`text-3xl font-black uppercase italic tracking-tighter ${isPro ? 'text-gray-900' : 'text-white'}`}>
-          Radar_Tactique
-        </h1>
-        <div className="flex gap-3">
-          <button onClick={() => setShowFilters(!showFilters)} className={`p-4 rounded-2xl border ${showFilters ? styles.btnPrimary : (isPro ? 'bg-white' : 'bg-white/5')} transition-all active:scale-90`}>
-             <Filter size={20} />
-          </button>
-          <button onClick={() => router.push('/radar/new')} className={`p-4 rounded-2xl transition-all active:scale-90 ${styles.btnPrimary}`}>
+         <div className={`p-1 rounded-2xl flex border ${isPro ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'} w-fit`}>
+            <button onClick={() => setActiveTab('radar')} className={`px-6 py-3 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'radar' ? styles.btn : 'text-gray-500'}`}>
+              <Radio size={16} /> <span className="text-[10px] font-black uppercase italic">Sonar</span>
+            </button>
+            <button onClick={() => setActiveTab('my_signals')} className={`px-6 py-3 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'my_signals' ? styles.btn : 'text-gray-500'}`}>
+              <History size={16} /> <span className="text-[10px] font-black uppercase italic">Mes Signaux</span>
+            </button>
+         </div>
+         <button onClick={() => router.push('/radar/new')} className={`p-4 rounded-2xl shadow-xl active:scale-90 ${styles.btn}`}>
             <Plus size={24} strokeWidth={4} />
-          </button>
-        </div>
+         </button>
       </div>
 
-      {/* 1. LE SONAR NEXUS (TOUJOURS VISIBLE) */}
-      <section className={`rounded-[3rem] border-2 p-0 relative overflow-hidden transition-all duration-700 ${styles.card}`}>
-         {isLoading ? (
-           <div className="h-[400px] flex items-center justify-center">
-             <Loader2 size={40} className={`animate-spin ${styles.accent}`} />
-           </div>
-         ) : (
-           <RadarSonar
-             signals={sonarSignals}
-             onSignalClick={() => {}}
-             isScanning={isScanning}
-             theme={theme as any}
-           />
-         )}
-      </section>
+      {activeTab === 'radar' ? (
+        <>
+          {/* LE SONAR (ADVERSAIRES UNIQUEMENT) */}
+          <section className={`rounded-[3rem] border-2 p-0 relative overflow-hidden ${styles.card}`}>
+            {isLoading ? <div className="h-[400px] flex items-center justify-center"><Loader2 className={`animate-spin ${styles.accent}`} /></div>
+                       : <RadarSonar signals={enemyRequests} onSignalClick={() => {}} isScanning={isScanning} theme={theme as any} />}
+          </section>
 
-      {/* 2. FILTRES DYNAMIQUES */}
-      {showFilters && (
-        <section className={`p-8 rounded-[2.5rem] border ${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'} animate-in slide-in-from-top-4 duration-500 space-y-8 shadow-inner`}>
-           <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Filtrer par catégorie</label>
-              <div className="flex flex-wrap gap-2">
-                 {categories.map(cat => (
-                   <button key={cat} onClick={() => setFilterCategory(cat)} className={`px-4 py-2 rounded-xl text-[9px] font-black border transition-all ${filterCategory === cat ? styles.btnPrimary : 'bg-gray-50 border-gray-100 text-gray-400'}`}>{cat}</button>
-                 ))}
-              </div>
+          {/* FLUX DES MISSIONS ADVERSES */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-2 border-b border-gray-200 pb-2">
+               <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400">Radar de Missions</h3>
+               <button onClick={() => setShowFilters(!showFilters)} className={`p-2 rounded-lg border ${showFilters ? styles.btn : 'border-gray-200'}`}><Filter size={16}/></button>
+            </div>
+
+            {showFilters && (
+               <div className="p-6 bg-white rounded-3xl border border-gray-100 animate-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-2 gap-4">
+                     {categories.slice(0, 4).map(c => <button key={c} onClick={() => setFilterCategory(c)} className={`py-2 rounded-xl text-[8px] font-black border ${filterCategory === c ? styles.btn : 'border-gray-100 text-gray-400'}`}>{c}</button>)}
+                  </div>
+               </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-6">
+               {enemyRequests.map(req => (
+                 <MatchRequestCard
+                    key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId}
+                    onInterested={handleProposeMatch}
+                    onAccept={()=>{}} onRefuse={()=>{}}
+                    onChat={(r) => setSelectedChatRequest(r)}
+                 />
+               ))}
+               {enemyRequests.length === 0 && !isLoading && <p className="text-center py-20 text-[10px] font-black text-gray-300 uppercase italic">Aucun adversaire détecté</p>}
+            </div>
+          </div>
+        </>
+      ) : (
+        /* ONGLET GESTION : MES ANNONCES */
+        <div className="space-y-6 animate-in fade-in duration-500">
+           <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-orange-600 px-2 flex items-center gap-2"><Wifi size={14}/> Mes Signaux en cours</h3>
+           <div className="grid grid-cols-1 gap-6">
+              {myRequests.map(req => (
+                <MatchRequestCard
+                  key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId}
+                  onInterested={()=>{}} onAccept={()=>{}} onRefuse={()=>{}}
+                  onChat={(r) => setSelectedChatRequest(r)}
+                  onDelete={handleDeleteRequest}
+                  onEdit={(id) => router.push(`/radar/new?id=${id}`)}
+                />
+              ))}
+              {myRequests.length === 0 && <div className="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-200"><p className="text-[10px] font-black text-gray-300 uppercase">Aucune annonce déposée</p></div>}
            </div>
-           <div className="space-y-4 text-left">
-              <div className="flex justify-between items-center">
-                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Rayon de détection</label>
-                 <span className={`text-xs font-black italic ${styles.accent}`}>{filterDistance} KM</span>
-              </div>
-              <input type="range" min="5" max="200" step="5" value={filterDistance} onChange={(e) => setFilterDistance(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-600" />
-           </div>
-        </section>
+        </div>
       )}
-
-      {/* 3. LISTE DES ANNONCES (SOUS LE RADAR) */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2 border-b border-gray-200 pb-2">
-           <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 flex items-center gap-2">
-              <Wifi size={14} className={styles.accent} /> Flux de Missions
-           </h3>
-           <span className="text-[9px] font-bold text-gray-400 uppercase italic">{filteredRequests.length} Résultats</span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6">
-           {filteredRequests.map(req => (
-             <MatchRequestCard
-               key={req.id}
-               request={req}
-               isPro={isPro}
-               currentCoachId={currentUserId}
-               onInterested={()=>{}}
-               onAccept={()=>{}}
-               onRefuse={()=>{}}
-               onChat={(r) => setSelectedChatRequest(r)}
-               onDelete={handleDeleteRequest}
-               onEdit={handleEditRequest}
-             />
-           ))}
-
-           {filteredRequests.length === 0 && !isLoading && (
-             <div className="py-20 text-center opacity-30 italic uppercase text-[10px] space-y-4">
-                <p>Aucun signal détecté dans ce périmètre</p>
-                <button onClick={() => setFilterCategory('TOUS')} className="text-orange-600 underline">Réinitialiser les filtres</button>
-             </div>
-           )}
-        </div>
-      </div>
 
       {selectedChatRequest && (
         <NegotiationChat
-          isOpen={!!selectedChatRequest}
-          onClose={() => setSelectedChatRequest(null)}
-          matchRequestId={selectedChatRequest.id}
-          currentUserId={currentUserId}
-          otherCoachName={selectedChatRequest.coachName}
-          theme={theme as any}
+          isOpen={!!selectedChatRequest} onClose={() => setSelectedChatRequest(null)}
+          matchRequestId={selectedChatRequest.id} currentUserId={currentUserId}
+          otherCoachName={selectedChatRequest.coachName} theme={theme as any}
         />
       )}
     </main>
