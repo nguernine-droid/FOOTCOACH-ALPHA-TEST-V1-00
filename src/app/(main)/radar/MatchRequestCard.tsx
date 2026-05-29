@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   Shield, Zap, MessageSquare, Clock, MapPin,
-  CheckCircle2, Wifi, Trophy, Layers, Trash2, Edit3
+  CheckCircle2, XCircle, Wifi, Trophy, Layers, Trash2, Edit3
 } from 'lucide-react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { MatchRequest } from './page';
@@ -12,6 +12,7 @@ interface MatchRequestCardProps {
   request: MatchRequest;
   isPro: boolean;
   currentCoachId: string;
+  canInteract?: boolean;
   onInterested: (id: string) => void;
   onAccept: (id: string) => void;
   onRefuse: (id: string) => void;
@@ -25,7 +26,8 @@ interface MatchRequestCardProps {
  * Slide gauche: Supprimer | Slide droite: Modifier
  */
 export function MatchRequestCard({
-  request, isPro, currentCoachId, onInterested, onAccept, onRefuse, onChat, onDelete, onEdit
+  request, isPro, currentCoachId, canInteract = true,
+  onInterested, onAccept, onRefuse, onChat, onDelete, onEdit
 }: MatchRequestCardProps) {
 
   const isMine = request.coachId === currentCoachId;
@@ -82,6 +84,15 @@ export function MatchRequestCard({
         style={{ x }}
         className={`w-full bg-white rounded-[2.5rem] border-[3px] ${t.border} overflow-hidden relative shadow-lg z-10`}
       >
+        {/* Badge SOS */}
+        {request.isSos && (
+          <div className="bg-red-600 px-5 py-2 flex items-center gap-2">
+            <span className="text-white text-[10px] font-black uppercase tracking-widest animate-pulse">
+              🚨 SOS — Match urgent ! Répondez pour gagner des XP
+            </span>
+          </div>
+        )}
+
         <div className="flex justify-between items-center p-5 pb-3 border-b border-gray-100 bg-white">
            <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-white rounded-xl p-1.5 shadow-md border border-gray-100 flex items-center justify-center">
@@ -103,12 +114,30 @@ export function MatchRequestCard({
         <div className="p-6 space-y-4 bg-white">
            <div className="flex items-end justify-between gap-4">
               <div className="text-left">
-                 <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Coach Responsable</p>
+                 <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">
+                   {isPro ? 'Coach Responsable' : 'Commandant'}
+                 </p>
                  <h2 className="text-xl font-black uppercase italic text-gray-900 tracking-tighter">{request.coachName}</h2>
+                 <div className="flex items-center gap-2 mt-1">
+                   {request.coachGrade && (
+                     <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-orange-50 text-orange-600 rounded-full border border-orange-100">
+                       🏅 {request.coachGrade}
+                     </span>
+                   )}
+                   {request.coachLevel && (
+                     <span className="text-[8px] font-black uppercase px-2 py-0.5 bg-gray-50 text-gray-500 rounded-full border border-gray-100">
+                       ⚡ {request.coachLevel}
+                     </span>
+                   )}
+                 </div>
               </div>
               <div className="flex flex-col items-end">
                  <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-900 italic">
-                    <Clock size={12} className={t.accent} /> {new Date(request.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} • {request.time}
+                    <Clock size={12} className={t.accent} />
+                    {request.date
+                      ? `${new Date(request.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} • ${request.time?.slice(0,5) || ''}`
+                      : `📅 ${(request as any).availabilityWindow || 'Flexible'}`
+                    }
                  </div>
               </div>
            </div>
@@ -144,9 +173,10 @@ export function MatchRequestCard({
               <div className="w-full bg-gray-100 py-4 rounded-2xl text-center">
                  {isPending ? (
                    <div className="flex items-center justify-between px-6">
-                      <p className="text-[9px] font-black text-orange-600 uppercase">Réponse reçue !</p>
+                      <p className="text-[9px] font-black text-orange-600 uppercase animate-pulse">⚡ Réponse reçue !</p>
                       <div className="flex gap-2">
-                         <button onClick={(e) => { e.stopPropagation(); onChat(request); }} className="p-2 bg-white rounded-lg text-blue-600 shadow-sm"><MessageSquare size={16}/></button>
+                         <button onClick={(e) => { e.stopPropagation(); onChat(request); }} className="p-2 bg-white rounded-lg text-blue-600 shadow-sm border border-blue-100"><MessageSquare size={16}/></button>
+                         <button onClick={(e) => { e.stopPropagation(); onRefuse(request.id); }} className="p-2 bg-red-500 text-white rounded-lg shadow-sm"><XCircle size={16}/></button>
                          <button onClick={(e) => { e.stopPropagation(); onAccept(request.id); }} className="p-2 bg-[#16a34a] text-white rounded-lg shadow-sm"><CheckCircle2 size={16}/></button>
                       </div>
                    </div>
@@ -154,14 +184,36 @@ export function MatchRequestCard({
                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center justify-center gap-2 animate-pulse"><Wifi size={12}/> Signal_En_Émission...</p>
                  )}
               </div>
+           ) : !canInteract ? (
+              <div className="w-full py-4 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center gap-2">
+                <span className="text-[9px] font-black uppercase text-orange-400 tracking-widest">
+                  ⚠️ Complétez votre profil club pour répondre
+                </span>
+              </div>
+           ) : isPending ? (
+              /* Réponse reçue — en attente Coach A */
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onChat(request); }}
+                  className="flex-1 py-4 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 font-black uppercase text-[10px] flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <MessageSquare size={16}/> {isPro ? 'Plus d\'info' : 'Négocier'}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onInterested(request.id); }}
+                  className="flex-1 py-4 rounded-2xl bg-orange-600 text-white font-black uppercase text-[10px] flex items-center justify-center gap-2 active:scale-95 shadow-lg"
+                >
+                  <Zap size={16} fill="currentColor"/>
+                  {isPro ? 'Intéressé' : 'Relever le défi'}
+                </button>
+              </div>
            ) : (
               <button
-                onClick={(e) => { e.stopPropagation(); isPending ? onChat(request) : onInterested(request.id); }}
-                className={`w-full py-5 rounded-2xl font-black uppercase italic text-xs transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl
-                  ${isPending ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-orange-600 text-white shadow-orange-100'}
-                `}
+                onClick={(e) => { e.stopPropagation(); onInterested(request.id); }}
+                className="w-full py-5 rounded-2xl bg-orange-600 text-white font-black uppercase italic text-xs transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl"
               >
-                 {isPending ? <><MessageSquare size={18}/> CONTACTER LE COACH</> : <><Zap size={18} fill="currentColor"/> PROPOSER MATCH</>}
+                <Zap size={18} fill="currentColor"/>
+                {isPro ? 'Proposer un match' : 'Relever le défi'}
               </button>
            )}
         </div>

@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { EventPushManager } from '@/components/EventPushManager';
 
 /**
  * CALENDAR_PAGE (v11.0 - SMART SWIPE)
@@ -28,11 +29,14 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
  */
 export default function CalendarPage() {
   const router = useRouter();
-  const { teamInfo } = useTeam();
+  const { teamInfo, theme } = useTeam();
+  const isPro = theme === 'classic';
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [monthOffset, setMonthOffset] = useState(0);
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [filterMine, setFilterMine] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Configuration du mois
   const today = new Date();
@@ -43,23 +47,29 @@ export default function CalendarPage() {
   const monthShort = viewDate.toLocaleDateString('fr-FR', { month: 'short' });
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // CHARGEMENT DES ÉVÉNEMENTS (MODE ALPHA SANS FILTRE)
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+
   useEffect(() => {
     const fetchEvents = async () => {
       setIsLoading(true);
       try {
-        // ON RÉCUPÈRE TOUT POUR ÊTRE SÛR DE NE RIEN PERDRE
-        const { data, error } = await supabase
+        let query = supabase
           .from('events')
           .select('*')
+          .is('deleted_at', null)
           .order('date', { ascending: true });
 
+        if (filterMine && userId) query = query.eq('created_by', userId);
+
+        const { data, error } = await query;
         if (error) throw error;
         setEvents(data || []);
       } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };
     fetchEvents();
-  }, []);
+  }, [filterMine, userId]);
 
   const getEventStyle = (ev: any) => {
     const type = ev.type?.toLowerCase() || '';
@@ -71,11 +81,11 @@ export default function CalendarPage() {
     return { color: 'text-sky-400', bg: 'bg-sky-500', icon: <Zap size={18} /> };
   };
 
-  const monthEvents = useMemo(() => events.filter(e => { const d = new Date(e.date); return d.getMonth() === month && d.getFullYear() === year; }), [events, month, year]);
-  const currentDayEvents = useMemo(() => monthEvents.filter(e => new Date(e.date).getDate() === selectedDay), [monthEvents, selectedDay]);
+  const monthEvents = useMemo(() => events.filter(e => { const d = new Date(e.date + 'T00:00:00'); return d.getMonth() === month && d.getFullYear() === year; }), [events, month, year]);
+  const currentDayEvents = useMemo(() => monthEvents.filter(e => new Date(e.date + 'T00:00:00').getDate() === selectedDay), [monthEvents, selectedDay]);
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('events').delete().eq('id', id);
+    const { error } = await supabase.from('events').update({ deleted_at: new Date().toISOString() }).eq('id', id);
     if (!error) setEvents(prev => prev.filter(ev => ev.id !== id));
   };
 
@@ -84,15 +94,27 @@ export default function CalendarPage() {
       <header className="bg-black/80 backdrop-blur-md py-5 px-6 sticky top-0 z-30 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="active:scale-90 transition-transform"><ChevronLeft size={24} strokeWidth={3} /></button>
-          <h1 className="text-xl font-black italic uppercase tracking-tighter">Agenda_Tactique</h1>
+          <h1 className="text-xl font-black italic uppercase tracking-tighter">
+            {isPro ? 'Mon Agenda' : 'Agenda_Tactique'}
+          </h1>
         </div>
-        <div className="px-3 py-1 rounded-lg border border-neon-cyan/30 text-neon-cyan text-[8px] font-black uppercase tracking-widest">Alpha_V1</div>
+        <button
+          onClick={() => setFilterMine(prev => !prev)}
+          className={`px-3 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest transition-all ${filterMine ? 'bg-neon-cyan text-black border-neon-cyan' : 'border-neon-cyan/30 text-neon-cyan'}`}
+        >
+          {filterMine ? 'Mes Events' : 'Tous'}
+        </button>
       </header>
 
       <div className="p-5 space-y-6">
-        <Link href="/events/new" className="w-full bg-neon-cyan text-black font-black py-5 rounded-2xl shadow-[0_0_20px_rgba(0,240,255,0.3)] flex items-center justify-center gap-3 active:scale-95 transition-all uppercase italic text-sm">
-          <Plus size={20} strokeWidth={4} /> Planifier Mission
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/events/new" className={`flex-1 font-black py-5 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all uppercase italic text-sm
+            ${isPro ? 'bg-orange-600 text-white shadow-orange-200' : 'bg-neon-cyan text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]'}`}>
+            <Plus size={20} strokeWidth={4} />
+            {isPro ? 'Planifier un événement' : 'Planifier Mission'}
+          </Link>
+          <EventPushManager />
+        </div>
 
         {/* CALENDRIER COMPACT */}
         <section className="bg-white/5 rounded-[2.5rem] p-6 border border-white/10">
@@ -109,7 +131,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7 gap-1 text-center">
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const d = i + 1;
-              const hasEvt = monthEvents.some(e => new Date(e.date).getDate() === d);
+              const hasEvt = monthEvents.some(e => new Date(e.date + 'T00:00:00').getDate() === d);
               return (
                 <button key={i} onClick={() => setSelectedDay(d)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black relative transition-all ${selectedDay === d ? 'bg-neon-cyan text-black shadow-[0_0_15px_#00F0FF]' : 'text-gray-500'}`}>
                   {d}
@@ -122,13 +144,17 @@ export default function CalendarPage() {
 
         {/* LISTE DES MISSIONS AVEC SMART SWIPE */}
         <section className="space-y-4">
-           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-2">Planning du {selectedDay} {monthShort}</h3>
+           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 px-2">
+             {isPro ? `Événements du ${selectedDay} ${monthShort}` : `Planning du ${selectedDay} ${monthShort}`}
+           </h3>
            <div className="space-y-4">
               <AnimatePresence>
                 {currentDayEvents.length > 0 ? currentDayEvents.map((ev) => (
-                  <SwipeableEventCard key={ev.id} event={ev} style={getEventStyle(ev)} onDelete={() => handleDelete(ev.id)} onEdit={() => router.push(`/events/new?edit=${ev.id}`)} />
+                  <SwipeableEventCard key={ev.id} event={ev} style={getEventStyle(ev)} onDelete={() => handleDelete(ev.id)} onEdit={() => router.push(`/events/new?edit=${ev.id}`)} onView={() => router.push(`/events/${ev.id}`)} />
                 )) : (
-                  <div className="py-12 text-center text-gray-700 font-black uppercase text-[10px] italic">Aucune mission opérationnelle</div>
+                  <div className="py-12 text-center text-gray-700 font-black uppercase text-[10px] italic">
+                    {isPro ? 'Aucun événement ce jour' : 'Aucune mission opérationnelle'}
+                  </div>
                 )}
               </AnimatePresence>
            </div>
@@ -141,34 +167,41 @@ export default function CalendarPage() {
 /**
  * COMPOSANT CARTE AVEC GESTION DU SWIPE
  */
-function SwipeableEventCard({ event, style, onDelete, onEdit }: any) {
+function SwipeableEventCard({ event, style, onDelete, onEdit, onView }: any) {
   const x = useMotionValue(0);
-  const opacity = useTransform(x, [-100, -50, 0], [1, 1, 1]);
-  const background = useTransform(x, [-100, 0], ['#ef4444', '#00000000']);
 
   const handleDragEnd = (_: any, info: any) => {
     if (info.offset.x < -100) {
       if (confirm("Confirmer la suppression ?")) onDelete();
+    } else if (info.offset.x > 80) {
+      onEdit();
     }
   };
 
   return (
-    <div className="relative group">
-      {/* Background rouge de suppression */}
-      <div className="absolute inset-0 bg-red-600 rounded-2xl flex items-center justify-end px-6">
+    <div className="relative group overflow-hidden rounded-2xl">
+      {/* Fond gauche : supprimer */}
+      <div className="absolute inset-y-0 right-0 w-1/2 bg-red-600 rounded-r-2xl flex items-center justify-end px-6">
         <div className="flex flex-col items-center gap-1">
           <Trash2 size={20} className="text-white" />
           <span className="text-[8px] font-black uppercase">Supprimer</span>
+        </div>
+      </div>
+      {/* Fond droit : modifier */}
+      <div className="absolute inset-y-0 left-0 w-1/2 bg-sky-600 rounded-l-2xl flex items-center justify-start px-6">
+        <div className="flex flex-col items-center gap-1">
+          <Edit2 size={20} className="text-white" />
+          <span className="text-[8px] font-black uppercase">Modifier</span>
         </div>
       </div>
 
       {/* La carte qui slide */}
       <motion.div
         drag="x"
-        dragConstraints={{ left: -120, right: 0 }}
+        dragConstraints={{ left: -120, right: 120 }}
         style={{ x }}
         onDragEnd={handleDragEnd}
-        onClick={onEdit}
+        onClick={onView}
         className="relative bg-[#0A0A0A] border-2 border-white/5 rounded-2xl p-5 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer z-10"
       >
         <div className="flex items-center gap-4">
@@ -178,7 +211,7 @@ function SwipeableEventCard({ event, style, onDelete, onEdit }: any) {
            <div className="text-left">
               <p className="text-sm font-black text-white uppercase italic tracking-tight">{event.title}</p>
               <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5 mt-1">
-                <Clock size={10} className="text-neon-cyan" /> {event.time} • {event.location}
+                <Clock size={10} className="text-neon-cyan" /> {event.time?.slice(0,5)} • {event.location}
               </p>
            </div>
         </div>

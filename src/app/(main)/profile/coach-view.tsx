@@ -9,8 +9,10 @@ import {
   ChevronLeft, User, Shield, MapPin, Navigation,
   Phone, Layers, Trophy, Edit3, CheckCircle2, Star, Zap,
   Save, X, Loader2, Camera, Flame, Check, Fingerprint, Info, Globe, MessageSquare, TrendingUp,
-  Briefcase, GraduationCap, Lightbulb, Trash2, PlusCircle
+  Briefcase, GraduationCap, Lightbulb, Trash2, PlusCircle, Users
 } from 'lucide-react';
+import { ClubSearchInput } from '@/components/ClubSearchInput';
+import { ReferralQRCode } from '@/components/ReferralQRCode';
 
 interface CoachViewProps {
   onActivateParent?: () => void;
@@ -395,7 +397,22 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                       </div>
                       <label className="absolute bottom-0 right-1/2 translate-x-12 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'logo')} /></label>
                    </div>
-                   <input placeholder="Nom Complet du Club" value={formData.clubName} onChange={e => setFormData({...formData, clubName: e.target.value})} className={inputStyle} />
+                   <ClubSearchInput
+                     value={formData.clubName}
+                     isPro={true}
+                     placeholder="Rechercher ou changer de club..."
+                     city={formData.city}
+                     onSelect={async (club) => {
+                       setFormData({ ...formData, clubName: club.name });
+                       const { data: { user } } = await supabase.auth.getUser();
+                       if (user) await supabase.from('profiles').update({ club_id: club.id }).eq('id', user.id);
+                     }}
+                     onCreate={(name, parentId) => {
+                       setFormData({ ...formData, clubName: name });
+                       // parentId sera passé lors du save de la section club
+                       if (parentId) (window as any).__pendingParentClubId = parentId;
+                     }}
+                   />
                    <input placeholder="Acronyme (ex: ASFAC, FCB...)" value={formData.clubAcronym} onChange={e => setFormData({...formData, clubAcronym: e.target.value.toUpperCase()})} className={inputStyle} />
                    <div className="grid grid-cols-2 gap-3">
                       <input placeholder="Catégorie" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value.toUpperCase()})} className={inputStyle} />
@@ -506,6 +523,17 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                 </div>
               )}
            </div>
+        </section>
+
+        {/* PARRAINAGE */}
+        <section className="space-y-4 pb-8">
+          <div className="flex items-center gap-3 px-2 border-b-2 border-gray-100 pb-2">
+            <Users size={16} className="text-orange-600" />
+            <h3 className="text-xs font-black uppercase tracking-widest text-gray-900">
+              Parrainage
+            </h3>
+          </div>
+          <ReferralQRCode isPro={true} />
         </section>
 
       </main>

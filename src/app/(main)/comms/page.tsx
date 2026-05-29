@@ -50,9 +50,87 @@ export default function MessagesPage() {
 
       setAnnouncements([...dbAnnouncements, ...localMessages]);
 
-      // 3. Fetch Contacts (Matchs validés)
-      const { data: matchedData } = await supabase.from('match_requests').select(`id, coach_id, respondent_id, type, date, status, profiles!match_requests_coach_id_fkey (id, first_name, last_name, nickname, avatar_url), respondent:profiles!match_requests_respondent_id_fkey (id, first_name, last_name, nickname, avatar_url)`).eq('status', 'MATCHED').or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`);
-      if (matchedData) setNetworkContacts(matchedData.map((m: any) => { const isOwner = m.coach_id === user.id; const other = isOwner ? m.respondent : m.profiles; return { id: m.id, otherCoachId: other?.id, name: other?.nickname || (other ? `${other.first_name} ${other.last_name}` : 'Coach Inconnu'), club: 'Unité Nexus', avatar: other?.avatar_url, matchType: m.type, date: m.date }; }));
+      // 3. Fetch Contacts — fusion MATCHED + connexions directes
+      const { data: matchedData } = await supabase
+        .from('match_requests')
+        .select(`
+          id, coach_id, respondent_id, type, date, category,
+          profiles!match_requests_coach_id_fkey (
+            id, first_name, last_name, nickname, avatar_url,
+            clubs:club_id (name, city, logo_url)
+          ),
+          respondent:profiles!match_requests_respondent_id_fkey (
+            id, first_name, last_name, nickname, avatar_url,
+            clubs:club_id (name, city, logo_url)
+          )
+        `)
+        .eq('status', 'MATCHED')
+        .or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`)
+        .order('date', { ascending: false });
+
+      // Map unifiée : clé = otherId
+      const contactMap = new Map<string, any>();
+
+      // Source A : matchs MATCHED
+      if (matchedData) {
+        matchedData.forEach((m: any) => {
+          const isOwner = m.coach_id === user.id;
+          const other   = isOwner ? m.respondent : m.profiles;
+          const otherId = other?.id;
+          if (!otherId) return;
+          const existing = contactMap.get(otherId);
+          contactMap.set(otherId, {
+            id:           m.id,
+            otherCoachId: otherId,
+            name:         other?.nickname || `${other?.first_name || ''} ${other?.last_name || ''}`.trim() || 'Coach Inconnu',
+            club:         (other as any)?.clubs?.name || 'Club inconnu',
+            city:         (other as any)?.clubs?.city || '',
+            clubLogo:     (other as any)?.clubs?.logo_url || null,
+            avatar:       other?.avatar_url,
+            matchType:    m.type,
+            category:     m.category,
+            lastDate:     m.date,
+            matchCount:   existing ? existing.matchCount + 1 : 1,
+            source:       'radar',
+            connectionType: 'connection',
+          });
+        });
+      }
+
+      // Source B : connexions directes (échange de cartes / suivi)
+      const { data: connections } = await supabase
+        .from('coach_connections')
+        .select(`
+          id, type, source, created_at,
+          coach_a:coach_a_id(id, nickname, first_name, last_name, avatar_url, coach_status, clubs:club_id(name, city, logo_url)),
+          coach_b:coach_b_id(id, nickname, first_name, last_name, avatar_url, coach_status, clubs:club_id(name, city, logo_url))
+        `)
+        .or(`coach_a_id.eq.${user.id},coach_b_id.eq.${user.id}`);
+
+      if (connections) {
+        connections.forEach((c: any) => {
+          const isA   = c.coach_a?.id === user.id;
+          const other = isA ? c.coach_b : c.coach_a;
+          const otherId = other?.id;
+          if (!otherId || contactMap.has(otherId)) return; // priorité aux matchs
+          contactMap.set(otherId, {
+            id:             c.id,
+            otherCoachId:   otherId,
+            name:           other?.nickname || `${other?.first_name || ''} ${other?.last_name || ''}`.trim() || 'Coach Inconnu',
+            club:           other?.clubs?.name || 'Club inconnu',
+            city:           other?.clubs?.city || '',
+            clubLogo:       other?.clubs?.logo_url || null,
+            avatar:         other?.avatar_url,
+            coachStatus:    other?.coach_status,
+            lastDate:       c.created_at?.split('T')[0],
+            matchCount:     0,
+            source:         c.source,
+            connectionType: c.type,
+          });
+        });
+      }
+
+      setNetworkContacts(Array.from(contactMap.values()));
     } catch (err) { console.error(err); } finally { setIsDataLoading(false); }
   }, []);
 
@@ -65,10 +143,32 @@ export default function MessagesPage() {
   return (
     <main className={`min-h-screen pb-32 max-w-md mx-auto transition-colors duration-500 ${styles.mainBg}`}>
       <header className={`backdrop-blur-md py-5 px-6 sticky top-0 z-40 flex flex-col gap-4 shadow-sm ${styles.headerBg}`}>
-        <div className="flex justify-between items-center text-left"><h1 className={`text-2xl font-black uppercase italic tracking-tighter leading-none ${styles.textMain}`}>Briefing</h1><div className="flex items-center gap-3"><div className={`${isPro ? 'bg-gray-100 text-gray-400' : 'bg-white/5 text-gray-600'} p-2.5 rounded-xl`}><Search size={18} /></div>{activeTab === 'announcements' && (<Link href="/radar/new" className={`${isPro ? 'bg-orange-600 text-white' : 'bg-[#39FF14] text-black'} p-2.5 rounded-xl shadow-lg active:scale-90 transition-all`}><Plus size={20} strokeWidth={3} /></Link>)}</div></div>
+        <div className="flex justify-between items-center text-left">
+          <h1 className={`text-2xl font-black uppercase italic tracking-tighter leading-none ${styles.textMain}`}>
+            {isPro ? 'Communications' : 'Briefing'}
+          </h1>
+          <div className="flex items-center gap-3">
+            <div className={`${isPro ? 'bg-gray-100 text-gray-400' : 'bg-white/5 text-gray-600'} p-2.5 rounded-xl`}><Search size={18} /></div>
+            {activeTab === 'announcements' && (
+              <Link href="/radar/new" className={`${isPro ? 'bg-orange-600 text-white' : 'bg-[#39FF14] text-black'} p-2.5 rounded-xl shadow-lg active:scale-90 transition-all`}>
+                <Plus size={20} strokeWidth={3} />
+              </Link>
+            )}
+          </div>
+        </div>
         <div className={`p-1 rounded-2xl flex border ${isPro ? 'bg-gray-100 border-gray-200' : 'bg-white/5 border-white/5'}`}>
-          <button onClick={() => setActiveTab('announcements')} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase italic ${activeTab === 'announcements' ? styles.tabActive : styles.tabInactive}`}><Megaphone size={14} /> Flash Info</button>
-          <button onClick={() => setActiveTab('network')} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase italic ${activeTab === 'network' ? styles.tabActive : styles.tabInactive}`}><Users size={14} /> Mon Réseau</button>
+          <button onClick={() => setActiveTab('announcements')} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase italic ${activeTab === 'announcements' ? styles.tabActive : styles.tabInactive}`}>
+            <Megaphone size={14} /> {isPro ? 'Annonces' : 'Flash Info'}
+          </button>
+          <button onClick={() => setActiveTab('network')} className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-[10px] font-black uppercase italic relative ${activeTab === 'network' ? styles.tabActive : styles.tabInactive}`}>
+            <Users size={14} /> {isPro ? 'Mon Réseau' : 'Network'}
+            {networkContacts.length > 0 && (
+              <span className={`absolute -top-1 -right-1 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center
+                ${isPro ? 'bg-orange-600 text-white' : 'bg-neon-cyan text-black'}`}>
+                {networkContacts.length}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
@@ -83,10 +183,78 @@ export default function MessagesPage() {
               <ChevronRight size={16} className={styles.textSub} />
             </div>
           ))
+        ) : networkContacts.length === 0 ? (
+          <div className={`py-20 text-center rounded-[2.5rem] border-2 border-dashed ${isPro ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'}`}>
+            <Users size={32} className="mx-auto mb-3 text-gray-400" />
+            <p className={`text-[11px] font-black uppercase tracking-widest ${styles.textSub}`}>
+              {isPro ? 'Aucun contact pour l\'instant' : 'Réseau vide — lancez des défis !'}
+            </p>
+            <p className={`text-[10px] font-bold mt-2 ${styles.textSub} opacity-60`}>
+              Vos contacts apparaissent après un match validé via le Radar
+            </p>
+          </div>
         ) : (
-          networkContacts.map((contact) => (
-            <div key={contact.id} onClick={() => setSelectedChat(contact)} className={`${styles.cardBg} rounded-[2rem] p-5 border flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer group shadow-sm`}><div className={`w-14 h-14 rounded-2xl border-2 overflow-hidden flex items-center justify-center bg-gray-100 ${styles.cardBg}`}>{contact.avatar ? (<img src={contact.avatar} alt={contact.name} className="w-full h-full object-cover" />) : (<UserIcon size={24} className="text-gray-400" />)}</div><div className="flex-1 min-w-0 text-left"><h3 className={`font-black text-sm uppercase italic tracking-tight ${styles.textMain}`}>{contact.name}</h3><p className={`text-[9px] font-bold uppercase tracking-widest ${styles.textSub}`}>{contact.club}</p></div><ChevronRight size={18} className="text-gray-300 flex-shrink-0" /></div>
-          ))
+          <div className="space-y-3">
+            {/* Compteur */}
+            <p className={`text-[10px] font-black uppercase tracking-widest px-1 ${styles.textSub}`}>
+              {networkContacts.length} coach{networkContacts.length > 1 ? 's' : ''} rencontré{networkContacts.length > 1 ? 's' : ''}
+            </p>
+
+            {networkContacts.map((contact) => (
+              <div
+                key={contact.id}
+                onClick={() => setSelectedChat(contact)}
+                className={`${styles.cardBg} rounded-[2rem] p-5 border flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer shadow-sm`}
+              >
+                {/* Avatar / Logo club */}
+                <div className="relative shrink-0">
+                  <div className={`w-14 h-14 rounded-2xl border-2 overflow-hidden flex items-center justify-center ${isPro ? 'bg-gray-100 border-gray-200' : 'bg-white/10 border-white/10'}`}>
+                    {contact.avatar
+                      ? <img src={contact.avatar} className="w-full h-full object-cover" />
+                      : <UserIcon size={24} className="text-gray-400" />
+                    }
+                  </div>
+                  {contact.clubLogo && (
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-lg border-2 border-white bg-white overflow-hidden shadow-sm">
+                      <img src={contact.clubLogo} className="w-full h-full object-contain p-0.5" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Infos */}
+                <div className="flex-1 min-w-0 text-left">
+                  <h3 className={`font-black text-sm uppercase italic tracking-tight ${styles.textMain}`}>{contact.name}</h3>
+                  <p className={`text-[10px] font-bold uppercase ${styles.textSub}`}>
+                    {contact.club}{contact.city ? ` — ${contact.city}` : ''}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    {/* Badge source */}
+                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      contact.connectionType === 'connection'
+                        ? isPro ? 'bg-orange-50 text-orange-600' : 'bg-orange-500/10 text-orange-400'
+                        : isPro ? 'bg-blue-50 text-blue-500' : 'bg-blue-500/10 text-blue-400'
+                    }`}>
+                      {contact.connectionType === 'connection' ? '🎴 Carte échangée' : '👥 Suivi'}
+                    </span>
+                    {/* Nb matchs */}
+                    {contact.matchCount > 0 && (
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${isPro ? 'bg-gray-100 text-gray-500' : 'bg-white/10 text-gray-500'}`}>
+                        {contact.matchCount} match{contact.matchCount > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {/* Statut disponibilité */}
+                    {contact.coachStatus === 'toujours_pret' && (
+                      <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-green-500/10 text-green-500">
+                        🟢 Toujours prêt
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <ChevronRight size={18} className="text-gray-300 shrink-0" />
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

@@ -1,25 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import {
-  Shield,
   ChevronRight,
-  Trophy,
   CheckCircle2,
-  MapPin,
   User,
-  Fingerprint,
-  Lock,
-  Zap,
-  Briefcase,
   Loader2,
-  Search,
-  Plus
 } from 'lucide-react';
 import { ScanlinesOverlay } from '@/components/ui/cyber/ScanlinesOverlay';
 import { useTeam } from '@/lib/context/TeamContext';
+import { ClubSearchInput } from '@/components/ClubSearchInput';
 
 interface Club {
   id: string;
@@ -52,61 +44,74 @@ export default function OnboardingPage() {
   const [acceptCGU, setAcceptCGU] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
-  const [allClubs, setClubs] = useState<Club[]>([]);
-  const [clubSearch, setClubSearch] = useState('');
-  const [selectedClub, setSelectedClub] = useState<Club | null>(null);
-  const [isClubMenuOpen, setIsClubListOpen] = useState(false);
+  const [selectedClubId, setSelectedClubId]     = useState<string | null>(null);
+  const [selectedClubName, setSelectedClubName] = useState('');
+  const [selectedParentId, setSelectedParentId] = useState<string | undefined>(undefined);
+  const [clubCity, setClubCity]                 = useState('');
+  const [clubStadium, setClubStadium]           = useState('');
 
-  const filteredClubs = useMemo(() => {
-    if (!clubSearch.trim()) return [];
-    return allClubs.filter(c => c.name.toLowerCase().includes(clubSearch.toLowerCase())).slice(0, 20); // LIMITE AUGMENTÉE
-  }, [allClubs, clubSearch]);
+  // Profil complet = toutes les infos obligatoires renseignées
+  const isProfileComplete = !!(
+    firstName && lastName && selectedClubName &&
+    clubCity && clubStadium && category && level &&
+    acceptCGU && acceptPrivacy
+  );
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/login'); return; }
-      const { data } = await supabase.from('clubs').select('id, name, category').order('name').limit(300); // FETCH LARGE
-      if (data) setClubs(data);
     };
     init();
   }, [router]);
 
   const handleFinish = async (e: React.FormEvent) => {
     e.preventDefault();
-    const clubName = selectedClub ? selectedClub.name : clubSearch.trim();
-    if (!acceptCGU || !acceptPrivacy || !firstName || !lastName || !clubName) {
-      setErrorMessage("Champs obligatoires manquants.");
-      return;
-    }
+    const clubName = selectedClubName.trim();
+    if (!firstName || !lastName)       { setErrorMessage("Nom et prénom obligatoires."); return; }
+    if (!clubName)                     { setErrorMessage("Votre club est obligatoire."); return; }
+    if (!clubCity.trim())              { setErrorMessage("La ville de votre club est obligatoire."); return; }
+    if (!clubStadium.trim())           { setErrorMessage("Le stade de votre club est obligatoire."); return; }
+    if (!category || !level)           { setErrorMessage("Catégorie et niveau obligatoires."); return; }
+    if (!acceptCGU || !acceptPrivacy)  { setErrorMessage("Veuillez accepter les CGU."); return; }
 
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Session expirée.");
 
-      let clubId = selectedClub?.id;
+      // selectedClubId est déjà rempli si le coach a sélectionné un club existant
+      // sinon on crée le club (ClubSearchInput garantit l'absence de doublon)
+      let clubId = selectedClubId;
 
-      // --- ENGINE D'AUTO-ALIMENTATION INTELLIGENT ---
       if (!clubId && clubName) {
-        // 1. On vérifie si le club n'a pas été créé par un autre coach entre temps
-        const { data: existing } = await supabase
+        // upsert : si le nom existe déjà (même en majuscules/minuscules)
+        // ON CONFLICT récupère l'existant sans créer de doublon
+        const { data: upserted, error: cErr } = await supabase
           .from('clubs')
+          .upsert(
+            [{
+              name:           clubName.toUpperCase(),
+              city:           clubCity    ? clubCity.toUpperCase()    : null,
+              stadium:        clubStadium ? clubStadium.toUpperCase() : null,
+              category:       'Mixte',
+              created_by:     user.id,
+              parent_club_id: selectedParentId ?? null,
+            }],
+            { onConflict: 'name_normalized', ignoreDuplicates: false }
+          )
           .select('id')
-          .ilike('name', clubName) // ilike = insensible à la casse
-          .maybeSingle();
+          .single();
 
-        if (existing) {
-          clubId = existing.id;
+        if (cErr) {
+          // Fallback : recherche par normalisation manuelle
+          const norm = clubName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, '').trim();
+          const { data: fallback } = await supabase
+            .from('clubs').select('id').eq('name_normalized', norm).maybeSingle();
+          if (fallback) clubId = fallback.id;
+          else throw new Error("Erreur création club.");
         } else {
-          // 2. On le crée réellement
-          const { data: newClub, error: cErr } = await supabase
-            .from('clubs')
-            .insert([{ name: clubName, category: 'Mixte' }])
-            .select()
-            .single();
-          if (cErr) throw new Error("Erreur création club.");
-          clubId = newClub.id;
+          clubId = upserted.id;
         }
       }
 
@@ -158,32 +163,50 @@ export default function OnboardingPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="relative">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+          <ClubSearchInput
+            value={selectedClubName}
+            isPro={false}
+            placeholder="TON CLUB (RECHERCHER OU CRÉER)"
+            city={clubCity}
+            requireVerified={true}
+            onSelect={(club) => {
+              setSelectedClubId(club.id);
+              setSelectedClubName(club.name);
+              // Sécurité 1 : ville + stade verrouillés depuis le club référencé
+              if (club.city)    setClubCity(club.city);
+              if (club.stadium) setClubStadium(club.stadium);
+            }}
+            onCreate={(name, parentId) => {
+              setSelectedClubId(null);
+              setSelectedClubName(name);
+              setSelectedParentId(parentId);
+            }}
+          />
+          {/* Ville + Stade — obligatoires pour valider le club */}
+          <div className="grid grid-cols-2 gap-3">
             <input
-              placeholder="TON CLUB (RECHERCHER OU CRÉER)"
-              value={selectedClub ? selectedClub.name : clubSearch}
-              onChange={(e) => { setClubSearch(e.target.value); setIsClubListOpen(true); if (selectedClub) setSelectedClub(null); }}
-              className={`w-full bg-white/5 border border-white/20 rounded-xl p-4 pl-12 text-sm font-bold text-white outline-none focus:border-[#39FF14] uppercase ${selectedClub ? 'border-neon-green text-neon-green' : ''}`}
+              placeholder="VILLE DU CLUB *"
+              value={clubCity}
+              onChange={e => setClubCity(e.target.value.toUpperCase())}
+              className={`bg-white/5 border rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14] transition-all
+                ${clubCity ? 'border-[#39FF14]/50' : 'border-red-500/40'}`}
+            />
+            <input
+              placeholder="NOM DU STADE *"
+              value={clubStadium}
+              onChange={e => setClubStadium(e.target.value.toUpperCase())}
+              className={`bg-white/5 border rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14] transition-all
+                ${clubStadium ? 'border-[#39FF14]/50' : 'border-red-500/40'}`}
             />
           </div>
-          {isClubMenuOpen && clubSearch.trim() && (
-            <div className="absolute z-50 w-full max-w-[350px] mt-2 bg-[#0A0A0A] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
-              {filteredClubs.map(club => (
-                <button key={club.id} type="button" onClick={() => { setSelectedClub(club); setClubSearch(''); setIsClubListOpen(false); }} className="w-full p-4 text-left hover:bg-white/5 border-b border-white/5">
-                  <p className="text-xs font-black text-white uppercase italic">{club.name}</p>
-                </button>
-              ))}
-              {!allClubs.some(c => c.name.toLowerCase() === clubSearch.toLowerCase()) && (
-                <button type="button" onClick={() => setIsClubListOpen(false)} className="w-full p-4 text-left hover:bg-white/10 text-neon-cyan flex items-center gap-2">
-                  <Plus size={14} /><p className="text-xs font-black uppercase italic">Enregistrer "{clubSearch}"</p>
-                </button>
-              )}
-            </div>
+          {(!clubCity || !clubStadium) && selectedClubName && (
+            <p className="text-[9px] font-black text-orange-400 uppercase tracking-widest px-1">
+              ⚠️ Ville et stade requis pour accéder au Radar
+            </p>
           )}
           <div className="grid grid-cols-2 gap-3">
-             <input required placeholder="CATÉGORIE (U13...)" value={category} onChange={e => setCategory(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
-             <input required placeholder="NIVEAU (D1...)" value={level} onChange={e => setLevel(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
+            <input required placeholder="CATÉGORIE (U13...)" value={category} onChange={e => setCategory(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
+            <input required placeholder="NIVEAU (D1...)" value={level} onChange={e => setLevel(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
           </div>
         </div>
 
@@ -193,7 +216,7 @@ export default function OnboardingPage() {
         </div>
 
         {errorMessage && <p className="text-center text-[10px] font-black text-red-500 uppercase">{errorMessage}</p>}
-        <button type="submit" disabled={isLoading} className={`w-full py-6 rounded-2xl font-black uppercase italic text-lg transition-all flex items-center justify-center gap-3 shadow-2xl ${acceptCGU && acceptPrivacy && (selectedClub || clubSearch.trim()) ? (selectedTheme === 'nexus' ? 'bg-neon-cyan text-black' : 'bg-neon-orange text-white') : 'bg-white/5 text-white/20 cursor-not-allowed'}`}>
+        <button type="submit" disabled={isLoading || !isProfileComplete} className={`w-full py-6 rounded-2xl font-black uppercase italic text-lg transition-all flex items-center justify-center gap-3 shadow-2xl ${isProfileComplete ? (selectedTheme === 'nexus' ? 'bg-neon-cyan text-black' : 'bg-orange-600 text-white') : 'bg-white/5 text-white/20 cursor-not-allowed'}`}>
           {isLoading ? <Loader2 className="animate-spin" /> : "ACTIVER MON COMPTE"}
           {!isLoading && <ChevronRight size={24} />}
         </button>

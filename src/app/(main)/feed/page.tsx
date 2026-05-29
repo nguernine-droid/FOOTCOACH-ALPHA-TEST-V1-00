@@ -122,9 +122,13 @@ export default function LiveFeedPage() {
       <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/10 p-5 flex justify-between items-center">
         <div className="flex items-center gap-3">
            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-           <h1 className="text-xl font-black uppercase italic tracking-tighter text-white">Radio_Nexus_Live</h1>
+           <h1 className="text-xl font-black uppercase italic tracking-tighter text-white">
+             {isPro ? 'Fil d\'actualité' : 'Radio_Nexus_Live'}
+           </h1>
         </div>
-        <div className="text-[8px] font-black uppercase text-gray-500 tracking-[0.3em]">Secteur_Hérault</div>
+        <div className="text-[8px] font-black uppercase text-gray-500 tracking-[0.3em]">
+          {isPro ? teamInfo?.clubName || 'Mon club' : 'Secteur_Hérault'}
+        </div>
       </header>
 
       <div className="p-4 max-w-md mx-auto space-y-6">
@@ -138,7 +142,7 @@ export default function LiveFeedPage() {
              type="text"
              value={newMessage}
              onChange={(e) => setNewMessage(e.target.value)}
-             placeholder="Annoncer un but, une info..."
+             placeholder={isPro ? "Partagez une info, un résultat..." : "Émettre un signal..."}
              className="flex-1 bg-transparent border-none outline-none text-sm font-bold text-white placeholder:text-gray-600"
            />
            <button

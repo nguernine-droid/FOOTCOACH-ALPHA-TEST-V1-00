@@ -1,0 +1,5 @@
+[api]
+enabled = true
+
+[functions.send-event-reminders]
+verify_jwt = false

@@ -1,28 +1,38 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Shield, Mail, Lock, User, ChevronRight, ArrowLeft, UsersRound, Heart, Zap } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 
 type Role = 'coach' | 'player' | 'parent' | 'supporter';
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const refCode = searchParams.get('ref');
+
   const [role, setRole] = useState<Role>('coach');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [referrerName, setReferrerName] = useState<string | null>(null);
 
   useEffect(() => {
-    const testConnection = async () => {
-      const { data, error } = await supabase.from('profiles').select('id').limit(1);
-      if (error) console.log("❌ Erreur Supabase:", error.message);
-      else console.log("✅ Connecté à Supabase ! Données:", data);
-    };
-    testConnection();
-  }, []);
+    if (refCode) {
+      // Stocker le code parrain pour l'onboarding
+      localStorage.setItem('referral_code', refCode);
+      // Afficher le nom du parrain
+      supabase.from('profiles')
+        .select('nickname, first_name, last_name')
+        .eq('referral_code', refCode)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setReferrerName(data.nickname || data.first_name || 'Un coach');
+        });
+    }
+  }, [refCode]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,13 +47,35 @@ export default function RegisterPage() {
 
       if (error) throw error;
 
-      // 2. Préparation pour l'onboarding
+      // 2. Lier le parrain si code présent
+      const storedRef = localStorage.getItem('referral_code') || refCode;
+      if (storedRef && data.user) {
+        const { data: referrer } = await supabase
+          .from('profiles').select('id').eq('referral_code', storedRef).maybeSingle();
+        if (referrer) {
+          await supabase.from('profiles')
+            .update({ referred_by: referrer.id })
+            .eq('id', data.user.id);
+          // Notifier le parrain
+          await supabase.functions.invoke('notify-coach', {
+            body: {
+              profile_id: referrer.id,
+              title: '🎉 Nouveau filleul !',
+              body:  'Un coach a rejoint FootCoach grâce à votre lien de parrainage.',
+              url:   '/profile',
+            },
+          });
+          localStorage.removeItem('referral_code');
+        }
+      }
+
+      // 3. Préparation pour l'onboarding
       localStorage.setItem('pending_signup_email', email);
       localStorage.setItem('user_role', role);
       localStorage.setItem('is_authenticated', 'true');
 
-      // 3. Rediriger directement vers le dashboard (Règle des 3 clics)
-      router.push('/dashboard');
+      // 4. Rediriger vers l'onboarding
+      router.push('/onboarding');
     } catch (error: any) {
       alert("Erreur d'inscription : " + error.message);
     } finally {
@@ -78,6 +110,17 @@ export default function RegisterPage() {
         </div>
         <div className="w-10" />
       </header>
+
+      {/* Banner parrainage */}
+      {referrerName && (
+        <div className="relative z-10 mb-6 px-4 py-3 rounded-2xl border border-[#39FF14]/30 bg-[#39FF14]/10 flex items-center gap-3">
+          <span className="text-xl">🎉</span>
+          <div>
+            <p className="text-[10px] font-black uppercase text-[#39FF14] tracking-widest">Invitation de {referrerName}</p>
+            <p className="text-[9px] font-bold text-gray-400 uppercase">Vous avez été parrainé — bonus XP au démarrage !</p>
+          </div>
+        </div>
+      )}
 
       {/* Intro Text */}
       <div className="mb-10 relative z-10">
@@ -147,5 +190,17 @@ export default function RegisterPage() {
          </p>
       </footer>
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#39FF14] border-t-transparent rounded-full animate-spin" />
+      </main>
+    }>
+      <RegisterContent />
+    </Suspense>
   );
 }

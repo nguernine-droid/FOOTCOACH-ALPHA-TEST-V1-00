@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Lock, Calendar, Moon, Sun, Bell, Download, Trash2, ChevronRight } from 'lucide-react';
+import { Lock, Calendar, Moon, Sun, Bell, Download, Trash2, ChevronRight, Merge } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 // On remplace forceCyber par hideThemeToggle (pour Parent & Supporter)
 export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?: boolean }) {
-  const { theme, setTheme } = useTeam();
+  const { theme, setTheme, role } = useTeam();
+  const router = useRouter();
   const [selectedSeason, setSelectedSeason] = useState('2024/2025');
   const [pushUrgence, setPushUrgence] = useState(true);
 
@@ -124,6 +126,25 @@ export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?
           </div>
           <ChevronRight size={18} className="text-gray-400" />
         </button>
+
+        {/* ADMIN : Fusion des clubs doublons */}
+        {role === 'admin' && (
+          <button
+            onClick={() => router.push('/admin/clubs')}
+            className={`w-full p-4 flex items-center justify-between ${styles.rowHover} transition-all`}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center`}>
+                <Merge size={20} className="text-orange-500" />
+              </div>
+              <div className="text-left">
+                <p className={`text-xs font-black ${styles.textMain} uppercase italic`}>Fusion Clubs Doublons</p>
+                <p className={`text-[9px] ${styles.textSub} font-bold uppercase`}>Admin uniquement</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-gray-400" />
+          </button>
+        )}
 
         {/* LOGOUT - Remplacement de Delete par Logout sur le profil */}
         <button
