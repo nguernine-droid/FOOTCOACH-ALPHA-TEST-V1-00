@@ -1,18 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Loader2, Radar, Calendar, MessageCircle, Trophy,
   CheckCircle2, Zap, ChevronRight, Shield, MapPin,
-  Clock, Bell, ArrowRight, Target, Star
+  Clock, Bell, ArrowRight, Target, Star, Radio, History
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
+import { motion } from 'framer-motion';
 
 /**
- * DASHBOARD V2 — HUB DE COMMANDE
- * Évolutif : prêt pour Live Match, Feed X, Stories Instagram
+ * DASHBOARD V3 — TIMELINE CAROUSEL
+ * Système de navigation temporelle : Swipe gauche (Passé) / Swipe droite (Futur).
+ * Centrage automatique sur l'objectif prioritaire.
  */
 
 interface FilItem {
@@ -28,8 +30,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const { teamInfo, theme, isLoading: isContextLoading } = useTeam();
   const isPro = theme === 'classic';
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [nextEvent, setNextEvent]         = useState<any>(null);
+  const [events, setEvents]             = useState<any[]>([]);
   const [radarCount, setRadarCount]       = useState(0);
   const [chatCount, setChatCount]         = useState(0);
   const [responseCount, setResponseCount] = useState(0);
@@ -38,10 +41,10 @@ export default function DashboardPage() {
 
   // KPIs
   const [kpis, setKpis] = useState({
-    matchsJoues:     0,   // events de type match avec status finished
-    annoncesPubliees: 0,  // mes match_requests
-    matchsValides:   0,   // mes annonces MATCHED
-    tauxDispo:       0,   // % présents sur mes événements
+    matchsJoues:     0,
+    annoncesPubliees: 0,
+    matchsValides:   0,
+    tauxDispo:       0,
   });
 
   const fetchData = useCallback(async () => {
@@ -49,19 +52,16 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const today = new Date().toISOString().split('T')[0];
-
-      // 1. Prochain événement
-      const { data: evts } = await supabase
+      // 1. Récupération de TOUS les événements pour le Carousel
+      const { data: allEvts } = await supabase
         .from('events')
         .select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)')
         .is('deleted_at', null)
-        .gte('date', today)
-        .in('status', ['scheduled', 'live'])
         .order('date', { ascending: true })
-        .order('time', { ascending: true })
-        .limit(1);
-      if (evts?.[0]) setNextEvent(evts[0]);
+        .order('time', { ascending: true });
+
+      const uniqueEvts = (allEvts || []).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+      setEvents(uniqueEvts);
 
       // 2. Compteur Radar (annonces OPEN dans ma catégorie)
       const { count: rc } = await supabase
@@ -80,7 +80,7 @@ export default function DashboardPage() {
         .eq('status', 'POSTMATCHED');
       setResponseCount(resp || 0);
 
-      // 4. Compteur messages non lus (conversations actives)
+      // 4. Compteur messages (conversations actives)
       const { data: myReqs } = await supabase
         .from('match_requests')
         .select('id')
@@ -95,101 +95,37 @@ export default function DashboardPage() {
         { count: matchsValides },
         { data: dispoData },
       ] = await Promise.all([
-        // Matchs joués (events finished)
-        supabase.from('events')
-          .select('*', { count: 'exact', head: true })
-          .eq('type', 'match')
-          .eq('status', 'finished')
-          .is('deleted_at', null),
-        // Annonces publiées (toutes mes match_requests)
-        supabase.from('match_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('coach_id', user.id)
-          .is('deleted_at', null),
-        // Matchs validés via Radar
-        supabase.from('match_requests')
-          .select('*', { count: 'exact', head: true })
-          .or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`)
-          .eq('status', 'MATCHED'),
-        // Taux de dispo : présents sur mes événements
-        supabase.from('event_attendees')
-          .select('status, events!inner(created_by)')
-          .eq('events.created_by', user.id),
+        supabase.from('events').select('*', { count: 'exact', head: true }).eq('type', 'match').eq('status', 'finished').is('deleted_at', null),
+        supabase.from('match_requests').select('*', { count: 'exact', head: true }).eq('coach_id', user.id).is('deleted_at', null),
+        supabase.from('match_requests').select('*', { count: 'exact', head: true }).or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`).eq('status', 'MATCHED'),
+        supabase.from('event_attendees').select('status, events!inner(created_by)').eq('events.created_by', user.id),
       ]);
 
-      // Calcul taux présence
       const total   = dispoData?.length || 0;
       const present = dispoData?.filter((d: any) => d.status === 'present').length || 0;
       const taux    = total > 0 ? Math.round((present / total) * 100) : 0;
 
-      setKpis({
-        matchsJoues:      matchsJoues   || 0,
-        annoncesPubliees: annoncesPubliees || 0,
-        matchsValides:    matchsValides  || 0,
-        tauxDispo:        taux,
-      });
-
-      // 6. Fil d'info — derniers événements significatifs
-      const fil: FilItem[] = [];
-
-      // Matchs validés récents
-      const { data: matched } = await supabase
-        .from('match_requests')
-        .select('id, type, date, category')
-        .or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`)
-        .eq('status', 'MATCHED')
-        .order('date', { ascending: false })
-        .limit(2);
-      matched?.forEach(m => fil.push({
-        id: m.id,
-        type: 'match_validé',
-        title: `${m.type} validé`,
-        subtitle: `Catégorie ${m.category} · ${m.date ? new Date(m.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : 'Flexible'}`,
-        date: m.date,
-        route: '/radar',
-      }));
-
-      // Événements créés récemment
-      const { data: recentEvts } = await supabase
-        .from('events')
-        .select('id, title, type, date, time')
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(3);
-      recentEvts?.forEach(e => fil.push({
-        id: e.id,
-        type: 'event_créé',
-        title: e.title,
-        subtitle: `${e.date ? new Date(e.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''} · ${e.time?.slice(0,5) || ''}`,
-        date: e.date,
-        route: `/events/${e.id}`,
-      }));
-
-      // Annonces proches dans ma catégorie
-      const { data: nearAds } = await supabase
-        .from('match_requests')
-        .select('id, type, category, city')
-        .eq('status', 'OPEN')
-        .neq('coach_id', user.id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(2);
-      nearAds?.forEach(a => fil.push({
-        id: a.id,
-        type: 'annonce_proche',
-        title: `Nouvelle annonce ${a.type}`,
-        subtitle: `${a.category || ''} · ${a.city || 'Lieu non précisé'}`,
-        date: '',
-        route: '/radar',
-      }));
-
-      // Trier par date décroissante
-      fil.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-      setFilItems(fil.slice(0, 6));
+      setKpis({ matchsJoues: matchsJoues || 0, annoncesPubliees: annoncesPubliees || 0, matchsValides: matchsValides || 0, tauxDispo: taux });
 
     } catch (err) { console.error(err); }
     finally { setIsDataLoading(false); }
   }, [teamInfo?.category]);
+
+  // --- MOTEUR DE CENTRAGE AUTOMATIQUE ---
+  useEffect(() => {
+    if (events.length > 0 && scrollRef.current) {
+      const today = new Date().toISOString().split('T')[0];
+      const nextIdx = events.findIndex(e => e.date >= today);
+      const targetIdx = nextIdx === -1 ? events.length - 1 : nextIdx;
+
+      setTimeout(() => {
+        if (scrollRef.current) {
+           const cardWidth = scrollRef.current.offsetWidth * 0.85;
+           scrollRef.current.scrollTo({ left: targetIdx * (cardWidth + 16), behavior: 'smooth' });
+        }
+      }, 600);
+    }
+  }, [events]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -197,238 +133,129 @@ export default function DashboardPage() {
     ? { bg: 'bg-gray-50', card: 'bg-white border-gray-100', text: 'text-gray-900', sub: 'text-gray-400', accent: 'text-orange-600', accentBg: 'bg-orange-50', border: 'border-orange-200' }
     : { bg: 'bg-[#050510]', card: 'bg-white/5 border-white/10', text: 'text-white', sub: 'text-gray-500', accent: 'text-neon-cyan', accentBg: 'bg-neon-cyan/10', border: 'border-neon-cyan/30' };
 
-  if (isContextLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <Loader2 className="animate-spin text-neon-cyan" size={40} />
-    </div>
-  );
+  if (isContextLoading) return <div className="min-h-screen flex items-center justify-center bg-black"><Loader2 className="animate-spin text-neon-cyan" size={40} /></div>;
 
-  const filIcon = (type: FilItem['type']) => {
-    switch (type) {
-      case 'match_validé':    return <CheckCircle2 size={16} className="text-green-500" />;
-      case 'event_créé':      return <Calendar size={16} className="text-sky-400" />;
-      case 'annonce_proche':  return <Radar size={16} className="text-orange-500" />;
-      case 'message_reçu':    return <MessageCircle size={16} className="text-purple-400" />;
-      case 'résultat':        return <Trophy size={16} className="text-yellow-400" />;
-    }
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const getEventStyle = (ev: any, isNext: boolean, isPast: boolean) => {
+    const type = ev.type?.toLowerCase() || '';
+    const isOfficial = ev.tournament_config?.is_official === true;
+    let base = { color: 'text-sky-400', bg: 'bg-sky-500', border: 'border-sky-500/20', glow: '' };
+    if (isOfficial) base = { color: 'text-orange-500', bg: 'bg-orange-600', border: 'border-orange-500/40', glow: isNext ? 'shadow-[0_0_40px_rgba(249,115,22,0.4)]' : '' };
+    else if (type.includes('match')) base = { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', border: 'border-[#39FF14]/40', glow: isNext ? 'shadow-[0_0_40px_rgba(57,255,20,0.4)]' : '' };
+    else if (type.includes('plateau')) base = { color: 'text-purple-500', bg: 'bg-purple-600', border: 'border-purple-500/40', glow: isNext ? 'shadow-[0_0_40px_rgba(168,85,247,0.4)]' : '' };
+    if (isPast) return { ...base, border: 'border-white/5', glow: '', color: 'text-gray-500', bg: 'bg-gray-700' };
+    return base;
   };
 
   return (
     <div className={`min-h-screen pb-32 ${s.bg} transition-colors duration-500`}>
       <div className="max-w-md mx-auto px-4 pt-5 space-y-6">
 
-        {/* ══════════════════════════════════════
-            BLOC 1 — IDENTITÉ COACH
-        ══════════════════════════════════════ */}
-        <section className={`rounded-3xl border p-5 flex items-center gap-4 ${s.card}`}>
+        {/* 1. IDENTITÉ COACH */}
+        <section className={`rounded-3xl border p-5 flex items-center gap-4 ${s.card}`} onClick={() => router.push('/profile')}>
           <div className={`w-14 h-14 rounded-2xl border-2 overflow-hidden flex items-center justify-center shrink-0 ${isPro ? 'border-orange-200 bg-orange-50' : 'border-neon-cyan/30 bg-neon-cyan/10'}`}>
-            {teamInfo?.clubLogo
-              ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain p-1" />
-              : <Shield size={24} className={s.accent} />
-            }
+            {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain p-1" /> : <Shield size={24} className={s.accent} />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className={`text-xs font-black uppercase italic tracking-tight ${s.text}`}>
-              {teamInfo?.clubName || 'Mon Club'}
-            </p>
-            <p className={`text-[10px] font-bold uppercase ${s.sub}`}>
-              {teamInfo?.category} · {teamInfo?.level}
-            </p>
-            <p className={`text-[10px] font-black uppercase mt-0.5 ${s.accent}`}>
-              {isPro ? `Coach ${teamInfo?.coachName}` : `Cmd. ${teamInfo?.coachName}`}
-            </p>
+            <p className={`text-xs font-black uppercase italic tracking-tight ${s.text}`}>{teamInfo?.clubAcronym || teamInfo?.clubName || 'Mon Club'}</p>
+            <p className={`text-[10px] font-bold uppercase ${s.sub}`}>{teamInfo?.category} · {teamInfo?.level}</p>
+            <p className={`text-[10px] font-black uppercase mt-0.5 ${s.accent}`}>{isPro ? `Coach ${teamInfo?.coachName}` : `Cmd. ${teamInfo?.coachName}`}</p>
           </div>
-          <button
-            onClick={() => router.push('/profile')}
-            className={`p-2 rounded-xl ${s.accentBg} ${s.accent}`}
-          >
-            <ChevronRight size={18} />
-          </button>
+          <ChevronRight size={18} className={s.sub} />
         </section>
 
-        {/* ══════════════════════════════════════
-            BLOC 2A — PROCHAIN ÉVÉNEMENT
-        ══════════════════════════════════════ */}
+        {/* 2. CAROUSEL TACTIQUE (TIMELINE) */}
         <section className="space-y-3">
-          <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] px-1 ${s.sub}`}>
-            {isPro ? 'Prochain événement' : 'Prochaine mission'}
-          </h3>
+          <div className="flex justify-between items-center px-1">
+             <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] ${s.sub}`}>{isPro ? 'Timeline Missions' : 'Mission_Carousel'}</h3>
+             <div className="flex gap-1 opacity-30"><div className="w-1 h-1 rounded-full bg-current"/><div className="w-2 h-1 rounded-full bg-current"/><div className="w-1 h-1 rounded-full bg-current"/></div>
+          </div>
 
-          {isDataLoading ? (
-            <div className={`rounded-3xl border p-8 flex items-center justify-center ${s.card}`}>
-              <Loader2 size={24} className={`animate-spin ${s.accent}`} />
-            </div>
-          ) : nextEvent ? (
-            <div
-              onClick={() => router.push(`/events/${nextEvent.id}`)}
-              className={`rounded-3xl border-2 overflow-hidden cursor-pointer active:scale-[0.98] transition-all shadow-lg ${
-                nextEvent.type === 'match'
-                  ? 'border-[#39FF14]/40 shadow-[0_0_20px_#39FF1420]'
-                  : `${s.border}`
-              }`}
-            >
-              {/* Background image pour les matchs */}
-              <div className="relative h-[180px]">
-                {nextEvent.type === 'match' && (
-                  <div className="absolute inset-0 bg-cover bg-center opacity-30"
-                    style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=800)' }} />
-                )}
-                <div className={`absolute inset-0 ${isPro ? 'bg-white' : 'bg-[#0A0A0A]'}`}
-                  style={{ opacity: nextEvent.type === 'match' ? 0.7 : 1 }} />
+          <div ref={scrollRef} className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-4 -mx-4 px-4 pb-4">
+            {events.length > 0 ? events.map((ev, i) => {
+              const isPast = ev.date < todayStr;
+              const isNext = ev.date === events.find(e => e.date >= todayStr)?.date && ev.id === events.find(e => e.date >= todayStr)?.id;
+              const style = getEventStyle(ev, isNext, isPast);
+              const isMatch = ev.type?.toLowerCase().includes('match');
 
-                <div className="relative z-10 p-5 h-full flex flex-col justify-between">
-                  {/* Date + heure */}
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${s.border} ${s.accent} ${s.accentBg}`}>
-                      {new Date(nextEvent.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
-                    </span>
-                    <span className={`text-[10px] font-black flex items-center gap-1 ${s.sub}`}>
-                      <Clock size={12} /> {nextEvent.time?.slice(0,5)}
-                    </span>
-                  </div>
+              return (
+                <div
+                  key={i}
+                  onClick={() => router.push(`/events/${ev.id}`)}
+                  className={`min-w-[85%] snap-center relative rounded-[3rem] overflow-hidden border-4 ${style.border} ${style.glow} h-[320px] flex flex-col justify-between transition-all duration-500 shadow-2xl ${isPast ? 'opacity-40 grayscale-[0.5]' : ''}`}
+                >
+                   <div className={`absolute inset-0 ${isPast ? 'bg-gray-100' : (isPro ? 'bg-white' : 'bg-[#0A0A0A]')}`} />
 
-                  {/* Contenu central */}
-                  {nextEvent.type === 'match' ? (
-                    <div className="flex items-center justify-center gap-4">
-                      <div className="flex flex-col items-center gap-1 flex-1">
-                        <div className={`w-16 h-16 rounded-2xl border-2 p-2 flex items-center justify-center ${isPro ? 'bg-white border-gray-100' : 'bg-black/40 border-white/20'}`}>
-                          {nextEvent.home_club?.logo_url
-                            ? <img src={nextEvent.home_club.logo_url} className="w-full h-full object-contain" />
-                            : <Shield size={20} className={s.sub} />}
-                        </div>
-                        <p className={`text-[8px] font-black uppercase text-center line-clamp-1 ${s.text}`}>
-                          {nextEvent.home_club?.name || 'Domicile'}
-                        </p>
+                   <div className="relative z-10 p-6 flex flex-col h-full justify-between text-center">
+                      <div className="flex justify-center">
+                         <div className={`px-5 py-2 rounded-full border-2 ${isPast ? 'bg-gray-200 border-gray-300 text-gray-500' : `${s.accentBg} ${style.border} ${style.color}`} text-[11px] font-black uppercase tracking-[0.2em] shadow-sm`}>
+                            {new Date(ev.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).toUpperCase()} // {ev.time.slice(0,5)}
+                         </div>
                       </div>
-                      <span className={`text-2xl font-black italic opacity-30 ${s.text}`}>VS</span>
-                      <div className="flex flex-col items-center gap-1 flex-1">
-                        <div className={`w-16 h-16 rounded-2xl border-2 p-2 flex items-center justify-center ${isPro ? 'bg-white border-gray-100' : 'bg-black/40 border-white/20'}`}>
-                          {nextEvent.away_club?.logo_url
-                            ? <img src={nextEvent.away_club.logo_url} className="w-full h-full object-contain" />
-                            : <Shield size={20} className={s.sub} />}
-                        </div>
-                        <p className={`text-[8px] font-black uppercase text-center line-clamp-1 ${s.text}`}>
-                          {nextEvent.away_club?.name || 'Extérieur'}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <Target size={32} className={s.accent} />
-                      <p className={`text-lg font-black uppercase italic ${s.text}`}>{nextEvent.title}</p>
-                    </div>
-                  )}
 
-                  {/* Lieu */}
-                  <div className={`flex items-center justify-center gap-2 text-[10px] font-bold uppercase ${s.sub}`}>
-                    <MapPin size={12} className={s.accent} />
-                    {nextEvent.stadium_name || nextEvent.city || nextEvent.location || 'Lieu à définir'}
-                  </div>
+                      {isMatch ? (
+                        <div className="flex items-center justify-center gap-3">
+                           <div className="flex flex-col items-center gap-1 flex-1">
+                              <div className="w-14 h-14 rounded-2xl bg-black/5 p-2 flex items-center justify-center border border-black/5"><img src={ev.home_club?.logo_url} className="w-full h-full object-contain" /></div>
+                              <p className={`text-[7px] font-black uppercase line-clamp-1 ${isPast ? 'text-gray-400' : 'text-gray-900'}`}>{ev.home_club?.name}</p>
+                           </div>
+                           <span className="text-xl font-black italic opacity-20 transform -rotate-12">VS</span>
+                           <div className="flex flex-col items-center gap-1 flex-1">
+                              <div className="w-14 h-14 rounded-2xl bg-black/5 p-2 flex items-center justify-center border border-black/5"><img src={ev.away_club?.logo_url} className="w-full h-full object-contain" /></div>
+                              <p className={`text-[7px] font-black uppercase line-clamp-1 ${isPast ? 'text-gray-400' : 'text-gray-900'}`}>{ev.away_club?.name}</p>
+                           </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3">
+                           <div className={`w-16 h-16 rounded-full flex items-center justify-center border-4 ${style.border} ${style.color} bg-white/5`}><Target size={32} /></div>
+                           <h4 className={`text-xl font-black uppercase italic leading-tight ${isPast ? 'text-gray-400' : s.text}`}>{ev.title}</h4>
+                        </div>
+                      )}
+
+                      <div className="flex flex-col items-center gap-1">
+                         {isPast && <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-1 flex items-center gap-1"><CheckCircle2 size={10}/> Mission_Conclue</p>}
+                         <div className={`w-full py-3 rounded-[1.8rem] ${isPast ? 'bg-gray-200' : 'bg-gray-50'} border-2 ${style.border} flex items-center justify-center gap-2 shadow-inner`}>
+                            <MapPin size={14} className={style.color} />
+                            <span className={`text-xs font-black uppercase italic tracking-widest ${isPast ? 'text-gray-400' : 'text-gray-900'}`}>{ev.stadium_name || ev.city || 'Secteur Alpha'}</span>
+                         </div>
+                      </div>
+                   </div>
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => router.push('/events/new')}
-              className={`rounded-3xl border-2 border-dashed p-8 text-center cursor-pointer active:scale-[0.98] transition-all ${s.card}`}
-            >
-              <Calendar size={28} className={`mx-auto mb-2 ${s.sub}`} />
-              <p className={`text-[11px] font-black uppercase ${s.sub}`}>
-                {isPro ? 'Aucun événement planifié' : 'Aucune mission programmée'}
-              </p>
-              <p className={`text-[10px] font-bold mt-1 ${s.accent}`}>
-                {isPro ? 'Créer un événement →' : 'Planifier une mission →'}
-              </p>
-            </div>
-          )}
+              );
+            }) : (
+              <div className="min-w-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-200"><p className="text-[10px] font-black text-gray-300 uppercase">Aucune mission planifiée</p></div>
+            )}
+          </div>
         </section>
 
-        {/* ══════════════════════════════════════
-            BLOC 2B — COMPTEURS TEMPS RÉEL
-        ══════════════════════════════════════ */}
+        {/* 3. COMPTEURS TEMPS RÉEL */}
         <section className="grid grid-cols-3 gap-3">
           {[
-            {
-              icon: <Radar size={20} className={radarCount > 0 ? 'text-orange-500' : s.sub} />,
-              count: radarCount,
-              label: isPro ? 'Annonces' : 'Signaux',
-              sublabel: isPro ? 'en cours' : 'actifs',
-              route: '/radar',
-              alert: radarCount > 0,
-            },
-            {
-              icon: <MessageCircle size={20} className={chatCount > 0 ? 'text-purple-400' : s.sub} />,
-              count: chatCount,
-              label: 'Chats',
-              sublabel: isPro ? 'en cours' : 'actifs',
-              route: '/radar',
-              alert: false,
-            },
-            {
-              icon: <Bell size={20} className={responseCount > 0 ? 'text-green-500' : s.sub} />,
-              count: responseCount,
-              label: isPro ? 'Réponses' : 'Réponses',
-              sublabel: 'reçues',
-              route: '/radar',
-              alert: responseCount > 0,
-            },
+            { icon: <Radio size={20} className={radarCount > 0 ? 'text-orange-500' : s.sub} />, count: radarCount, label: 'Signaux', alert: radarCount > 0 },
+            { icon: <MessageCircle size={20} className={chatCount > 0 ? 'text-purple-400' : s.sub} />, count: chatCount, label: 'Chats', alert: false },
+            { icon: <Bell size={20} className={responseCount > 0 ? 'text-green-500' : s.sub} />, count: responseCount, label: 'Réponses', alert: responseCount > 0 },
           ].map((item, i) => (
-            <button
-              key={i}
-              onClick={() => router.push(item.route)}
-              className={`rounded-2xl border p-4 flex flex-col items-center gap-1 active:scale-95 transition-all ${s.card}
-                ${item.alert ? `${s.border} shadow-md` : ''}`}
-            >
+            <button key={i} onClick={() => router.push('/radar')} className={`rounded-2xl border p-4 flex flex-col items-center gap-1 active:scale-95 transition-all ${s.card} ${item.alert ? `${s.border} shadow-md` : ''}`}>
               {item.icon}
-              <span className={`text-2xl font-black ${item.alert ? s.accent : s.text}`}>
-                {item.count}
-              </span>
-              <span className={`text-[8px] font-black uppercase tracking-widest ${item.alert ? s.accent : s.sub}`}>
-                {item.label}
-              </span>
-              <span className={`text-[7px] font-bold uppercase ${s.sub} opacity-60`}>
-                {item.sublabel}
-              </span>
+              <span className={`text-2xl font-black ${item.alert ? s.accent : s.text}`}>{item.count}</span>
+              <span className={`text-[8px] font-black uppercase tracking-widest ${item.alert ? s.accent : s.sub}`}>{item.label}</span>
             </button>
           ))}
         </section>
 
-        {/* ══════════════════════════════════════
-            BLOC 2C — KPIs SAISON
-        ══════════════════════════════════════ */}
+        {/* 4. KPIs SAISON */}
         <section className="space-y-3">
-          <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] px-1 ${s.sub}`}>
-            {isPro ? 'Ma saison' : 'Stats_Saison'}
-          </h3>
+          <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] px-1 ${s.sub}`}>Rapport_Saison</h3>
           <div className={`rounded-3xl border overflow-hidden ${s.card}`}>
-            <div className="grid grid-cols-2 divide-x divide-y">
+            <div className="grid grid-cols-2 divide-x divide-y border-collapse">
               {[
-                {
-                  value: kpis.matchsJoues,
-                  label: isPro ? 'Matchs joués' : 'Combats',
-                  icon: <Trophy size={18} className="text-yellow-400" />,
-                  color: 'text-yellow-400',
-                },
-                {
-                  value: kpis.matchsValides,
-                  label: isPro ? 'Via Radar' : 'Défis validés',
-                  icon: <CheckCircle2 size={18} className="text-green-500" />,
-                  color: 'text-green-500',
-                },
-                {
-                  value: kpis.annoncesPubliees,
-                  label: isPro ? 'Annonces publiées' : 'Signaux émis',
-                  icon: <Radar size={18} className="text-orange-500" />,
-                  color: 'text-orange-500',
-                },
-                {
-                  value: kpis.tauxDispo > 0 ? `${kpis.tauxDispo}%` : '—',
-                  label: isPro ? 'Taux présence' : 'Présence',
-                  icon: <Zap size={18} className="text-sky-400" />,
-                  color: 'text-sky-400',
-                },
+                { value: kpis.matchsJoues, label: 'Combats', icon: <Trophy size={18} className="text-yellow-400" />, color: 'text-yellow-400' },
+                { value: kpis.matchsValides, label: 'Défis validés', icon: <CheckCircle2 size={18} className="text-green-500" />, color: 'text-green-500' },
+                { value: kpis.annoncesPubliees, label: 'Signaux émis', icon: <Radar size={18} className="text-orange-500" />, color: 'text-orange-500' },
+                { value: kpis.tauxDispo > 0 ? `${kpis.tauxDispo}%` : '—', label: 'Présence', icon: <Zap size={18} className="text-sky-400" />, color: 'text-sky-400' },
               ].map((kpi, i) => (
-                <div key={i} className={`p-5 flex flex-col items-center gap-2 ${isPro ? 'divide-gray-50' : 'divide-white/5'}`}>
+                <div key={i} className="p-5 flex flex-col items-center gap-2">
                   {kpi.icon}
                   <span className={`text-3xl font-black ${kpi.color}`}>{kpi.value}</span>
                   <span className={`text-[9px] font-black uppercase text-center ${s.sub}`}>{kpi.label}</span>
@@ -437,70 +264,6 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
-
-        {/* ══════════════════════════════════════
-            BLOC 3 — FIL D'INFO (type X — V2)
-            Évolutif : commentaires, live, stories
-        ══════════════════════════════════════ */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] ${s.sub}`}>
-              {isPro ? 'Fil d\'info' : 'Signal_Feed'}
-            </h3>
-            {/* V2 : badge "LIVE" si match en cours */}
-            <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-full ${s.accentBg} ${s.accent}`}>
-              {isPro ? 'En direct' : 'Live_Feed'} ·  V2
-            </span>
-          </div>
-
-          {isDataLoading ? (
-            <div className={`rounded-3xl border p-8 flex items-center justify-center ${s.card}`}>
-              <Loader2 size={20} className={`animate-spin ${s.accent}`} />
-            </div>
-          ) : filItems.length === 0 ? (
-            <div className={`rounded-3xl border-2 border-dashed p-8 text-center ${s.card}`}>
-              <Zap size={24} className={`mx-auto mb-2 ${s.sub}`} />
-              <p className={`text-[11px] font-black uppercase ${s.sub}`}>
-                {isPro ? 'Aucune activité récente' : 'Aucun signal reçu'}
-              </p>
-            </div>
-          ) : (
-            <div className={`rounded-3xl border overflow-hidden divide-y ${s.card} ${isPro ? 'divide-gray-50' : 'divide-white/5'}`}>
-              {filItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => item.route && router.push(item.route)}
-                  className={`w-full px-5 py-4 flex items-center gap-3 text-left active:scale-[0.98] transition-all ${isPro ? 'hover:bg-gray-50' : 'hover:bg-white/5'}`}
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${s.accentBg}`}>
-                    {filIcon(item.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-black uppercase italic truncate ${s.text}`}>{item.title}</p>
-                    <p className={`text-[9px] font-bold uppercase ${s.sub}`}>{item.subtitle}</p>
-                  </div>
-                  <ArrowRight size={14} className={`shrink-0 ${s.sub} opacity-50`} />
-                </button>
-              ))}
-
-              {/* Placeholder V2 — feed social */}
-              <div className={`px-5 py-4 flex items-center gap-3 opacity-30`}>
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${s.accentBg}`}>
-                  <MessageCircle size={16} className={s.accent} />
-                </div>
-                <div>
-                  <p className={`text-[10px] font-black uppercase italic ${s.text}`}>
-                    {isPro ? 'Commentaires & Live match' : 'Live_Chat_V2'}
-                  </p>
-                  <p className={`text-[9px] font-bold uppercase ${s.sub}`}>
-                    Disponible en V2
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
       </div>
     </div>
   );
