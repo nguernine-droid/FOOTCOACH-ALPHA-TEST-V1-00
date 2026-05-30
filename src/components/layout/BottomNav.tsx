@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
-import { LayoutDashboard, Radar, CalendarDays, UserCircle, Plus, Rss } from 'lucide-react';
+import { LayoutDashboard, Radar, CalendarDays, UserCircle, Plus, Rss, Megaphone } from 'lucide-react';
 import { CreateMenu } from './CreateMenu';
 import { isFeatureEnabled } from '@/lib/config/features';
 
 /**
- * BOTTOM_NAV — Alpha V1.1
- * 5 modules actifs : Dashboard, Fil, Radar, Calendrier, Profil
+ * BOTTOM_NAV — Alpha V1.2 (SYMMETRY UPDATE)
+ * 6 modules actifs pour un centrage parfait du bouton central
  */
 export function BottomNav() {
   const { theme } = useTeam();
@@ -27,19 +27,24 @@ export function BottomNav() {
       path:  '/dashboard',
     },
     {
-      label: isPro ? 'Fil'       : 'Actu',
-      icon:  Rss,
-      path:  '/feed',
-    },
-    {
       label: isPro ? 'Radar'     : 'Sonar',
       icon:  Radar,
       path:  '/radar',
     },
     {
+      label: isPro ? 'Fil'       : 'Actu',
+      icon:  Rss,
+      path:  '/feed',
+    },
+    {
       label: isPro ? 'Agenda'    : 'Planning',
       icon:  CalendarDays,
       path:  '/events',
+    },
+    {
+      label: isPro ? 'Briefing'  : 'Comms',
+      icon:  Megaphone,
+      path:  '/comms',
     },
     {
       label: isPro ? 'Profil'    : 'Identité',
@@ -61,49 +66,53 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className={`fixed bottom-0 left-0 right-0 max-w-md mx-auto backdrop-blur-xl border-t px-2 py-3 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.6)]
+      <nav className={`fixed bottom-0 left-0 right-0 max-w-md mx-auto backdrop-blur-xl border-t px-1 py-3 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.6)]
         ${isPro ? 'bg-white/95 border-gray-100' : 'bg-black/90 border-white/10'}`}>
 
-        <div className="flex items-end justify-around">
+        <div className="flex items-end justify-between px-2">
 
-          {/* Items gauche (2 premiers) */}
-          {navItems.slice(0, 2).map(item => (
-            <NavItem
-              key={item.path}
-              href={item.path}
-              icon={<item.icon size={22} />}
-              label={item.label}
-              active={pathname === item.path || pathname?.startsWith(item.path + '/')}
-              isPro={isPro}
-            />
-          ))}
+          {/* Items gauche (3 items) */}
+          <div className="flex flex-1 justify-around items-end">
+            {navItems.slice(0, 3).map(item => (
+              <NavItem
+                key={item.path}
+                href={item.path}
+                icon={<item.icon size={20} />}
+                label={item.label}
+                active={pathname === item.path || pathname?.startsWith(item.path + '/')}
+                isPro={isPro}
+              />
+            ))}
+          </div>
 
           {/* Bouton central + */}
-          <div className="flex flex-col items-center -mt-8 px-2">
+          <div className="flex flex-col items-center -mt-8 px-4">
             <button
               onClick={() => setIsMenuOpen(true)}
               className={`${accentColor} text-black p-4 rounded-2xl active:scale-90 transition-all border-4 shadow-2xl
                 ${isPro ? 'border-white' : 'border-black'}`}
             >
-              <Plus size={28} strokeWidth={4} />
+              <Plus size={24} strokeWidth={4} />
             </button>
-            <span className={`text-[8px] uppercase tracking-tighter mt-1 font-bold
+            <span className={`text-[7px] uppercase tracking-tighter mt-1 font-black
               ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
               Créer
             </span>
           </div>
 
-          {/* Items droite (3 restants) */}
-          {navItems.slice(2, 5).map(item => (
-            <NavItem
-              key={item.path}
-              href={item.path}
-              icon={<item.icon size={22} />}
-              label={item.label}
-              active={pathname === item.path || pathname?.startsWith(item.path + '/')}
-              isPro={isPro}
-            />
-          ))}
+          {/* Items droite (3 items) */}
+          <div className="flex flex-1 justify-around items-end">
+            {navItems.slice(3, 6).map(item => (
+              <NavItem
+                key={item.path}
+                href={item.path}
+                icon={<item.icon size={20} />}
+                label={item.label}
+                active={pathname === item.path || pathname?.startsWith(item.path + '/')}
+                isPro={isPro}
+              />
+            ))}
+          </div>
 
         </div>
       </nav>
