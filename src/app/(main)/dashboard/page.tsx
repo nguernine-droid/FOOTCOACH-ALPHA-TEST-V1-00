@@ -153,11 +153,11 @@ export default function DashboardPage() {
                    <div className="relative z-10 p-8 flex flex-col h-full justify-between">
                       {/* HEADER ÉCLATÉ (REPLICA) */}
                       <div className="flex justify-between items-start">
-                         <div className={`px-4 py-1.5 rounded-full ${s.accentBg} border ${style.border} text-[10px] font-black uppercase tracking-widest ${s.accent}`}>
+                         <div className={`px-5 py-2 rounded-full ${s.accentBg} border ${style.border} text-[20px] font-black uppercase tracking-widest ${s.accent}`}>
                             {new Date(ev.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
                          </div>
-                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400">
-                            <Clock size={14} /> {ev.time.slice(0,5)}
+                         <div className="flex items-center gap-2 text-[20px] font-black text-gray-400">
+                            <Clock size={20} strokeWidth={3} /> {ev.time.slice(0,5)}
                          </div>
                       </div>
 
