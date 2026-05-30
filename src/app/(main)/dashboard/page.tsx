@@ -77,6 +77,24 @@ export default function DashboardPage() {
       const present = dispo?.filter((d: any) => d.status === 'present').length || 0;
       setKpis({ matchsJoues: mj || 0, annoncesPubliees: ap || 0, matchsValides: mv || 0, tauxDispo: total > 0 ? Math.round((present/total)*100) : 0 });
 
+      // 6. Fil d'info (Activity Feed)
+      const { data: recentPosts } = await supabase
+        .from('feed_posts')
+        .select('*, profiles:author_id(nickname, first_name, avatar_url)')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      const feed: FilItem[] = (recentPosts || []).map(p => ({
+        id: p.id,
+        type: 'match_validé', // Par défaut
+        title: p.profiles?.nickname || p.profiles?.first_name || 'COACH',
+        subtitle: p.content,
+        date: p.created_at,
+        route: '/feed'
+      }));
+      setFilItems(feed);
+
     } catch (err) { console.error(err); }
     finally { setIsDataLoading(false); }
   }, [teamInfo?.category]);
@@ -233,6 +251,33 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+        </section>
+
+        {/* 5. MON FIL D'ACTUALITÉ (LATEST POSTS) */}
+        <section className="space-y-4">
+           <div className="flex justify-between items-center px-1">
+              <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] ${s.sub}`}>Mon fil d'actualité</h3>
+              <button onClick={() => router.push('/feed')} className={`text-[9px] font-black uppercase ${s.accent} flex items-center gap-1`}>Voir tout <ArrowRight size={12}/></button>
+           </div>
+
+           <div className={`rounded-[2.5rem] border overflow-hidden divide-y ${s.card} shadow-lg`}>
+              {filItems.length > 0 ? filItems.map((item) => (
+                <div key={item.id} className="p-5 flex items-start gap-4 active:bg-gray-50 transition-all cursor-pointer" onClick={() => router.push('/feed')}>
+                   <div className={`w-10 h-10 rounded-xl ${s.accentBg} flex items-center justify-center shrink-0 border border-white/5`}>
+                      <MessageCircle size={18} className={s.accent} />
+                   </div>
+                   <div className="flex-1 min-w-0 text-left">
+                      <p className={`text-xs font-black uppercase italic ${s.text}`}>{item.title}</p>
+                      <p className={`text-[10px] font-bold ${s.sub} line-clamp-2 leading-relaxed mt-0.5`}>{item.subtitle}</p>
+                      <p className="text-[7px] font-black text-gray-300 uppercase mt-2 tracking-widest">{new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                   </div>
+                </div>
+              )) : (
+                <div className="p-10 text-center opacity-30 italic text-[10px] uppercase tracking-widest">
+                   Aucun signal sur le fil...
+                </div>
+              )}
+           </div>
         </section>
       </div>
     </div>

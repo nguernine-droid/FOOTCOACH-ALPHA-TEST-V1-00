@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
-import { LayoutDashboard, Radar, CalendarDays, UserCircle, Plus } from 'lucide-react';
+import { LayoutDashboard, Radar, CalendarDays, UserCircle, Plus, Rss } from 'lucide-react';
 import { CreateMenu } from './CreateMenu';
 import { isFeatureEnabled } from '@/lib/config/features';
 
 /**
- * BOTTOM_NAV — Alpha V1 bridé
- * 4 modules actifs : Dashboard, Radar, Calendrier, Profil
+ * BOTTOM_NAV — Alpha V1.1
+ * 5 modules actifs : Dashboard, Fil, Radar, Calendrier, Profil
  */
 export function BottomNav() {
   const { theme } = useTeam();
@@ -27,7 +27,12 @@ export function BottomNav() {
       path:  '/dashboard',
     },
     {
-      label: isPro ? 'Annonces'  : 'Radar',
+      label: isPro ? 'Fil'       : 'Actu',
+      icon:  Rss,
+      path:  '/feed',
+    },
+    {
+      label: isPro ? 'Radar'     : 'Sonar',
       icon:  Radar,
       path:  '/radar',
     },
@@ -88,8 +93,8 @@ export function BottomNav() {
             </span>
           </div>
 
-          {/* Items droite (2 derniers) */}
-          {navItems.slice(2, 4).map(item => (
+          {/* Items droite (3 restants) */}
+          {navItems.slice(2, 5).map(item => (
             <NavItem
               key={item.path}
               href={item.path}

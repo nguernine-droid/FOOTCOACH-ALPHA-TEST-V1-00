@@ -18,7 +18,7 @@ export const FEATURES = {
   // 🔴 ALPHA V1 — MODULES BRIDÉS (cachés)
   // Déverrouillés progressivement après retours bêta
   // ==========================================
-  V1_FEED_SOCIAL:       false,  // Fil d'actualité / réseau social
+  V1_FEED_SOCIAL:       true,   // Fil d'actualité / réseau social
   V1_COMMS_BASIC:       false,  // Flash Info / Annonces club
   V1_TEAM_ROSTER:       false,  // Effectif joueurs
   V1_MON_RESEAU:        false,  // Carnet contacts coachs (style Instagram — V2)
