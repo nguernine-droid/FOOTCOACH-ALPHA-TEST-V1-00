@@ -27,14 +27,14 @@ export function BottomNav() {
       path:  '/dashboard',
     },
     {
-      label: isPro ? 'Radar'     : 'Sonar',
-      icon:  Radar,
-      path:  '/radar',
-    },
-    {
       label: isPro ? 'Fil'       : 'Actu',
       icon:  Rss,
       path:  '/feed',
+    },
+    {
+      label: isPro ? 'Briefing'  : 'Comms',
+      icon:  Megaphone,
+      path:  '/comms',
     },
     {
       label: isPro ? 'Effectif'  : 'Unités',
@@ -42,14 +42,14 @@ export function BottomNav() {
       path:  '/team',
     },
     {
+      label: isPro ? 'Annonces'  : 'Radar',
+      icon:  Radar,
+      path:  '/radar',
+    },
+    {
       label: isPro ? 'Agenda'    : 'Planning',
       icon:  CalendarDays,
       path:  '/events',
-    },
-    {
-      label: isPro ? 'Briefing'  : 'Comms',
-      icon:  Megaphone,
-      path:  '/comms',
     },
     {
       label: isPro ? 'Profil'    : 'Identité',
