@@ -45,10 +45,12 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // 1. Récupération de MES événements pour le Carousel (FILTRE DE SÉCURITÉ)
       const { data: allEvts } = await supabase
         .from('events')
         .select('*, home_club:home_club_id(name, logo_url), away_club:away_club_id(name, logo_url)')
         .is('deleted_at', null)
+        .or(`created_by.eq.${user.id},home_club_id.eq.${teamInfo?.id},away_club_id.eq.${teamInfo?.id}`)
         .order('date', { ascending: true })
         .order('time', { ascending: true });
 

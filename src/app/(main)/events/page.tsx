@@ -53,15 +53,23 @@ export default function CalendarPage() {
 
   useEffect(() => {
     const fetchEvents = async () => {
+      if (!userId) return;
       setIsLoading(true);
       try {
+        // REQUÊTE SÉCURISÉE : Uniquement MES événements ou ceux de MON CLUB
+        let filter = `created_by.eq.${userId}`;
+        if (teamInfo?.id) {
+          filter = `created_by.eq.${userId},home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`;
+        }
+
         let query = supabase
           .from('events')
           .select('*')
           .is('deleted_at', null)
+          .or(filter)
           .order('date', { ascending: true });
 
-        if (filterMine && userId) query = query.eq('created_by', userId);
+        if (filterMine) query = query.eq('created_by', userId);
 
         const { data, error } = await query;
         if (error) throw error;
@@ -69,7 +77,7 @@ export default function CalendarPage() {
       } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };
     fetchEvents();
-  }, [filterMine, userId]);
+  }, [filterMine, userId, teamInfo?.id]);
 
   const getEventStyle = (ev: any) => {
     const type = ev.type?.toLowerCase() || '';
