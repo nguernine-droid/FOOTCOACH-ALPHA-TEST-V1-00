@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
-import { LayoutDashboard, Radar, CalendarDays, UserCircle, Plus, Rss, Megaphone } from 'lucide-react';
+import { LayoutDashboard, Radar, CalendarDays, UserCircle, Plus, Rss, Megaphone, Users } from 'lucide-react';
 import { CreateMenu } from './CreateMenu';
 import { isFeatureEnabled } from '@/lib/config/features';
 
 /**
- * BOTTOM_NAV — Alpha V1.2 (SYMMETRY UPDATE)
- * 6 modules actifs pour un centrage parfait du bouton central
+ * BOTTOM_NAV — Alpha V1.3
+ * Ajout de l'Effectif pour un contrôle total de l'unité
  */
 export function BottomNav() {
   const { theme } = useTeam();
@@ -35,6 +35,11 @@ export function BottomNav() {
       label: isPro ? 'Fil'       : 'Actu',
       icon:  Rss,
       path:  '/feed',
+    },
+    {
+      label: isPro ? 'Effectif'  : 'Unités',
+      icon:  Users,
+      path:  '/team',
     },
     {
       label: isPro ? 'Agenda'    : 'Planning',
@@ -77,7 +82,7 @@ export function BottomNav() {
               <NavItem
                 key={item.path}
                 href={item.path}
-                icon={<item.icon size={20} />}
+                icon={<item.icon size={18} />}
                 label={item.label}
                 active={pathname === item.path || pathname?.startsWith(item.path + '/')}
                 isPro={isPro}
@@ -86,27 +91,27 @@ export function BottomNav() {
           </div>
 
           {/* Bouton central + */}
-          <div className="flex flex-col items-center -mt-8 px-4">
+          <div className="flex flex-col items-center -mt-8 px-2">
             <button
               onClick={() => setIsMenuOpen(true)}
-              className={`${accentColor} text-black p-4 rounded-2xl active:scale-90 transition-all border-4 shadow-2xl
+              className={`${accentColor} text-black p-3.5 rounded-2xl active:scale-90 transition-all border-4 shadow-2xl
                 ${isPro ? 'border-white' : 'border-black'}`}
             >
-              <Plus size={24} strokeWidth={4} />
+              <Plus size={22} strokeWidth={4} />
             </button>
-            <span className={`text-[7px] uppercase tracking-tighter mt-1 font-black
+            <span className={`text-[6px] uppercase tracking-tighter mt-1 font-black
               ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
               Créer
             </span>
           </div>
 
-          {/* Items droite (3 items) */}
-          <div className="flex flex-1 justify-around items-end">
-            {navItems.slice(3, 6).map(item => (
+          {/* Items droite (4 items) */}
+          <div className="flex-[1.3] flex justify-around items-end">
+            {navItems.slice(3, 7).map(item => (
               <NavItem
                 key={item.path}
                 href={item.path}
-                icon={<item.icon size={20} />}
+                icon={<item.icon size={18} />}
                 label={item.label}
                 active={pathname === item.path || pathname?.startsWith(item.path + '/')}
                 isPro={isPro}
