@@ -222,8 +222,8 @@ export default function RadarPage() {
     if (isProcessing) return;
     setIsProcessing(true);
     try {
-      // 1. On passe la requête en POSTMATCHED (Alignement v1.2)
-      const { error } = await supabase
+      // 1. Passage en POSTMATCHED (Défi lancé)
+      const { error: updateError } = await supabase
         .from('match_requests')
         .update({
           status: 'POSTMATCHED',
@@ -231,32 +231,36 @@ export default function RadarPage() {
         })
         .eq('id', requestId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      // 2. Notifier Coach A via push
+      // 2. ENVOI DU SIGNAL RADIO INITIAL (Ouverture du salon)
+      await supabase.from('messages').insert([{
+        match_request_id: requestId,
+        sender_id: currentUserId,
+        text: "Bonjour Coach, je suis partant pour ce match ! On en discute ?"
+      }]);
+
+      // 3. Notifier Coach A via push
       const target = requests.find(r => r.id === requestId);
       if (target) {
         const myName = teamInfo?.coachName || 'Un coach';
-        const isPro  = theme === 'classic';
         supabase.functions.invoke('notify-coach', {
           body: {
             profile_id: target.coachId,
             title: isPro ? '⚡ Nouvelle proposition !' : '⚡ Défi lancé !',
-            body:  isPro
-              ? `${myName} est intéressé par votre annonce ${target.type}.`
-              : `${myName} veut relever votre défi — ${target.type} !`,
+            body:  `${myName} veut relever votre défi !`,
             url: '/radar',
           },
         });
 
-        // 3. Ouvrir le chat automatiquement
+        // 4. Ouvrir le chat automatiquement
         setSelectedChatRequest(target);
       }
 
       await fetchRadarData();
       if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
     } catch (err: any) {
-      alert(err.message);
+      alert("Erreur de transmission : " + err.message);
     } finally {
       setIsProcessing(false);
     }
