@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   Shield, Zap, MessageSquare, Clock, MapPin,
-  CheckCircle2, XCircle, Wifi, Trophy, Layers, Trash2, Edit3
+  CheckCircle2, XCircle, Wifi, Trophy, Layers, Trash2, Edit3, Eye, BarChart3
 } from 'lucide-react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { MatchRequest } from './page';
@@ -161,6 +161,26 @@ export function MatchRequestCard({
            {request.comment && (
               <p className="text-[10px] italic text-gray-500 px-1 border-l-2 border-gray-200 py-1">"{request.comment}"</p>
            )}
+
+           {/* BARRE DE STATS DE MISSION (Vvues / Réponses / Statut) */}
+           <div className="pt-2 flex items-center justify-between border-t border-gray-50">
+              <div className="flex gap-4">
+                 <div className="flex items-center gap-1.5 opacity-40">
+                    <Eye size={12} className="text-gray-400" />
+                    <span className="text-[9px] font-black uppercase tracking-tighter text-gray-900">{request.viewsCount || 0} VUES</span>
+                 </div>
+                 <div className="flex items-center gap-1.5">
+                    <MessageSquare size={12} className={request.responsesCount && request.responsesCount > 0 ? "text-orange-500" : "text-gray-300"} />
+                    <span className={`text-[9px] font-black uppercase tracking-tighter ${request.responsesCount && request.responsesCount > 0 ? "text-orange-600" : "text-gray-300"}`}>
+                       {request.responsesCount || 0} RÉPONSES
+                    </span>
+                 </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-gray-50 border border-gray-100">
+                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${request.status === 'OPEN' ? 'bg-[#39FF14]' : 'bg-orange-500'}`} />
+                 <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{request.status}</span>
+              </div>
+           </div>
         </div>
 
         <div className="px-5 pb-5 bg-white">

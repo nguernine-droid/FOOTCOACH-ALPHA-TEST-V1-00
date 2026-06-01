@@ -38,6 +38,8 @@ export interface MatchRequest {
   latitude?: number;
   longitude?: number;
   distanceKm?: number;
+  viewsCount?: number;
+  responsesCount?: number;
   x?: number;
   y?: number;
 }
@@ -67,9 +69,9 @@ export default function RadarPage() {
 
   // FILTERS
   const [showFilters, setShowFilters] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('TOUS');
-  const [filterDistance, setFilterDistance] = useState(50);
-  const [filterLevel, setFilterLevel] = useState('TOUS');
+  const [filterCategory, setFilterCategory] = useState(teamInfo?.category || 'TOUS');
+  const [filterDistance, setFilterDistance] = useState(teamInfo?.matchDistMax || 50);
+  const [filterLevel, setFilterLevel] = useState(teamInfo?.level || 'TOUS');
 
   const levels = ['TOUS', 'D1', 'D2', 'D3', 'D4', 'D5', 'Espoir', 'Loisir'];
 
@@ -141,6 +143,8 @@ export default function RadarPage() {
           latitude: theirLat,
           longitude: theirLon,
           distanceKm,
+          viewsCount:         item.views_count || 0,
+          responsesCount:     item.responses_count || 0,
           respondentId:       item.respondent_id,
           availabilityWindow: item.availability_window || null,
           isSos:              item.is_sos || false,
@@ -168,6 +172,8 @@ export default function RadarPage() {
           coachLogo: item.profiles?.clubs?.logo_url,
           stadium: item.profiles?.clubs?.stadium,
           type: item.type, category: item.category, status: item.status,
+          viewsCount: item.views_count || 0,
+          responsesCount: item.responses_count || 0,
           date: item.date, time: item.time, location: item.location,
           comment: item.comment, respondentId: item.respondent_id,
           x: 50, y: 50,
@@ -205,6 +211,11 @@ export default function RadarPage() {
   const myRequests = useMemo(() =>
     myArchivedRequests.filter(r => ['OPEN','POSTMATCHED','PENDING'].includes(r.status)),
   [myArchivedRequests]);
+
+  // 2.5 LES DÉFIS QUE J'AI RELEVÉS (En tant que répondant)
+  const challengesJoined = useMemo(() => {
+    return requests.filter(req => req.respondentId === currentUserId && req.status !== 'MATCHED');
+  }, [requests, currentUserId]);
 
   // 3. HISTORIQUE matchs validés (MATCHED)
   const myHistory = useMemo(() =>
@@ -433,6 +444,43 @@ export default function RadarPage() {
          </button>
       </div>
 
+      {/* 2. SECTION FILTRES INTÉGRÉE (ENTRE HEADER ET RADAR) */}
+      <section className={`p-6 rounded-[2.5rem] border-2 space-y-5 animate-in slide-in-from-top-4 duration-500 shadow-lg ${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'}`}>
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-2">
+           <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><Filter size={14} className={styles.accent} /> Réglages Tactiques</h3>
+           <span className="text-[9px] font-bold text-gray-300 uppercase italic">Basé sur votre profil</span>
+        </div>
+
+        {/* Catégories (Scroll horizontal) */}
+        <div className="space-y-2">
+           <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Catégorie cible</p>
+           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              {categories.map(c => (
+                <button key={c} onClick={() => setFilterCategory(c)} className={`px-4 py-2 rounded-xl text-[9px] font-black border-2 transition-all shrink-0 ${filterCategory === c ? styles.btn : 'bg-gray-50 border-gray-50 text-gray-400'}`}>{c}</button>
+              ))}
+           </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6 items-end">
+           {/* Distance (Slider) */}
+           <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                 <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Rayon</p>
+                 <span className={`text-xs font-black italic ${styles.accent}`}>{filterDistance} KM</span>
+              </div>
+              <input type="range" min={5} max={150} step={5} value={filterDistance} onChange={e => setFilterDistance(Number(e.target.value))} className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-600" />
+           </div>
+
+           {/* Niveau (Dropdown simplifié) */}
+           <div className="space-y-2">
+              <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Niveau de jeu</p>
+              <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)} className={`w-full p-3 rounded-xl border-2 text-[10px] font-black uppercase outline-none transition-all ${isPro ? 'bg-gray-50 border-gray-50 text-gray-900 focus:border-orange-500' : 'bg-black border-white/10 text-white'}`}>
+                 {levels.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+           </div>
+        </div>
+      </section>
+
       {activeTab === 'radar' ? (
         <>
           {/* LE SONAR (ADVERSAIRES UNIQUEMENT) */}
@@ -507,28 +555,55 @@ export default function RadarPage() {
           </div>
         </>
       ) : activeTab === 'my_signals' ? (
-        /* ONGLET MES SIGNAUX */
-        <div className="space-y-6 animate-in fade-in duration-500">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-orange-600 px-2 flex items-center gap-2">
-            <Wifi size={14}/> Mes Signaux en cours
-          </h3>
-          <div className="grid grid-cols-1 gap-6">
-            {myRequests.map(req => (
-              <MatchRequestCard
-                key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId}
-                onInterested={()=>{}} onAccept={handleAccept}
-                onRefuse={(r) => setRefuseTarget(myRequests.find(x => x.id === r) || null)}
-                onChat={(r) => setSelectedChatRequest(r)}
-                onDelete={handleDeleteRequest}
-                onEdit={(id) => router.push(`/radar/new?id=${id}`)}
-              />
-            ))}
-            {myRequests.length === 0 && (
-              <div className="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-200">
-                <p className="text-[10px] font-black text-gray-300 uppercase">Aucune annonce en cours</p>
-              </div>
-            )}
+        /* ONGLET MES SIGNAUX (SÉPARÉ EN 2 SECTIONS) */
+        <div className="space-y-10 animate-in fade-in duration-500">
+
+          {/* SECTION A : ÉMISSIONS */}
+          <div className="space-y-4">
+            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-orange-600 px-2 flex items-center gap-2">
+              <Wifi size={14}/> Mes Signaux émis
+            </h3>
+            <div className="grid grid-cols-1 gap-6">
+              {myRequests.map(req => (
+                <MatchRequestCard
+                  key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId}
+                  onInterested={()=>{}} onAccept={handleAccept}
+                  onRefuse={(r) => setRefuseTarget(myRequests.find(x => x.id === r) || null)}
+                  onChat={(r) => setSelectedChatRequest(r)}
+                  onDelete={handleDeleteRequest}
+                  onEdit={(id) => router.push(`/radar/new?id=${id}`)}
+                />
+              ))}
+              {myRequests.length === 0 && (
+                <div className="py-10 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
+                  <p className="text-[9px] font-black text-gray-300 uppercase">Aucun signal émis</p>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* SECTION B : RÉPONSES (DÉFIS RELEVÉS) */}
+          <div className="space-y-4">
+            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-neon-cyan px-2 flex items-center gap-2">
+              <Radio size={14}/> Réponses aux signaux
+            </h3>
+            <div className="grid grid-cols-1 gap-6">
+              {challengesJoined.map(req => (
+                <MatchRequestCard
+                  key={req.id} request={req} isPro={isPro} currentCoachId={currentUserId}
+                  onInterested={()=>{}} onAccept={handleAccept}
+                  onRefuse={(r) => setRefuseTarget(challengesJoined.find(x => x.id === r) || null)}
+                  onChat={(r) => setSelectedChatRequest(r)}
+                />
+              ))}
+              {challengesJoined.length === 0 && (
+                <div className="py-10 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
+                  <p className="text-[9px] font-black text-gray-300 uppercase">Aucun défi relevé</p>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       ) : (
         /* ONGLET PALMARÈS — HISTORIQUE MATCHS VALIDÉS */
