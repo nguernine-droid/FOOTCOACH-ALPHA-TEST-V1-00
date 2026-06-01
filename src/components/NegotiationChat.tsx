@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Loader2, ShieldCheck, CheckCircle2, Calendar, Clock, MapPin, Trophy } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { useTeam } from '@/lib/context/TeamContext';
 
 interface Message {
   id: string;
@@ -49,6 +50,7 @@ export function NegotiationChat({
   matchSummary: initialSummary = null,
   onBothConfirmed,
 }: NegotiationChatProps) {
+  const { teamInfo } = useTeam();
   const [messages, setMessages]         = useState<Message[]>([]);
   const [newMessage, setNewMessage]     = useState('');
   const [isLoading, setIsLoading]       = useState(true);
@@ -58,6 +60,15 @@ export function NegotiationChat({
   const scrollRef = useRef<HTMLDivElement>(null);
   const isPro = theme === 'classic';
 
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   // Recharge la fiche match en temps réel
   const fetchSummary = async () => {
     const { data } = await supabase
@@ -65,7 +76,7 @@ export function NegotiationChat({
       .select('*, profiles:coach_id(nickname, first_name, last_name, clubs:club_id(name))')
       .eq('id', matchRequestId)
       .single();
-    if (data && (data.status === 'MATCHED' || data.status === 'PENDING')) {
+    if (data && (data.status === 'MATCHED' || data.status === 'PENDING' || data.status === 'POSTMATCHED')) {
       // Récupérer aussi le profil du répondant
       const { data: resp } = await supabase
         .from('profiles')
@@ -106,7 +117,7 @@ export function NegotiationChat({
       if (msgData) setMessages(msgData as any);
       await fetchSummary();
       setIsLoading(false);
-      setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
+      setTimeout(scrollToBottom, 100);
     };
     load();
 
@@ -114,16 +125,38 @@ export function NegotiationChat({
       .channel(`chat:${matchRequestId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_request_id=eq.${matchRequestId}` },
         async (payload) => {
-          const { data: sender } = await supabase.from('profiles').select('first_name, last_name').eq('id', payload.new.sender_id).single();
-          setMessages(prev => [...prev, { ...payload.new, profiles: sender } as Message]);
-          setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
+          // Éviter les doublons si le message vient de nous (déjà ajouté par handleSend)
+          setMessages(prev => {
+            const exists = prev.find(m => m.id === payload.new.id);
+            if (exists) return prev;
+
+            // Si c'est notre propre message (cas d'une autre session ou refresh)
+            if (payload.new.sender_id === currentUserId) {
+               const myMsg = { ...payload.new, profiles: { first_name: teamInfo?.userFirstName, last_name: teamInfo?.userLastName } } as Message;
+               return [...prev, myMsg];
+            }
+
+            // Sinon on récupère le profil de l'autre
+            supabase.from('profiles').select('first_name, last_name').eq('id', payload.new.sender_id).single()
+              .then(({ data: sender }) => {
+                if (sender) {
+                  setMessages(current => {
+                    const alreadyIn = current.find(m => m.id === payload.new.id);
+                    if (alreadyIn) return current;
+                    return [...current, { ...payload.new, profiles: sender } as Message];
+                  });
+                }
+              });
+            return prev;
+          });
+          setTimeout(scrollToBottom, 100);
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'match_requests', filter: `id=eq.${matchRequestId}` },
         () => fetchSummary())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [isOpen, matchRequestId]);
+  }, [isOpen, matchRequestId, currentUserId, teamInfo]);
 
   const handleConfirm = async () => {
     if (!summary || isConfirming) return;
@@ -187,10 +220,42 @@ export function NegotiationChat({
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || isSending) return;
+
+    const text = newMessage.trim();
+    setNewMessage('');
+
+    // MISE À JOUR OPTIMISTE (AFFICHAGE INSTANTANÉ)
+    const tempId = 'temp-' + Date.now();
+    const optimisticMsg: Message = {
+      id: tempId,
+      sender_id: currentUserId,
+      text,
+      created_at: new Date().toISOString(),
+      profiles: {
+        first_name: teamInfo?.userFirstName || 'Moi',
+        last_name: teamInfo?.userLastName || ''
+      }
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setTimeout(scrollToBottom, 50);
+
     setIsSending(true);
     try {
-      await supabase.from('messages').insert([{ match_request_id: matchRequestId, sender_id: currentUserId, text: newMessage.trim() }]);
-      setNewMessage('');
+      const { data, error } = await supabase.from('messages').insert([{
+        match_request_id: matchRequestId,
+        sender_id: currentUserId,
+        text
+      }]).select().single();
+
+      if (error) throw error;
+
+      // Remplacer le message temporaire par le message réel avec le bon ID Supabase
+      if (data) {
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...data, profiles: optimisticMsg.profiles } : m));
+      }
+    } catch (err) {
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      alert("Échec de l'envoi");
     } finally { setIsSending(false); }
   };
 
