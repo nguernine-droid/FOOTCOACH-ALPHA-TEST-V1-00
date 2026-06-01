@@ -398,14 +398,14 @@ export default function RadarPage() {
         </div>
       )}
 
-      {/* 1. SWITCH DE VUE TACTIQUE */}
+      {/* 1. SWITCH DE VUE TACTIQUE (TRIPTYQUE) */}
       <div className="flex justify-between items-center px-2">
          <div className={`p-1 rounded-2xl flex border ${isPro ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'} w-fit`}>
             <button onClick={() => setActiveTab('radar')} className={`px-4 py-3 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'radar' ? styles.btn : 'text-gray-500'}`}>
               <Radio size={16} /> <span className="text-[10px] font-black uppercase italic">Sonar</span>
             </button>
             <button onClick={() => setActiveTab('my_signals')} className={`px-4 py-3 rounded-xl flex items-center gap-2 transition-all relative ${activeTab === 'my_signals' ? styles.btn : 'text-gray-500'}`}>
-              <History size={16} />
+              <Wifi size={16} />
               <span className="text-[10px] font-black uppercase italic">Signaux</span>
               {pendingCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
@@ -414,8 +414,8 @@ export default function RadarPage() {
               )}
             </button>
             <button onClick={() => setActiveTab('history')} className={`px-4 py-3 rounded-xl flex items-center gap-2 transition-all relative ${activeTab === 'history' ? styles.btn : 'text-gray-500'}`}>
-              <User size={16} />
-              <span className="text-[10px] font-black uppercase italic">Palmarès</span>
+              <History size={16} />
+              <span className="text-[10px] font-black uppercase italic">Historique</span>
               {myHistory.length > 0 && (
                 <span className={`absolute -top-1 -right-1 w-5 h-5 text-white text-[9px] font-black rounded-full flex items-center justify-center ${isPro ? 'bg-green-500' : 'bg-[#39FF14] text-black'}`}>
                   {myHistory.length}
