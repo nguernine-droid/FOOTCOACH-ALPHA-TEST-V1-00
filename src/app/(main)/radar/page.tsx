@@ -99,7 +99,6 @@ export default function RadarPage() {
       const { data, error } = await supabase
         .from('match_requests')
         .select(`*, profiles:coach_id (first_name, last_name, nickname, avatar_url, coach_grade, coach_level, clubs:club_id (name, logo_url, latitude, longitude, city, stadium))`)
-        .not('status', 'in', '("EXPIRED","MATCHED")')
         .is('deleted_at', null)
         .order('date', { ascending: true });
 
@@ -193,6 +192,7 @@ export default function RadarPage() {
     return requests
       .filter(req =>
         req.coachId !== currentUserId &&
+        ['OPEN', 'POSTMATCHED', 'PENDING'].includes(req.status) &&
         (filterCategory === 'TOUS' || req.category === filterCategory) &&
         (filterLevel === 'TOUS' || req.desiredLevel === filterLevel || req.coachLevel === filterLevel) &&
         (req.distanceKm === undefined || req.distanceKm <= filterDistance)
