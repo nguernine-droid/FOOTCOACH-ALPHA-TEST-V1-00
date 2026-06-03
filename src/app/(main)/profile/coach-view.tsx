@@ -39,6 +39,14 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   const [cvItems, setCvItems] = useState<any[]>([]);
   const [newCvItem, setNewItem] = useState({ type: 'Diplôme', title: '', year: '', description: '' });
 
+  // --- ÉTATS STATS RÉELLES ---
+  const [stats, setStats] = useState({
+    matchesPlayed: 0,
+    announcementsSent: 0,
+    contactsMade: 0,
+    engagementRate: 0
+  });
+
   // --- ÉTATS LOCAUX ---
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', nickname: '', phone: '', licenseNumber: '', bio: '', coachStatus: 'actif',
@@ -88,9 +96,47 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         if (!ignore && data) setCvItems(data);
       };
       loadCV();
+      fetchRealStats();
       return () => { ignore = true; };
     }
   }, [teamInfo]);
+
+  const fetchRealStats = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !teamInfo?.id) return;
+
+      const [ { count: mj }, { count: ap }, { data: mrData } ] = await Promise.all([
+        // 1. Matchs joués terminés
+        supabase.from('events')
+          .select('*', { count: 'exact', head: true })
+          .eq('type', 'match')
+          .eq('status', 'finished')
+          .or(`home_club_id.eq.${teamInfo.id},away_club_id.eq.${teamInfo.id}`),
+        // 2. Annonces émises
+        supabase.from('match_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('coach_id', user.id)
+          .is('deleted_at', null),
+        // 3. Données pour engagement (réponses)
+        supabase.from('match_requests')
+          .select('status, responses_count')
+          .eq('coach_id', user.id)
+          .is('deleted_at', null)
+      ]);
+
+      const totalResponses = mrData?.reduce((acc, curr) => acc + (curr.responses_count || 0), 0) || 0;
+      const contacts = mrData?.filter(m => m.status !== 'OPEN').length || 0;
+      const engagement = ap && ap > 0 ? Math.round((totalResponses / ap) * 100) : 0;
+
+      setStats({
+        matchesPlayed: mj || 0,
+        announcementsSent: ap || 0,
+        contactsMade: contacts,
+        engagementRate: Math.min(engagement, 100)
+      });
+    } catch (err) { console.error("Stats Fetch Error:", err); }
+  };
 
   const fetchCV = async () => {
     try {
@@ -147,7 +193,6 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     return true;
   };
 
-  const stats = { matchesPlayed: 12, announcementsSent: 8, contactsMade: 15, engagementRate: 100 };
 
   const handleSaveSection = async (section: EditingSection) => {
     if (!validate(section)) return;
