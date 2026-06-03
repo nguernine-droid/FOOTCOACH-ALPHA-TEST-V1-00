@@ -9,7 +9,7 @@ import {
   ChevronLeft, User, Shield, MapPin, Navigation,
   Phone, Layers, Trophy, Edit3, CheckCircle2, Star, Zap,
   Save, X, Loader2, Camera, Flame, Check, Fingerprint, Info, Globe, MessageSquare, TrendingUp,
-  Briefcase, GraduationCap, Lightbulb, Trash2, PlusCircle, Users
+  Briefcase, GraduationCap, Lightbulb, Trash2, PlusCircle, Users, AlertTriangle
 } from 'lucide-react';
 import { ClubSearchInput } from '@/components/ClubSearchInput';
 import { ReferralQRCode } from '@/components/ReferralQRCode';
@@ -32,6 +32,9 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  // --- ÉTATS NOTIFICATION ---
+  const [notification, setNotification] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
   // --- ÉTATS CV ---
   const [cvItems, setCvItems] = useState<any[]>([]);
   const [newCvItem, setNewItem] = useState({ type: 'Diplôme', title: '', year: '', description: '' });
@@ -44,6 +47,11 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     city: '', stadium: '',
     matchDist: 30, plateauDist: 20, tournamentReach: 'departemental'
   });
+
+  const showMsg = (msg: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ msg, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const availableCategories = [
     'U6/U7', 'U8/U9', 'U10/U11', 'U12/U13', 'U14/U15', 'U16/U17', 'U18/U19', 'SÉNIORS', 'VÉTÉRANS'
@@ -71,7 +79,16 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
         plateauDist: teamInfo.plateauDistMax || 20,
         tournamentReach: teamInfo.tournamentReach || 'departemental'
       });
-      fetchCV();
+
+      let ignore = false;
+      const loadCV = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || ignore) return;
+        const { data } = await supabase.from('cv_items').select('*').eq('coach_id', user.id).order('year', { ascending: false });
+        if (!ignore && data) setCvItems(data);
+      };
+      loadCV();
+      return () => { ignore = true; };
     }
   }, [teamInfo]);
 
@@ -85,7 +102,10 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   };
 
   const handleAddCvItem = async () => {
-    if (!newCvItem.title) return;
+    if (!newCvItem.title) {
+      showMsg("Veuillez saisir un titre", "error");
+      return;
+    }
     setIsSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -99,19 +119,38 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       if (error) throw error;
       setNewItem({ type: 'Diplôme', title: '', year: '', description: '' });
       await fetchCV();
-    } catch (err: any) { alert(err.message); } finally { setIsSaving(false); }
+      showMsg("CV mis à jour !");
+    } catch (err: any) { showMsg(err.message, "error"); } finally { setIsSaving(false); }
   };
 
   const handleDeleteCvItem = async (id: string) => {
     try {
       await supabase.from('cv_items').delete().eq('id', id);
       await fetchCV();
-    } catch (err: any) { alert(err.message); }
+      showMsg("Élément supprimé");
+    } catch (err: any) { showMsg(err.message, "error"); }
+  };
+
+  const validate = (section: EditingSection): boolean => {
+    if (section === 'user' && (!formData.firstName.trim() || !formData.lastName.trim())) {
+      showMsg("Prénom et Nom obligatoires", "error");
+      return false;
+    }
+    if (section === 'club' && !formData.clubName.trim()) {
+      showMsg("Nom du club requis", "error");
+      return false;
+    }
+    if (section === 'logistics' && (!formData.city.trim() || !formData.stadium.trim())) {
+      showMsg("Ville et Stade requis pour le Radar", "error");
+      return false;
+    }
+    return true;
   };
 
   const stats = { matchesPlayed: 12, announcementsSent: 8, contactsMade: 15, engagementRate: 100 };
 
   const handleSaveSection = async (section: EditingSection) => {
+    if (!validate(section)) return;
     setIsSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -154,8 +193,9 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
       await refreshData();
       setEditingSection(null);
+      showMsg("Données synchronisées !");
       if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
-    } catch (err: any) { alert(err.message); } finally { setIsSaving(false); }
+    } catch (err: any) { showMsg(err.message, "error"); } finally { setIsSaving(false); }
   };
 
   const toggleCategory = (cat: string) => {
@@ -225,6 +265,17 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
   return (
     <div className="fixed inset-0 z-[70] bg-gray-100 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
+
+      {/* --- NOTIFICATION TACTIQUE --- */}
+      {notification && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-4 duration-500">
+          <div className={`px-6 py-3 rounded-full shadow-2xl border-2 flex items-center gap-3 backdrop-blur-md
+            ${notification.type === 'success' ? 'bg-[#39FF14]/90 border-[#39FF14] text-black' : 'bg-red-600/90 border-red-500 text-white'}`}>
+            {notification.type === 'success' ? <CheckCircle2 size={18} strokeWidth={3} /> : <AlertTriangle size={18} strokeWidth={3} />}
+            <span className="text-[10px] font-black uppercase tracking-widest">{notification.msg}</span>
+          </div>
+        </div>
+      )}
 
       {/* HEADER RÉTRACTABLE */}
       <div onClick={handleBack} className="p-8 pb-4 flex items-center justify-between bg-gray-100/80 backdrop-blur-md sticky top-0 z-[90] cursor-pointer active:bg-gray-200/50 transition-colors border-b border-gray-200">
