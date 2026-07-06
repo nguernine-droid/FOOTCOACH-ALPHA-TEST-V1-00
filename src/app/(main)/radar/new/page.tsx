@@ -206,7 +206,8 @@ function NewSignalContent() {
       // Assure que le coach a un club référencé avec coordonnées
       const clubName = teamInfo?.clubName || stadium || city;
       if (clubName && clubName !== 'MON CLUB') {
-        await ensureClub(user.id, clubName, city);
+        const clubId = await ensureClub(user.id, clubName, city);
+        console.log(`✓ Coach linked to club: ${clubId}`);
       }
 
       const matchData = {

@@ -4,14 +4,15 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 /**
- * SUPABASE_CLIENT (v2.0 - PERSISTENCE FIX)
- * Configuration optimisée pour maintenir la session sur mobile (PWA).
+ * SUPABASE_CLIENT (v3.0 - SESSION FIX)
+ * Gestion correcte de la session et du refresh token
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true, // Garde la session active même après fermeture
-    autoRefreshToken: true, // Rafraîchit le jeton de sécurité automatiquement
+    persistSession: true,
+    autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    flowType: 'pkce' // ← Ajouter PKCE pour meilleure sécurité
   }
 });

@@ -96,13 +96,18 @@ export default function RadarPage() {
       if (!user) { setIsLoading(false); return; }
       setCurrentUserId(user.id);
 
+      // 🎯 UTILISER LA VUE match_requests_open (UNRESTRICTED, pas de RLS)
       const { data, error } = await supabase
-        .from('match_requests')
-        .select(`*, profiles:coach_id (first_name, last_name, nickname, avatar_url, coach_grade, coach_level, clubs:club_id (name, logo_url, latitude, longitude, city, stadium))`)
-        .is('deleted_at', null)
-        .order('date', { ascending: true });
+        .from('match_requests_open')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('🔴 RADAR FETCH ERROR:', error);
+        throw error;
+      }
+
+      console.log('✓ Data from view:', data?.length || 0);
 
       // Anti-doublons visuels
       const uniqueData = (data || []).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
@@ -111,26 +116,22 @@ export default function RadarPage() {
       const myLon = teamInfo?.longitude;
 
       const formatted: MatchRequest[] = uniqueData.map((item: any) => {
-        const coachName = item.profiles?.nickname ||
-                         (item.profiles?.first_name ? `${item.profiles.first_name} ${item.profiles.last_name || ''}` : null) ||
-                         'COACH ANONYME';
+        // La vue retourne directement coach_nickname et club_name (pas nested)
+        const coachName = item.coach_nickname || item.coach_first_name || 'COACH ANONYME';
 
-        const theirLat = item.profiles?.clubs?.latitude;
-        const theirLon = item.profiles?.clubs?.longitude;
-        const distanceKm =
-          myLat && myLon && theirLat && theirLon
-            ? haversine(myLat, myLon, theirLat, theirLon)
-            : undefined;
+        // TODO: On n'a pas les coordonnées du club depuis la vue
+        // Il faudrait les ajouter à la vue ou faire un SELECT séparé
+        const distanceKm = undefined; // À améliorer
 
         return {
           id: item.id,
           coachId: item.coach_id,
-          coachClub: item.profiles?.clubs?.name || 'Club Inconnu',
+          coachClub: item.club_name || 'Club Inconnu',
           coachName: coachName.trim(),
-          coachLogo: item.profiles?.clubs?.logo_url,
-          coachGrade: item.profiles?.coach_grade || null,
-          coachLevel: item.profiles?.coach_level || null,
-          stadium: item.profiles?.clubs?.stadium,
+          coachLogo: item.clubs?.logo_url, // Peut être null
+          coachGrade: item.coach_grade || null,
+          coachLevel: item.coach_level || null,
+          stadium: item.stadium,
           type: item.type,
           category: item.category,
           desiredLevel: item.desired_level || null,
@@ -139,8 +140,8 @@ export default function RadarPage() {
           time: item.time,
           location: item.location,
           comment: item.comment,
-          latitude: theirLat,
-          longitude: theirLon,
+          latitude: undefined, // À récupérer depuis clubs
+          longitude: undefined, // À récupérer depuis clubs
           distanceKm,
           viewsCount:         item.views_count || 0,
           responsesCount:     item.responses_count || 0,
@@ -189,14 +190,18 @@ export default function RadarPage() {
 
   // 1. LES ADVERSAIRES (POUR LE SONAR ET LE FLUX RADAR)
   const enemyRequests = useMemo(() => {
+    // SÉCURITÉ PURETÉ ID (ANTI-ÉCHO)
+    if (!currentUserId) return [];
+
     return requests
       .filter(req =>
-        req.coachId !== currentUserId &&
+        req.coachId !== currentUserId && // EXCLUSION STRICTE DE MES ANNONCES
         ['OPEN', 'POSTMATCHED', 'PENDING'].includes(req.status) &&
         (filterCategory === 'TOUS' || req.category === filterCategory) &&
         (filterLevel === 'TOUS' || req.desiredLevel === filterLevel || req.coachLevel === filterLevel) &&
         (req.distanceKm === undefined || req.distanceKm <= filterDistance)
       )
+      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i) // FILTRE ANTI-DOUBLON FINAL
       .sort((a, b) => {
         // SOS toujours en premier
         if (a.isSos && !b.isSos) return -1;
