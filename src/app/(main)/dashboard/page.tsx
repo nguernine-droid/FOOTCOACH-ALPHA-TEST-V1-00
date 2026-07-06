@@ -57,7 +57,13 @@ export default function DashboardPage() {
       const uniqueEvts = (allEvts || []).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
       setEvents(uniqueEvts);
 
-      const { count: rc } = await supabase.from('match_requests').select('*', { count: 'exact', head: true }).eq('status', 'OPEN').neq('coach_id', user.id).is('deleted_at', null);
+      // 2. Compteur Radar (TOUTES les annonces OPEN du secteur - V1.0.341)
+      const { count: rc } = await supabase
+        .from('match_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'OPEN')
+        .neq('coach_id', user.id)
+        .is('deleted_at', null);
       setRadarCount(rc || 0);
 
       const { count: resp } = await supabase.from('match_requests').select('*', { count: 'exact', head: true }).eq('coach_id', user.id).eq('status', 'POSTMATCHED');

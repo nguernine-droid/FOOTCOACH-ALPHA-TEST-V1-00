@@ -67,11 +67,11 @@ export default function RadarPage() {
   const [selectedChatRequest, setSelectedChatRequest] = useState<MatchRequest | null>(null);
   const [refuseTarget, setRefuseTarget] = useState<MatchRequest | null>(null);
 
-  // FILTERS
+  // FILTERS (VERITÉ TERRAIN - PLEIN PHARES V1.0.341)
   const [showFilters, setShowFilters] = useState(false);
-  const [filterCategory, setFilterCategory] = useState(teamInfo?.category || 'TOUS');
-  const [filterDistance, setFilterDistance] = useState(teamInfo?.matchDistMax || 50);
-  const [filterLevel, setFilterLevel] = useState(teamInfo?.level || 'TOUS');
+  const [filterCategory, setFilterCategory] = useState('TOUS');
+  const [filterDistance, setFilterDistance] = useState(150);
+  const [filterLevel, setFilterLevel] = useState('TOUS');
 
   const levels = ['TOUS', 'D1', 'D2', 'D3', 'D4', 'D5', 'Espoir', 'Loisir'];
 
