@@ -533,7 +533,7 @@ DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 
 CREATE POLICY "Users can view profiles"
-  ON public.profiles FOR SELECT USING (auth.uid() = id OR deleted_at IS NULL);
+  ON public.profiles FOR SELECT USING (auth.uid() = id OR (deleted_at IS NULL AND auth.uid() != id));
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can insert own profile"
@@ -555,10 +555,19 @@ CREATE POLICY "Authenticated can insert club"
 DROP POLICY IF EXISTS "Coach can view own match requests" ON public.match_requests;
 DROP POLICY IF EXISTS "Coach can create match request"    ON public.match_requests;
 DROP POLICY IF EXISTS "Coach can update own match request" ON public.match_requests;
+DROP POLICY IF EXISTS "Anyone can view open match requests" ON public.match_requests;
+DROP POLICY IF EXISTS "Coach can view own or responded match requests" ON public.match_requests;
 
-CREATE POLICY "Coach can view own match requests"
+-- Policy 1: Anyone can see OPEN requests (public feed)
+CREATE POLICY "Anyone can view open match requests"
   ON public.match_requests FOR SELECT
-  USING ((auth.uid() = coach_id OR auth.uid() = respondent_id) OR (status = 'OPEN' AND deleted_at IS NULL));
+  USING (status = 'OPEN' AND deleted_at IS NULL);
+
+-- Policy 2: Coach can see his own NON-OPEN requests + responses (excludes OPEN to avoid duplication with Policy 1)
+CREATE POLICY "Coach can view own or responded match requests"
+  ON public.match_requests FOR SELECT
+  USING ((auth.uid() = coach_id AND status != 'OPEN') OR auth.uid() = respondent_id);
+
 CREATE POLICY "Coach can create match request"
   ON public.match_requests FOR INSERT WITH CHECK (auth.uid() = coach_id);
 CREATE POLICY "Coach can update own match request"
@@ -587,7 +596,7 @@ DROP POLICY IF EXISTS "User can update own attendance" ON public.event_attendees
 
 CREATE POLICY "Coach can view attendees"
   ON public.event_attendees FOR SELECT
-  USING (EXISTS (SELECT 1 FROM public.events e WHERE e.id = event_id AND e.created_by = auth.uid()) OR profile_id = auth.uid());
+  USING (EXISTS (SELECT 1 FROM public.events e WHERE e.id = event_id AND e.created_by = auth.uid() AND e.created_by != profile_id) OR (profile_id = auth.uid() AND NOT EXISTS (SELECT 1 FROM public.events e WHERE e.id = event_id AND e.created_by = auth.uid())));
 CREATE POLICY "User can upsert own attendance"
   ON public.event_attendees FOR INSERT WITH CHECK (profile_id = auth.uid());
 CREATE POLICY "User can update own attendance"

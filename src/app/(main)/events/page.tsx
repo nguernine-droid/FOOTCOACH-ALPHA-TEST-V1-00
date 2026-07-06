@@ -92,6 +92,19 @@ export default function CalendarPage() {
   const monthEvents = useMemo(() => events.filter(e => { const d = new Date(e.date + 'T00:00:00'); return d.getMonth() === month && d.getFullYear() === year; }), [events, month, year]);
   const currentDayEvents = useMemo(() => monthEvents.filter(e => new Date(e.date + 'T00:00:00').getDate() === selectedDay), [monthEvents, selectedDay]);
 
+  // Prochains événements (5 max)
+  const upcomingEvents = useMemo(() => {
+    const now = new Date();
+    return events
+      .filter(e => new Date(e.date + 'T' + (e.time || '00:00:00')) >= now)
+      .sort((a, b) => {
+        const dateA = new Date(a.date + 'T' + (a.time || '00:00:00'));
+        const dateB = new Date(b.date + 'T' + (b.time || '00:00:00'));
+        return dateA.getTime() - dateB.getTime();
+      })
+      .slice(0, 5);
+  }, [events]);
+
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('events').update({ deleted_at: new Date().toISOString() }).eq('id', id);
     if (!error) setEvents(prev => prev.filter(ev => ev.id !== id));
@@ -149,6 +162,35 @@ export default function CalendarPage() {
             })}
           </div>
         </section>
+
+        {/* PROCHAINS ÉVÉNEMENTS */}
+        {upcomingEvents.length > 0 && (
+          <section className="bg-white/5 rounded-[2.5rem] p-6 border border-white/10 space-y-3">
+            <div className="flex items-center gap-2">
+              <Zap size={14} className="text-neon-cyan" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-white">Prochains Événements</h3>
+            </div>
+            <div className="space-y-2">
+              {upcomingEvents.map(ev => (
+                <button
+                  key={ev.id}
+                  onClick={() => router.push(`/events/${ev.id}`)}
+                  className="w-full text-left p-3 bg-white/5 rounded-xl border border-white/10 hover:border-neon-cyan hover:bg-white/10 transition-all active:scale-95"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getEventStyle(ev).bg}`} />
+                      <p className="text-[9px] font-black text-white uppercase truncate">{ev.title}</p>
+                    </div>
+                  </div>
+                  <p className="text-[8px] text-gray-500 mt-1">
+                    📅 {new Date(ev.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} | ⏰ {ev.time?.slice(0,5)} | 📍 {ev.location}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* LISTE DES MISSIONS AVEC SMART SWIPE */}
         <section className="space-y-4">
