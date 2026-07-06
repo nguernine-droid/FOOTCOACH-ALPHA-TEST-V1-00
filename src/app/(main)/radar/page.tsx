@@ -96,10 +96,12 @@ export default function RadarPage() {
       if (!user) { setIsLoading(false); return; }
       setCurrentUserId(user.id);
 
-      // 🎯 UTILISER LA VUE match_requests_open (UNRESTRICTED, pas de RLS)
+      // 🎯 REQUÊTE DIRECTE : Récupérer annonces OPEN + propositions en cours (POSTMATCHED/PENDING)
       const { data, error } = await supabase
-        .from('match_requests_open')
-        .select('*')
+        .from('match_requests')
+        .select('*, profiles:coach_id (first_name, last_name, nickname, avatar_url, clubs:club_id (name, logo_url, latitude, longitude, city, stadium))')
+        .in('status', ['OPEN', 'POSTMATCHED', 'PENDING'])
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -116,22 +118,26 @@ export default function RadarPage() {
       const myLon = teamInfo?.longitude;
 
       const formatted: MatchRequest[] = uniqueData.map((item: any) => {
-        // La vue retourne directement coach_nickname et club_name (pas nested)
-        const coachName = item.coach_nickname || item.coach_first_name || 'COACH ANONYME';
+        // Données nested depuis le JOIN
+        const profile = item.profiles;
+        const club = profile?.clubs;
+        const coachName = profile?.nickname || profile?.first_name || 'COACH ANONYME';
 
-        // TODO: On n'a pas les coordonnées du club depuis la vue
-        // Il faudrait les ajouter à la vue ou faire un SELECT séparé
-        const distanceKm = undefined; // À améliorer
+        // Calcul distance si coordonnées disponibles
+        let distanceKm: number | undefined = undefined;
+        if (myLat && myLon && club?.latitude && club?.longitude) {
+          distanceKm = haversine(myLat, myLon, club.latitude, club.longitude);
+        }
 
         return {
           id: item.id,
           coachId: item.coach_id,
-          coachClub: item.club_name || 'Club Inconnu',
+          coachClub: club?.name || 'Club Inconnu',
           coachName: coachName.trim(),
-          coachLogo: item.clubs?.logo_url, // Peut être null
+          coachLogo: club?.logo_url,
           coachGrade: item.coach_grade || null,
           coachLevel: item.coach_level || null,
-          stadium: item.stadium,
+          stadium: club?.stadium,
           type: item.type,
           category: item.category,
           desiredLevel: item.desired_level || null,
@@ -140,8 +146,8 @@ export default function RadarPage() {
           time: item.time,
           location: item.location,
           comment: item.comment,
-          latitude: undefined, // À récupérer depuis clubs
-          longitude: undefined, // À récupérer depuis clubs
+          latitude: club?.latitude,
+          longitude: club?.longitude,
           distanceKm,
           viewsCount:         item.views_count || 0,
           responsesCount:     item.responses_count || 0,
