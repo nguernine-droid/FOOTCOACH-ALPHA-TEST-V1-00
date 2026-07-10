@@ -7,420 +7,381 @@ import {
   Users,
   Target,
   Activity,
-  Shield,
-  ArrowRight,
   Cpu,
-  Wifi,
+  Shield,
   Zap,
-  Plus,
+  ArrowDown,
+  Smartphone,
+  Share,
+  MoreVertical,
   Star,
-  Brain,
-  Flame,
-  Layout,
-  Gamepad2,
-  Crosshair
+  StarHalf,
+  Check,
 } from "lucide-react";
-import { GlitchText } from "@/components/ui/cyber/GlitchText";
-import { NeonButton } from "@/components/ui/cyber/NeonButton";
 import { ScanlinesOverlay } from "@/components/ui/cyber/ScanlinesOverlay";
+
+type Theme = 'classic' | 'nexus';
+
+/* Un seul accent sémantique par thème (cohérence chromatique). */
+const accent = (theme: Theme) => ({
+  text: theme === 'nexus' ? 'text-neon-cyan' : 'text-neon-orange',
+  bg: theme === 'nexus' ? 'bg-neon-cyan' : 'bg-neon-orange',
+  border: theme === 'nexus' ? 'border-neon-cyan/30' : 'border-neon-orange/30',
+  ring: theme === 'nexus' ? 'border-neon-cyan/40' : 'border-neon-orange/40',
+  softBg: theme === 'nexus' ? 'bg-neon-cyan/10' : 'bg-neon-orange/10',
+  glow: theme === 'nexus' ? 'shadow-[0_0_20px_rgba(0,240,255,0.35)]' : 'shadow-[0_0_20px_rgba(255,107,0,0.35)]',
+});
 
 const features = [
   {
-    title: "Gestion_Unité",
-    desc: "Synchronisez votre team, profilez vos joueurs, définissez vos tactiques Nexus. Données biométriques en temps réel.",
-    icon: (color: string) => <Users size={24} className={color} />,
-    runnerColor: "border-neon-cyan/30",
-    classicColor: "border-neon-orange/30"
+    title: "Gestion d'unité",
+    desc: "Synchronisez votre équipe, profilez vos joueurs et définissez vos tactiques en un seul endroit.",
+    icon: Users,
   },
   {
-    title: "Scan_Secteur",
-    desc: "Détectez des adversaires via le Radar Sonar. Filtrez par périmètre, niveau de menace et disponibilité immédiate.",
-    icon: (color: string) => <Target size={24} className={color} />,
-    runnerColor: "border-neon-magenta/30",
-    classicColor: "border-neon-orange/30"
+    title: "Scan du secteur",
+    desc: "Détectez des adversaires via le radar. Filtrez par périmètre, niveau et disponibilité immédiate.",
+    icon: Target,
   },
   {
-    title: "Briefing_Mission",
-    desc: "Restez informé : flux de données secteur, interceptions radio et logs de mission de la communauté.",
-    icon: (color: string) => <Activity size={24} className={color} />,
-    runnerColor: "border-neon-cyan/30",
-    classicColor: "border-neon-orange/30"
+    title: "Briefing de mission",
+    desc: "Restez informé : flux du secteur, échanges et journaux de la communauté en temps réel.",
+    icon: Activity,
   },
   {
-    title: "Analyses_Avancées",
-    desc: "Suivez l'évolution : Buts, Passes, Synchronisation d'unité. Visualisez le potentiel avant l'Upload Sync.",
-    icon: (color: string) => <Cpu size={24} className={color} />,
-    runnerColor: "border-neon-green/30",
-    classicColor: "border-neon-orange/30"
+    title: "Analyses avancées",
+    desc: "Suivez la progression : buts, passes, cohésion d'équipe. Visualisez le potentiel de chacun.",
+    icon: Cpu,
   },
 ];
 
 const stats = [
-  { value: "10K+", label: "Unités_Liées" },
-  { value: "50K+", label: "Missions_Logs" },
-  { value: "100K+", label: "Agents_Actifs" },
-  { value: "200+", label: "Secteurs_Cartographiés" },
+  { value: "10K+", label: "Unités liées" },
+  { value: "50K+", label: "Missions jouées" },
+  { value: "100K+", label: "Coachs actifs", highlight: true },
+  { value: "200+", label: "Secteurs couverts" },
 ];
 
 const testimonials = [
   {
-    text: "FOOTCOACH ALPHA a totalement transformé ma gestion d'équipe. La synchronisation d'unité est un vrai game-changer.",
+    text: "FootCoach a totalement transformé ma gestion d'équipe. La synchronisation est un vrai game-changer.",
     author: "Coach Marc",
-    role: "U17 District",
-    avatar: "M"
+    club: "FC Vénissieux · U17",
+    avatar: "M",
+    rating: 5,
   },
   {
-    text: "L'interface Nexus est incroyable, mes joueurs adorent voir leurs stats monter comme dans un RPG.",
+    text: "L'interface est superbe et mes joueurs adorent voir leurs statistiques progresser comme dans un jeu.",
     author: "Coach Sarah",
-    role: "Seniors R1",
-    avatar: "S"
+    club: "AS Minguettes · Seniors R1",
+    avatar: "S",
+    rating: 4.5,
   },
   {
     text: "Simple, rapide et gratuit. C'est l'outil que j'attendais pour mon club depuis des années.",
     author: "Coach Thomas",
-    role: "U13 Elite",
-    avatar: "T"
-  }
+    club: "OL Sud · U13",
+    avatar: "T",
+    rating: 5,
+  },
 ];
 
 export default function ShowcasePage() {
   const router = useRouter();
-  const [activeTheme, setActiveTheme] = useState<'classic' | 'nexus'>('classic');
+  const [theme, setTheme] = useState<Theme>('classic');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const a = accent(theme);
 
   useEffect(() => {
-    // CAPTURE DU CODE COACH (Lien Nexus)
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const refCode = params.get('ref');
-      if (refCode) {
-        localStorage.setItem('pending_coach_code', refCode.toUpperCase());
-        console.log('--- NEXUS_SIGNAL_CAPTURED : ' + refCode.toUpperCase() + ' ---');
-      }
+      if (refCode) localStorage.setItem('pending_coach_code', refCode.toUpperCase());
     }
-
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    const interval = setInterval(() => {
-      setActiveTheme(prev => prev === 'nexus' ? 'classic' : 'nexus');
-    }, 5000);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      clearInterval(interval);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
-  const handleDownloadAction = async () => {
-    // 1. Vérification de l'état de l'utilisateur
+  const handleStart = async () => {
     const hasRole = localStorage.getItem('user_role');
-
-    if (hasRole) {
-      // Utilisateur connu -> Direction le Dashboard
-      router.push('/dashboard');
-    } else {
-      // Nouvel utilisateur -> Direction le Login/Register
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          setDeferredPrompt(null);
-        }
-      }
-      router.push('/login');
+    if (hasRole) { router.push('/dashboard'); return; }
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') setDeferredPrompt(null);
     }
+    router.push('/register');
   };
 
+  const toggleTheme = () => setTheme(t => (t === 'nexus' ? 'classic' : 'nexus'));
+
   return (
-    <main className="min-h-screen bg-black text-white font-sans selection:bg-neon-cyan selection:text-black relative overflow-x-hidden transition-colors duration-1000">
-      {activeTheme === 'nexus' && <ScanlinesOverlay />}
-      <StadiumNeon theme={activeTheme} />
+    <main className="min-h-screen bg-black text-white font-sans selection:bg-neon-cyan selection:text-black relative overflow-x-hidden">
+      {theme === 'nexus' && <ScanlinesOverlay />}
+      <StadiumBackdrop theme={theme} />
 
       {/* ── HEADER ── */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] bg-black/50 backdrop-blur-md border-b border-white/5 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <button onClick={() => router.push('/onboarding')} className={`flex items-center gap-2 font-black uppercase text-[10px] tracking-widest group transition-colors duration-700 ${activeTheme === 'nexus' ? 'text-neon-cyan' : 'text-neon-orange'}`}>
-            <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            ANNULER_MISSION
+      <nav className="fixed top-0 left-0 right-0 z-[100] bg-black/70 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex justify-between items-center">
+          <button
+            onClick={() => router.push('/onboarding')}
+            aria-label="Revenir à l'accueil"
+            className={`flex items-center gap-2 font-black uppercase text-[10px] tracking-widest group ${a.text}`}
+          >
+            <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" aria-hidden="true" />
+            Retour
           </button>
-          <div className="flex items-center gap-4">
-             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                <span className={`text-[8px] font-black uppercase tracking-widest ${activeTheme === 'classic' ? 'text-neon-orange' : 'text-gray-500'}`}>CLASSIQUE</span>
-                <div className="w-8 h-4 bg-gray-800 rounded-full relative p-1 cursor-pointer" onClick={() => setActiveTheme(activeTheme === 'nexus' ? 'classic' : 'nexus')}>
-                   <div className={`absolute top-1 w-2 h-2 rounded-full transition-all duration-500 ${activeTheme === 'nexus' ? 'left-5 bg-neon-cyan shadow-[0_0_8px_#00F0FF]' : 'left-1 bg-neon-orange'}`} />
-                </div>
-                <span className={`text-[8px] font-black uppercase tracking-widest ${activeTheme === 'nexus' ? 'text-neon-cyan' : 'text-gray-500'}`}>NEXUS</span>
-             </div>
+
+          <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+            <span className={`text-[8px] font-black uppercase tracking-widest ${theme === 'classic' ? a.text : 'text-gray-500'}`}>Classique</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === 'nexus'}
+              aria-label="Basculer le thème Nexus"
+              onClick={toggleTheme}
+              className="w-9 h-5 bg-gray-800 rounded-full relative shrink-0"
+            >
+              <span className={`absolute top-1 w-3 h-3 rounded-full transition-all duration-300 ${theme === 'nexus' ? 'left-5 bg-neon-cyan shadow-[0_0_8px_#00F0FF]' : 'left-1 bg-neon-orange'}`} />
+            </button>
+            <span className={`text-[8px] font-black uppercase tracking-widest ${theme === 'nexus' ? a.text : 'text-gray-500'}`}>Nexus</span>
           </div>
         </div>
       </nav>
 
-      {/* ── HERO SECTION ── */}
-      <section className="relative min-h-[100vh] lg:min-h-[90vh] flex items-center pt-20 lg:pt-0 overflow-hidden">
-        <div className="absolute inset-0 z-0 transition-opacity duration-1000">
+      {/* ── HERO ── */}
+      <section className="relative flex items-center min-h-[92vh] pt-24 pb-16 overflow-hidden">
+        <div className="absolute inset-0 z-0">
           <img
             src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=2000&auto=format&fit=crop"
-            className={`w-full h-full object-cover transition-all duration-1000 ${activeTheme === 'nexus' ? 'opacity-20 grayscale contrast-125' : 'opacity-30 grayscale sepia-[0.3]'}`}
-            alt="Stadium"
+            className={`w-full h-full object-cover ${theme === 'nexus' ? 'opacity-15 grayscale contrast-125' : 'opacity-25 grayscale sepia-[0.3]'}`}
+            alt=""
+            aria-hidden="true"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black to-black lg:bg-gradient-to-r lg:from-black lg:via-black/80 lg:to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/90 to-black lg:bg-gradient-to-r lg:from-black lg:via-black/85 lg:to-black/40" />
         </div>
 
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10 w-full">
-           <div className="space-y-6 lg:space-y-8 text-center lg:text-left pt-10 lg:pt-0">
-              <div className="space-y-4">
-                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] lg:text-[10px] font-black tracking-[0.3em] uppercase transition-all duration-700 ${activeTheme === 'nexus' ? 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan' : 'bg-neon-orange/10 border-neon-orange/30 text-neon-orange'}`}>
-                    {activeTheme === 'nexus' ? <Zap size={12} fill="currentColor" /> : <Shield size={12} fill="currentColor" />}
-                    {activeTheme === 'nexus' ? 'MODE_NEXUS_ACTIF' : 'MODE_CLASSIQUE_ACTIF'}
-                 </div>
+        <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center relative z-10 w-full">
+          <div className="lg:col-span-7 space-y-8 text-center lg:text-left">
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-black tracking-[0.25em] uppercase ${a.softBg} ${a.border} ${a.text}`}>
+              {theme === 'nexus' ? <Zap size={12} fill="currentColor" aria-hidden="true" /> : <Shield size={12} fill="currentColor" aria-hidden="true" />}
+              {theme === 'nexus' ? 'Mode Nexus' : 'Mode Classique'}
+            </div>
 
-                 <h1 className="text-6xl md:text-6xl lg:text-8xl font-black italic uppercase tracking-tighter leading-[0.9] text-white transition-all duration-1000">
-                   <span className="block text-white">COMMUNIQUEZ.</span>
-                   <span className={`block drop-shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-colors duration-1000 ${activeTheme === 'nexus' ? 'text-neon-cyan' : 'text-neon-orange'}`}>MANAGEZ.</span>
-                   <span className="block text-white">ÉQUIPEZ.</span>
-                 </h1>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.95]">
+              <span className="block">Communiquez.</span>
+              <span className={`block ${a.text}`}>Managez.</span>
+              <span className="block">Équipez.</span>
+            </h1>
 
-                 <div className={`max-w-md mx-auto lg:mx-0 p-4 border-l-4 bg-white/5 backdrop-blur-md transition-all duration-700 ${activeTheme === 'nexus' ? 'border-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.1)]' : 'border-neon-orange'}`}>
-                    <p className="text-gray-300 text-xs lg:text-base font-medium leading-relaxed uppercase tracking-wider">
-                      L'outil tactique ultime <span className={`font-black transition-colors duration-700 ${activeTheme === 'nexus' ? 'text-neon-cyan' : 'text-neon-orange'}`}>100% GRATUIT</span>.
-                    </p>
-                 </div>
-              </div>
+            <p className="max-w-md mx-auto lg:mx-0 text-gray-300 text-base leading-relaxed">
+              L'outil tactique ultime pour piloter votre club amateur.{' '}
+              <span className={`font-black ${a.text}`}>100&nbsp;% gratuit</span>, sans publicité.
+            </p>
 
-              <div className="flex flex-col gap-6 pt-6 justify-center lg:justify-start">
-                 <div className="relative group">
-                    <div className={`absolute -inset-1 rounded-xl blur opacity-30 group-hover:opacity-100 animate-pulse transition duration-1000 ${activeTheme === 'nexus' ? 'bg-neon-cyan' : 'bg-neon-orange'}`}></div>
-                    <button onClick={handleDownloadAction} className={`relative w-full sm:w-auto flex items-center justify-center gap-3 py-6 px-12 text-base font-black uppercase italic rounded-xl transition-all shadow-xl ${activeTheme === 'nexus' ? 'bg-neon-cyan text-black' : 'bg-neon-orange text-black'}`}>
-                       <Users size={20} fill="black" /> SE CONNECTER / COMMENCER
-                    </button>
-                 </div>
-              </div>
-           </div>
-
-           {/* ── BIONIC VOLLEY ANIMATION INTEGRATION ── */}
-           <div className="relative hidden lg:block">
-              <div className={`absolute inset-0 blur-[120px] rounded-full animate-pulse transition-colors duration-1000 ${activeTheme === 'nexus' ? 'bg-neon-cyan/20' : 'bg-neon-orange/10'}`} />
-              <div className="relative transform hover:scale-[1.02] transition-transform duration-700">
-                <BionicVolleyAnimation theme={activeTheme} />
-              </div>
-           </div>
-        </div>
-      </section>
-
-      {/* ── STATS GRID ── */}
-      <section className="py-12 lg:py-20 px-6 relative z-10 bg-white/[0.02] border-y border-white/5">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((s, i) => (
-            <StatCard key={i} {...s} theme={activeTheme} />
-          ))}
-        </div>
-      </section>
-
-      {/* ── FEATURES SECTION ── */}
-      <section className="py-20 lg:py-32 px-6 relative z-10" id="features">
-        <div className="max-w-4xl mx-auto space-y-12 lg:space-y-20">
-          <div className="text-center lg:text-left space-y-4">
-             <h2 className={`text-2xl lg:text-3xl font-black uppercase italic tracking-tighter transition-colors duration-700 ${activeTheme === 'nexus' ? 'text-white' : 'text-neon-orange'}`}>Capacités_Système</h2>
-             <div className={`w-20 h-1 mx-auto lg:mx-0 transition-all duration-700 ${activeTheme === 'nexus' ? 'bg-neon-cyan shadow-[0_0_10px_#00F0FF]' : 'bg-neon-orange shadow-[0_0_10px_#FF6B00]'}`} />
+            <div className="flex flex-col items-center lg:items-start gap-4 pt-2">
+              <button
+                onClick={handleStart}
+                className={`w-full sm:w-auto inline-flex items-center justify-center gap-3 py-5 px-10 text-base font-black uppercase italic rounded-xl text-black ${a.bg} ${a.glow} active:scale-95 transition-transform`}
+              >
+                Commencer gratuitement
+              </button>
+              <button
+                onClick={() => router.push('/login')}
+                className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
+              >
+                Déjà inscrit ? <span className={a.text}>Se connecter</span>
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
-            {features.map((f, i) => (
-              <div key={i} className={`p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2.5rem] bg-[#050505] border-2 shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-all duration-700 ${activeTheme === 'nexus' ? f.runnerColor : f.classicColor}`}>
-                <div className="absolute right-[-10px] top-[-10px] opacity-10 group-hover:scale-110 transition-transform text-white">
-                   {f.icon(activeTheme === 'nexus' ? 'text-white' : 'text-neon-orange')}
-                </div>
-                <div className="relative z-10 space-y-4">
-                  <div className={`w-10 h-10 lg:w-12 lg:h-12 bg-white/5 rounded-xl lg:rounded-2xl flex items-center justify-center border border-white/10 transition-colors duration-700 ${activeTheme === 'nexus' ? 'text-neon-cyan' : 'text-neon-orange'}`}>
-                    {f.icon("")}
+          <div className="lg:col-span-5 hidden lg:block">
+            <PreviewCard theme={theme} />
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATS ── */}
+      <section className="w-full bg-white/[0.03] border-y border-white/10 py-14">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+            {stats.map((s, i) => (
+              <StatCard key={i} {...s} theme={theme} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section className="w-full py-20 lg:py-28 px-6" id="features">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center lg:text-left space-y-4 mb-14">
+            <h2 className="text-3xl lg:text-4xl font-black uppercase italic tracking-tighter">Capacités du système</h2>
+            <div className={`w-20 h-1 mx-auto lg:mx-0 ${a.bg} ${a.glow}`} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
+            {features.map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <div key={i} className={`p-7 lg:p-8 rounded-[1.75rem] bg-[#070707] border-2 ${a.border} hover:-translate-y-1 transition-transform duration-300`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border border-white/10 bg-white/5 mb-5 ${a.text}`}>
+                    <Icon size={22} aria-hidden="true" />
                   </div>
-                  <h3 className="text-lg lg:text-xl font-black text-white uppercase italic tracking-tight">{f.title}</h3>
-                  <p className="text-[10px] lg:text-xs text-gray-500 font-medium leading-relaxed uppercase tracking-wider">
-                    {f.desc}
-                  </p>
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tight mb-2">{f.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* ── TUTORIEL INSTALLATION ── */}
-      <section className="py-20 lg:py-32 px-6 relative z-10">
-        <div className="max-w-4xl mx-auto text-center space-y-12">
-          <div className="flex flex-col items-center gap-6">
-             <div className="flex justify-center gap-20">
-                <ArrowRight size={80} className="text-neon-orange rotate-90 animate-bounce" strokeWidth={3} />
-                <ArrowRight size={80} className="text-neon-orange rotate-90 animate-bounce" strokeWidth={3} />
-             </div>
-             <div className="space-y-2">
-                <h2 className={`text-3xl lg:text-5xl font-black uppercase italic tracking-tighter ${activeTheme === 'nexus' ? 'text-white' : 'text-neon-orange'}`}>
-                   Télécharge l'application
-                </h2>
-                <p className="text-gray-500 font-bold uppercase tracking-[0.3em] text-xs">Protocole d'installation Nexus</p>
-             </div>
+      {/* ── INSTALLATION ── */}
+      <section className="w-full py-20 lg:py-28 px-6 bg-white/[0.02] border-y border-white/10">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col items-center text-center gap-4 mb-14">
+            <ArrowDown size={40} className={`${a.text} animate-bounce`} strokeWidth={3} aria-hidden="true" />
+            <h2 className="text-3xl lg:text-4xl font-black uppercase italic tracking-tighter">Installez l'application</h2>
+            <p className="text-gray-500 font-bold uppercase tracking-[0.25em] text-xs">Ajoutez FootCoach à votre écran d'accueil</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-10">
-             {/* APPLE TUTO */}
-             <div className="bg-white/5 border-2 border-white/10 p-8 rounded-[2.5rem] space-y-6 text-left relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                   <Gamepad2 size={80} />
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 bg-white text-black rounded-xl flex items-center justify-center shadow-xl">
-                      <Plus size={24} strokeWidth={3} />
-                   </div>
-                   <h3 className="text-xl font-black uppercase italic text-white">Sur Apple / iOS</h3>
-                </div>
-                <ul className="space-y-4 text-xs font-bold uppercase tracking-widest text-gray-400">
-                   <li className="flex items-start gap-3"><span className="text-neon-orange">01.</span> Ouvre Safari sur teamnexus.fr</li>
-                   <li className="flex items-start gap-3"><span className="text-neon-orange">02.</span> Appuie sur le bouton "Partager" (carré avec flèche)</li>
-                   <li className="flex items-start gap-3"><span className="text-neon-orange">03.</span> Sélectionne "Sur l'écran d'accueil"</li>
-                </ul>
-             </div>
-
-             {/* ANDROID TUTO */}
-             <div className="bg-white/5 border-2 border-white/10 p-8 rounded-[2.5rem] space-y-6 text-left relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                   <Layout size={80} />
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 bg-[#39FF14] text-black rounded-xl flex items-center justify-center shadow-xl">
-                      <Plus size={24} strokeWidth={3} />
-                   </div>
-                   <h3 className="text-xl font-black uppercase italic text-white">Sur Android / Chrome</h3>
-                </div>
-                <ul className="space-y-4 text-xs font-bold uppercase tracking-widest text-gray-400">
-                   <li className="flex items-start gap-3"><span className="text-neon-cyan">01.</span> Ouvre Chrome sur teamnexus.fr</li>
-                   <li className="flex items-start gap-3"><span className="text-neon-cyan">02.</span> Appuie sur les 3 points en haut à droite</li>
-                   <li className="flex items-start gap-3"><span className="text-neon-cyan">03.</span> Sélectionne "Installer l'application"</li>
-                </ul>
-             </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InstallCard
+              theme={theme}
+              platform="Sur iPhone (Safari)"
+              steps={[
+                <>Ouvrez le site dans <b className="text-white">Safari</b></>,
+                <>Appuyez sur <b className="text-white">Partager</b> <Share size={13} className="inline align-middle" aria-hidden="true" /></>,
+                <>Choisissez <b className="text-white">« Sur l'écran d'accueil »</b></>,
+              ]}
+            />
+            <InstallCard
+              theme={theme}
+              platform="Sur Android (Chrome)"
+              steps={[
+                <>Ouvrez le site dans <b className="text-white">Chrome</b></>,
+                <>Appuyez sur le menu <MoreVertical size={13} className="inline align-middle" aria-hidden="true" /> (trois points)</>,
+                <>Choisissez <b className="text-white">« Installer l'application »</b></>,
+              ]}
+            />
           </div>
         </div>
       </section>
 
-      {/* ── TESTIMONIALS SECTION ── */}
-      <section className="py-20 lg:py-32 px-6 relative z-10 bg-white/[0.01]">
-        <div className="max-w-4xl mx-auto space-y-12 lg:space-y-16">
-          <div className="text-center space-y-4">
-             <h2 className={`text-2xl lg:text-3xl font-black uppercase italic tracking-tighter transition-colors duration-700 ${activeTheme === 'nexus' ? 'text-white' : 'text-neon-orange'}`}>Échos_du_Terrain</h2>
-             <p className="text-[9px] lg:text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Retours_d_expérience_coachs</p>
+      {/* ── TÉMOIGNAGES ── */}
+      <section className="w-full py-20 lg:py-28 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center space-y-4 mb-14">
+            <h2 className="text-3xl lg:text-4xl font-black uppercase italic tracking-tighter">Échos du terrain</h2>
+            <p className="text-xs text-gray-500 font-bold uppercase tracking-[0.25em]">Ce qu'en disent les coachs</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {testimonials.map((t, i) => (
-              <div key={i} className={`p-6 lg:p-8 rounded-[1.5rem] lg:rounded-[2rem] bg-black border-2 transition-all duration-700 hover:scale-[1.02] ${activeTheme === 'nexus' ? 'border-neon-cyan/20 bg-neon-cyan/5' : 'border-neon-orange/20 bg-neon-orange/5'}`}>
-                <div className="flex items-center gap-4 mb-4 lg:mb-6">
-                   <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full flex items-center justify-center font-black text-[10px] lg:text-xs border ${activeTheme === 'nexus' ? 'border-neon-cyan text-neon-cyan' : 'border-neon-orange text-neon-orange'}`}>
-                      {t.avatar}
-                   </div>
-                   <div>
-                      <p className="text-[10px] lg:text-[11px] font-black text-white uppercase italic">{t.author}</p>
-                      <p className={`text-[7px] lg:text-[8px] font-bold uppercase tracking-widest ${activeTheme === 'nexus' ? 'text-neon-cyan/60' : 'text-neon-orange/60'}`}>{t.role}</p>
-                   </div>
+              <figure key={i} className={`p-7 rounded-[1.5rem] bg-[#070707] border-2 ${a.border}`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border ${a.ring} ${a.text} shrink-0`} aria-hidden="true">
+                    {t.avatar}
+                  </div>
+                  <figcaption>
+                    <p className="text-sm font-black text-white uppercase italic leading-tight">{t.author}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t.club}</p>
+                  </figcaption>
                 </div>
-                <p className="text-[10px] lg:text-xs text-gray-400 font-medium leading-relaxed italic uppercase tracking-wider">
-                  "{t.text}"
-                </p>
-                <div className="mt-4 lg:mt-6 flex gap-1">
-                   {[1,2,3,4,5].map(star => (
-                     <Star key={star} size={10} className={activeTheme === 'nexus' ? 'text-neon-cyan fill-neon-cyan' : 'text-neon-orange fill-neon-orange'} />
-                   ))}
-                </div>
-              </div>
+                <StarRating rating={t.rating} theme={theme} />
+                <blockquote className="mt-4 text-sm text-gray-300 leading-relaxed italic">« {t.text} »</blockquote>
+              </figure>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA FINAL ── */}
+      <section className="w-full py-20 lg:py-28 px-6 bg-white/[0.03] border-t border-white/10">
+        <div className="max-w-3xl mx-auto text-center space-y-6">
+          <h2 className="text-3xl lg:text-4xl font-black text-white uppercase italic tracking-tighter">Prêt à rejoindre le réseau ?</h2>
+          <p className="text-gray-400">Rejoignez la communauté des coachs et pilotez votre saison dès aujourd'hui.</p>
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <button
+              onClick={handleStart}
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-3 py-6 px-14 text-lg font-black uppercase italic rounded-xl text-black ${a.bg} ${a.glow} active:scale-95 transition-transform`}
+            >
+              Démarrer la saison
+            </button>
+            <p className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest ${a.text}`}>
+              <Check size={13} aria-hidden="true" /> 100&nbsp;% gratuit, sans engagement
+            </p>
           </div>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="py-16 lg:py-20 px-6 border-t border-white/5 text-center relative z-10">
-         <div className="max-w-4xl mx-auto space-y-8">
-            <h2 className="text-xl lg:text-2xl font-black text-white uppercase italic tracking-tighter">Prêt_à_Rejoindre_le_Réseau ?</h2>
-            <NeonButton variant={activeTheme === 'nexus' ? 'cyan' : 'orange'} size="lg" onClick={handleDownloadAction} className="w-full sm:w-auto">
-               {activeTheme === 'nexus' ? 'INITIALISER_UNITÉ_MAINTENANT' : 'DÉMARRER LA SAISON'}
-            </NeonButton>
-            <p className="text-[7px] lg:text-[8px] font-mono text-gray-700 uppercase tracking-[0.4em] mt-10">FootCoach ALPHA TEST v1 // Fin de Transmission</p>
-         </div>
+      <footer className="w-full py-14 px-6 border-t border-white/10 text-center">
+        <div className="max-w-5xl mx-auto space-y-4">
+          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-[11px] font-bold uppercase tracking-widest text-gray-500">
+            <button onClick={() => router.push('/login')} className="hover:text-white transition-colors">Connexion</button>
+            <a href="mailto:contact@footcoach.app" className="hover:text-white transition-colors">Contact</a>
+            <a href="/showcase" className="hover:text-white transition-colors">Mentions légales</a>
+          </nav>
+          <p className="text-[8px] font-mono text-gray-700 uppercase tracking-[0.4em]">
+            FootCoach Alpha Test v1 · © 2026 · Fin de transmission
+          </p>
+        </div>
       </footer>
 
       <style jsx>{`
-        @keyframes dash {
-          to { stroke-dashoffset: -100; }
-        }
+        @keyframes dash { to { stroke-dashoffset: -100; } }
       `}</style>
     </main>
   );
 }
 
-/* ═══════════════════════════════════════════
-   SUB-COMPONENTS
-   ═══════════════════════════════════════════ */
+/* ═══════════════ SUB-COMPONENTS ═══════════════ */
 
-function BionicVolleyAnimation({ theme }: { theme: 'classic' | 'nexus' }) {
-  const isBionic = theme === 'nexus';
-
+function StarRating({ rating, theme }: { rating: number; theme: Theme }) {
+  const a = accent(theme);
+  const full = Math.floor(rating);
+  const half = rating % 1 >= 0.5;
   return (
-    <div className="relative w-full aspect-video bg-[#050505] rounded-[2.5rem] border-2 border-white/10 overflow-hidden shadow-2xl group">
-      <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${isBionic ? 'grayscale brightness-[0.3] contrast-150 scale-105' : 'filter-none scale-100'}`}>
-        <img
-          src="https://images.unsplash.com/photo-1552667466-07770ae110d0?q=80&w=1000&auto=format&fit=crop"
-          className="w-full h-full object-cover object-center"
-          alt="Soccer Action"
-        />
-      </div>
-
-      <div className={`absolute inset-0 transition-opacity duration-700 pointer-events-none ${isBionic ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,240,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(0,240,255,0.05)_1px,transparent_1px)] bg-[size:30px_30px]" />
-
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1000 600">
-          <g className="stroke-neon-cyan/80 stroke-[2] fill-none">
-             <path d="M450,200 L500,280 L480,450" />
-             <path d="M400,220 L500,280 L650,220" />
-             <path d="M500,280 L620,380 L800,250" className="stroke-neon-orange" strokeWidth="4" />
-             <g className="stroke-neon-orange stroke-1">
-                <path d="M615,380 L625,380 M620,375 L620,385" />
-                <path d="M795,250 L805,250 M800,245 L800,255" />
-             </g>
-             <path d="M580,360 A40,40 0 0,1 640,370" stroke="#00F0FF" strokeWidth="1" />
-          </g>
-          <g>
-             <line x1="800" y1="250" x2="980" y2="50" stroke="#00F0FF" strokeWidth="1.5" strokeDasharray="10 5" className="animate-[dash_1.5s_linear_infinite]" />
-             <g className="stroke-neon-magenta stroke-2">
-                <path d="M960,40 L980,40 L980,60" fill="none" />
-                <path d="M1000,60 L980,60 L980,80" fill="none" transform="rotate(180 980 60)" />
-             </g>
-          </g>
-        </svg>
-
-        <div className="absolute top-12 left-8 space-y-3">
-           <div className="bg-black/80 border-l-2 border-neon-cyan p-2 backdrop-blur-md">
-              <p className="text-[6px] text-gray-500 font-bold uppercase tracking-widest">Impact_Force</p>
-              <p className="text-lg font-black text-white italic">2.4 <span className="text-neon-cyan text-[8px]">KN</span></p>
-           </div>
-           <div className="bg-black/80 border-l-2 border-neon-orange p-2 backdrop-blur-md">
-              <p className="text-[6px] text-gray-500 font-bold uppercase tracking-widest">Efficiency</p>
-              <p className="text-lg font-black text-white italic">MAX</p>
-           </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-6 right-8 text-right z-20">
-         <p className={`text-2xl font-black italic uppercase tracking-tighter leading-none transition-colors duration-700 ${isBionic ? 'text-neon-cyan' : 'text-white'}`}>
-           {isBionic ? 'DONNÉE_BIONIQUE' : 'INSTINCT_HUMAIN'}
-         </p>
-      </div>
+    <div className="flex items-center gap-0.5" role="img" aria-label={`Note : ${rating} sur 5`}>
+      {[0, 1, 2, 3, 4].map((i) => {
+        if (i < full) return <Star key={i} size={13} className={`${a.text} fill-current`} aria-hidden="true" />;
+        if (i === full && half) return <StarHalf key={i} size={13} className={`${a.text} fill-current`} aria-hidden="true" />;
+        return <Star key={i} size={13} className="text-gray-700" aria-hidden="true" />;
+      })}
     </div>
   );
 }
 
-function StatCard({ value, label, theme }: { value: string; label: string; theme: 'classic' | 'nexus' }) {
+function InstallCard({ theme, platform, steps }: { theme: Theme; platform: string; steps: React.ReactNode[] }) {
+  const a = accent(theme);
+  return (
+    <div className="bg-[#070707] border-2 border-white/10 p-8 rounded-[1.75rem]">
+      <div className="flex items-center gap-4 mb-6">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 bg-white/5 ${a.text}`}>
+          <Smartphone size={22} aria-hidden="true" />
+        </div>
+        <h3 className="text-lg font-black uppercase italic text-white">{platform}</h3>
+      </div>
+      <ol className="space-y-4">
+        {steps.map((s, i) => (
+          <li key={i} className="flex items-start gap-3 text-sm text-gray-400 leading-relaxed">
+            <span className={`font-black shrink-0 ${a.text}`}>{String(i + 1).padStart(2, '0')}</span>
+            <span>{s}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function StatCard({ value, label, theme, highlight }: { value: string; label: string; theme: Theme; highlight?: boolean }) {
+  const a = accent(theme);
   const [display, setDisplay] = useState("0");
   const ref = useRef<HTMLSpanElement>(null);
   const counted = useRef(false);
@@ -428,6 +389,8 @@ function StatCard({ value, label, theme }: { value: string; label: string; theme
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { setDisplay(value); return; }
     const obs = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting && !counted.current) {
         counted.current = true;
@@ -438,11 +401,9 @@ function StatCard({ value, label, theme }: { value: string; label: string; theme
         const startTime = performance.now();
         const duration = 1500;
         function tick(now: number) {
-          const elapsed = now - startTime;
-          const progress = Math.min(elapsed / duration, 1);
+          const progress = Math.min((now - startTime) / duration, 1);
           const eased = 1 - Math.pow(1 - progress, 3);
-          const current = Math.round(end * eased);
-          setDisplay(current.toLocaleString("en-US") + suffix);
+          setDisplay(Math.round(end * eased).toLocaleString("en-US") + suffix);
           if (progress < 1) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
@@ -453,27 +414,71 @@ function StatCard({ value, label, theme }: { value: string; label: string; theme
   }, [value]);
 
   return (
-    <div className={`bg-[#050505] border rounded-2xl p-6 text-center shadow-xl transition-all duration-700 ${theme === 'nexus' ? 'border-white/5 hover:border-neon-cyan/30' : 'border-neon-orange/10 hover:border-neon-orange/40'}`}>
-      <span className={`block text-2xl font-black font-mono mb-1 transition-colors duration-700 ${theme === 'nexus' ? 'text-white group-hover:text-neon-cyan' : 'text-neon-orange'}`} ref={ref}>
+    <div className={`rounded-2xl p-6 text-center border-2 ${highlight ? `${a.ring} ${a.softBg}` : 'border-white/10 bg-[#070707]'}`}>
+      <span
+        ref={ref}
+        className={`block font-black font-mono mb-1 ${highlight ? `text-3xl lg:text-4xl ${a.text}` : 'text-2xl text-white'}`}
+      >
         {display}
       </span>
-      <span className="block text-[8px] font-black text-gray-500 uppercase tracking-[0.3em] font-mono">
-        {label}
-      </span>
+      <span className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">{label}</span>
     </div>
   );
 }
 
-function StadiumNeon({ theme }: { theme: 'classic' | 'nexus' }) {
-  const colorClass = theme === 'nexus' ? 'border-neon-green/30 shadow-neon-green/10' : 'border-neon-orange/20 shadow-neon-orange/5';
-  const lineClass = theme === 'nexus' ? 'bg-neon-green/20' : 'bg-neon-orange/10';
-
+function PreviewCard({ theme }: { theme: Theme }) {
+  const a = accent(theme);
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 transition-all duration-1000">
-      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] border-[1px] rounded-full transition-all duration-1000 ${colorClass}`} />
-      <div className={`absolute top-1/2 left-0 w-full h-[1px] transition-all duration-1000 ${lineClass}`} />
-      <div className={`absolute top-0 left-1/2 w-[1px] h-full transition-all duration-1000 ${lineClass}`} />
+    <div className={`relative rounded-[2rem] border-2 ${a.border} bg-[#070707] overflow-hidden shadow-2xl`}>
+      <div className="aspect-[4/3] relative">
+        <img
+          src="https://images.unsplash.com/photo-1552667466-07770ae110d0?q=80&w=1000&auto=format&fit=crop"
+          className={`w-full h-full object-cover ${theme === 'nexus' ? 'grayscale brightness-[0.4] contrast-125' : 'brightness-[0.7]'}`}
+          alt=""
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+        {/* Aperçu produit : mini fiche joueur */}
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+          <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${a.softBg} ${a.text}`}>
+            Aperçu · Fiche joueur
+          </span>
+        </div>
+
+        <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-md rounded-xl border border-white/10 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Milieu · N°8</p>
+              <p className="text-base font-black text-white uppercase italic leading-tight">L. Bernard</p>
+            </div>
+            <div className={`text-3xl font-black italic ${a.text}`}>84</div>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[['VIT', 82], ['TEC', 87], ['PHY', 79]].map(([k, v]) => (
+              <div key={k as string}>
+                <div className="flex justify-between text-[8px] font-bold uppercase text-gray-400 mb-1">
+                  <span>{k}</span><span className="text-white">{v}</span>
+                </div>
+                <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                  <div className={`h-full ${a.bg}`} style={{ width: `${v}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
+function StadiumBackdrop({ theme }: { theme: Theme }) {
+  const line = theme === 'nexus' ? 'bg-neon-cyan/10' : 'bg-neon-orange/10';
+  const ring = theme === 'nexus' ? 'border-neon-cyan/15' : 'border-neon-orange/15';
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-30 -z-0">
+      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] max-w-[90vw] aspect-[8/5] border rounded-full ${ring}`} />
+      <div className={`absolute top-1/2 left-0 w-full h-px ${line}`} />
+    </div>
+  );
+}
