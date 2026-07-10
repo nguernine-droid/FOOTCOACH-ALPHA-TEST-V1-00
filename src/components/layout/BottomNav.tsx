@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
-import { LayoutDashboard, Radar, CalendarDays, UserCircle, Plus, Rss, Megaphone, Users } from 'lucide-react';
+import { LayoutDashboard, Radar, CalendarDays, Plus, Rss, Megaphone, Users } from 'lucide-react';
 import { CreateMenu } from './CreateMenu';
 import { isFeatureEnabled } from '@/lib/config/features';
 
@@ -50,11 +50,6 @@ export function BottomNav() {
       label: isPro ? 'Agenda'    : 'Planning',
       icon:  CalendarDays,
       path:  '/events',
-    },
-    {
-      label: isPro ? 'Profil'    : 'Identité',
-      icon:  UserCircle,
-      path:  '/profile',
     },
   ];
 
@@ -105,9 +100,9 @@ export function BottomNav() {
             </span>
           </div>
 
-          {/* Items droite (4 items) */}
-          <div className="flex-[1.3] flex justify-around items-end">
-            {navItems.slice(3, 7).map(item => (
+          {/* Items droite (3 items) */}
+          <div className="flex flex-1 justify-around items-end">
+            {navItems.slice(3, 6).map(item => (
               <NavItem
                 key={item.path}
                 href={item.path}
