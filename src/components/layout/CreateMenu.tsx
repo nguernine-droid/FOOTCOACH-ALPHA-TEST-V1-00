@@ -23,6 +23,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 interface CreateMenuProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ interface CreateMenuProps {
  */
 export function CreateMenu({ isOpen, onClose, context }: CreateMenuProps) {
   const { theme } = useTeam();
+  const dialogRef = useDialogA11y(isOpen, onClose);
   if (!isOpen) return null;
 
   const getMenuItems = () => {
@@ -94,15 +96,22 @@ export function CreateMenu({ isOpen, onClose, context }: CreateMenuProps) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-4 animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative w-full max-w-md bg-white rounded-[3rem] p-8 shadow-2xl border border-gray-100 animate-in slide-in-from-bottom duration-300">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={context === 'profile' ? 'Mon Compte' : context === 'radar' ? 'Matchmaking' : context === 'team' ? 'Effectif' : 'Actions'}
+        tabIndex={-1}
+        className="relative w-full max-w-md bg-white rounded-[3rem] p-8 shadow-2xl border border-gray-100 outline-none animate-in slide-in-from-bottom duration-300"
+      >
         <div className="flex justify-between items-center mb-8 px-2 text-left">
           <h2 className="text-3xl font-black text-gray-900 italic uppercase tracking-tighter">
             {context === 'profile' ? 'Mon Compte' : context === 'radar' ? 'Matchmaking' : context === 'team' ? 'Effectif' : 'Actions'}
           </h2>
-          <button onClick={onClose} className="bg-gray-100 p-3 rounded-full text-gray-400 active:scale-90 transition-transform">
-            <X size={24} strokeWidth={3} />
+          <button onClick={onClose} aria-label="Fermer" className="bg-gray-100 p-3 rounded-full text-gray-400 active:scale-90 transition-transform">
+            <X size={24} strokeWidth={3} aria-hidden="true" />
           </button>
         </div>
 

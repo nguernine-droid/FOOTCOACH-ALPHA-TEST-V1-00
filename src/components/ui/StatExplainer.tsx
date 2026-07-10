@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, Brain, Users, Zap, Info } from 'lucide-react';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 interface StatExplainerProps {
   isOpen: boolean;
@@ -43,21 +44,29 @@ const STAT_INFO = {
 };
 
 export function StatExplainer({ isOpen, onClose, type }: StatExplainerProps) {
+  const dialogRef = useDialogA11y(isOpen, onClose);
   if (!isOpen) return null;
   const info = STAT_INFO[type];
   const Icon = info.icon;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} aria-hidden="true" />
 
-      <div className={`relative w-full max-w-sm rounded-[2.5rem] border-2 ${info.border} ${info.bg} p-8 shadow-2xl overflow-hidden`}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={info.title.replace(/_/g, ' ')}
+        tabIndex={-1}
+        className={`relative w-full max-w-sm rounded-[2.5rem] border-2 outline-none ${info.border} ${info.bg} p-8 shadow-2xl overflow-hidden`}
+      >
         {/* Glow Decor */}
         <div className={`absolute -top-20 -right-20 w-40 h-40 rounded-full blur-[80px] opacity-20 ${info.color.replace('text', 'bg')}`} />
 
         <div className="relative z-10 flex flex-col items-center text-center space-y-6">
           <div className={`w-20 h-20 rounded-2xl border-2 ${info.border} flex items-center justify-center ${info.bg} shadow-lg shadow-current/10`}>
-            <Icon size={40} className={info.color} />
+            <Icon size={40} className={info.color} aria-hidden="true" />
           </div>
 
           <div className="space-y-1">

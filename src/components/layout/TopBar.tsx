@@ -6,7 +6,7 @@ import { useTeam } from '@/lib/context/TeamContext';
 import { GlitchText } from '@/components/ui/cyber/GlitchText';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
-import { CURRENT_APP_VERSION } from '@/components/VersionGuard';
+import { CURRENT_APP_VERSION } from '@/lib/config/version';
 
 export function TopBar() {
   const { teamInfo, theme } = useTeam();

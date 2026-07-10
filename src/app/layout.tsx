@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { VersionGuard } from "@/components/VersionGuard";
-import { UpdatePrompt } from "@/components/UpdatePrompt";
 import { ClientGuard } from "@/components/ClientGuard";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";

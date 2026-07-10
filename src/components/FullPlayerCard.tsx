@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 import { X, Pencil, Mail, Trophy, Star, Handshake, Zap, Target, Activity, Cpu, Shield, Check, Plus, ShieldCheck, Brain, Flame, Rocket, ChevronLeft } from 'lucide-react';
 import { NeonButton } from './ui/cyber/NeonButton';
 import { GlitchText } from './ui/cyber/GlitchText';
@@ -20,6 +21,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [activeSubGrid, setActiveSubGrid] = useState<'none' | 'tech' | 'tact' | 'phys' | 'ment'>('none');
   const [isSyncing, setIsSyncing] = useState(false);
+  const dialogRef = useDialogA11y(true, onClose);
 
   // Moteur de données initialisées selon Vision 3.0
   const [formData, setFormData] = useState({
@@ -121,10 +123,14 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
   const globalXPProgress = ((formData.xp_phys % 100) + (formData.xp_tech % 100) + (formData.xp_eng % 100)) / 3;
 
   return (
-    <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-2" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-2" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div
-        onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-[360px] h-[94vh] bg-black rounded-[3rem] border-2 transition-all duration-500 overflow-hidden relative flex flex-col font-mono ${
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Fiche du joueur ${formData.name}`}
+        tabIndex={-1}
+        className={`w-full max-w-[360px] h-[94vh] bg-black rounded-[3rem] border-2 transition-all duration-500 overflow-hidden relative flex flex-col font-mono outline-none ${
           isSyncing ? 'animate-glitch border-white' : 'border-neon-cyan/40 shadow-[0_0_40px_rgba(0,240,255,0.2)]'
         }`}
       >
@@ -141,7 +147,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
               <div className={`px-2 py-0.5 rounded text-[7px] font-black border tracking-[0.2em] ${formData.rating < 65 ? 'border-neon-magenta text-neon-magenta animate-glitch bg-neon-magenta/5' : formData.status === 'Actif' ? 'border-neon-green/40 text-neon-green bg-neon-green/5' : 'border-neon-magenta/40 text-neon-magenta bg-neon-magenta/5 animate-pulse'}`}>
                 {formData.rating < 65 ? 'UNIT_CRITICAL' : formData.status === 'Actif' ? 'ONLINE' : 'OFFLINE'}
               </div>
-              <button onClick={() => setIsEditing(!isEditing)} className="p-2 rounded-lg bg-white/5 border border-white/10 text-neon-cyan active:scale-90 transition-all"><Pencil size={16} /></button>
+              <button onClick={() => setIsEditing(!isEditing)} aria-label={isEditing ? 'Terminer la modification' : 'Modifier la fiche'} aria-pressed={isEditing} className="p-2 rounded-lg bg-white/5 border border-white/10 text-neon-cyan active:scale-90 transition-all"><Pencil size={16} aria-hidden="true" /></button>
            </div>
         </div>
 
@@ -201,7 +207,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
 
         {/* 6. FOOTER ACTIONS */}
         <div className="p-6 shrink-0 flex gap-3">
-           <button onClick={onClose} className="p-4 rounded-xl bg-white/5 border border-white/10 text-gray-500"><X size={20} /></button>
+           <button onClick={onClose} aria-label="Fermer" className="p-4 rounded-xl bg-white/5 border border-white/10 text-gray-500"><X size={20} aria-hidden="true" /></button>
            <NeonButton variant={potentialPoints > 0 ? "cyan" : "magenta"} className="flex-1 py-4 text-[10px]" onClick={potentialPoints > 0 ? handleSync : () => onMessage(player)}>
              {potentialPoints > 0 ? 'UPLOAD_SYNC_DB' : 'OPEN_COMMS'}
            </NeonButton>
@@ -217,7 +223,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
                        <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none">Diagnostic_Pro</h2>
                        <p className="text-[9px] text-neon-cyan font-mono uppercase tracking-[0.4em] mt-2">Unit: {formData.name}</p>
                     </div>
-                    <button onClick={() => setShowEvaluation(false)} className="p-3 bg-white/5 rounded-2xl text-gray-500 hover:text-white transition-colors border border-white/10"><X size={24} strokeWidth={3} /></button>
+                    <button onClick={() => setShowEvaluation(false)} aria-label="Fermer l'évaluation" className="p-3 bg-white/5 rounded-2xl text-gray-500 hover:text-white transition-colors border border-white/10"><X size={24} strokeWidth={3} aria-hidden="true" /></button>
                  </header>
                  <EvaluationLink label="TECHNIQUE_SYSTEM" desc="Contrôle, Passe, Dribble, Tir" icon={<Zap size={16} />} value={formData.eval_tech} color="cyan" onClick={() => setActiveSubGrid('tech')} />
                  <EvaluationLink label="TACTICAL_LOGIC" desc="Lecture, Placement, Décision" icon={<ShieldCheck size={16} />} value={formData.eval_tact} color="orange" onClick={() => setActiveSubGrid('tact')} />
@@ -228,7 +234,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
              ) : (
                <div className="animate-in slide-in-from-right duration-300">
                   <header className="flex items-center gap-4 mb-10 text-left">
-                     <button onClick={() => setActiveSubGrid('none')} className="p-3 bg-white/5 rounded-xl text-neon-cyan border border-white/10"><ChevronLeft size={24} /></button>
+                     <button onClick={() => setActiveSubGrid('none')} aria-label="Retour" className="p-3 bg-white/5 rounded-xl text-neon-cyan border border-white/10"><ChevronLeft size={24} aria-hidden="true" /></button>
                      <div className="text-left"><h2 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none">{activeSubGrid.toUpperCase()} Grid</h2></div>
                   </header>
                   <div className="space-y-10">

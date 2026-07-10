@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Loader2, ShieldCheck, CheckCircle2, Calendar, Clock, MapPin, Trophy } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useTeam } from '@/lib/context/TeamContext';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 interface Message {
   id: string;
@@ -58,6 +59,7 @@ export function NegotiationChat({
   const [summary, setSummary]           = useState<MatchSummary | null>(initialSummary);
   const [isConfirming, setIsConfirming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useDialogA11y(isOpen, onClose);
   const isPro = theme === 'classic';
 
   const scrollToBottom = () => {
@@ -267,9 +269,15 @@ export function NegotiationChat({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} aria-hidden="true" />
 
-      <div className={`relative w-full max-w-md h-[90vh] sm:h-[700px] flex flex-col rounded-t-[2.5rem] sm:rounded-[2.5rem] border-t-2 sm:border-2 overflow-hidden shadow-2xl
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Négociation de match avec ${otherCoachName}`}
+        tabIndex={-1}
+        className={`relative w-full max-w-md h-[90vh] sm:h-[700px] flex flex-col rounded-t-[2.5rem] sm:rounded-[2.5rem] border-t-2 sm:border-2 overflow-hidden shadow-2xl outline-none
         ${isPro ? 'bg-white border-gray-200' : 'bg-[#0A0A0A] border-white/10'}`}>
 
         {/* HEADER */}
@@ -277,10 +285,10 @@ export function NegotiationChat({
           <div className="flex items-center gap-3">
             <div className="flex -space-x-3">
               <div className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center overflow-hidden bg-black/20 ${isPro ? 'border-orange-500' : 'border-neon-cyan'} relative z-10`}>
-                {myLogo ? <img src={myLogo} className="w-full h-full object-contain p-1" /> : <ShieldCheck size={18} className={isPro ? 'text-orange-500' : 'text-neon-cyan'} />}
+                {myLogo ? <img src={myLogo} alt="" className="w-full h-full object-contain p-1" /> : <ShieldCheck size={18} className={isPro ? 'text-orange-500' : 'text-neon-cyan'} aria-hidden="true" />}
               </div>
               <div className={`w-11 h-11 rounded-xl border-2 flex items-center justify-center overflow-hidden bg-black/20 ${isPro ? 'border-gray-200' : 'border-white/10'}`}>
-                {otherCoachLogo ? <img src={otherCoachLogo} className="w-full h-full object-contain p-1" /> : <ShieldCheck size={18} className="text-gray-500" />}
+                {otherCoachLogo ? <img src={otherCoachLogo} alt="" className="w-full h-full object-contain p-1" /> : <ShieldCheck size={18} className="text-gray-500" aria-hidden="true" />}
               </div>
             </div>
             <div>
@@ -290,7 +298,7 @@ export function NegotiationChat({
               <p className={`text-xs font-black uppercase ${isPro ? 'text-gray-900' : 'text-white'}`}>Coach {otherCoachName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-500"><X size={22} /></button>
+          <button onClick={onClose} aria-label="Fermer" className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-500"><X size={22} aria-hidden="true" /></button>
         </div>
 
         {/* FICHE MATCH ÉPINGLÉE (visible seulement si MATCHED) */}

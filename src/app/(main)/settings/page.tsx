@@ -26,7 +26,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { supabase } from '@/lib/supabase/client';
-import { CURRENT_APP_VERSION } from '@/components/VersionGuard';
+import { CURRENT_APP_VERSION } from '@/lib/config/version';
 
 /**
  * SETTINGS_PAGE (v7.6 - ALPHA TEST V1)
