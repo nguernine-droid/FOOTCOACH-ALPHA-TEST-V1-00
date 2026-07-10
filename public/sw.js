@@ -22,8 +22,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'FootCoach';
   const options = {
     body:    data.body  || '',
-    icon:    data.icon  || '/icons/icon-192x192.png',
-    badge:   '/icons/icon-192x192.png',
+    icon:    data.icon  || '/icons/icon.svg',
+    badge:   '/icons/icon.svg',
     tag:     data.tag   || 'footcoach-event',
     data:    { url: data.url || '/events' },
     vibrate: [200, 100, 200],

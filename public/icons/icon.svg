@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="FootCoach">
+  <rect width="512" height="512" rx="96" fill="#000000"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#F97316" stroke-width="20"/>
+  <path d="M256 150 l58 42 -22 68 h-72 l-22 -68 z" fill="#F97316"/>
+  <circle cx="256" cy="256" r="22" fill="#F97316"/>
+  <g stroke="#F97316" stroke-width="14" fill="none">
+    <path d="M256 278 l64 46"/>
+    <path d="M256 278 l-64 46"/>
+    <path d="M234 210 l-58 -20"/>
+    <path d="M278 210 l58 -20"/>
+  </g>
+  <text x="256" y="430" font-family="Arial, sans-serif" font-size="52" font-weight="bold"
+        fill="#F97316" text-anchor="middle" letter-spacing="2">NEXUS</text>
+</svg>

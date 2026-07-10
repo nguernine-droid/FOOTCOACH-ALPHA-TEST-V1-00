@@ -9,7 +9,13 @@ out/
 build/
 
 # Environment Variables (SÉCURITÉ)
-.env*.local
+.env
+.env.*
+!.env.example
+
+# Supabase (local / infra)
+supabase/.temp/
+supabase/.branches/
 
 # IDE & OS
 .idea/

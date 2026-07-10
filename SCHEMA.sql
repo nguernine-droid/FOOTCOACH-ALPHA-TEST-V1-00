@@ -231,7 +231,7 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -281,7 +281,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
 DROP TRIGGER IF EXISTS on_match_request_response ON public.match_requests;
 CREATE TRIGGER on_match_request_response
@@ -309,7 +309,7 @@ BEGIN
   END IF;
   RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
 DROP TRIGGER IF EXISTS audit_profiles       ON public.profiles;
 DROP TRIGGER IF EXISTS audit_clubs          ON public.clubs;
@@ -320,6 +320,43 @@ CREATE TRIGGER audit_profiles       AFTER INSERT OR UPDATE OR DELETE ON public.p
 CREATE TRIGGER audit_clubs          AFTER INSERT OR UPDATE OR DELETE ON public.clubs          FOR EACH ROW EXECUTE FUNCTION public.audit_changes();
 CREATE TRIGGER audit_match_requests AFTER INSERT OR UPDATE OR DELETE ON public.match_requests FOR EACH ROW EXECUTE FUNCTION public.audit_changes();
 CREATE TRIGGER audit_events         AFTER INSERT OR UPDATE OR DELETE ON public.events         FOR EACH ROW EXECUTE FUNCTION public.audit_changes();
+
+-- ==========================================
+-- 3bis. SÉCURITÉ : rôle admin & anti-escalade (correctifs P0)
+-- ==========================================
+
+-- Source de vérité serveur pour le rôle admin (utilisée par les policies RLS).
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin' AND deleted_at IS NULL
+  );
+$$;
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+
+-- C1 : interdit tout changement de `role` sauf par un admin.
+CREATE OR REPLACE FUNCTION public.prevent_privilege_escalation()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role AND NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Modification du rôle non autorisée';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_prevent_privilege_escalation ON public.profiles;
+CREATE TRIGGER trg_prevent_privilege_escalation
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.prevent_privilege_escalation();
 
 -- ==========================================
 -- 4. FONCTIONS CLUBS (anti-doublon)
@@ -337,7 +374,7 @@ BEGIN
   ON CONFLICT (alias_normalized, COALESCE(city_normalized, '')) DO NOTHING;
 EXCEPTION WHEN OTHERS THEN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
 -- Recherche floue avec trigram + alias + parent
 DROP FUNCTION IF EXISTS public.search_clubs_fuzzy(text, integer);
@@ -425,11 +462,15 @@ $$ LANGUAGE SQL STABLE;
 
 -- Fusionner deux clubs (admin)
 CREATE OR REPLACE FUNCTION public.merge_clubs(p_keep uuid, p_delete uuid)
-RETURNS jsonb AS $$
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
 DECLARE
   v_profiles int; v_events_h int; v_events_a int;
   v_children int; v_aliases  int;
 BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'Réservé aux administrateurs'; END IF;
   IF p_keep = p_delete THEN RAISE EXCEPTION 'Les deux clubs sont identiques'; END IF;
   UPDATE public.profiles    SET club_id      = p_keep WHERE club_id      = p_delete; GET DIAGNOSTICS v_profiles = ROW_COUNT;
   UPDATE public.events      SET home_club_id = p_keep WHERE home_club_id = p_delete; GET DIAGNOSTICS v_events_h = ROW_COUNT;
@@ -448,15 +489,26 @@ BEGIN
     'aliases_moved',  v_aliases
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+REVOKE ALL ON FUNCTION public.merge_clubs(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.merge_clubs(uuid, uuid) TO authenticated;
 
--- Soft delete profil
+-- Soft delete profil : propriétaire ou admin uniquement (C2)
 CREATE OR REPLACE FUNCTION public.soft_delete_profile(profile_id uuid)
-RETURNS void AS $$
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
 BEGIN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentification requise'; END IF;
+  IF profile_id <> auth.uid() AND NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Suppression non autorisée';
+  END IF;
   UPDATE public.profiles SET deleted_at = now() WHERE id = profile_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+REVOKE ALL ON FUNCTION public.soft_delete_profile(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.soft_delete_profile(uuid) TO authenticated;
 
 -- ==========================================
 -- 5. VUES
@@ -526,6 +578,10 @@ ALTER TABLE public.events         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feed_posts     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_attendees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_log      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.app_config     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.club_aliases   ENABLE ROW LEVEL SECURITY;
 
 -- PROFILES
 DROP POLICY IF EXISTS "Users can view profiles"      ON public.profiles;
@@ -607,6 +663,42 @@ DROP POLICY IF EXISTS "Own subscription" ON public.push_subscriptions;
 CREATE POLICY "Own subscription"
   ON public.push_subscriptions USING (auth.uid() = profile_id) WITH CHECK (auth.uid() = profile_id);
 
+-- MESSAGES (C4) : réservés aux 2 participants de l'annonce
+DROP POLICY IF EXISTS "Participants can view messages" ON public.messages;
+DROP POLICY IF EXISTS "Participants can send messages" ON public.messages;
+CREATE POLICY "Participants can view messages"
+  ON public.messages FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.match_requests mr
+                 WHERE mr.id = match_request_id
+                   AND (mr.coach_id = auth.uid() OR mr.respondent_id = auth.uid())));
+CREATE POLICY "Participants can send messages"
+  ON public.messages FOR INSERT
+  WITH CHECK (sender_id = auth.uid()
+    AND EXISTS (SELECT 1 FROM public.match_requests mr
+                WHERE mr.id = match_request_id
+                  AND (mr.coach_id = auth.uid() OR mr.respondent_id = auth.uid())));
+
+-- AUDIT_LOG (C4) : lecture admin seulement ; écriture via trigger SECURITY DEFINER
+DROP POLICY IF EXISTS "Admins can view audit log" ON public.audit_log;
+CREATE POLICY "Admins can view audit log"
+  ON public.audit_log FOR SELECT USING (public.is_admin());
+
+-- APP_CONFIG (C4) : lecture publique, écriture admin
+DROP POLICY IF EXISTS "Anyone can read config" ON public.app_config;
+DROP POLICY IF EXISTS "Admins manage config"  ON public.app_config;
+CREATE POLICY "Anyone can read config"
+  ON public.app_config FOR SELECT USING (true);
+CREATE POLICY "Admins manage config"
+  ON public.app_config FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+-- CLUB_ALIASES (C4) : lecture ouverte, écriture admin (ou fonctions SECURITY DEFINER)
+DROP POLICY IF EXISTS "Anyone can read aliases" ON public.club_aliases;
+DROP POLICY IF EXISTS "Admins manage aliases"  ON public.club_aliases;
+CREATE POLICY "Anyone can read aliases"
+  ON public.club_aliases FOR SELECT USING (true);
+CREATE POLICY "Admins manage aliases"
+  ON public.club_aliases FOR ALL USING (public.is_admin()) WITH CHECK (public.is_admin());
+
 -- ==========================================
 -- 8. PERMISSIONS
 -- ==========================================
@@ -614,6 +706,10 @@ CREATE POLICY "Own subscription"
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
 GRANT ALL    ON ALL TABLES IN SCHEMA public TO authenticated, service_role, postgres;
 GRANT ALL    ON ALL SEQUENCES IN SCHEMA public TO postgres, authenticated, service_role;
+
+-- Défense en profondeur : aucune donnée sensible lisible par anon (même si la RLS filtre déjà)
+REVOKE ALL ON public.messages  FROM anon;
+REVOKE ALL ON public.audit_log FROM anon;
 
 -- ==========================================
 -- RELOAD POSTGREST

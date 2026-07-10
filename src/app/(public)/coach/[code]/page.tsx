@@ -48,7 +48,7 @@ function CoachPublicContent() {
       // Profil public du coach
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, nickname, first_name, last_name, avatar_url, coach_grade, coach_level, coach_category, coach_status, phone, referral_code, created_at, clubs:club_id(name, city, logo_url)')
+        .select('id, nickname, first_name, last_name, avatar_url, coach_grade, coach_level, coach_category, coach_status, referral_code, created_at, clubs:club_id(name, city, logo_url)')
         .eq('referral_code', code.toUpperCase())
         .single();
 
@@ -77,6 +77,13 @@ function CoachPublicContent() {
         if (conn) {
           setIsConnected(true);
           setConnectionType(conn.type as 'follow' | 'connection');
+          // Téléphone chargé uniquement pour un coach réellement connecté (minimisation PII)
+          const { data: contact } = await supabase
+            .from('profiles')
+            .select('phone')
+            .eq('id', profile.id)
+            .single();
+          if (contact?.phone) setCoach((prev: any) => prev ? { ...prev, phone: contact.phone } : prev);
         }
       }
     } catch (err) { console.error(err); }

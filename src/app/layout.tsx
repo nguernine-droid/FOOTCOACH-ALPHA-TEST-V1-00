@@ -12,17 +12,17 @@ import { TeamProvider } from "@/lib/context/TeamContext";
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "TEAM NEXUS ALPHA V1",
+  title: "FOOTCOACH — TEAM NEXUS",
   description: "Unité Tactique de Matchmaking & Coaching",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TEAM NEXUS",
+    title: "FOOTCOACH",
   },
   icons: {
-    apple: "/icons/icon-192x192.png",
-    icon: "/icons/icon-192x192.png",
+    apple: "/icons/icon.svg",
+    icon: "/icons/icon.svg",
   },
 };
 
@@ -51,9 +51,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="FOOTCOACH" />
         <meta name="format-detection" content="telephone=no" />
-        <link rel="icon" href="https://nextjs.org/favicon.ico" />
-        <link rel="apple-touch-icon" href="https://nextjs.org/favicon.ico" />
-        <link rel="mask-icon" href="https://nextjs.org/favicon.ico" color="#F97316" />
+        <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icons/icon.svg" />
+        <link rel="mask-icon" href="/icons/icon.svg" color="#F97316" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
