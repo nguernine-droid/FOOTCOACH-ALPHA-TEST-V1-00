@@ -146,13 +146,13 @@ function NavItem({
   return (
     <Link
       href={href}
-      className={`flex flex-col items-center gap-1 transition-all duration-200 min-w-[56px]
+      className={`flex flex-col items-center gap-1 transition-all duration-200 flex-1 min-w-0 px-0.5
         ${active ? `${activeColor} scale-110` : inactiveColor}`}
     >
       <div className={active ? 'drop-shadow-[0_0_6px_currentColor]' : ''}>
         {icon}
       </div>
-      <span className={`text-[8px] uppercase tracking-tighter ${active ? 'font-black' : 'font-bold'}`}>
+      <span className={`text-[8px] uppercase tracking-tighter whitespace-nowrap ${active ? 'font-black' : 'font-bold'}`}>
         {label}
       </span>
       {active && (
