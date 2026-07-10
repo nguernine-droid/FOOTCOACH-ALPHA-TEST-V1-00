@@ -109,8 +109,6 @@ export default function RadarPage() {
         throw error;
       }
 
-      console.log('✓ Data from view:', data?.length || 0);
-
       // Anti-doublons visuels
       const uniqueData = (data || []).filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 
@@ -188,7 +186,7 @@ export default function RadarPage() {
       }
 
     } catch (err) { console.error(err); } finally { setIsLoading(false); }
-  }, []);
+  }, [teamInfo?.latitude, teamInfo?.longitude]);
 
   useEffect(() => { fetchRadarData(); }, [fetchRadarData]);
 
@@ -216,7 +214,7 @@ export default function RadarPage() {
         if (b.distanceKm === undefined) return -1;
         return a.distanceKm - b.distanceKm;
       });
-  }, [requests, currentUserId, filterCategory, filterDistance]);
+  }, [requests, currentUserId, filterCategory, filterLevel, filterDistance]);
 
   // 2. MES ANNONCES actives (OPEN, POSTMATCHED, PENDING)
   const myRequests = useMemo(() =>

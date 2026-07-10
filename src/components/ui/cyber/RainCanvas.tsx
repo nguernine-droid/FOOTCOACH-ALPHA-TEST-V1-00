@@ -9,10 +9,21 @@ export function RainCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Respect de la préférence "réduire les animations" (WCAG 2.2.2) : pas d'animation continue.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (reduceMotion.matches) return;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     let animationFrameId: number;
+
+    // Suspend l'animation quand l'onglet est masqué (économie de batterie).
+    const onVisibility = () => {
+      if (document.hidden) cancelAnimationFrame(animationFrameId);
+      else animationFrameId = requestAnimationFrame(draw);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
 
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
@@ -63,6 +74,7 @@ export function RainCanvas() {
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
+      document.removeEventListener('visibilitychange', onVisibility);
       cancelAnimationFrame(animationFrameId);
     };
   }, []);

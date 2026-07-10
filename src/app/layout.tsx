@@ -8,6 +8,7 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ScanlinesOverlay } from "@/components/ui/cyber/ScanlinesOverlay";
 import { TeamProvider } from "@/lib/context/TeamContext";
+import { MotionConfig } from "framer-motion";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -30,8 +31,7 @@ export const viewport: Viewport = {
   themeColor: "#F97316",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Zoom autorisé (WCAG 1.4.4) — ne pas remettre maximumScale/userScalable.
   viewportFit: "cover",
 };
 
@@ -67,15 +67,17 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased bg-black min-h-screen">
-        <TeamProvider>
-          <VersionGuard>
-            <ClientGuard>
-              <ScanlinesOverlay />
-              <PWAInstallPrompt />
-              {children}
-            </ClientGuard>
-          </VersionGuard>
-        </TeamProvider>
+        <MotionConfig reducedMotion="user">
+          <TeamProvider>
+            <VersionGuard>
+              <ClientGuard>
+                <ScanlinesOverlay />
+                <PWAInstallPrompt />
+                {children}
+              </ClientGuard>
+            </VersionGuard>
+          </TeamProvider>
+        </MotionConfig>
       </body>
     </html>
   );

@@ -128,3 +128,20 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
+
+/* Accessibilité — respect de la préférence "réduire les animations" (WCAG 2.2.2 / 2.3.1) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-radar-hit,
+  .animate-glitch,
+  .animate-neon-pulse,
+  .animate-pulse,
+  .animate-spin { animation: none !important; }
+}
