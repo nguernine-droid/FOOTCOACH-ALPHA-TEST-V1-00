@@ -18,7 +18,7 @@ interface PublicCoach {
   coach_level: string | null;
   coach_category: string | null;
   coach_status: string | null;
-  phone: string | null;
+  phone?: string | null; // chargé uniquement pour un coach connecté (minimisation PII)
   referral_code: string | null;
   created_at: string;
   clubs: { name: string; city: string | null; logo_url: string | null } | null;
