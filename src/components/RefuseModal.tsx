@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, XCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 const MOTIFS = [
   { id: 'distance', label: 'Trop loin',       emoji: '📍' },
@@ -21,6 +22,7 @@ interface RefuseModalProps {
 export function RefuseModal({ isOpen, coachName, isPro, onConfirm, onCancel }: RefuseModalProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const dialogRef = useDialogA11y(isOpen, onCancel);
 
   const handleConfirm = async () => {
     if (!selected || isLoading) return;
@@ -44,13 +46,19 @@ export function RefuseModal({ isOpen, coachName, isPro, onConfirm, onCancel }: R
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={handleCancel}
+            aria-hidden="true"
           />
 
           {/* Sheet */}
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Refuser la demande de ${coachName}`}
+            tabIndex={-1}
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`relative w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 space-y-6 shadow-2xl
+            className={`relative w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 space-y-6 shadow-2xl outline-none
               ${isPro ? 'bg-white' : 'bg-[#0A0A0A] border-t border-white/10'}`}
           >
             {/* Handle */}
@@ -66,8 +74,8 @@ export function RefuseModal({ isOpen, coachName, isPro, onConfirm, onCancel }: R
                   {coachName}
                 </h2>
               </div>
-              <button onClick={handleCancel} className="p-2 rounded-full bg-white/10">
-                <X size={20} className="text-gray-500" />
+              <button onClick={handleCancel} aria-label="Fermer" className="p-2 rounded-full bg-white/10">
+                <X size={20} className="text-gray-500" aria-hidden="true" />
               </button>
             </div>
 

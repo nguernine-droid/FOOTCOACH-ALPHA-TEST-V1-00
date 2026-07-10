@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { X, Copy, Share2, Check } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTeam } from '@/lib/context/TeamContext';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 interface ModalPartageProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function ModalPartage({ isOpen, onClose, title, subtitle, shareLink, acce
   const { theme } = useTeam();
   const isPro = theme === 'classic';
   const [copied, setCopied] = useState(false);
+  const dialogRef = useDialogA11y(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -55,12 +57,21 @@ export function ModalPartage({ isOpen, onClose, title, subtitle, shareLink, acce
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/60 backdrop-blur-lg animate-in fade-in duration-300 p-6 text-center">
+    <div
+      className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/60 backdrop-blur-lg animate-in fade-in duration-300 p-6 text-center"
+      onClick={onClose}
+    >
       <motion.div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", damping: 20, stiffness: 300 }}
-        className={`relative w-full max-w-sm ${isPro ? 'bg-white rounded-[2rem] shadow-xl' : 'bg-[#0A0A0A] rounded-[3rem] border-2 shadow-2xl'} ${currentAccent.border} p-8`}
+        className={`relative w-full max-w-sm outline-none ${isPro ? 'bg-white rounded-[2rem] shadow-xl' : 'bg-[#0A0A0A] rounded-[3rem] border-2 shadow-2xl'} ${currentAccent.border} p-8`}
       >
         {/* Header */}
         <div className="flex justify-between items-center mb-6 text-left">
@@ -68,8 +79,8 @@ export function ModalPartage({ isOpen, onClose, title, subtitle, shareLink, acce
             <h2 className={`text-xl font-black ${isPro ? 'text-gray-900' : 'text-white'} uppercase tracking-tighter`}>{title}</h2>
             <p className={`text-[9px] font-mono uppercase tracking-[0.3em] mt-1 ${currentAccent.text}`}>{subtitle}</p>
           </div>
-          <button onClick={onClose} className={`p-2 rounded-xl transition-colors ${isPro ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-white/5 text-gray-500 hover:text-white border border-white/10'}`}>
-            <X size={20} />
+          <button onClick={onClose} aria-label="Fermer" className={`p-2 rounded-xl transition-colors ${isPro ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-white/5 text-gray-500 hover:text-white border border-white/10'}`}>
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
@@ -89,8 +100,8 @@ export function ModalPartage({ isOpen, onClose, title, subtitle, shareLink, acce
           {/* Lien copiable */}
           <div className={`w-full ${isPro ? 'bg-gray-100 border-gray-200' : 'bg-black/40 border-white/10'} border rounded-xl p-3 flex items-center justify-between`}>
             <p className={`text-xs font-mono truncate ${isPro ? 'text-gray-600' : 'text-white'}`}>{shareLink}</p>
-            <button onClick={handleCopy} className={`${currentAccent.text} ml-2 hover:opacity-80 transition-opacity`}>
-              {copied ? <Check size={16} /> : <Copy size={16} />}
+            <button onClick={handleCopy} aria-label={copied ? 'Lien copié' : 'Copier le lien'} className={`${currentAccent.text} ml-2 p-2 hover:opacity-80 transition-opacity`}>
+              {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
             </button>
           </div>
 

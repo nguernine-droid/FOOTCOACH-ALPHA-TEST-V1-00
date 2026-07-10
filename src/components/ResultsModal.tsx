@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { X, Trophy, Users, Zap, Shield, ChevronRight } from 'lucide-react';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 interface ResultsModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface ResultsModalProps {
 }
 
 export function ResultsModal({ isOpen, onClose }: ResultsModalProps) {
+  const dialogRef = useDialogA11y(isOpen, onClose);
   if (!isOpen) return null;
 
   const categories = [
@@ -20,13 +22,20 @@ export function ResultsModal({ isOpen, onClose }: ResultsModalProps) {
 
   return (
     <div className="fixed inset-0 z-[150] flex items-end justify-center px-4 pb-4 animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white rounded-[2.5rem] p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 mx-auto">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Historique des résultats"
+        tabIndex={-1}
+        className="relative w-full max-w-md bg-white rounded-[2.5rem] p-6 shadow-2xl outline-none animate-in slide-in-from-bottom duration-300 mx-auto"
+      >
         <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
         <div className="flex justify-between items-center mb-8 px-2">
           <h2 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">Historique Résultats</h2>
-          <button onClick={onClose} className="bg-gray-100 p-2 rounded-full text-gray-400 active:scale-90 transition-transform">
-            <X size={20} strokeWidth={3} />
+          <button onClick={onClose} aria-label="Fermer" className="bg-gray-100 p-2 rounded-full text-gray-400 active:scale-90 transition-transform">
+            <X size={20} strokeWidth={3} aria-hidden="true" />
           </button>
         </div>
 

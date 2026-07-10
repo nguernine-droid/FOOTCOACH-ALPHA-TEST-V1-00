@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 const MOTIFS = [
   { id: 'blessure',   label: 'Blessure / Effectif insuffisant', emoji: '🤕' },
@@ -22,6 +23,7 @@ interface SosModalProps {
 export function SosModal({ isOpen, eventTitle, isPro, onConfirm, onCancel }: SosModalProps) {
   const [selected, setSelected]   = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const dialogRef = useDialogA11y(isOpen, onCancel);
 
   const handleConfirm = async () => {
     if (!selected || isLoading) return;
@@ -39,18 +41,24 @@ export function SosModal({ isOpen, eventTitle, isPro, onConfirm, onCancel }: Sos
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             onClick={onCancel}
+            aria-hidden="true"
           />
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${isPro ? 'Déclaration de forfait' : 'Mode alerte SOS'} — ${eventTitle}`}
+            tabIndex={-1}
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className={`relative w-full max-w-md rounded-t-[2.5rem] pb-10 overflow-hidden shadow-2xl
+            className={`relative w-full max-w-md rounded-t-[2.5rem] pb-10 overflow-hidden shadow-2xl outline-none
               ${isPro ? 'bg-white' : 'bg-[#0A0A0A] border-t border-white/10'}`}
           >
             {/* Header rouge SOS */}
             <div className="bg-red-600 px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle size={22} className="text-white animate-pulse" />
+                  <AlertTriangle size={22} className="text-white animate-pulse" aria-hidden="true" />
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-white/70">
                       {isPro ? 'Déclaration de forfait' : 'Mode Alerte 🚨'}
@@ -60,8 +68,8 @@ export function SosModal({ isOpen, eventTitle, isPro, onConfirm, onCancel }: Sos
                     </p>
                   </div>
                 </div>
-                <button onClick={onCancel} className="p-2 rounded-full bg-white/20">
-                  <X size={18} className="text-white" />
+                <button onClick={onCancel} aria-label="Fermer" className="p-2 rounded-full bg-white/20">
+                  <X size={18} className="text-white" aria-hidden="true" />
                 </button>
               </div>
             </div>

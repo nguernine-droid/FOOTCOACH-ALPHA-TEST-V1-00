@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { X, Send, MessageCircle, Megaphone, UserCheck } from 'lucide-react';
+import { useDialogA11y } from '@/lib/hooks/useDialogA11y';
 
 interface ActionModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
     message: '',
     target: 'players' // Par défaut fixé sur joueurs pour l'Alpha
   });
+  const dialogRef = useDialogA11y(isOpen, onClose);
+  const uid = useId();
 
   if (!isOpen) return null;
 
@@ -52,9 +55,16 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
   const currentMode = modalTitles[actionType] || modalTitles.message;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-300" onClick={onClose}>
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={currentMode.text}
+      tabIndex={-1}
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-[150] flex items-end sm:items-center justify-center p-4 outline-none animate-in fade-in duration-300"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <form
-        onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
         className="w-full max-w-sm bg-[#1c1f26] rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 duration-300"
       >
@@ -62,11 +72,11 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">
-              <currentMode.icon size={12} className="text-brand-orange" /> {currentMode.text}
+              <currentMode.icon size={12} className="text-brand-orange" aria-hidden="true" /> {currentMode.text}
             </span>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 bg-white/5 rounded-full text-white/20 hover:text-white transition-colors">
-            <X size={16} />
+          <button type="button" onClick={onClose} aria-label="Fermer" className="p-1.5 bg-white/5 rounded-full text-white/20 hover:text-white transition-colors">
+            <X size={16} aria-hidden="true" />
           </button>
         </div>
 
@@ -87,30 +97,30 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
           {actionType === 'convocation' && (
             <div className="space-y-3 pt-2 border-t border-white/5">
               <div>
-                <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Adversaire</label>
-                <input type="text" name="opponent" value={actionData.opponent} onChange={handleChange} className={inputClass} required placeholder="Ex: FC Versailles" />
+                <label htmlFor={`${uid}-opponent`} className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Adversaire</label>
+                <input id={`${uid}-opponent`} type="text" name="opponent" value={actionData.opponent} onChange={handleChange} className={inputClass} required placeholder="Ex: FC Versailles" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Date</label>
-                  <input type="date" name="date" value={actionData.date} onChange={handleChange} className={inputClass} required />
+                  <label htmlFor={`${uid}-date`} className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Date</label>
+                  <input id={`${uid}-date`} type="date" name="date" value={actionData.date} onChange={handleChange} className={inputClass} required />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Heure</label>
-                  <input type="time" name="time" value={actionData.time} onChange={handleChange} className={inputClass} required />
+                  <label htmlFor={`${uid}-time`} className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Heure</label>
+                  <input id={`${uid}-time`} type="time" name="time" value={actionData.time} onChange={handleChange} className={inputClass} required />
                 </div>
               </div>
               <div>
-                <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Lieu / Stade</label>
-                <input type="text" name="location" value={actionData.location} onChange={handleChange} className={inputClass} required placeholder="Ex: Stade Municipal" />
+                <label htmlFor={`${uid}-location`} className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Lieu / Stade</label>
+                <input id={`${uid}-location`} type="text" name="location" value={actionData.location} onChange={handleChange} className={inputClass} required placeholder="Ex: Stade Municipal" />
               </div>
             </div>
           )}
 
           <div className="space-y-4 pt-2 border-t border-white/5">
             <div>
-              <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Message</label>
-              <textarea name="message" value={actionData.message} onChange={handleChange} rows={3} className={`${inputClass} resize-none min-h-[80px]`} placeholder="Écrivez ici..."></textarea>
+              <label htmlFor={`${uid}-message`} className="text-[9px] font-black uppercase text-gray-500 tracking-widest block mb-1">Message</label>
+              <textarea id={`${uid}-message`} name="message" value={actionData.message} onChange={handleChange} rows={3} className={`${inputClass} resize-none min-h-[80px]`} placeholder="Écrivez ici..."></textarea>
             </div>
 
             <div className="flex flex-wrap gap-2">
