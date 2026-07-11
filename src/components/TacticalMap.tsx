@@ -51,7 +51,7 @@ export function TacticalMap({ signals, onSignalClick }: TacticalMapProps) {
         >
           <div className="relative flex flex-col items-center">
             {/* Tooltip nom de l'équipe (Visible au hover ou tout le temps en petit) */}
-            <div className="bg-black/80 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-[#1D2027]/90 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <p className="text-[8px] font-black text-white whitespace-nowrap uppercase">{sig.team}</p>
             </div>
 
@@ -81,14 +81,14 @@ export function TacticalMap({ signals, onSignalClick }: TacticalMapProps) {
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40">
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 w-8 h-8 bg-sky-blue/40 rounded-full animate-ping" />
-          <div className="w-6 h-6 bg-sky-blue rounded-full border-4 border-[#0a1a0a] shadow-[0_0_15px_#3B82F6] flex items-center justify-center">
+          <div className="w-6 h-6 bg-sky-blue rounded-full border-4 border-[#0a1a0a] shadow-md flex items-center justify-center">
             <Navigation size={10} className="text-white fill-white" />
           </div>
         </div>
       </div>
 
       {/* Label "LIVE MAP" */}
-      <div className="absolute top-6 right-6 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
+      <div className="absolute top-6 right-6 bg-[#1D2027]/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
         <div className="w-1.5 h-1.5 bg-match-red rounded-full animate-pulse" />
         <span className="text-[8px] font-black text-white/80 uppercase tracking-widest">Live Map</span>
       </div>

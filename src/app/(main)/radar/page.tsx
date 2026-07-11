@@ -392,10 +392,10 @@ export default function RadarPage() {
   };
 
   const styles = isPro ? { accent: 'text-orange-600', btn: 'bg-orange-600 text-white', card: 'bg-white border-gray-100 shadow-xl' }
-                       : { accent: 'text-neon-cyan', btn: 'bg-neon-cyan text-black', card: 'bg-[#050505] border-white/5 shadow-2xl' };
+                       : { accent: 'text-neon-cyan', btn: 'bg-neon-cyan text-black', card: 'bg-[#1D2027] border-white/5 shadow-xl' };
 
   return (
-    <main className={`min-h-screen pb-40 max-w-2xl mx-auto p-4 space-y-8 ${isPro ? 'bg-gray-50' : 'bg-black'}`}>
+    <main className={`min-h-screen pb-40 max-w-2xl mx-auto p-4 space-y-8 ${isPro ? 'bg-gray-50' : 'bg-[#15171C]'}`}>
 
       {/* BANNIÈRE CLUB INCOMPLET */}
       {!isClubVerified && (
@@ -437,7 +437,7 @@ export default function RadarPage() {
               <History size={16} />
               <span className="text-[10px] font-black uppercase italic">Historique</span>
               {myHistory.length > 0 && (
-                <span className={`absolute -top-1 -right-1 w-5 h-5 text-white text-[9px] font-black rounded-full flex items-center justify-center ${isPro ? 'bg-green-500' : 'bg-[#39FF14] text-black'}`}>
+                <span className={`absolute -top-1 -right-1 w-5 h-5 text-white text-[9px] font-black rounded-full flex items-center justify-center ${isPro ? 'bg-green-500' : 'bg-emerald-400 text-black'}`}>
                   {myHistory.length}
                 </span>
               )}
@@ -483,7 +483,7 @@ export default function RadarPage() {
            {/* Niveau (Dropdown simplifié) */}
            <div className="space-y-2">
               <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Niveau de jeu</p>
-              <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)} className={`w-full p-3 rounded-xl border-2 text-[10px] font-black uppercase outline-none transition-all ${isPro ? 'bg-gray-50 border-gray-50 text-gray-900 focus:border-orange-500' : 'bg-black border-white/10 text-white'}`}>
+              <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)} className={`w-full p-3 rounded-xl border-2 text-[10px] font-black uppercase outline-none transition-all ${isPro ? 'bg-gray-50 border-gray-50 text-gray-900 focus:border-orange-500' : 'bg-[#1D2027] border-white/10 text-white'}`}>
                  {levels.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
            </div>
@@ -622,13 +622,13 @@ export default function RadarPage() {
           </h3>
           <div className="grid grid-cols-1 gap-4">
             {myHistory.map(req => (
-              <div key={req.id} className={`rounded-2xl border-2 p-5 space-y-3 ${isPro ? 'bg-white border-green-100' : 'bg-white/5 border-[#39FF14]/20'}`}>
+              <div key={req.id} className={`rounded-2xl border-2 p-5 space-y-3 ${isPro ? 'bg-white border-green-100' : 'bg-white/5 border-emerald-400/20'}`}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`text-xs font-black uppercase italic ${isPro ? 'text-gray-900' : 'text-white'}`}>{req.type}</p>
                     <p className={`text-[10px] font-bold uppercase ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>{req.category}</p>
                   </div>
-                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full ${isPro ? 'bg-green-50 text-green-600' : 'bg-[#39FF14]/10 text-[#39FF14]'}`}>
+                  <span className={`text-[9px] font-black uppercase px-3 py-1 rounded-full ${isPro ? 'bg-green-50 text-green-600' : 'bg-emerald-400/10 text-emerald-400'}`}>
                     ✅ Validé
                   </span>
                 </div>

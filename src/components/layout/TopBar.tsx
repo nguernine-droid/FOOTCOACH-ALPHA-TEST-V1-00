@@ -14,8 +14,8 @@ export function TopBar() {
   const [targetVersion, setTargetVersion] = useState('');
 
   const isPro = theme === 'classic';
-  const accentColor = isPro ? 'text-neon-orange' : 'text-neon-cyan';
-  const accentBorder = isPro ? 'border-neon-orange/30' : 'border-neon-cyan/30';
+  const accentColor = isPro ? 'text-orange-600' : 'text-neon-orange';
+  const accentBorder = isPro ? 'border-orange-200' : 'border-neon-orange/30';
 
   useEffect(() => {
     const checkVer = async () => {
@@ -32,7 +32,6 @@ export function TopBar() {
   }, []);
 
   const handleManualSync = async () => {
-    console.log("🛠 Synchro forcée demandée...");
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
       for (const reg of regs) await reg.unregister();
@@ -43,13 +42,13 @@ export function TopBar() {
   };
 
   return (
-    <header className="flex-shrink-0 bg-black/80 backdrop-blur-xl border-b border-white/10 p-3 z-40 sticky top-0 overflow-hidden">
+    <header className={`flex-shrink-0 backdrop-blur-xl border-b p-3 z-40 sticky top-0 overflow-hidden ${isPro ? 'bg-white/90 border-gray-100' : 'bg-[#15171C]/90 border-white/[0.06]'}`}>
       <div className="grid grid-cols-[60px_1fr_60px] gap-3 items-center">
 
         {/* LOGO CLUB */}
         <div className="flex flex-col gap-1.5">
           <Link href="/profile" className="block">
-            <div className={`aspect-square w-full rounded-xl overflow-hidden border-2 flex items-center justify-center bg-black/40 ${accentBorder} shadow-lg`}>
+            <div className={`aspect-square w-full rounded-2xl overflow-hidden border flex items-center justify-center shadow-sm ${isPro ? 'bg-orange-50' : 'bg-white/5'} ${accentBorder}`}>
               {teamInfo?.clubLogo ? (
                 <img src={teamInfo.clubLogo} alt="Logo" className="w-full h-full object-contain p-1.5" />
               ) : (
@@ -57,8 +56,8 @@ export function TopBar() {
               )}
             </div>
           </Link>
-          <div className={`py-1 rounded-md border text-center ${isPro ? 'bg-neon-orange/10' : 'bg-neon-cyan/10'} ${accentBorder}`}>
-             <p className={`text-[8px] font-black uppercase tracking-tighter ${accentColor}`}>{teamInfo?.category || 'U13'}</p>
+          <div className={`py-1 rounded-lg border text-center ${isPro ? 'bg-orange-50' : 'bg-neon-orange/10'} ${accentBorder}`}>
+             <p className={`text-[8px] font-bold uppercase tracking-tight ${accentColor}`}>{teamInfo?.category || 'U13'}</p>
           </div>
         </div>
 
@@ -66,12 +65,12 @@ export function TopBar() {
         <div className="flex flex-col gap-1 justify-center">
           <div className="text-center">
             <GlitchText
-              text={teamInfo?.clubName || 'UNITÉ_NEXUS'}
-              className={`text-sm font-black italic tracking-tighter uppercase ${accentColor} leading-none line-clamp-1`}
+              text={teamInfo?.clubName || 'Mon Club'}
+              className={`text-sm font-bold tracking-tight uppercase ${accentColor} leading-none line-clamp-1`}
             />
-            <div className="py-1 border-y border-white/5 mt-1 text-center">
-              <p className={`text-lg font-black uppercase italic tracking-widest ${accentColor} leading-none`}>
-                {teamInfo?.coachName || 'COACH'}
+            <div className={`py-1 border-y mt-1 text-center ${isPro ? 'border-gray-100' : 'border-white/[0.06]'}`}>
+              <p className={`text-lg font-black uppercase tracking-tight leading-none ${isPro ? 'text-gray-900' : 'text-[#F5F3EF]'}`}>
+                {teamInfo?.coachName || 'Coach'}
               </p>
             </div>
           </div>
@@ -82,14 +81,14 @@ export function TopBar() {
                  onClick={handleManualSync}
                  className="flex flex-col items-center gap-0.5 cursor-pointer"
                >
-                 <div className="px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white animate-pulse shadow-[0_0_15px_#ef4444] text-[8px] font-black tracking-widest">
-                    MAJ DISPONIBLE (V.{targetVersion})
+                 <div className="px-3 py-1 rounded-full bg-rose-500 text-white shadow-sm text-[8px] font-bold tracking-wide flex items-center gap-1">
+                    <RefreshCw size={9} /> MAJ DISPONIBLE (V.{targetVersion})
                  </div>
-                 <p className="text-[6px] text-gray-500 font-bold uppercase tracking-widest">Locale: V.{CURRENT_APP_VERSION}</p>
+                 <p className="text-[6px] text-gray-400 font-semibold uppercase tracking-wide">Locale: V.{CURRENT_APP_VERSION}</p>
                </div>
              ) : (
-               <div className={`px-4 py-1 rounded-full border border-green-500/50 bg-green-500/10 text-[#39FF14] text-[8px] font-black tracking-widest flex items-center gap-2`}>
-                 <div className="w-1.5 h-1.5 rounded-full bg-[#39FF14]" />
+               <div className="px-4 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 text-[8px] font-bold tracking-wide flex items-center gap-2">
+                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                  V.{CURRENT_APP_VERSION} (À JOUR)
                </div>
              )}
@@ -99,18 +98,18 @@ export function TopBar() {
         {/* PHOTO PROFIL */}
         <div className="flex flex-col items-center">
           <Link href="/profile" className="block w-full">
-            <div className={`aspect-square w-full rounded-xl border-2 transition-all active:scale-90 border-[#39FF14] shadow-[0_0_15px_#39FF1444] bg-black/40 relative overflow-hidden`}>
+            <div className={`aspect-square w-full rounded-2xl border-2 transition-all active:scale-90 border-emerald-400/60 shadow-sm ${isPro ? 'bg-orange-50' : 'bg-white/5'} relative overflow-hidden`}>
               {teamInfo?.coachPhoto ? (
                 <img src={teamInfo.coachPhoto} alt="Coach" className="w-full h-full object-cover" />
               ) : (
                 <User size={24} className={accentColor} />
               )}
-              <div className={`absolute bottom-0 inset-x-0 py-0.5 text-center text-[5px] font-black uppercase bg-black/60 text-white`}>
+              <div className={`absolute bottom-0 inset-x-0 py-0.5 text-center text-[5px] font-bold uppercase ${isPro ? 'bg-white/70 text-gray-600' : 'bg-black/50 text-white'}`}>
                 COACH
               </div>
             </div>
           </Link>
-          <p className="text-[5px] font-bold text-gray-600 uppercase mt-1 tracking-tighter">Profil</p>
+          <p className={`text-[5px] font-semibold uppercase mt-1 tracking-tight ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>Profil</p>
         </div>
 
       </div>

@@ -9,7 +9,7 @@ import {
   ChevronLeft, User, Shield, MapPin, Navigation,
   Phone, Layers, Trophy, Edit3, CheckCircle2, Star, Zap,
   Save, X, Loader2, Camera, Flame, Check, Fingerprint, Info, Globe, MessageSquare, TrendingUp,
-  Briefcase, GraduationCap, Lightbulb, Trash2, PlusCircle, Users, AlertTriangle
+  Briefcase, GraduationCap, Lightbulb, Trash2, PlusCircle, Users, AlertTriangle, LogOut
 } from 'lucide-react';
 import { ClubSearchInput } from '@/components/ClubSearchInput';
 import { ReferralQRCode } from '@/components/ReferralQRCode';
@@ -280,9 +280,15 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     else setShowFullProfile(false);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    window.location.href = '/showcase';
+  };
+
   if (!showFullProfile) {
     return (
-      <div className="fixed inset-0 z-10 flex flex-col items-center justify-center bg-[#050510] overflow-hidden animate-in fade-in duration-1000">
+      <div className="fixed inset-0 z-10 flex flex-col items-center justify-center bg-[#15171C] overflow-hidden animate-in fade-in duration-1000">
         <button onClick={() => router.push('/dashboard')} className="absolute top-12 left-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-white active:scale-90 z-[60]"><ChevronLeft size={24} strokeWidth={3} /></button>
         <div className="w-full flex justify-center px-6 cursor-pointer transition-all duration-300 active:scale-95 group" onClick={() => setShowFullProfile(true)}>
           <CoachCard
@@ -306,35 +312,33 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     );
   }
 
-  const inputStyle = "w-full bg-gray-50 border-2 border-gray-200 rounded-2xl p-4 text-xs font-black uppercase outline-none focus:border-orange-500 transition-all text-gray-900 shadow-inner";
+  const inputStyle = "w-full bg-white/5 border-2 border-white/10 rounded-2xl p-4 text-xs font-black uppercase outline-none focus:border-orange-500 transition-all text-white placeholder:text-gray-600";
 
   return (
-    <div className="fixed inset-0 z-[70] bg-gray-100 overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
+    <div className="fixed inset-0 z-[70] bg-[#15171C] overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
 
       {/* --- NOTIFICATION TACTIQUE --- */}
       {notification && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-4 duration-500">
-          <div className={`px-6 py-3 rounded-full shadow-2xl border-2 flex items-center gap-3 backdrop-blur-md
-            ${notification.type === 'success' ? 'bg-[#39FF14]/90 border-[#39FF14] text-black' : 'bg-red-600/90 border-red-500 text-white'}`}>
+          <div className={`px-6 py-3 rounded-full shadow-lg border-2 flex items-center gap-3 backdrop-blur-md
+            ${notification.type === 'success' ? 'bg-emerald-500/90 border-emerald-400 text-black' : 'bg-red-600/90 border-red-500 text-white'}`}>
             {notification.type === 'success' ? <CheckCircle2 size={18} strokeWidth={3} /> : <AlertTriangle size={18} strokeWidth={3} />}
             <span className="text-[10px] font-black uppercase tracking-widest">{notification.msg}</span>
           </div>
         </div>
       )}
 
-      {/* HEADER RÉTRACTABLE */}
-      <div onClick={handleBack} className="p-8 pb-4 flex items-center justify-between bg-gray-100/80 backdrop-blur-md sticky top-0 z-[90] cursor-pointer active:bg-gray-200/50 transition-colors border-b border-gray-200">
-         <button className="text-gray-900 p-3 bg-white rounded-2xl shadow-sm active:scale-90 transition-all"><ChevronLeft size={24} strokeWidth={3} /></button>
-         <h1 className="text-2xl font-black uppercase italic tracking-tighter text-gray-900 drop-shadow-sm">Profil_Dossier</h1>
-         <div className="flex items-center gap-2">
-           <button
-             onClick={(e) => { e.stopPropagation(); setTheme(theme === 'classic' ? 'nexus' : 'classic'); }}
-             className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase transition-all shadow-sm border ${theme === 'nexus' ? 'bg-black text-neon-cyan border-neon-cyan' : 'bg-white text-gray-400 border-gray-200'}`}
-           >
-             {theme === 'nexus' ? 'MODE NEXUS' : 'MODE CLASSIC'}
-           </button>
-           <div className="w-12 h-12 rounded-xl bg-orange-600/10 flex items-center justify-center border border-orange-600/20"><User size={20} className="text-orange-600" /></div>
-         </div>
+      {/* HEADER */}
+      <div className="p-6 pb-4 flex items-center justify-between bg-[#15171C]/90 backdrop-blur-md sticky top-0 z-[90] border-b border-white/[0.06]">
+         <button onClick={handleBack} aria-label="Retour" className="text-white p-3 bg-white/5 rounded-2xl border border-white/10 active:scale-90 transition-all"><ChevronLeft size={24} strokeWidth={3} /></button>
+         <h1 className="text-xl font-black uppercase italic tracking-tighter text-white">Mon Profil</h1>
+         <button
+           onClick={() => setTheme(theme === 'classic' ? 'nexus' : 'classic')}
+           className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all ${theme === 'nexus' ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/30' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}
+           aria-label="Changer de thème"
+         >
+           <User size={20} />
+         </button>
       </div>
 
       <main className="p-5 max-w-2xl mx-auto space-y-10 pb-48 text-left">
@@ -348,18 +352,18 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
-                 <button onClick={() => handleSaveSection('user')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
+                 <button onClick={() => handleSaveSection('user')} className="p-2.5 bg-emerald-500 text-black rounded-xl shadow-md active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
-           <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl">
+           <div className="bg-[#1D2027] rounded-[3rem] p-8 border-2 border-white/[0.06] shadow-xl">
               {editingSection === 'user' ? (
                 <div className="space-y-6 animate-in fade-in duration-300">
                    <div className="flex justify-center mb-6">
                       <div className="relative">
-                        <div className="w-24 h-24 rounded-[2rem] border-4 border-orange-100 overflow-hidden flex items-center justify-center bg-gray-50 shadow-2xl relative">
-                          {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-200" />}
+                        <div className="w-24 h-24 rounded-[2rem] border-4 border-orange-500/20 overflow-hidden flex items-center justify-center bg-white/5 shadow-2xl relative">
+                          {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-600" />}
                           {isUploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-white" /></div>}
                         </div>
                         <label className="absolute -bottom-2 -right-2 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'avatar')} /></label>
@@ -378,44 +382,44 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                       <label className="text-[10px] font-black uppercase text-gray-400 mb-3 block">Expertise (Catégories de Référence)</label>
                       <div className="grid grid-cols-3 gap-2">
                          {availableCategories.map(cat => (
-                           <button key={cat} type="button" onClick={() => toggleCategory(cat)} className={`py-3 rounded-xl text-[8px] font-black border-2 transition-all ${formData.refCategories.includes(cat) ? 'bg-orange-600 border-orange-600 text-white shadow-md scale-105' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>{cat}</button>
+                           <button key={cat} type="button" onClick={() => toggleCategory(cat)} className={`py-3 rounded-xl text-[8px] font-black border-2 transition-all ${formData.refCategories.includes(cat) ? 'bg-orange-600 border-orange-600 text-white shadow-md scale-105' : 'bg-white/5 border-white/10 text-gray-400'}`}>{cat}</button>
                          ))}
                       </div>
                    </div>
 
-                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
+                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/10">
                       {[
                         { id: 'inactif', label: 'INACTIF', color: 'bg-blue-500', text: 'text-white' },
-                        { id: 'actif', label: 'ACTIF', color: 'bg-[#39FF14]', text: 'text-black' },
+                        { id: 'actif', label: 'ACTIF', color: 'bg-emerald-500', text: 'text-black' },
                         { id: 'toujours_pret', label: 'PRÊT 🔥', color: 'bg-red-600', text: 'text-white' }
                       ].map(s => (
-                        <button key={s.id} type="button" onClick={() => setFormData({...formData, coachStatus: s.id as any})} className={`py-4 rounded-xl text-[8px] font-black transition-all ${formData.coachStatus === s.id ? `${s.color} ${s.text} shadow-lg` : 'text-gray-400 hover:text-gray-600'}`}>{s.label}</button>
+                        <button key={s.id} type="button" onClick={() => setFormData({...formData, coachStatus: s.id as any})} className={`py-4 rounded-xl text-[8px] font-black transition-all ${formData.coachStatus === s.id ? `${s.color} ${s.text} shadow-lg` : 'text-gray-500 hover:text-gray-300'}`}>{s.label}</button>
                       ))}
                    </div>
                 </div>
               ) : (
                 <div className="space-y-6">
                   <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 rounded-3xl border-4 border-orange-100 overflow-hidden bg-white flex items-center justify-center flex-shrink-0 shadow-lg">
-                        {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={32} className="text-gray-300" />}
+                    <div className="w-20 h-20 rounded-3xl border-4 border-orange-500/20 overflow-hidden bg-white/5 flex items-center justify-center flex-shrink-0 shadow-lg">
+                        {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={32} className="text-gray-600" />}
                     </div>
                     <div className="space-y-1 flex-1">
-                        <p className="text-xl font-black uppercase text-gray-900 leading-none">{teamInfo?.userFirstName} {teamInfo?.userLastName}</p>
-                        <p className="text-sm font-bold text-orange-600 uppercase italic">👤 {teamInfo?.coachName}</p>
-                        <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-[8px] font-black uppercase shadow-sm inline-block">{teamInfo?.coachGrade || 'Coach Engagé'}</span>
+                        <p className="text-xl font-black uppercase text-white leading-none">{teamInfo?.userFirstName} {teamInfo?.userLastName}</p>
+                        <p className="text-sm font-bold text-orange-400 uppercase italic">👤 {teamInfo?.coachName}</p>
+                        <span className="px-3 py-1 bg-orange-500/10 text-orange-400 rounded-full text-[8px] font-black uppercase inline-block">{teamInfo?.coachGrade || 'Coach Engagé'}</span>
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded-2xl p-5 space-y-4 border border-gray-100 shadow-inner">
-                     <div className="flex items-center gap-3"><Trophy size={14} className="text-orange-500" /><p className="text-[10px] font-black text-gray-900 uppercase">Slogan: <span className="italic text-gray-500 ml-1">"{teamInfo?.bio || "Droit au but !"}"</span></p></div>
-                     <div className="flex items-center gap-3"><Fingerprint size={14} className="text-orange-500" /><p className="text-[10px] font-black text-gray-900 uppercase">Licence: <span className="text-gray-500 ml-1">{teamInfo?.licenseNumber || "Non renseignée"}</span></p></div>
+                  <div className="bg-white/5 rounded-2xl p-5 space-y-4 border border-white/10">
+                     <div className="flex items-center gap-3"><Trophy size={14} className="text-orange-400" /><p className="text-[10px] font-black text-white uppercase">Slogan: <span className="italic text-gray-400 ml-1">"{teamInfo?.bio || "Droit au but !"}"</span></p></div>
+                     <div className="flex items-center gap-3"><Fingerprint size={14} className="text-orange-400" /><p className="text-[10px] font-black text-white uppercase">Licence: <span className="text-gray-400 ml-1">{teamInfo?.licenseNumber || "Non renseignée"}</span></p></div>
                      {teamInfo?.refCategories && teamInfo.refCategories.length > 0 && (
                        <div className="flex flex-wrap gap-2 pt-2">
                           {teamInfo.refCategories.map(cat => (
-                            <span key={cat} className="px-3 py-1 bg-white rounded-lg border border-gray-200 text-[8px] font-black text-gray-500 uppercase">{cat}</span>
+                            <span key={cat} className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 text-[8px] font-black text-gray-400 uppercase">{cat}</span>
                           ))}
                        </div>
                      )}
-                     <div className="flex items-center gap-3 border-t border-gray-200 pt-3 mt-1"><Phone size={14} className="text-gray-400" /><p className="text-[10px] font-black text-gray-900 uppercase">Contact: <span className="text-gray-500 ml-1">{teamInfo?.phone || "Masqué"}</span> <span className="ml-2 text-[8px] text-gray-300">🔒 (Privé)</span></p></div>
+                     <div className="flex items-center gap-3 border-t border-white/10 pt-3 mt-1"><Phone size={14} className="text-gray-500" /><p className="text-[10px] font-black text-white uppercase">Contact: <span className="text-gray-400 ml-1">{teamInfo?.phone || "Masqué"}</span> <span className="ml-2 text-[8px] text-gray-600">🔒 (Privé)</span></p></div>
                   </div>
                 </div>
               )}
@@ -431,39 +435,39 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
              </button>
            </div>
 
-           <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl space-y-6">
+           <div className="bg-[#1D2027] rounded-[3rem] p-8 border-2 border-white/[0.06] shadow-xl space-y-6">
               {editingSection === 'cv' && (
-                <div className="space-y-4 p-4 bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200 animate-in zoom-in duration-300">
+                <div className="space-y-4 p-4 bg-white/5 rounded-[2rem] border-2 border-dashed border-white/10 animate-in zoom-in duration-300">
                    <div className="grid grid-cols-3 gap-2">
                       {['Diplôme', 'Expérience', 'Philosophie'].map(t => (
-                        <button key={t} onClick={() => setNewItem({...newCvItem, type: t})} className={`py-2 rounded-xl text-[8px] font-black border transition-all ${newCvItem.type === t ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-gray-200 text-gray-400'}`}>{t.toUpperCase()}</button>
+                        <button key={t} onClick={() => setNewItem({...newCvItem, type: t})} className={`py-2 rounded-xl text-[8px] font-black border transition-all ${newCvItem.type === t ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white/5 border-white/10 text-gray-400'}`}>{t.toUpperCase()}</button>
                       ))}
                    </div>
                    <input placeholder="Titre (ex: BMF, Coach U15...)" value={newCvItem.title} onChange={e => setNewItem({...newCvItem, title: e.target.value})} className={inputStyle} />
                    <div className="grid grid-cols-2 gap-2">
                       <input placeholder="Année" value={newCvItem.year} onChange={e => setNewItem({...newCvItem, year: e.target.value})} className={inputStyle} />
-                      <button onClick={handleAddCvItem} disabled={isSaving} className="bg-[#39FF14] text-black rounded-2xl font-black uppercase italic text-xs shadow-lg active:scale-95">Ajouter au CV</button>
+                      <button onClick={handleAddCvItem} disabled={isSaving} className="bg-emerald-500 text-black rounded-2xl font-black uppercase italic text-xs shadow-md active:scale-95">Ajouter au CV</button>
                    </div>
                 </div>
               )}
 
               <div className="space-y-4">
                  {cvItems.length > 0 ? cvItems.map((item) => (
-                   <div key={item.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100 relative group">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.type === 'Diplôme' ? 'bg-blue-100 text-blue-600' : item.type === 'Expérience' ? 'bg-green-100 text-green-600' : 'bg-purple-100 text-purple-600'}`}>
+                   <div key={item.id} className="flex items-start gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 relative group">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.type === 'Diplôme' ? 'bg-sky-500/10 text-sky-400' : item.type === 'Expérience' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-purple-500/10 text-purple-400'}`}>
                          {item.type === 'Diplôme' ? <GraduationCap size={20}/> : item.type === 'Expérience' ? <Briefcase size={20}/> : <Lightbulb size={20}/>}
                       </div>
                       <div className="flex-1">
                          <div className="flex justify-between items-start">
-                            <p className="text-[10px] font-black text-gray-900 uppercase italic leading-none">{item.title}</p>
-                            <span className="text-[8px] font-bold text-gray-400">{item.year}</span>
+                            <p className="text-[10px] font-black text-white uppercase italic leading-none">{item.title}</p>
+                            <span className="text-[8px] font-bold text-gray-500">{item.year}</span>
                          </div>
-                         <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1">{item.type}</p>
+                         <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest mt-1">{item.type}</p>
                       </div>
-                      <button onClick={() => handleDeleteCvItem(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-600 transition-all"><Trash2 size={14}/></button>
+                      <button onClick={() => handleDeleteCvItem(item.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-500 transition-all"><Trash2 size={14}/></button>
                    </div>
                  )) : (
-                   <p className="text-center py-6 text-[10px] font-black text-gray-300 uppercase tracking-widest">Aucun élément dans votre palmarès</p>
+                   <p className="text-center py-6 text-[10px] font-black text-gray-600 uppercase tracking-widest">Aucun élément dans votre palmarès</p>
                  )}
               </div>
            </div>
@@ -478,24 +482,24 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
-                 <button onClick={() => handleSaveSection('club')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
+                 <button onClick={() => handleSaveSection('club')} className="p-2.5 bg-emerald-500 text-black rounded-xl shadow-md active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
-           <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl flex flex-col items-center text-center space-y-6">
+           <div className="bg-[#1D2027] rounded-[3rem] p-8 border-2 border-white/[0.06] shadow-xl flex flex-col items-center text-center space-y-6">
               {editingSection === 'club' ? (
                 <div className="w-full space-y-5 animate-in fade-in duration-300">
                    <div className="relative mb-2">
-                      <div className="w-24 h-24 rounded-[2rem] border-2 border-gray-100 overflow-hidden flex items-center justify-center bg-white mx-auto shadow-2xl relative">
-                        {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain p-2" /> : <Shield size={40} className="text-gray-100" />}
+                      <div className="w-24 h-24 rounded-[2rem] border-2 border-white/10 overflow-hidden flex items-center justify-center bg-white/5 mx-auto shadow-2xl relative">
+                        {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain p-2" /> : <Shield size={40} className="text-gray-600" />}
                         {isUploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-white" /></div>}
                       </div>
                       <label className="absolute bottom-0 right-1/2 translate-x-12 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'logo')} /></label>
                    </div>
                    <ClubSearchInput
                      value={formData.clubName}
-                     isPro={true}
+                     isPro={false}
                      placeholder="Rechercher ou changer de club..."
                      city={formData.city}
                      onSelect={async (club) => {
@@ -517,15 +521,15 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                 </div>
               ) : (
                 <>
-                  <div className="w-40 h-40 bg-white rounded-[3rem] p-6 border-4 border-orange-50 shadow-2xl flex items-center justify-center">
-                     {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={80} className="text-gray-200" />}
+                  <div className="w-40 h-40 bg-white/5 rounded-[3rem] p-6 border-4 border-orange-500/10 shadow-2xl flex items-center justify-center">
+                     {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain" /> : <Shield size={80} className="text-gray-600" />}
                   </div>
                   <div className="space-y-2">
-                     <h2 className="text-2xl font-black uppercase italic text-gray-900 tracking-tighter leading-none">{teamInfo?.clubName}</h2>
-                     {teamInfo?.clubAcronym && <p className="text-xs font-black text-orange-600 uppercase tracking-widest pt-1">{teamInfo.clubAcronym}</p>}
+                     <h2 className="text-2xl font-black uppercase italic text-white tracking-tighter leading-none">{teamInfo?.clubName}</h2>
+                     {teamInfo?.clubAcronym && <p className="text-xs font-black text-orange-400 uppercase tracking-widest pt-1">{teamInfo.clubAcronym}</p>}
                      <div className="flex justify-center gap-4 text-[10px] font-black uppercase pt-4">
-                       <span className="px-4 py-2 bg-orange-50 text-orange-700 rounded-xl border border-orange-100">🏛️ {teamInfo?.category}</span>
-                       <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-100">⚡ {teamInfo?.level}</span>
+                       <span className="px-4 py-2 bg-orange-500/10 text-orange-400 rounded-xl border border-orange-500/20">🏛️ {teamInfo?.category}</span>
+                       <span className="px-4 py-2 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20">⚡ {teamInfo?.level}</span>
                      </div>
                   </div>
                 </>
@@ -542,12 +546,12 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
-                 <button onClick={() => handleSaveSection('logistics')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
+                 <button onClick={() => handleSaveSection('logistics')} className="p-2.5 bg-emerald-500 text-black rounded-xl shadow-md active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
-           <div className="bg-white rounded-[3rem] p-8 border-2 border-white shadow-xl space-y-4">
+           <div className="bg-[#1D2027] rounded-[3rem] p-8 border-2 border-white/[0.06] shadow-xl space-y-4">
               {editingSection === 'logistics' ? (
                 <div className="space-y-4 animate-in fade-in duration-300">
                    <input placeholder="Ma Ville" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value.toUpperCase()})} className={inputStyle} />
@@ -555,13 +559,13 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                 </div>
               ) : (
                 <>
-                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl shadow-inner border border-gray-100">
+                  <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
                      <span className="text-[10px] font-black uppercase text-gray-400">📍 Ma Ville</span>
-                     <span className="text-sm font-black text-gray-900 uppercase italic">{teamInfo?.clubCity || "À définir"}</span>
+                     <span className="text-sm font-black text-white uppercase italic">{teamInfo?.clubCity || "À définir"}</span>
                   </div>
-                  <div className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl shadow-inner border border-gray-100">
+                  <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
                      <span className="text-[10px] font-black uppercase text-gray-400">🏟️ Mon Stade</span>
-                     <span className="text-sm font-black text-gray-900 uppercase italic text-right truncate ml-4">{teamInfo?.clubStadium || "À définir"}</span>
+                     <span className="text-sm font-black text-white uppercase italic text-right truncate ml-4">{teamInfo?.clubStadium || "À définir"}</span>
                   </div>
                 </>
               )}
@@ -577,42 +581,42 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
              ) : (
                <div className="flex gap-2">
                  <button onClick={() => setEditingSection(null)} className="p-2.5 bg-gray-200 text-gray-400 rounded-xl active:scale-90"><X size={16}/></button>
-                 <button onClick={() => handleSaveSection('ranges')} className="p-2.5 bg-[#39FF14] text-black rounded-xl shadow-lg active:scale-90"><Check size={16} strokeWidth={3}/></button>
+                 <button onClick={() => handleSaveSection('ranges')} className="p-2.5 bg-emerald-500 text-black rounded-xl shadow-md active:scale-90"><Check size={16} strokeWidth={3}/></button>
                </div>
              )}
            </div>
 
            <div className="grid grid-cols-1 gap-4">
               {editingSection === 'ranges' ? (
-                <div className="space-y-10 bg-white p-10 rounded-[3rem] border-2 border-white shadow-xl animate-in fade-in duration-300">
+                <div className="space-y-10 bg-[#1D2027] p-10 rounded-[3rem] border-2 border-white/[0.06] shadow-xl animate-in fade-in duration-300">
                    <div className="space-y-4">
-                      <div className="flex justify-between text-[11px] font-black mb-2 uppercase"><span>Match Amical</span> <span className="text-orange-600 text-lg">{formData.matchDist} KM</span></div>
-                      <input type="range" min="5" max="100" step="5" value={formData.matchDist} onChange={e => setFormData({...formData, matchDist: parseInt(e.target.value)})} className="w-full h-3 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-600" />
+                      <div className="flex justify-between text-[11px] font-black mb-2 uppercase text-white"><span>Match Amical</span> <span className="text-orange-400 text-lg">{formData.matchDist} KM</span></div>
+                      <input type="range" min="5" max="100" step="5" value={formData.matchDist} onChange={e => setFormData({...formData, matchDist: parseInt(e.target.value)})} className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-orange-500" />
                    </div>
                    <div className="space-y-4">
-                      <div className="flex justify-between text-[11px] font-black mb-2 uppercase"><span>Plateau</span> <span className="text-blue-600 text-lg">{formData.plateauDist} KM</span></div>
-                      <input type="range" min="5" max="100" step="5" value={formData.plateauDist} onChange={e => setFormData({...formData, plateauDist: parseInt(e.target.value)})} className="w-full h-3 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                      <div className="flex justify-between text-[11px] font-black mb-2 uppercase text-white"><span>Plateau</span> <span className="text-sky-400 text-lg">{formData.plateauDist} KM</span></div>
+                      <input type="range" min="5" max="100" step="5" value={formData.plateauDist} onChange={e => setFormData({...formData, plateauDist: parseInt(e.target.value)})} className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer accent-sky-500" />
                    </div>
-                   <div className="grid grid-cols-2 gap-3 pt-6 border-t border-gray-100">
+                   <div className="grid grid-cols-2 gap-3 pt-6 border-t border-white/10">
                       {['departemental', 'regional', 'national'].map(r => (
-                        <button key={r} type="button" onClick={() => setFormData({...formData, tournamentReach: r as any})} className={`py-4 rounded-2xl text-[9px] font-black border-2 transition-all ${formData.tournamentReach === r ? 'bg-yellow-500 border-yellow-500 text-black shadow-lg scale-105' : 'bg-gray-50 border-transparent text-gray-400'}`}>{r.toUpperCase()}</button>
+                        <button key={r} type="button" onClick={() => setFormData({...formData, tournamentReach: r as any})} className={`py-4 rounded-2xl text-[9px] font-black border-2 transition-all ${formData.tournamentReach === r ? 'bg-amber-500 border-amber-500 text-black shadow-lg scale-105' : 'bg-white/5 border-transparent text-gray-400'}`}>{r.toUpperCase()}</button>
                       ))}
                    </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-[2.5rem] border-2 border-green-200 shadow-xl transition-transform hover:scale-105">
-                     <p className="text-[9px] font-black uppercase text-green-600 mb-2 flex items-center gap-2">⚽ Match Amical</p>
-                     <p className="text-3xl font-black text-green-600 italic leading-none">{teamInfo?.matchDistMax || 30} <span className="text-[10px] uppercase not-italic ml-1">KM</span></p>
+                  <div className="bg-gradient-to-br from-emerald-500/10 to-transparent p-6 rounded-[2.5rem] border-2 border-emerald-500/20 shadow-xl transition-transform hover:scale-105">
+                     <p className="text-[9px] font-black uppercase text-emerald-400 mb-2 flex items-center gap-2">⚽ Match Amical</p>
+                     <p className="text-3xl font-black text-emerald-400 italic leading-none">{teamInfo?.matchDistMax || 30} <span className="text-[10px] uppercase not-italic ml-1">KM</span></p>
                   </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-[2.5rem] border-2 border-blue-200 shadow-xl transition-transform hover:scale-105">
-                     <p className="text-[9px] font-black uppercase text-blue-600 mb-2 flex items-center gap-2">🎪 Plateau</p>
-                     <p className="text-3xl font-black text-blue-600 italic leading-none">{teamInfo?.plateauDistMax || 20} <span className="text-[10px] uppercase not-italic ml-1">KM</span></p>
+                  <div className="bg-gradient-to-br from-sky-500/10 to-transparent p-6 rounded-[2.5rem] border-2 border-sky-500/20 shadow-xl transition-transform hover:scale-105">
+                     <p className="text-[9px] font-black uppercase text-sky-400 mb-2 flex items-center gap-2">🎪 Plateau</p>
+                     <p className="text-3xl font-black text-sky-400 italic leading-none">{teamInfo?.plateauDistMax || 20} <span className="text-[10px] uppercase not-italic ml-1">KM</span></p>
                   </div>
-                  <div className="col-span-full bg-gradient-to-br from-orange-50 to-white p-6 rounded-[2.5rem] border-2 border-orange-200 shadow-xl flex justify-between items-center px-10">
+                  <div className="col-span-full bg-gradient-to-br from-orange-500/10 to-transparent p-6 rounded-[2.5rem] border-2 border-orange-500/20 shadow-xl flex justify-between items-center px-10">
                      <div className="space-y-1">
-                       <p className="text-[9px] font-black uppercase text-orange-600 mb-1 flex items-center gap-2">🏆 Tournoi</p>
-                       <p className="text-lg font-black text-orange-600 uppercase italic tracking-tighter">{teamInfo?.tournamentReach || 'DÉPARTEMENTAL'}</p>
+                       <p className="text-[9px] font-black uppercase text-orange-400 mb-1 flex items-center gap-2">🏆 Tournoi</p>
+                       <p className="text-lg font-black text-orange-400 uppercase italic tracking-tighter">{teamInfo?.tournamentReach || 'DÉPARTEMENTAL'}</p>
                      </div>
                      <Trophy size={40} className="text-orange-400 opacity-50" />
                   </div>
@@ -623,13 +627,29 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
         {/* PARRAINAGE */}
         <section className="space-y-4 pb-8">
-          <div className="flex items-center gap-3 px-2 border-b-2 border-gray-100 pb-2">
-            <Users size={16} className="text-orange-600" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-gray-900">
+          <div className="flex items-center gap-3 px-2 border-b-2 border-white/10 pb-2">
+            <Users size={16} className="text-orange-400" />
+            <h3 className="text-xs font-black uppercase tracking-widest text-white">
               Parrainage
             </h3>
           </div>
-          <ReferralQRCode isPro={true} />
+          <ReferralQRCode isPro={false} />
+        </section>
+
+        {/* SESSION */}
+        <section className="pb-8">
+          <button
+            onClick={handleLogout}
+            className="w-full bg-[#1D2027] rounded-[2rem] p-5 flex items-center gap-4 border-2 border-white/[0.06] shadow-xl active:scale-[0.98] transition-all"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center shrink-0">
+              <LogOut size={20} className="text-red-400" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-black uppercase italic text-red-400">Me déconnecter</p>
+              <p className="text-[9px] font-bold text-red-400/60 uppercase tracking-widest">Terminer la session</p>
+            </div>
+          </button>
         </section>
 
       </main>

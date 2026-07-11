@@ -81,6 +81,12 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
 
+  // 0. Restauration de la préférence "welcome déjà vu" (sinon l'écran de bienvenue
+  // réapparaît à chaque rechargement de page tant que le profil n'est pas complet).
+  useEffect(() => {
+    setHasSeenWelcomeState(localStorage.getItem('has_seen_welcome') === 'true');
+  }, []);
+
   // 1. GESTION DE SESSION & PERSISTANCE DU ROLE (FIX ANTI-AMNÉSIE)
   useEffect(() => {
     // Session initiale

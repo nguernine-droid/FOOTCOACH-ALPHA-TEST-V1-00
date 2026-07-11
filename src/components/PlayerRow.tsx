@@ -30,23 +30,23 @@ export function PlayerRow({ player, onClick, isSelectionMode, isSelected, onTogg
   return (
     <div
       onClick={() => isSelectionMode ? onToggleSelect(player.id) : onClick(player)}
-      className={`flex items-center gap-4 p-5 cursor-pointer transition-all border-b border-gray-50 last:border-b-0 group ${
-        isSelected ? 'bg-brand-orange/5' : 'hover:bg-gray-50'
+      className={`flex items-center gap-4 p-5 cursor-pointer transition-all border-b border-white/5 last:border-b-0 group ${
+        isSelected ? 'bg-brand-orange/5' : 'hover:bg-white/5'
       }`}
     >
       {isSelectionMode ? (
-         <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-brand-orange border-brand-orange shadow-lg' : 'border-gray-200'}`}>
+         <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-brand-orange border-brand-orange shadow-sm' : 'border-white/10'}`}>
            {isSelected && <CheckCircle size={14} className="text-white" />}
          </div>
       ) : (
-        <div className={`w-12 h-12 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border-2 shadow-sm ${getCardStyle(player.rating)}`}>
+        <div className={`w-12 h-12 rounded-2xl overflow-hidden bg-white/5 shrink-0 border-2 shadow-sm ${getCardStyle(player.rating)}`}>
           <img src={getAvatarUrl(player.name, 100)} alt={player.name} className="w-full h-full object-cover" />
         </div>
       )}
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <h4 className="font-black text-gray-900 truncate text-sm uppercase italic tracking-tight">{player.name}</h4>
+          <h4 className="font-black text-white truncate text-sm uppercase italic tracking-tight">{player.name}</h4>
           <span className={`text-[7px] font-black uppercase px-2 py-0.5 rounded-full border ${getStatusStyle(player.status)}`}>
             {player.status}
           </span>
@@ -57,11 +57,11 @@ export function PlayerRow({ player, onClick, isSelectionMode, isSelected, onTogg
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="bg-gray-900 text-white text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm border border-white/5">
+        <div className="bg-neon-orange/10 text-neon-orange text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm border border-neon-orange/20">
           {player.rating}
         </div>
         {!isSelectionMode && (
-          <ChevronRight size={18} className="text-gray-300 group-hover:text-brand-orange transition-colors" />
+          <ChevronRight size={18} className="text-gray-500 group-hover:text-brand-orange transition-colors" />
         )}
       </div>
     </div>

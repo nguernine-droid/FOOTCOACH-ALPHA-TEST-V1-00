@@ -177,7 +177,7 @@ export function MatchRequestCard({
                  </div>
               </div>
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-gray-50 border border-gray-100">
-                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${request.status === 'OPEN' ? 'bg-[#39FF14]' : 'bg-orange-500'}`} />
+                 <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${request.status === 'OPEN' ? 'bg-emerald-400' : 'bg-orange-500'}`} />
                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{request.status}</span>
               </div>
            </div>

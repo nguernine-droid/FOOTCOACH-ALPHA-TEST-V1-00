@@ -52,7 +52,7 @@ export function SosModal({ isOpen, eventTitle, isPro, onConfirm, onCancel }: Sos
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={`relative w-full max-w-md rounded-t-[2.5rem] pb-10 overflow-hidden shadow-2xl outline-none
-              ${isPro ? 'bg-white' : 'bg-[#0A0A0A] border-t border-white/10'}`}
+              ${isPro ? 'bg-white' : 'bg-[#1D2027] border-t border-white/10'}`}
           >
             {/* Header rouge SOS */}
             <div className="bg-red-600 px-6 py-5">

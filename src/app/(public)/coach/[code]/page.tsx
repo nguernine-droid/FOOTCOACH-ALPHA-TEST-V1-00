@@ -131,13 +131,13 @@ function CoachPublicContent() {
   const statusInfo = statusConfig[(coach?.coach_status as keyof typeof statusConfig) || 'actif'];
 
   if (isLoading) return (
-    <main className="min-h-screen bg-[#050505] flex items-center justify-center">
+    <main className="min-h-screen bg-[#15171C] flex items-center justify-center">
       <Loader2 size={40} className="animate-spin text-neon-cyan" />
     </main>
   );
 
   if (!coach) return (
-    <main className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4 text-white p-6 text-center">
+    <main className="min-h-screen bg-[#15171C] flex flex-col items-center justify-center gap-4 text-white p-6 text-center">
       <Shield size={48} className="text-gray-600" />
       <p className="font-black uppercase text-gray-500">Profil introuvable</p>
       <button onClick={() => router.push('/')} className="text-neon-cyan font-black uppercase text-sm">← Retour</button>
@@ -150,10 +150,10 @@ function CoachPublicContent() {
   const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Web';
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white pb-20">
+    <main className="min-h-screen bg-[#15171C] text-white pb-20">
 
       {/* Header dégradé */}
-      <div className="relative h-48 bg-gradient-to-br from-[#0A0A0A] via-orange-950/30 to-[#050505] overflow-hidden">
+      <div className="relative h-48 bg-gradient-to-br from-[#1D2027] via-orange-950/30 to-[#15171C] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(249,115,22,0.15),transparent_70%)]" />
         <div className="absolute top-6 left-6">
           <div className="px-3 py-1 rounded-lg border border-orange-500/30 text-orange-400 text-[8px] font-black uppercase tracking-widest">
@@ -165,7 +165,7 @@ function CoachPublicContent() {
       <div className="px-5 -mt-20 space-y-5 max-w-md mx-auto">
 
         {/* FIFA CARD */}
-        <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-[2.5rem] border-2 border-orange-500/30 p-6 shadow-[0_0_40px_rgba(249,115,22,0.15)] space-y-5">
+        <div className="bg-gradient-to-br from-[#1D2027] to-[#15171C] rounded-[2.5rem] border-2 border-orange-500/30 p-6 shadow-xl space-y-5">
 
           {/* Avatar + Nom */}
           <div className="flex items-center gap-4">
@@ -177,7 +177,7 @@ function CoachPublicContent() {
                 }
               </div>
               {/* Statut */}
-              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-[#050505] ${statusInfo.color}`} />
+              <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-[#15171C] ${statusInfo.color}`} />
             </div>
             <div>
               <h1 className="text-2xl font-black uppercase italic tracking-tight text-white">{coachName}</h1>
@@ -201,7 +201,7 @@ function CoachPublicContent() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { value: coach.match_count, label: 'Matchs', icon: <Zap size={14} className="text-[#39FF14]" /> },
+              { value: coach.match_count, label: 'Matchs', icon: <Zap size={14} className="text-emerald-400" /> },
               { value: coach.radar_count, label: 'Annonces', icon: <Star size={14} className="text-orange-400" /> },
               { value: isConnected ? '✓' : '—', label: 'Réseau', icon: <CheckCircle2 size={14} className={isConnected ? 'text-green-400' : 'text-gray-600'} /> },
             ].map((s, i) => (
@@ -257,10 +257,10 @@ function CoachPublicContent() {
         {currentUser && currentUser.id !== coach.id && (
           <div className="space-y-3">
             {showSuccess ? (
-              <div className="rounded-2xl bg-[#39FF14]/10 border border-[#39FF14]/30 p-5 flex items-center gap-3">
-                <CheckCircle2 size={24} className="text-[#39FF14]" />
+              <div className="rounded-2xl bg-emerald-400/10 border border-emerald-400/30 p-5 flex items-center gap-3">
+                <CheckCircle2 size={24} className="text-emerald-400" />
                 <div>
-                  <p className="text-[11px] font-black uppercase text-[#39FF14]">
+                  <p className="text-[11px] font-black uppercase text-emerald-400">
                     {connectionType === 'connection' ? '🎴 Cartes échangées !' : '👥 Vous suivez ce coach'}
                   </p>
                   <p className="text-[9px] font-bold text-gray-500 uppercase">
@@ -303,7 +303,7 @@ function CoachPublicContent() {
         {!currentUser && (
           <button
             onClick={() => router.push(`/register?ref=${coach.referral_code}`)}
-            className="w-full py-5 rounded-2xl bg-[#39FF14] text-black font-black uppercase italic text-sm flex items-center justify-center gap-3 active:scale-95 transition-all shadow-[0_0_20px_#39FF1440]"
+            className="w-full py-5 rounded-2xl bg-emerald-400 text-black font-black uppercase italic text-sm flex items-center justify-center gap-3 active:scale-95 transition-all shadow-lg shadow-emerald-900/20"
           >
             🚀 Rejoindre FootCoach
           </button>
@@ -317,7 +317,7 @@ function CoachPublicContent() {
 export default function CoachPublicPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <main className="min-h-screen bg-[#15171C] flex items-center justify-center">
         <Loader2 size={40} className="animate-spin text-neon-cyan" />
       </main>
     }>

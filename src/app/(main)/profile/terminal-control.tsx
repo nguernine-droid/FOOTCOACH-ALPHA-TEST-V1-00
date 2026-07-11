@@ -41,7 +41,7 @@ export function TerminalControl({ hideThemeToggle = false } : { hideThemeToggle?
     iconBg: 'bg-white/5',
     textMain: 'text-white',
     textSub: 'text-gray-500',
-    selectBg: 'bg-black/40 border-white/10 text-white',
+    selectBg: 'bg-[#15171C]/60 border-white/10 text-white',
     toggleOn: 'bg-neon-cyan',
     toggleOff: 'bg-white/10',
     deleteText: 'text-red-500/60 hover:text-red-500',

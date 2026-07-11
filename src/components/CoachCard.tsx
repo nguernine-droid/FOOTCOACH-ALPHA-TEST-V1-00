@@ -37,9 +37,9 @@ export function CoachCard({
   const [isQrZoomed, setIsQrZoomed] = useState(false);
 
   const statusThemes = {
-    'inactif': { border: 'border-blue-500', glow: 'shadow-[0_0_50px_rgba(59,130,246,0.4)]', accent: 'text-blue-400', indicator: 'bg-blue-500' },
-    'actif': { border: 'border-[#39FF14]', glow: 'shadow-[0_0_50px_rgba(57,255,20,0.3)]', accent: 'text-[#39FF14]', indicator: 'bg-[#39FF14]' },
-    'toujours_pret': { border: 'border-red-600', glow: 'shadow-[0_0_50px_rgba(220,38,38,0.4)]', accent: 'text-red-500', indicator: 'bg-red-600' }
+    'inactif': { border: 'border-blue-500', glow: 'shadow-xl shadow-blue-900/20', accent: 'text-blue-400', indicator: 'bg-blue-500' },
+    'actif': { border: 'border-emerald-400', glow: 'shadow-xl shadow-emerald-900/20', accent: 'text-emerald-400', indicator: 'bg-emerald-400' },
+    'toujours_pret': { border: 'border-red-600', glow: 'shadow-xl shadow-red-900/20', accent: 'text-red-500', indicator: 'bg-red-600' }
   };
 
   const theme = statusThemes[status] || statusThemes['actif'];
@@ -49,7 +49,7 @@ export function CoachCard({
 
   return (
     <>
-      <div className={`w-full max-w-[345px] h-[660px] bg-black flex flex-col p-1 border-[6px] ${theme.border} ${theme.glow} rounded-[3.5rem] overflow-hidden relative shadow-2xl`}>
+      <div className={`w-full max-w-[345px] h-[660px] bg-[#15171C] flex flex-col p-1 border-[6px] ${theme.border} ${theme.glow} rounded-[3.5rem] overflow-hidden relative shadow-2xl`}>
         
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-15 pointer-events-none" />
 
@@ -77,7 +77,7 @@ export function CoachCard({
 
           {/* 2. IDENTITÉ CENTRALE */}
           <div className="w-full text-center border-y border-white/5 py-3">
-             <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">{name}</h1>
+             <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white">{name}</h1>
           </div>
 
           {/* 3. PHOTO XXL */}
@@ -139,7 +139,7 @@ export function CoachCard({
 
              <motion.div
                initial={{ scale: 0.5, y: 100 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.5, y: 100 }}
-               className="bg-white p-8 rounded-[3rem] shadow-[0_0_60px_rgba(255,255,255,0.2)]"
+               className="bg-white p-8 rounded-[3rem] shadow-2xl"
              >
                 <QRCodeSVG value={qrValue} size={260} fgColor="#000000" />
              </motion.div>
@@ -147,7 +147,7 @@ export function CoachCard({
              <div className="mt-12 text-center space-y-4 max-w-xs">
                 <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Sceau de Validation</h3>
                 <p className="text-sm font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
-                  Présentez ce code pour <span className="text-orange-500">Valider un match</span>, <span className="text-sky-400">partager l'app</span> ou <span className="text-[#39FF14]">parrainer un coach</span>.
+                  Présentez ce code pour <span className="text-orange-500">Valider un match</span>, <span className="text-sky-400">partager l'app</span> ou <span className="text-emerald-400">parrainer un coach</span>.
                 </p>
              </div>
 
@@ -155,7 +155,7 @@ export function CoachCard({
                 <div className="flex gap-2">
                    <div className="w-2 h-2 rounded-full bg-orange-600 animate-bounce" />
                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:200ms]" />
-                   <div className="w-2 h-2 rounded-full bg-[#39FF14] animate-bounce [animation-delay:400ms]" />
+                   <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:400ms]" />
                 </div>
              </div>
           </motion.div>

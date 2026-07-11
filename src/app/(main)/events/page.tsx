@@ -83,7 +83,7 @@ export default function CalendarPage() {
     const type = ev.type?.toLowerCase() || '';
     const isOfficial = ev.tournament_config?.is_official === true;
     if (isOfficial) return { color: 'text-orange-500', bg: 'bg-orange-500', icon: <Trophy size={18} fill="currentColor" /> };
-    if (type.includes('match')) return { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', icon: <Zap size={18} fill="currentColor" /> };
+    if (type.includes('match')) return { color: 'text-neon-green', bg: 'bg-neon-green', icon: <Zap size={18} fill="currentColor" /> };
     if (type.includes('plateau')) return { label: 'Plateau', color: 'text-purple-500', bg: 'bg-purple-500', icon: <Users size={18} /> };
     if (type.includes('tournoi')) return { label: 'Tournoi', color: 'text-yellow-500', bg: 'bg-yellow-500', icon: <Star size={18} fill="currentColor" /> };
     return { color: 'text-sky-400', bg: 'bg-sky-500', icon: <Zap size={18} /> };
@@ -111,8 +111,8 @@ export default function CalendarPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white pb-32 max-w-md mx-auto shadow-2xl font-sans">
-      <header className="bg-black/80 backdrop-blur-md py-5 px-6 sticky top-0 z-30 border-b border-white/10 flex items-center justify-between">
+    <main className="min-h-screen bg-[#15171C] text-white pb-32 max-w-md mx-auto shadow-2xl font-sans">
+      <header className="bg-[#15171C]/80 backdrop-blur-md py-5 px-6 sticky top-0 z-30 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="active:scale-90 transition-transform"><ChevronLeft size={24} strokeWidth={3} /></button>
           <h1 className="text-xl font-black italic uppercase tracking-tighter">
@@ -130,7 +130,7 @@ export default function CalendarPage() {
       <div className="p-5 space-y-6">
         <div className="flex items-center gap-3">
           <Link href="/events/new" className={`flex-1 font-black py-5 rounded-2xl flex items-center justify-center gap-3 active:scale-95 transition-all uppercase italic text-sm
-            ${isPro ? 'bg-orange-600 text-white shadow-orange-200' : 'bg-neon-cyan text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]'}`}>
+            ${isPro ? 'bg-orange-600 text-white shadow-orange-200' : 'bg-neon-cyan text-black shadow-lg shadow-neon-cyan/20'}`}>
             <Plus size={20} strokeWidth={4} />
             {isPro ? 'Planifier un événement' : 'Planifier Mission'}
           </Link>
@@ -154,7 +154,7 @@ export default function CalendarPage() {
               const d = i + 1;
               const hasEvt = monthEvents.some(e => new Date(e.date + 'T00:00:00').getDate() === d);
               return (
-                <button key={i} onClick={() => setSelectedDay(d)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black relative transition-all ${selectedDay === d ? 'bg-neon-cyan text-black shadow-[0_0_15px_#00F0FF]' : 'text-gray-500'}`}>
+                <button key={i} onClick={() => setSelectedDay(d)} className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black relative transition-all ${selectedDay === d ? 'bg-neon-cyan text-black shadow-md' : 'text-gray-500'}`}>
                   {d}
                   {hasEvt && selectedDay !== d && <div className="absolute bottom-1 w-1 h-1 rounded-full bg-neon-cyan" />}
                 </button>
@@ -252,7 +252,7 @@ function SwipeableEventCard({ event, style, onDelete, onEdit, onView }: any) {
         style={{ x }}
         onDragEnd={handleDragEnd}
         onClick={onView}
-        className="relative bg-[#0A0A0A] border-2 border-white/5 rounded-2xl p-5 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer z-10"
+        className="relative bg-[#1D2027] border-2 border-white/5 rounded-2xl p-5 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer z-10"
       >
         <div className="flex items-center gap-4">
            <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-white/5 ${style.color} shadow-inner`}>

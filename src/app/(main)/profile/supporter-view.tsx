@@ -87,7 +87,7 @@ export default function SupporterView() {
                 { label: 'SAI', value: activeKid.saison },
                 { label: 'UNIT', value: activeKid.id }
               ]}
-              color="from-[#00F0FF] via-[#004455] to-black"
+              color="from-neon-cyan via-teal-800 to-[#15171C]"
               textColor="text-white"
             />
           ) : (

@@ -136,7 +136,7 @@ export default function MessagesPage() {
 
   useEffect(() => { fetchCommsData(); }, [fetchCommsData]);
 
-  const styles = isPro ? { mainBg: 'bg-gray-50', headerBg: 'bg-white border-b border-gray-200', tabActive: 'bg-orange-600 text-white shadow-lg', tabInactive: 'bg-gray-100 text-gray-500', cardBg: 'bg-white border-gray-100', textMain: 'text-gray-900', textSub: 'text-gray-500', accent: 'text-orange-600' } : { mainBg: 'bg-black', headerBg: 'bg-black/80 border-b border-white/10', tabActive: 'bg-neon-cyan text-black shadow-lg shadow-neon-cyan/20', tabInactive: 'bg-white/5 text-gray-500', cardBg: 'bg-white/5 border-white/5', textMain: 'text-white', textSub: 'text-gray-400', accent: 'text-neon-cyan' };
+  const styles = isPro ? { mainBg: 'bg-gray-50', headerBg: 'bg-white border-b border-gray-200', tabActive: 'bg-orange-600 text-white shadow-lg', tabInactive: 'bg-gray-100 text-gray-500', cardBg: 'bg-white border-gray-100', textMain: 'text-gray-900', textSub: 'text-gray-500', accent: 'text-orange-600' } : { mainBg: 'bg-[#15171C]', headerBg: 'bg-[#15171C]/80 border-b border-white/10', tabActive: 'bg-neon-cyan text-black shadow-lg shadow-neon-cyan/20', tabInactive: 'bg-white/5 text-gray-500', cardBg: 'bg-white/5 border-white/5', textMain: 'text-white', textSub: 'text-gray-400', accent: 'text-neon-cyan' };
 
   if (isContextLoading) return null;
 
@@ -150,7 +150,7 @@ export default function MessagesPage() {
           <div className="flex items-center gap-3">
             <div className={`${isPro ? 'bg-gray-100 text-gray-400' : 'bg-white/5 text-gray-600'} p-2.5 rounded-xl`}><Search size={18} /></div>
             {activeTab === 'announcements' && (
-              <Link href="/radar/new" className={`${isPro ? 'bg-orange-600 text-white' : 'bg-[#39FF14] text-black'} p-2.5 rounded-xl shadow-lg active:scale-90 transition-all`}>
+              <Link href="/radar/new" className={`${isPro ? 'bg-orange-600 text-white' : 'bg-neon-green text-black'} p-2.5 rounded-xl shadow-lg active:scale-90 transition-all`}>
                 <Plus size={20} strokeWidth={3} />
               </Link>
             )}
@@ -262,7 +262,7 @@ export default function MessagesPage() {
       {selectedAnnouncement && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300">
            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedAnnouncement(null)} />
-           <div className={`relative w-full max-w-sm ${isPro ? 'bg-white' : 'bg-[#0A0A0A] border border-white/10'} rounded-[2.5rem] p-8 shadow-2xl`}>
+           <div className={`relative w-full max-w-sm ${isPro ? 'bg-white' : 'bg-[#1D2027] border border-white/10'} rounded-[2.5rem] p-8 shadow-2xl`}>
               <button onClick={() => setSelectedAnnouncement(null)} className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 text-gray-500"><X size={20} /></button>
               <div className="text-left space-y-6 mt-4">
                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isPro ? 'bg-orange-100 text-orange-600' : 'bg-neon-cyan/20 text-neon-cyan'} mb-4`}>{selectedAnnouncement.type === 'match-request' ? <Trophy size={32} /> : <Activity size={32} />}</div>

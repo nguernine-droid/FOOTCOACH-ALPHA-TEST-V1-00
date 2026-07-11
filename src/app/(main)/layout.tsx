@@ -11,12 +11,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const isProfilePage = pathname === '/profile';
 
   return (
-    <div className="min-h-screen bg-black text-white max-w-md mx-auto relative flex flex-col border-x border-white/5 shadow-2xl">
-      {/*
-          COCKPIT_MAIN_LAYOUT
-          Centralise le cerveau (Context), l'en-tête (TopBar)
-          et la navigation (BottomNav).
-      */}
+    <div className="min-h-screen bg-[#15171C] text-[#F5F3EF] max-w-md mx-auto relative flex flex-col border-x border-white/[0.06] shadow-2xl">
       {!isProfilePage && <TopBar />}
 
       <main className={`flex-1 overflow-y-auto no-scrollbar ${isProfilePage ? 'pb-20' : 'pb-32'}`}>

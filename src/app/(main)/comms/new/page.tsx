@@ -76,19 +76,19 @@ export default function NewParentAnnouncementPage() {
     btnPrimary: 'bg-orange-600 text-white',
     inputBg: 'bg-gray-50'
   } : {
-    mainBg: 'bg-black',
+    mainBg: 'bg-[#15171C]',
     cardBg: 'bg-white/5 border-white/10 shadow-2xl',
     textMain: 'text-white',
     textSub: 'text-gray-500',
-    accent: 'text-[#39FF14]',
-    btnPrimary: 'bg-[#39FF14] text-black',
+    accent: 'text-neon-green',
+    btnPrimary: 'bg-neon-green text-black',
     inputBg: 'bg-white/5'
   };
 
   return (
     <main className={`min-h-screen max-w-md mx-auto shadow-2xl pb-32 font-sans relative transition-colors duration-500 ${styles.mainBg}`}>
       {/* Header */}
-      <header className={`backdrop-blur-md py-5 px-6 sticky top-0 z-40 border-b flex items-center gap-4 shadow-sm ${isPro ? 'bg-white/95 border-gray-100' : 'bg-black/80 border-white/5'}`}>
+      <header className={`backdrop-blur-md py-5 px-6 sticky top-0 z-40 border-b flex items-center gap-4 shadow-sm ${isPro ? 'bg-white/95 border-gray-100' : 'bg-[#15171C]/80 border-white/5'}`}>
         <button onClick={() => router.back()} className={`${styles.textMain} active:scale-90 transition-transform`}>
           <ChevronLeft size={28} strokeWidth={3} />
         </button>
@@ -102,7 +102,7 @@ export default function NewParentAnnouncementPage() {
             <Megaphone size={120} strokeWidth={1} />
           </div>
           <div className="relative z-10 space-y-4">
-             <div className={`w-12 h-12 ${isPro ? 'bg-orange-600' : 'bg-[#39FF14]'} rounded-2xl flex items-center justify-center shadow-lg`}>
+             <div className={`w-12 h-12 ${isPro ? 'bg-orange-600' : 'bg-neon-green'} rounded-2xl flex items-center justify-center shadow-lg`}>
                 <Megaphone size={24} className={isPro ? 'text-white' : 'text-black'} />
              </div>
              <div>
@@ -121,11 +121,11 @@ export default function NewParentAnnouncementPage() {
                 key={t.id}
                 onClick={() => setType(t.id as AnnouncementType)}
                 className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all border-2 ${
-                  type === t.id ? (isPro ? 'border-orange-600 bg-orange-50 shadow-lg' : 'border-[#39FF14] bg-[#39FF14]/5') : (isPro ? 'border-gray-50 bg-white' : 'border-white/5 bg-white/5')
+                  type === t.id ? (isPro ? 'border-orange-600 bg-orange-50 shadow-lg' : 'border-neon-green bg-neon-green/5') : (isPro ? 'border-gray-50 bg-white' : 'border-white/5 bg-white/5')
                 }`}
               >
-                <div className={`${type === t.id ? (isPro ? 'text-orange-600' : 'text-[#39FF14]') : 'text-gray-400'}`}>{t.icon}</div>
-                <span className={`text-[8px] font-black uppercase tracking-tighter ${type === t.id ? (isPro ? 'text-orange-600' : 'text-[#39FF14]') : 'text-gray-500'}`}>{t.label}</span>
+                <div className={`${type === t.id ? (isPro ? 'text-orange-600' : 'text-neon-green') : 'text-gray-400'}`}>{t.icon}</div>
+                <span className={`text-[8px] font-black uppercase tracking-tighter ${type === t.id ? (isPro ? 'text-orange-600' : 'text-neon-green') : 'text-gray-500'}`}>{t.label}</span>
               </button>
             ))}
           </div>
@@ -156,8 +156,8 @@ export default function NewParentAnnouncementPage() {
 
           <button className={`${styles.cardBg} rounded-2xl p-4 flex items-center justify-between w-full border active:scale-95 transition-transform group`}>
              <div className="flex items-center gap-3">
-                <div className={`${isPro ? 'bg-gray-100 group-hover:bg-orange-50' : 'bg-white/5 group-hover:bg-[#39FF14]/10'} p-2 rounded-xl transition-colors`}>
-                   <Camera size={18} className={`${isPro ? 'text-gray-400 group-hover:text-orange-600' : 'text-gray-600 group-hover:text-[#39FF14]'}`} />
+                <div className={`${isPro ? 'bg-gray-100 group-hover:bg-orange-50' : 'bg-white/5 group-hover:bg-neon-green/10'} p-2 rounded-xl transition-colors`}>
+                   <Camera size={18} className={`${isPro ? 'text-gray-400 group-hover:text-orange-600' : 'text-gray-600 group-hover:text-neon-green'}`} />
                 </div>
                 <span className={`text-[10px] font-black uppercase tracking-widest ${styles.textSub}`}>Ajouter une photo</span>
              </div>

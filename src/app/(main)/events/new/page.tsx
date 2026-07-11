@@ -13,11 +13,11 @@ interface Club { id: string; name: string; }
 
 // --- MOTEUR DE COHÉRENCE COULEURS ---
 const MISSION_THEME: Record<string, { border: string; glow: string; text: string; primary: string; bgSoft: string }> = {
-  'training': { border: 'border-sky-500', glow: 'shadow-[0_0_15px_#0ea5e944]', text: 'text-sky-400', primary: 'bg-sky-500', bgSoft: 'bg-sky-950/20' },
-  'amical': { border: 'border-[#39FF14]', glow: 'shadow-[0_0_25px_#39FF1466]', text: 'text-[#39FF14]', primary: 'bg-[#39FF14]', bgSoft: 'bg-[#39FF14]/5' },
-  'officiel': { border: 'border-red-600', glow: 'shadow-[0_0_25px_#dc262666]', text: 'text-red-600', primary: 'bg-red-600', bgSoft: 'bg-red-950/20' },
-  'plateau': { border: 'border-blue-500', glow: 'shadow-[0_0_15px_#3b82f644]', text: 'text-blue-500', primary: 'bg-blue-500', bgSoft: 'bg-blue-950/20' },
-  'tournament': { border: 'border-yellow-500', glow: 'shadow-[0_0_15px_#eab30844]', text: 'text-yellow-500', primary: 'bg-yellow-500', bgSoft: 'bg-yellow-950/10' }
+  'training': { border: 'border-sky-500', glow: 'shadow-lg shadow-sky-900/20', text: 'text-sky-400', primary: 'bg-sky-500', bgSoft: 'bg-sky-950/20' },
+  'amical': { border: 'border-neon-green', glow: 'shadow-lg shadow-emerald-900/20', text: 'text-neon-green', primary: 'bg-neon-green', bgSoft: 'bg-neon-green/5' },
+  'officiel': { border: 'border-red-600', glow: 'shadow-lg shadow-red-900/20', text: 'text-red-600', primary: 'bg-red-600', bgSoft: 'bg-red-950/20' },
+  'plateau': { border: 'border-blue-500', glow: 'shadow-lg shadow-blue-900/20', text: 'text-blue-500', primary: 'bg-blue-500', bgSoft: 'bg-blue-950/20' },
+  'tournament': { border: 'border-yellow-500', glow: 'shadow-lg shadow-amber-900/10', text: 'text-yellow-500', primary: 'bg-yellow-500', bgSoft: 'bg-yellow-950/10' }
 };
 
 function NewEventContent() {
@@ -129,7 +129,7 @@ function NewEventContent() {
   };
 
   const styles = {
-    card: `bg-[#0A0A15] border-2 ${m.border} ${m.glow} rounded-[2.5rem] p-6 space-y-6 shadow-2xl transition-all duration-500`,
+    card: `bg-[#1D2027] border-2 ${m.border} ${m.glow} rounded-[2.5rem] p-6 space-y-6 transition-all duration-500`,
     input: `w-full bg-white/5 rounded-2xl p-5 text-sm font-black outline-none border-2 border-transparent focus:border-white/20 transition-all text-white uppercase`,
     label: `text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-2 ${m.text}`
   };
@@ -176,7 +176,7 @@ function NewEventContent() {
                   <input placeholder="NOM DU CLUB..." value={selectedOpponent ? selectedOpponent.name : opponentSearch} onChange={(e) => { setOpponentSearch(e.target.value.toUpperCase()); setIsOpponentMenuOpen(true); if (selectedOpponent) setSelectedOpponent(null); }} className={`${styles.input} pl-12 ${selectedOpponent ? 'border-white/40' : ''}`} />
                 </div>
                 {isOpponentMenuOpen && opponentSearch.trim() && (
-                  <div className="absolute z-[200] w-full mt-2 bg-[#111120] border-2 border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="absolute z-[200] w-full mt-2 bg-[#1D2027] border-2 border-white/10 rounded-2xl overflow-hidden shadow-xl">
                     {filteredClubs.map(club => (<button key={club.id} type="button" onClick={() => { setSelectedOpponent(club); setOpponentSearch(''); setIsOpponentMenuOpen(false); }} className="w-full p-5 text-left border-b border-white/5 hover:bg-white/5 transition-colors text-xs font-black uppercase text-white">{club.name}</button>))}
                   </div>
                 )}
@@ -230,7 +230,7 @@ function NewEventContent() {
 
 export default function NewEventPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-neon-cyan font-black uppercase tracking-widest italic">NEXUS_LINK_START...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#15171C] flex items-center justify-center text-neon-cyan font-black uppercase tracking-widest italic">NEXUS_LINK_START...</div>}>
       <NewEventContent />
     </Suspense>
   );

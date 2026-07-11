@@ -26,9 +26,9 @@ export function ModalPartage({ isOpen, onClose, title, subtitle, shareLink, acce
 
   // Gestion des couleurs d'accent
   const accentStyles = {
-    cyan: { text: 'text-neon-cyan', border: 'border-neon-cyan/30', bg: 'bg-neon-cyan', shadow: 'shadow-[0_0_20px_#00F0FF]' },
-    orange: { text: 'text-neon-orange', border: 'border-neon-orange/30', bg: 'bg-neon-orange', shadow: 'shadow-[0_0_20px_#FF6B00]' },
-    magenta: { text: 'text-neon-magenta', border: 'border-neon-magenta/30', bg: 'bg-neon-magenta', shadow: 'shadow-[0_0_20px_#FF00FF]' },
+    cyan: { text: 'text-neon-cyan', border: 'border-neon-cyan/30', bg: 'bg-neon-cyan', shadow: 'shadow-lg shadow-neon-cyan/20' },
+    orange: { text: 'text-neon-orange', border: 'border-neon-orange/30', bg: 'bg-neon-orange', shadow: 'shadow-lg shadow-orange-900/20' },
+    magenta: { text: 'text-neon-magenta', border: 'border-neon-magenta/30', bg: 'bg-neon-magenta', shadow: 'shadow-lg shadow-rose-900/20' },
     amber: { text: 'text-amber-600', border: 'border-amber-300', bg: 'bg-amber-500', shadow: 'shadow-md' }
   };
 
@@ -71,7 +71,7 @@ export function ModalPartage({ isOpen, onClose, title, subtitle, shareLink, acce
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", damping: 20, stiffness: 300 }}
-        className={`relative w-full max-w-sm outline-none ${isPro ? 'bg-white rounded-[2rem] shadow-xl' : 'bg-[#0A0A0A] rounded-[3rem] border-2 shadow-2xl'} ${currentAccent.border} p-8`}
+        className={`relative w-full max-w-sm outline-none ${isPro ? 'bg-white rounded-[2rem] shadow-xl' : 'bg-[#1D2027] rounded-[3rem] border-2 shadow-2xl'} ${currentAccent.border} p-8`}
       >
         {/* Header */}
         <div className="flex justify-between items-center mb-6 text-left">
@@ -98,7 +98,7 @@ export function ModalPartage({ isOpen, onClose, title, subtitle, shareLink, acce
           </div>
 
           {/* Lien copiable */}
-          <div className={`w-full ${isPro ? 'bg-gray-100 border-gray-200' : 'bg-black/40 border-white/10'} border rounded-xl p-3 flex items-center justify-between`}>
+          <div className={`w-full ${isPro ? 'bg-gray-100 border-gray-200' : 'bg-white/5 border-white/10'} border rounded-xl p-3 flex items-center justify-between`}>
             <p className={`text-xs font-mono truncate ${isPro ? 'text-gray-600' : 'text-white'}`}>{shareLink}</p>
             <button onClick={handleCopy} aria-label={copied ? 'Lien copié' : 'Copier le lien'} className={`${currentAccent.text} ml-2 p-2 hover:opacity-80 transition-opacity`}>
               {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}

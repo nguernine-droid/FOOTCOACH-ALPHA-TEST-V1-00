@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { useTeam } from '@/lib/context/TeamContext';
 import { FifaCard } from '@/components/FifaCard';
-import { ScanlinesOverlay } from '@/components/ui/cyber/ScanlinesOverlay';
 import { TerminalControl } from './terminal-control';
 import { ModalPartage } from '@/components/ui/ModalPartage'; // 1. Import de la Modale
 import { motion } from 'framer-motion';
@@ -19,26 +18,26 @@ export function PlayerView() {
   // GESTION DES THÊMES DYNAMIQUES
   // ==========================================
   const styles = isNexus ? {
-    overlay: <ScanlinesOverlay />,
+    overlay: null,
     mainBg: '',
     rgpdBg: 'bg-neon-cyan/5 border-neon-cyan/20 text-neon-cyan',
-    cardGradient: "from-[#00F0FF] via-[#007799] to-black",
-    cardWrapper: "rounded-[2rem] p-1 bg-[#00F0FF] animate-pulse shadow-[0_0_30px_rgba(0,240,255,0.3)]",
+    cardGradient: "from-neon-cyan via-teal-700 to-[#15171C]",
+    cardWrapper: "rounded-[2rem] p-1 bg-neon-cyan animate-soft-pulse shadow-lg",
     cardInner: "rounded-[1.85rem] overflow-hidden",
     sectionBorder: "border-neon-cyan/20",
     accent: "text-neon-cyan",
-    engineBg: "bg-[#050510] border-neon-cyan/20",
+    engineBg: "bg-[#1D2027] border-neon-cyan/20",
     engineProgressBg: "bg-white/10 border-white/5",
-    engineBar: "bg-neon-cyan shadow-[0_0_15px_#00F0FF]",
+    engineBar: "bg-neon-cyan shadow-sm",
     flashColor: "bg-neon-cyan/30",
     vitalityColor: 'text-neon-orange bg-neon-orange/10',
     logicColor: 'text-neon-cyan bg-neon-cyan/10',
     spiritColor: 'text-neon-magenta bg-neon-magenta/10',
-    cvBg: 'bg-[#050510] border-neon-cyan/20',
+    cvBg: 'bg-[#1D2027] border-neon-cyan/20',
     cvText: 'text-neon-cyan',
     missionBg: 'bg-gradient-to-r from-neon-cyan/10 to-transparent border border-neon-cyan/30',
     missionIcon: 'bg-neon-cyan/20 text-neon-cyan',
-    shareBtn: 'bg-neon-cyan text-black shadow-[0_0_20px_#00F0FF] hover:bg-cyan-300',
+    shareBtn: 'bg-neon-cyan text-black shadow-md hover:bg-cyan-300',
     lockedBg: 'bg-red-500/10 border-red-500/30',
     lockedText: 'text-red-400',
   } : {
@@ -195,7 +194,7 @@ export function PlayerView() {
                  className={`w-full py-4 rounded-xl border-2 font-black uppercase italic tracking-widest transition-colors flex items-center justify-center gap-2 relative overflow-hidden
                    ${syncStatus === 'idle' && impulses > 0 ? 'bg-neon-cyan/10 border-neon-cyan text-neon-cyan hover:bg-neon-cyan/20' : ''}
                    ${syncStatus === 'syncing' ? 'bg-neon-cyan/30 border-neon-cyan text-white' : ''}
-                   ${syncStatus === 'success' ? 'bg-[#39FF14]/20 border-[#39FF14] text-[#39FF14]' : ''}
+                   ${syncStatus === 'success' ? 'bg-emerald-400/20 border-emerald-400 text-emerald-400' : ''}
                    ${impulses === 0 && syncStatus === 'idle' ? 'bg-white/5 border-white/10 text-gray-600 cursor-not-allowed' : ''}
                  `}
                >
@@ -264,12 +263,12 @@ export function PlayerView() {
               { role: 'Supporter', status: 'online', name: 'Mamy' },
             ].map((member, i) => (
               <div key={i} className="group relative">
-                <div className={`w-12 h-12 rounded-full border-2 ${isNexus ? 'bg-black' : 'bg-white'} flex items-center justify-center text-[10px] font-black transition-all relative z-10
-                  ${member.status === 'online' ? (isNexus ? 'border-[#39FF14] shadow-[0_0_10px_#39FF14]' : 'border-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]') : (isNexus ? 'border-red-500 shadow-[0_0_10px_#FF000033]' : 'border-gray-300')}`}
+                <div className={`w-12 h-12 rounded-full border-2 ${isNexus ? 'bg-[#1D2027]' : 'bg-white'} flex items-center justify-center text-[10px] font-black transition-all relative z-10
+                  ${member.status === 'online' ? (isNexus ? 'border-emerald-400 shadow-sm' : 'border-green-500 shadow-sm') : (isNexus ? 'border-red-500/60' : 'border-gray-300')}`}
                 >
                   {member.name.substring(0, 1)}
                 </div>
-                <div className={`absolute bottom-[-20px] left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity ${isNexus ? 'bg-black border border-white/10' : 'bg-white border border-gray-200 shadow-lg'} px-2 py-0.5 rounded text-[7px] font-black uppercase whitespace-nowrap z-20`}>
+                <div className={`absolute bottom-[-20px] left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity ${isNexus ? 'bg-[#1D2027] border border-white/10' : 'bg-white border border-gray-200 shadow-lg'} px-2 py-0.5 rounded text-[7px] font-black uppercase whitespace-nowrap z-20`}>
                   {member.name} ({member.role})
                 </div>
               </div>

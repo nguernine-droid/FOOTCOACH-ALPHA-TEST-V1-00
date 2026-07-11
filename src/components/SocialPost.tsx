@@ -47,7 +47,7 @@ export function SocialPost({ author, role, time, content, likes, comments, image
 
         {/* Attached Score Card */}
         {score && (
-          <div className="bg-black/60 rounded-3xl p-5 border border-white/5 space-y-4 shadow-inner">
+          <div className="bg-[#15171C]/60 rounded-3xl p-5 border border-white/5 space-y-4 shadow-inner">
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1 text-center">
                 <p className="text-[8px] font-black text-white/40 uppercase mb-1 truncate">{score.homeTeam}</p>

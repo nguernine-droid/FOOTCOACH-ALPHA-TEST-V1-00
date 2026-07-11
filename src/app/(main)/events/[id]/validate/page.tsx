@@ -74,7 +74,7 @@ function ValidateContent() {
     : '';
 
   return (
-    <main className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-white">
+    <main className="min-h-screen bg-[#15171C] flex flex-col items-center justify-center p-6 text-white">
 
       {status === 'loading' && (
         <div className="flex flex-col items-center gap-4">
@@ -85,11 +85,11 @@ function ValidateContent() {
 
       {status === 'valid' && (
         <div className="flex flex-col items-center gap-6 text-center animate-in fade-in duration-500">
-          <div className="w-28 h-28 rounded-full bg-[#39FF14]/10 border-4 border-[#39FF14] flex items-center justify-center shadow-[0_0_40px_#39FF1440]">
-            <CheckCircle2 size={56} className="text-[#39FF14]" />
+          <div className="w-28 h-28 rounded-full bg-neon-green/10 border-4 border-neon-green flex items-center justify-center shadow-lg">
+            <CheckCircle2 size={56} className="text-neon-green" />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#39FF14] mb-2">Match validé ✅</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-neon-green mb-2">Match validé ✅</p>
             <h1 className="text-2xl font-black uppercase italic">{event?.title}</h1>
             <p className="text-gray-400 text-sm mt-2 capitalize">{dateLabel} · {event?.time?.slice(0,5)}</p>
             <p className="text-gray-500 text-xs mt-1">{event?.location}</p>
@@ -98,7 +98,7 @@ function ValidateContent() {
           <div className="flex gap-6">
             {[event?.home_club, event?.away_club].filter(Boolean).map((club: any, i: number) => (
               <div key={i} className="flex flex-col items-center gap-2">
-                <div className="w-16 h-16 rounded-2xl border-2 border-[#39FF14]/30 bg-white/5 p-2 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-2xl border-2 border-neon-green/30 bg-white/5 p-2 flex items-center justify-center">
                   {club.logo_url
                     ? <img src={club.logo_url} className="w-full h-full object-contain" />
                     : <Shield size={24} className="text-gray-500" />
@@ -128,7 +128,7 @@ function ValidateContent() {
             )}
             <button
               onClick={() => router.replace(`/events/${id}`)}
-              className="px-8 py-4 bg-[#39FF14] text-black font-black uppercase rounded-2xl active:scale-95 transition-all"
+              className="px-8 py-4 bg-neon-green text-black font-black uppercase rounded-2xl active:scale-95 transition-all"
             >
               Voir l'événement
             </button>
@@ -178,7 +178,7 @@ function ValidateContent() {
 export default function ValidatePage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <main className="min-h-screen bg-[#15171C] flex items-center justify-center">
         <Loader2 size={40} className="text-neon-cyan animate-spin" />
       </main>
     }>

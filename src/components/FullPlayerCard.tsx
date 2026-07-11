@@ -130,21 +130,20 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
         aria-modal="true"
         aria-label={`Fiche du joueur ${formData.name}`}
         tabIndex={-1}
-        className={`w-full max-w-[360px] h-[94vh] bg-black rounded-[3rem] border-2 transition-all duration-500 overflow-hidden relative flex flex-col font-mono outline-none ${
-          isSyncing ? 'animate-glitch border-white' : 'border-neon-cyan/40 shadow-[0_0_40px_rgba(0,240,255,0.2)]'
+        className={`w-full max-w-[360px] h-[94vh] bg-[#1D2027] rounded-[3rem] border-2 transition-all duration-500 overflow-hidden relative flex flex-col font-mono outline-none ${
+          isSyncing ? 'animate-soft-pulse border-white/60' : 'border-neon-cyan/40 shadow-xl'
         }`}
       >
         {isSyncing && <div className="absolute inset-0 bg-white opacity-20 z-50 animate-pulse pointer-events-none" />}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_2px]" />
 
         {/* 1. HEADER */}
         <div className="p-6 pb-2 flex justify-between items-start shrink-0">
            <div className="text-left">
               <span className="text-[7px] text-gray-500 uppercase tracking-[0.4em] block mb-1">UNIT_RATING</span>
-              <div className="text-6xl font-black text-white leading-none tracking-tighter italic drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">{formData.rating}</div>
+              <div className="text-6xl font-black text-white leading-none tracking-tighter italic">{formData.rating}</div>
            </div>
            <div className="flex flex-col items-end gap-2 text-right">
-              <div className={`px-2 py-0.5 rounded text-[7px] font-black border tracking-[0.2em] ${formData.rating < 65 ? 'border-neon-magenta text-neon-magenta animate-glitch bg-neon-magenta/5' : formData.status === 'Actif' ? 'border-neon-green/40 text-neon-green bg-neon-green/5' : 'border-neon-magenta/40 text-neon-magenta bg-neon-magenta/5 animate-pulse'}`}>
+              <div className={`px-2 py-0.5 rounded text-[7px] font-black border tracking-[0.2em] ${formData.rating < 65 ? 'border-neon-magenta text-neon-magenta animate-soft-pulse bg-neon-magenta/5' : formData.status === 'Actif' ? 'border-neon-green/40 text-neon-green bg-neon-green/5' : 'border-neon-magenta/40 text-neon-magenta bg-neon-magenta/5 animate-pulse'}`}>
                 {formData.rating < 65 ? 'UNIT_CRITICAL' : formData.status === 'Actif' ? 'ONLINE' : 'OFFLINE'}
               </div>
               <button onClick={() => setIsEditing(!isEditing)} aria-label={isEditing ? 'Terminer la modification' : 'Modifier la fiche'} aria-pressed={isEditing} className="p-2 rounded-lg bg-white/5 border border-white/10 text-neon-cyan active:scale-90 transition-all"><Pencil size={16} aria-hidden="true" /></button>
@@ -166,7 +165,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
            </div>
            <div className="text-center z-10">
-              <div className="text-2xl font-black text-neon-orange uppercase italic mb-1 drop-shadow-[0_0_8px_#FF6B00]">{formData.position}</div>
+              <div className="text-2xl font-black text-neon-orange uppercase italic mb-1">{formData.position}</div>
               <div className="space-y-1">
                  <GlitchText text={formData.name.toUpperCase()} className="text-2xl font-black text-white italic tracking-tight" />
                  <p className="text-[7px] text-gray-500 font-bold tracking-[0.4em] uppercase">SERIAL: {formData.licence || 'UNKNOWN'}</p>
@@ -185,7 +184,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
         <div
           onClick={() => setShowEvaluation(true)}
           className={`mx-6 mt-4 p-5 rounded-2xl border-2 relative overflow-hidden group cursor-pointer active:scale-95 transition-all shrink-0 ${
-            potentialPoints > 0 ? 'bg-neon-cyan/10 border-neon-cyan animate-pulse shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'bg-white/[0.03] border-white/5 opacity-50'
+            potentialPoints > 0 ? 'bg-neon-cyan/10 border-neon-cyan animate-pulse shadow-md' : 'bg-white/[0.03] border-white/5 opacity-50'
           }`}
         >
            <div className="flex items-center justify-between mb-3">
@@ -193,11 +192,11 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
                  <Cpu size={14} className={potentialPoints > 0 ? "text-neon-cyan animate-spin" : "text-gray-600"} />
                  <h3 className={`text-[10px] font-black uppercase italic tracking-widest ${potentialPoints > 0 ? 'text-white' : 'text-gray-500'}`}>EVOLUTION_TRACKER</h3>
               </div>
-              {potentialPoints > 0 && <span className="text-[8px] font-black text-neon-cyan border border-neon-cyan/40 px-2 py-0.5 rounded bg-black tracking-[0.2em] shadow-lg animate-bounce">SYNC_AVAILABLE</span>}
+              {potentialPoints > 0 && <span className="text-[8px] font-black text-neon-cyan border border-neon-cyan/40 px-2 py-0.5 rounded bg-[#1D2027] tracking-[0.2em] shadow-sm animate-bounce">SYNC_AVAILABLE</span>}
            </div>
            <div className="flex items-center justify-between gap-4">
               <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                 <div className={`h-full transition-all duration-700 ${potentialPoints > 0 ? 'bg-white shadow-[0_0_15px_white]' : 'bg-neon-cyan shadow-[0_0_8px_#00F0FF]'}`} style={{ width: `${globalXPProgress % 100}%` }} />
+                 <div className={`h-full transition-all duration-700 ${potentialPoints > 0 ? 'bg-white' : 'bg-neon-cyan'}`} style={{ width: `${globalXPProgress % 100}%` }} />
               </div>
               <span className={`text-[9px] font-black italic ${potentialPoints > 0 ? 'text-neon-cyan' : 'text-gray-600'}`}>
                 {potentialPoints > 0 ? `+${potentialPoints} POTENTIAL` : '0 PENDING'}
@@ -215,7 +214,7 @@ export function FullPlayerCard({ player, onClose, onUpdate, onMessage }: FullPla
 
         {/* 7. EVALUATION MODAL (INTEGRATED) */}
         {showEvaluation && (
-          <div className="absolute inset-0 bg-black/98 z-[120] flex flex-col p-6 animate-in slide-in-from-bottom duration-500 overflow-y-auto no-scrollbar">
+          <div className="absolute inset-0 bg-[#15171C]/98 z-[120] flex flex-col p-6 animate-in slide-in-from-bottom duration-500 overflow-y-auto no-scrollbar">
              {activeSubGrid === 'none' ? (
                <div className="space-y-10 pb-20 text-left">
                  <header className="flex justify-between items-center mb-10">
@@ -268,7 +267,7 @@ function EvaluationLink({ label, desc, icon, value, color, onClick }: any) {
           <div className="flex-1"><h4 className="text-[11px] font-black text-white uppercase italic">{label}</h4><p className="text-[8px] text-gray-600 font-bold uppercase">{desc}</p></div>
           <div className="text-xl font-black text-white font-mono">{value}%</div>
        </div>
-       <div className="relative h-1.5 flex items-center"><div className="absolute w-full h-1 bg-white/5 rounded-full" /><div className={`absolute h-1 rounded-full ${barColor} shadow-[0_0_10px_currentColor]`} style={{ width: `${value}%` }} /></div>
+       <div className="relative h-1.5 flex items-center"><div className="absolute w-full h-1 bg-white/5 rounded-full" /><div className={`absolute h-1 rounded-full ${barColor} shadow-sm`} style={{ width: `${value}%` }} /></div>
     </div>
   );
 }
@@ -280,7 +279,7 @@ function EvaluationSlider({ label, value, onChange, color }: any) {
        <div className="flex justify-between items-center"><h4 className="text-[11px] font-black text-white uppercase italic">{label}</h4><div className="text-xl font-black text-white font-mono">{value}%</div></div>
        <div className="relative h-2 flex items-center">
           <div className="absolute w-full h-1 bg-white/5 rounded-full" />
-          <div className={`absolute h-1 rounded-full ${barColor} shadow-[0_0_10px_currentColor]`} style={{ width: `${value}%` }} />
+          <div className={`absolute h-1 rounded-full ${barColor} shadow-sm`} style={{ width: `${value}%` }} />
           <input type="range" min="0" max="100" value={value} onChange={(e) => onChange(Number(e.target.value))} className="absolute inset-0 w-full h-8 opacity-0 cursor-pointer z-10" />
        </div>
     </div>
@@ -299,7 +298,7 @@ function StatProgressBar({ label, value, xp, color }: any) {
           </div>
        </div>
        <div className="h-1.5 w-full bg-white/5 rounded-full relative overflow-hidden flex items-center">
-          <div className={`h-full ${color} shadow-[0_0_8px_currentColor] transition-all duration-1000`} style={{ width: `${value}%` }} />
+          <div className={`h-full ${color} shadow-sm transition-all duration-1000`} style={{ width: `${value}%` }} />
           {/* Subtle pending XP indicator */}
           <div className={`h-full opacity-40 animate-pulse bg-white`} style={{ width: `${pendingXP / 2}%` }} />
        </div>

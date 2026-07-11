@@ -42,7 +42,7 @@ interface Attendee {
 }
 
 const TYPE_STYLE: Record<string, { color: string; bg: string; label: string; icon: React.ReactNode }> = {
-  match:       { color: 'text-[#39FF14]',  bg: 'bg-[#39FF14]',  label: 'Match',        icon: <Zap size={16} fill="currentColor" /> },
+  match:       { color: 'text-neon-green',  bg: 'bg-neon-green',  label: 'Match',        icon: <Zap size={16} fill="currentColor" /> },
   training:    { color: 'text-sky-400',    bg: 'bg-sky-500',    label: 'Entraînement', icon: <Zap size={16} /> },
   tournament:  { color: 'text-yellow-400', bg: 'bg-yellow-500', label: 'Tournoi',      icon: <Star size={16} fill="currentColor" /> },
   plateau:     { color: 'text-purple-400', bg: 'bg-purple-500', label: 'Plateau',      icon: <Users size={16} /> },
@@ -50,7 +50,7 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; label: string; ico
 };
 
 const STATUS_CONFIG: Record<AttendanceStatus, { label: string; icon: React.ReactNode; active: string; inactive: string }> = {
-  present: { label: 'Présent',   icon: <CheckCircle2 size={22} />, active: 'bg-[#39FF14] text-black border-[#39FF14]',  inactive: 'bg-white/5 text-gray-500 border-white/10' },
+  present: { label: 'Présent',   icon: <CheckCircle2 size={22} />, active: 'bg-neon-green text-black border-neon-green',  inactive: 'bg-white/5 text-gray-500 border-white/10' },
   absent:  { label: 'Absent',    icon: <XCircle size={22} />,      active: 'bg-red-500 text-white border-red-500',       inactive: 'bg-white/5 text-gray-500 border-white/10' },
   maybe:   { label: 'Incertain', icon: <HelpCircle size={22} />,   active: 'bg-orange-500 text-white border-orange-500', inactive: 'bg-white/5 text-gray-500 border-white/10' },
 };
@@ -210,7 +210,7 @@ export default function EventDetailPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <main className="min-h-screen bg-[#15171C] flex items-center justify-center">
         <Loader2 size={32} className="text-neon-cyan animate-spin" />
       </main>
     );
@@ -218,7 +218,7 @@ export default function EventDetailPage() {
 
   if (!event) {
     return (
-      <main className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-4 text-white">
+      <main className="min-h-screen bg-[#15171C] flex flex-col items-center justify-center gap-4 text-white">
         <p className="font-black uppercase italic text-gray-500">Événement introuvable</p>
         <button onClick={() => router.back()} className="text-neon-cyan font-black uppercase text-sm">← Retour</button>
       </main>
@@ -242,8 +242,8 @@ export default function EventDetailPage() {
   const isCoach  = event.created_by === userId;
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white pb-32 max-w-md mx-auto font-sans">
-      <header className="bg-black/80 backdrop-blur-md py-5 px-6 sticky top-0 z-30 border-b border-white/10 flex items-center justify-between">
+    <main className="min-h-screen bg-[#15171C] text-white pb-32 max-w-md mx-auto font-sans">
+      <header className="bg-[#15171C]/80 backdrop-blur-md py-5 px-6 sticky top-0 z-30 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="active:scale-90 transition-transform">
             <ChevronLeft size={24} strokeWidth={3} />
@@ -258,7 +258,7 @@ export default function EventDetailPage() {
       <div className="p-5 space-y-5">
 
         {/* CARTE PRINCIPALE */}
-        <section className="bg-[#0A0A0A] border-2 border-white/10 rounded-[2.5rem] p-6 space-y-5">
+        <section className="bg-[#1D2027] border-2 border-white/10 rounded-[2.5rem] p-6 space-y-5">
           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-white/5 ${style.color}`}>
             {style.icon}
           </div>
@@ -340,10 +340,10 @@ export default function EventDetailPage() {
         {tab === 'dispo' && (
           <div className="space-y-4">
             {/* RÉSUMÉ */}
-            <section className="bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-6">
+            <section className="bg-[#1D2027] border border-white/10 rounded-[2.5rem] p-6">
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-600 mb-5">Résumé</p>
               <div className="flex justify-around">
-                <StatItem value={present.length} label="Présents"   color="text-[#39FF14]" />
+                <StatItem value={present.length} label="Présents"   color="text-neon-green" />
                 <StatItem value={absent.length}  label="Absents"    color="text-red-500" />
                 <StatItem value={maybe.length}   label="Incertains" color="text-orange-400" />
               </div>
@@ -353,7 +353,7 @@ export default function EventDetailPage() {
             {isCoach ? (
               <div className="space-y-3">
                 {present.length > 0 && (
-                  <AttendeeList title={`Présents (${present.length})`} items={present} color="text-[#39FF14]" icon={<CheckCircle2 size={14} />} />
+                  <AttendeeList title={`Présents (${present.length})`} items={present} color="text-neon-green" icon={<CheckCircle2 size={14} />} />
                 )}
                 {absent.length > 0 && (
                   <AttendeeList title={`Absents (${absent.length})`} items={absent} color="text-red-500" icon={<XCircle size={14} />} />
@@ -374,7 +374,7 @@ export default function EventDetailPage() {
         )}
 
         {tab === 'chat' && (
-          <section className="bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-8 text-center space-y-3">
+          <section className="bg-[#1D2027] border border-white/10 rounded-[2.5rem] p-8 text-center space-y-3">
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-700">Messages</p>
             <p className="text-gray-600 text-xs font-bold uppercase italic">Fonctionnalité V2 — bientôt disponible</p>
           </section>
@@ -387,15 +387,15 @@ export default function EventDetailPage() {
           if (!isToday && !showQr) return null;
           const qrUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/events/${id}/validate?token=${qrToken}`;
           return (
-            <section className={`rounded-[2rem] overflow-hidden border-2 ${qrValidated ? 'border-[#39FF14]/40' : 'border-white/10'}`}>
+            <section className={`rounded-[2rem] overflow-hidden border-2 ${qrValidated ? 'border-neon-green/40' : 'border-white/10'}`}>
               <button
                 onClick={() => setShowQr(v => !v)}
-                className={`w-full px-5 py-4 flex items-center justify-between ${qrValidated ? 'bg-[#39FF14]/10' : 'bg-white/5'}`}
+                className={`w-full px-5 py-4 flex items-center justify-between ${qrValidated ? 'bg-neon-green/10' : 'bg-white/5'}`}
               >
                 <div className="flex items-center gap-3">
-                  <QrCode size={18} className={qrValidated ? 'text-[#39FF14]' : 'text-neon-cyan'} />
+                  <QrCode size={18} className={qrValidated ? 'text-neon-green' : 'text-neon-cyan'} />
                   <div className="text-left">
-                    <p className={`text-[11px] font-black uppercase ${qrValidated ? 'text-[#39FF14]' : 'text-white'}`}>
+                    <p className={`text-[11px] font-black uppercase ${qrValidated ? 'text-neon-green' : 'text-white'}`}>
                       {qrValidated ? '✅ Match validé par QR Code' : isPro ? 'QR Code de validation' : 'QR_Code_Jour_J'}
                     </p>
                     <p className="text-[9px] font-bold text-gray-500 uppercase">
@@ -464,7 +464,7 @@ function StatItem({ value, label, color }: { value: number; label: string; color
 
 function AttendeeList({ title, items, color, icon }: { title: string; items: Attendee[]; color: string; icon: React.ReactNode }) {
   return (
-    <section className="bg-[#0A0A0A] border border-white/10 rounded-[2rem] overflow-hidden">
+    <section className="bg-[#1D2027] border border-white/10 rounded-[2rem] overflow-hidden">
       <div className={`px-5 py-4 flex items-center gap-2 border-b border-white/5 ${color}`}>
         {icon}
         <p className="text-[10px] font-black uppercase tracking-widest">{title}</p>

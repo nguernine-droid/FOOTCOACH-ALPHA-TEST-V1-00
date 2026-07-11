@@ -10,7 +10,7 @@ interface NeonButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 }
 
 export function NeonButton({
-  variant = 'cyan',
+  variant = 'orange',
   size = 'md',
   children,
   className,
@@ -25,22 +25,22 @@ export function NeonButton({
 
   const isClassic = theme === 'classic';
 
-  const nexusColors = {
-    cyan: 'border-neon-cyan text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.3)] hover:shadow-[0_0_25px_rgba(0,240,255,0.5)]',
-    orange: 'border-neon-orange text-neon-orange shadow-[0_0_15px_rgba(255,107,0,0.3)] hover:shadow-[0_0_25px_rgba(255,107,0,0.5)]',
-    magenta: 'border-neon-magenta text-neon-magenta shadow-[0_0_15px_rgba(255,0,102,0.3)] hover:shadow-[0_0_25px_rgba(255,0,102,0.5)]',
-    green: 'border-neon-green text-neon-green shadow-[0_0_15px_rgba(0,255,157,0.3)] hover:shadow-[0_0_25px_rgba(0,255,157,0.5)]',
+  const darkColors = {
+    cyan: 'bg-neon-cyan/10 border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/20',
+    orange: 'bg-neon-orange/15 border-neon-orange/50 text-neon-orange hover:bg-neon-orange/25',
+    magenta: 'bg-neon-magenta/10 border-neon-magenta/40 text-neon-magenta hover:bg-neon-magenta/20',
+    green: 'bg-neon-green/10 border-neon-green/40 text-neon-green hover:bg-neon-green/20',
   };
 
   const classicColors = {
-    cyan: 'bg-white text-black border-white hover:bg-gray-200',
-    orange: 'bg-neon-orange text-black border-neon-orange hover:bg-[#e66100]',
-    magenta: 'bg-neon-magenta text-white border-neon-magenta hover:bg-[#cc0052]',
-    green: 'bg-neon-green text-black border-neon-green hover:bg-[#00e67e]',
+    cyan: 'bg-teal-50 text-teal-600 border-teal-200 hover:bg-teal-100',
+    orange: 'bg-orange-600 text-white border-orange-600 hover:bg-orange-700',
+    magenta: 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100',
+    green: 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100',
   };
 
   const sizes = {
-    sm: 'px-4 py-2 text-[10px]',
+    sm: 'px-4 py-2 text-[11px]',
     md: 'px-6 py-3 text-xs',
     lg: 'px-8 py-4 text-sm',
   };
@@ -48,8 +48,8 @@ export function NeonButton({
   return (
     <button
       className={cn(
-        "border-2 font-black uppercase italic tracking-widest transition-all active:scale-95 rounded-xl",
-        isClassic ? classicColors[variant] : `bg-black/20 backdrop-blur-md ${nexusColors[variant]}`,
+        "border font-bold uppercase tracking-wide transition-all active:scale-95 rounded-2xl shadow-sm",
+        isClassic ? classicColors[variant] : darkColors[variant],
         sizes[size],
         className
       )}

@@ -37,10 +37,10 @@ export function RadarSonar({ signals, onSignalClick, isScanning, theme }: RadarS
     return diff < 15;
   };
 
-  const accentColor = isPro ? '#F97316' : '#00F0FF';
+  const accentColor = isPro ? '#F97316' : '#2DD4BF';
 
   return (
-    <div className="relative w-full aspect-square flex items-center justify-center bg-[#050510] rounded-[3rem] overflow-hidden border-4 border-white/5 shadow-2xl">
+    <div className="relative w-full aspect-square flex items-center justify-center bg-[#15171C] rounded-[3rem] overflow-hidden border-4 border-white/5 shadow-xl">
 
       {/* 1. GRILLE TACTIQUE DE FOND */}
       <div className="absolute inset-0 opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/grid-me.png')]" />
@@ -64,7 +64,7 @@ export function RadarSonar({ signals, onSignalClick, isScanning, theme }: RadarS
       >
         <div
           className="absolute top-0 left-1/2 w-[2px] h-1/2 -translate-x-1/2"
-          style={{ backgroundColor: accentColor, boxShadow: `0 0 15px ${accentColor}` }}
+          style={{ backgroundColor: accentColor, boxShadow: `0 0 8px ${accentColor}80` }}
         />
       </div>
 
@@ -104,7 +104,7 @@ export function RadarSonar({ signals, onSignalClick, isScanning, theme }: RadarS
 
                {/* Blason XXL */}
                <div
-                 className={`w-14 h-14 rounded-full bg-white border-4 p-1 shadow-2xl transition-all ${isHit ? 'shadow-[0_0_20px_white]' : ''}`}
+                 className={`w-14 h-14 rounded-full bg-white border-4 p-1 shadow-lg transition-all ${isHit ? 'shadow-[0_0_14px_rgba(249,115,22,0.4)]' : ''}`}
                  style={{ borderColor: isHit ? 'white' : statusColor }}
                >
                   {sig.coachLogo ? (
@@ -135,7 +135,7 @@ export function RadarSonar({ signals, onSignalClick, isScanning, theme }: RadarS
 
       {/* 5. CENTRE DU SYSTÈME (QG) */}
       <div className="relative z-40">
-         <div className={`w-12 h-12 rounded-full border-4 border-black flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] bg-white`}>
+         <div className={`w-12 h-12 rounded-full border-4 border-black flex items-center justify-center shadow-[0_0_16px_rgba(249,115,22,0.25)] bg-white`}>
             <Target size={24} className={isPro ? 'text-orange-600' : 'text-neon-cyan'} />
          </div>
          <div className="absolute inset-[-10px] rounded-full border border-white/10 animate-ping" />
@@ -144,7 +144,7 @@ export function RadarSonar({ signals, onSignalClick, isScanning, theme }: RadarS
       {/* 6. LÉGENDE SECTEUR */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2">
          <div className="bg-black/60 backdrop-blur-xl px-6 py-2.5 rounded-full border border-white/10 shadow-2xl flex items-center gap-3">
-            <div className="w-2 h-2 bg-[#39FF14] rounded-full animate-pulse shadow-[0_0_8px_#39FF14]" />
+            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
             <span className="text-[9px] font-black text-white uppercase tracking-[0.3em]">{signals.length} SIGNAUX DÉTECTÉS</span>
          </div>
       </div>

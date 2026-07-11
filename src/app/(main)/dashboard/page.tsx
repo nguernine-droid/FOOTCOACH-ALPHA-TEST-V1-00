@@ -123,9 +123,9 @@ export default function DashboardPage() {
 
   const s = isPro
     ? { bg: 'bg-gray-50', card: 'bg-white border-gray-100', text: 'text-gray-900', sub: 'text-gray-400', accent: 'text-orange-600', accentBg: 'bg-orange-50', border: 'border-orange-200' }
-    : { bg: 'bg-[#050510]', card: 'bg-white/5 border-white/10', text: 'text-white', sub: 'text-gray-500', accent: 'text-neon-cyan', accentBg: 'bg-neon-cyan/10', border: 'border-neon-cyan/30' };
+    : { bg: 'bg-[#15171C]', card: 'bg-[#1D2027] border-white/[0.06]', text: 'text-[#F5F3EF]', sub: 'text-gray-500', accent: 'text-neon-orange', accentBg: 'bg-neon-orange/10', border: 'border-neon-orange/30' };
 
-  if (isContextLoading) return <div className="min-h-screen flex items-center justify-center bg-black"><Loader2 className="animate-spin text-neon-cyan" size={40} /></div>;
+  if (isContextLoading) return <div className="min-h-screen flex items-center justify-center bg-[#15171C]"><Loader2 className="animate-spin text-neon-orange" size={40} /></div>;
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -133,9 +133,9 @@ export default function DashboardPage() {
     const type = ev.type?.toLowerCase() || '';
     const isOfficial = ev.tournament_config?.is_official === true;
     let base = { color: 'text-sky-400', bg: 'bg-sky-500', border: 'border-sky-500/20', glow: '' };
-    if (isOfficial) base = { color: 'text-orange-500', bg: 'bg-orange-600', border: 'border-orange-500/20', glow: isNext ? 'shadow-[0_20px_50px_rgba(249,115,22,0.15)]' : 'shadow-xl' };
-    else if (type.includes('match')) base = { color: 'text-[#39FF14]', bg: 'bg-[#39FF14]', border: 'border-[#39FF14]/20', glow: isNext ? 'shadow-[0_20px_50px_rgba(57,255,20,0.15)]' : 'shadow-xl' };
-    else if (type.includes('plateau')) base = { color: 'text-purple-500', bg: 'bg-purple-600', border: 'border-purple-500/20', glow: isNext ? 'shadow-[0_20px_50px_rgba(168,85,247,0.15)]' : 'shadow-xl' };
+    if (isOfficial) base = { color: 'text-orange-500', bg: 'bg-orange-600', border: 'border-orange-500/20', glow: isNext ? 'shadow-xl shadow-orange-900/10' : 'shadow-xl' };
+    else if (type.includes('match')) base = { color: 'text-emerald-500', bg: 'bg-emerald-500', border: 'border-emerald-500/20', glow: isNext ? 'shadow-xl shadow-emerald-900/10' : 'shadow-xl' };
+    else if (type.includes('plateau')) base = { color: 'text-purple-500', bg: 'bg-purple-600', border: 'border-purple-500/20', glow: isNext ? 'shadow-xl shadow-purple-900/10' : 'shadow-xl' };
     if (isPast) return { ...base, border: 'border-white/5', glow: '', color: 'text-gray-500', bg: 'bg-gray-700' };
     return base;
   };

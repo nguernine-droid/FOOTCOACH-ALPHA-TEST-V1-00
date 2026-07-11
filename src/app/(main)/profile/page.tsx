@@ -19,7 +19,7 @@ export default function ProfilePage() {
   // Si l'application est en train de charger les données réelles, on affiche un loader
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-4">
+      <div className="min-h-screen bg-[#15171C] flex flex-col items-center justify-center space-y-4">
         <Loader2 size={40} className="animate-spin text-neon-cyan" />
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Synchronisation Profil...</p>
       </div>
@@ -30,10 +30,10 @@ export default function ProfilePage() {
   const showWelcome = !hasSeenWelcome && !isProfileComplete;
 
   const getBackgroundClass = () => {
-    if (showWelcome) return 'bg-black text-white';
-    if (role === 'coach') return 'bg-[#050510] text-white p-0'; // NOIR PROFOND POUR COACH
+    if (showWelcome) return 'bg-[#15171C] text-white';
+    if (role === 'coach') return 'bg-[#15171C] text-white p-0'; // FOND ANTHRACITE CHALEUREUX POUR COACH
     if (role === 'parent' || role === 'supporter') return 'bg-gray-50 text-gray-900';
-    return theme === 'nexus' ? 'bg-black text-white' : 'bg-gray-50 text-gray-900';
+    return theme === 'nexus' ? 'bg-[#15171C] text-white' : 'bg-gray-50 text-gray-900';
   };
 
   const handleSkipWelcome = () => {
@@ -49,7 +49,7 @@ export default function ProfilePage() {
           <div className="flex justify-end px-2">
              <button
                onClick={handleSkipWelcome}
-               className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-cyan hover:text-white transition-colors border border-neon-cyan/50 px-6 py-3 rounded-full bg-neon-cyan/10 shadow-[0_0_15px_#00F0FF33]"
+               className="text-[10px] font-black uppercase tracking-[0.2em] text-neon-cyan hover:text-white transition-colors border border-neon-cyan/50 px-6 py-3 rounded-full bg-neon-cyan/10 shadow-sm"
              >
                Passer pour l'instant
              </button>

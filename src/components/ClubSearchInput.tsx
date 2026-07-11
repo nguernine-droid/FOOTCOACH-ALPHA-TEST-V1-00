@@ -292,7 +292,7 @@ export function ClubSearchInput({ value, onSelect, onCreate, isPro = true, place
       {/* DROPDOWN */}
       {isOpen && query.trim().length >= 2 && (
         <div className={`absolute z-[500] w-full mt-2 rounded-2xl border-2 overflow-hidden shadow-2xl
-          ${isPro ? 'bg-white border-gray-100' : 'bg-[#111] border-white/10'}`}>
+          ${isPro ? 'bg-white border-gray-100' : 'bg-[#1D2027] border-white/10'}`}>
 
           {results.length > 0 ? (
             <>
@@ -394,7 +394,7 @@ export function ClubSearchInput({ value, onSelect, onCreate, isPro = true, place
       {/* PANNEAU CLUBS PROCHES — affiché hors dropdown */}
       {nearbyClubs.length > 0 && pendingCreate && (
         <div className={`mt-3 rounded-2xl border-2 overflow-hidden shadow-xl
-          ${isPro ? 'bg-white border-orange-200' : 'bg-[#0A0A0A] border-orange-500/30'}`}>
+          ${isPro ? 'bg-white border-orange-200' : 'bg-[#1D2027] border-orange-500/30'}`}>
 
           {/* En-tête avertissement */}
           <div className={`px-4 py-3 flex items-start gap-3 border-b
@@ -460,7 +460,7 @@ export function ClubSearchInput({ value, onSelect, onCreate, isPro = true, place
       {/* PANNEAU PARENT PROBABLE */}
       {parentSuggestion && pendingCreate && (
         <div className={`mt-3 rounded-2xl border-2 overflow-hidden shadow-xl
-          ${isPro ? 'bg-white border-purple-200' : 'bg-[#0A0A0A] border-purple-500/30'}`}>
+          ${isPro ? 'bg-white border-purple-200' : 'bg-[#1D2027] border-purple-500/30'}`}>
 
           <div className={`px-4 py-3 flex items-start gap-3 border-b
             ${isPro ? 'bg-purple-50 border-purple-100' : 'bg-purple-500/10 border-purple-500/20'}`}>

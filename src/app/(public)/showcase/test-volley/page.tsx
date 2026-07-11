@@ -13,10 +13,10 @@ export default function VolleySandbox() {
   const router = useRouter();
 
   const COLORS = {
-    cyan: '#00F0FF',
-    orange: '#FF6B00',
-    magenta: '#FF0066',
-    green: '#39FF14'
+    cyan: '#2DD4BF',
+    orange: '#F97316',
+    magenta: '#FB7185',
+    green: '#34D399'
   };
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function VolleySandbox() {
   if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 font-mono overflow-hidden">
+    <main className="min-h-screen bg-[#15171C] text-white flex flex-col items-center justify-center p-4 font-mono overflow-hidden">
 
       {/* FLASH TRANSITION */}
       <div className={`fixed inset-0 z-[100] pointer-events-none transition-opacity duration-150 ${isTransitioning ? 'opacity-100' : 'opacity-0'}`}
@@ -59,7 +59,7 @@ export default function VolleySandbox() {
       />
 
       {/* ZONE DE L'ANIMATION */}
-      <div className={`relative w-full max-w-5xl aspect-video bg-[#050505] rounded-[3rem] border-2 overflow-hidden shadow-2xl ${mode === 'bionic' ? 'border-[#00F0FF]/40' : 'border-white/10'}`}>
+      <div className={`relative w-full max-w-5xl aspect-video bg-[#1D2027] rounded-[3rem] border-2 overflow-hidden shadow-2xl ${mode === 'bionic' ? 'border-neon-cyan/40' : 'border-white/10'}`}>
 
         {/* IMAGE DU BUTEUR MANGA (SAUVEGARDÉE DANS /PUBLIC) */}
         <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${mode === 'bionic' ? 'grayscale brightness-[0.4] contrast-[1.5] scale-105' : 'filter-none scale-100'}`}>

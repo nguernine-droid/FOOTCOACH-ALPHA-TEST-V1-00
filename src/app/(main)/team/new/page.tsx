@@ -53,9 +53,9 @@ export default function NewPlayerPage() {
     `https://i.pravatar.cc/300?u=${encodeURIComponent(name || 'placeholder')}`;
 
   return (
-    <main className="min-h-screen bg-[#111319] max-w-md mx-auto shadow-2xl pb-32 font-sans relative overflow-x-hidden">
+    <main className="min-h-screen bg-[#15171C] max-w-md mx-auto shadow-2xl pb-32 font-sans relative overflow-x-hidden">
       {/* Header Premium */}
-      <header className="bg-[#1c1f26]/80 backdrop-blur-md py-5 px-6 sticky top-0 z-40 border-b border-white/5 flex items-center gap-4">
+      <header className="bg-[#1D2027]/80 backdrop-blur-md py-5 px-6 sticky top-0 z-40 border-b border-white/5 flex items-center gap-4">
         <button onClick={() => router.back()} className="text-white active:scale-90 transition-transform p-2 bg-white/5 rounded-xl">
           <ChevronLeft size={24} strokeWidth={3} />
         </button>
@@ -69,7 +69,7 @@ export default function NewPlayerPage() {
            <div className="relative w-64 h-96 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-[2.5rem] p-1 shadow-[0_20px_50px_rgba(234,179,8,0.3)] animate-in zoom-in duration-700 hover:rotate-2 transition-transform border-2 border-white/20">
               <div className="absolute inset-0 bg-white/10 mix-blend-overlay rounded-[2.5rem]" />
 
-              <div className="relative h-full bg-[#1c1f26] rounded-[2.3rem] flex flex-col items-center p-6 overflow-hidden">
+              <div className="relative h-full bg-[#1D2027] rounded-[2.3rem] flex flex-col items-center p-6 overflow-hidden">
                  {/* Card Header */}
                  <div className="w-full flex justify-between items-start mb-2">
                     <div className="text-left">
@@ -102,7 +102,7 @@ export default function NewPlayerPage() {
         {/* FORMULAIRE DE RECRUTEMENT */}
         <form onSubmit={handleSubmit} className="space-y-6">
            <div className="space-y-4">
-              <div className="bg-[#1c1f26] rounded-[2rem] p-6 border border-white/5 shadow-xl">
+              <div className="bg-[#1D2027] rounded-[2rem] p-6 border border-white/5 shadow-xl">
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2 ml-1">Numéro de Licence</label>
                 <div className="flex items-center gap-3">
                    <Target size={18} className="text-yellow-500" />
@@ -116,7 +116,7 @@ export default function NewPlayerPage() {
                 </div>
               </div>
 
-              <div className="bg-[#1c1f26] rounded-[2rem] p-6 border border-white/5 shadow-xl group focus-within:border-yellow-500/50 transition-all">
+              <div className="bg-[#1D2027] rounded-[2rem] p-6 border border-white/5 shadow-xl group focus-within:border-yellow-500/50 transition-all">
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2 ml-1">Identité de la pépite</label>
                 <input
                   type="text"
@@ -129,7 +129,7 @@ export default function NewPlayerPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-[#1c1f26] rounded-[2rem] p-6 border border-white/5 shadow-xl">
+                 <div className="bg-[#1D2027] rounded-[2rem] p-6 border border-white/5 shadow-xl">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-3 ml-1">Poste Tactique</label>
                     <div className="relative">
                        <select
@@ -147,7 +147,7 @@ export default function NewPlayerPage() {
                     </div>
                  </div>
 
-                 <div className="bg-[#1c1f26] rounded-[2rem] p-6 border border-white/5 shadow-xl">
+                 <div className="bg-[#1D2027] rounded-[2rem] p-6 border border-white/5 shadow-xl">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-3 ml-1">Note Globale</label>
                     <div className="flex items-center gap-4">
                        <input
@@ -168,7 +168,7 @@ export default function NewPlayerPage() {
               <div className="max-w-md mx-auto pointer-events-auto">
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#111319] font-black py-6 rounded-[2.5rem] shadow-[0_15px_30px_rgba(234,179,8,0.3)] flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl active:scale-95 transition-all border-t-2 border-white/30"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#15171C] font-black py-6 rounded-[2.5rem] shadow-lg shadow-orange-900/20 flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl active:scale-95 transition-all border-t-2 border-white/30"
                 >
                   <Check size={28} strokeWidth={4} />
                   Signer le contrat

@@ -107,7 +107,7 @@ export default function SettingsPage() {
     border: 'border-gray-100',
     input: 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
   } : {
-    mainBg: 'bg-black',
+    mainBg: 'bg-[#15171C]',
     cardBg: 'bg-white/5 border-white/10',
     text: 'text-white',
     textSub: 'text-gray-500',
@@ -197,7 +197,7 @@ export default function SettingsPage() {
   return (
     <main className={`min-h-screen ${styles.mainBg} max-w-md mx-auto shadow-2xl pb-32 transition-colors duration-500`}>
       {/* Header */}
-      <header className={`py-4 px-6 sticky top-0 z-50 border-b flex items-center gap-4 bg-black/50 backdrop-blur-md ${styles.border}`}>
+      <header className={`py-4 px-6 sticky top-0 z-50 border-b flex items-center gap-4 bg-[#15171C]/60 backdrop-blur-md ${styles.border}`}>
         <button onClick={() => router.back()} className={`${styles.text} active:scale-90 transition-transform`}>
           <ChevronLeft size={24} strokeWidth={3} />
         </button>
@@ -226,7 +226,7 @@ export default function SettingsPage() {
                   <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Identité Orange / Efficacité</p>
                 </div>
               </div>
-              {theme === 'classic' && <div className="w-2 h-2 rounded-full bg-neon-orange shadow-[0_0_8px_#FF6B00]" />}
+              {theme === 'classic' && <div className="w-2 h-2 rounded-full bg-neon-orange" />}
             </button>
 
             <button
@@ -234,7 +234,7 @@ export default function SettingsPage() {
               className={`w-full p-5 flex items-center justify-between transition-all ${theme === 'nexus' ? 'bg-neon-cyan/10' : ''}`}
             >
               <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === 'nexus' ? 'bg-neon-cyan text-black shadow-[0_0_15px_#00F0FF]' : 'bg-white/5 text-gray-500'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === 'nexus' ? 'bg-neon-cyan text-black shadow-md' : 'bg-white/5 text-gray-500'}`}>
                   <Zap size={20} />
                 </div>
                 <div className="text-left">
@@ -242,7 +242,7 @@ export default function SettingsPage() {
                   <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Identité Cyan / Immersion RPG</p>
                 </div>
               </div>
-              {theme === 'nexus' && <div className="w-2 h-2 rounded-full bg-neon-cyan shadow-[0_0_8px_#00F0FF]" />}
+              {theme === 'nexus' && <div className="w-2 h-2 rounded-full bg-neon-cyan" />}
             </button>
           </div>
         </section>
@@ -316,12 +316,12 @@ export default function SettingsPage() {
         {isAdmin && adminStats && (
           <section className="space-y-6">
             <div className="flex items-center gap-3 px-2">
-              <BarChart3 size={14} className="text-[#39FF14]" />
-              <h4 className="text-[10px] font-black uppercase tracking-widest text-[#39FF14]">Contrôle_Alpha_Admin</h4>
+              <BarChart3 size={14} className="text-emerald-400" />
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Contrôle_Alpha_Admin</h4>
             </div>
 
             {/* STATS COMPTEURS */}
-            <div className={`${styles.cardBg} rounded-3xl border border-[#39FF14]/20 p-6 grid grid-cols-3 gap-4`}>
+            <div className={`${styles.cardBg} rounded-3xl border border-emerald-400/20 p-6 grid grid-cols-3 gap-4`}>
               <div className="text-center">
                 <p className="text-[18px] font-black text-white">{adminStats.total}</p>
                 <p className="text-[7px] font-bold text-gray-500 uppercase tracking-widest">Inscrits</p>
@@ -338,9 +338,9 @@ export default function SettingsPage() {
 
             {/* LISTE TOUS LES FEEDBACKS (Vue Admin) */}
             <div className="space-y-3 pt-2">
-              <p className="text-[8px] font-black text-[#39FF14] uppercase tracking-widest px-2">Flux des rapports reçus</p>
+              <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest px-2">Flux des rapports reçus</p>
               {allFeedbacks.map(f => (
-                <div key={f.id} className={`${styles.cardBg} rounded-2xl border ${f.status === 'open' ? 'border-[#39FF14]/40' : 'border-white/5'} p-4 space-y-3`}>
+                <div key={f.id} className={`${styles.cardBg} rounded-2xl border ${f.status === 'open' ? 'border-emerald-400/40' : 'border-white/5'} p-4 space-y-3`}>
                   <div className="flex justify-between items-start">
                     <div className="text-left">
                        <p className="text-[9px] font-black text-white uppercase italic">{f.profiles?.nickname || f.profiles?.first_name || 'Anonyme'}</p>
@@ -352,8 +352,8 @@ export default function SettingsPage() {
                   <p className={`text-[10px] ${styles.text} leading-relaxed bg-black/20 p-2 rounded-lg`}>{f.content}</p>
 
                   {f.admin_reply ? (
-                    <div className="p-2 rounded-lg bg-[#39FF14]/5 border border-[#39FF14]/10">
-                      <p className="text-[7px] font-black text-[#39FF14] uppercase">Votre Réponse :</p>
+                    <div className="p-2 rounded-lg bg-emerald-400/5 border border-emerald-400/10">
+                      <p className="text-[7px] font-black text-emerald-400 uppercase">Votre Réponse :</p>
                       <p className="text-[9px] italic text-gray-400">{f.admin_reply}</p>
                     </div>
                   ) : (
@@ -363,17 +363,17 @@ export default function SettingsPage() {
                           value={adminReplyText}
                           onChange={(e) => setAdminReplyText(e.target.value)}
                           placeholder="Votre réponse technique..."
-                          className="w-full p-2 bg-black border border-[#39FF14]/30 rounded-lg text-[10px] text-white outline-none"
+                          className="w-full p-2 bg-[#15171C] border border-emerald-400/30 rounded-lg text-[10px] text-white outline-none"
                         />
                         <div className="flex gap-2">
-                          <button onClick={() => handleAdminReply(f.id)} className="flex-1 py-2 bg-[#39FF14] text-black text-[8px] font-black uppercase rounded-lg">Envoyer</button>
+                          <button onClick={() => handleAdminReply(f.id)} className="flex-1 py-2 bg-emerald-500 text-black text-[8px] font-black uppercase rounded-lg">Envoyer</button>
                           <button onClick={() => setReplyingTo(null)} className="px-4 py-2 bg-white/5 text-white text-[8px] font-black uppercase rounded-lg">Annuler</button>
                         </div>
                       </div>
                     ) : (
                       <button
                         onClick={() => setReplyingTo(f.id)}
-                        className="w-full py-2 border border-[#39FF14]/30 text-[#39FF14] text-[8px] font-black uppercase rounded-lg hover:bg-[#39FF14]/10 transition-all"
+                        className="w-full py-2 border border-emerald-400/30 text-emerald-400 text-[8px] font-black uppercase rounded-lg hover:bg-emerald-400/10 transition-all"
                       >
                         Répondre au coach
                       </button>

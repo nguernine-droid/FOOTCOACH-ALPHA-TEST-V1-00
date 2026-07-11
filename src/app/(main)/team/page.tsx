@@ -121,16 +121,17 @@ export default function TeamPage() {
 
   if (!teamInfo) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center font-mono">
-        <TypeWriterText text="ACCESSING_NEXUS_DB..." className="text-neon-cyan text-xs tracking-[0.4em]" />
+      <div className="min-h-screen bg-[#15171C] flex flex-col items-center justify-center gap-3 font-sans">
+        <span className="text-sm font-bold text-gray-400">Chargement de l'effectif...</span>
+        <TypeWriterText text="ACCESSING_NEXUS_DB..." className="text-neon-orange/60 text-[10px] tracking-[0.4em] font-mono" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen pb-32 max-w-md mx-auto bg-black relative font-sans overflow-x-hidden">
+    <main className="min-h-screen pb-32 max-w-md mx-auto bg-[#15171C] relative font-sans overflow-x-hidden">
       {/* NEXUS TERMINAL HEADER */}
-      <header className="bg-black/80 backdrop-blur-xl py-6 px-6 sticky top-0 z-40 border-b border-neon-cyan/20 flex flex-col gap-5 shadow-[0_0_20px_rgba(0,240,255,0.1)]">
+      <header className="bg-[#15171C]/80 backdrop-blur-xl py-6 px-6 sticky top-0 z-40 border-b border-neon-cyan/20 flex flex-col gap-5 shadow-sm">
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
             <GlitchText
@@ -179,15 +180,15 @@ export default function TeamPage() {
                 <div className="flex items-center gap-2">
                    <button onClick={() => setSortBy(sortBy === 'rating' ? 'name' : 'rating')} className="p-2.5 rounded-xl bg-white/5 text-neon-cyan border border-white/10 hover:border-neon-cyan/50 transition-all"><ArrowUpDown size={16} /></button>
                    <div className="bg-white/5 rounded-xl p-1 flex gap-1 border border-white/10">
-                     <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-neon-cyan text-black shadow-[0_0_10px_#00F0FF]' : 'text-gray-600'}`}><LayoutGrid size={14} /></button>
-                     <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-neon-cyan text-black shadow-[0_0_10px_#00F0FF]' : 'text-gray-600'}`}><List size={14} /></button>
+                     <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-neon-cyan text-black shadow-sm' : 'text-gray-600'}`}><LayoutGrid size={14} /></button>
+                     <button onClick={() => setViewMode('list')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-neon-cyan text-black shadow-sm' : 'text-gray-600'}`}><List size={14} /></button>
                    </div>
                 </div>
               </div>
 
               <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-6 px-6 pb-2">
                 {filters.map((filter) => (
-                  <button key={filter} onClick={() => setActiveFilter(filter)} className={`whitespace-nowrap px-6 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all border-2 font-mono ${activeFilter === filter ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'border-white/5 bg-[#050505] text-gray-600'}`}>
+                  <button key={filter} onClick={() => setActiveFilter(filter)} className={`whitespace-nowrap px-6 py-2.5 rounded-xl text-[9px] font-black uppercase transition-all border-2 font-mono ${activeFilter === filter ? 'border-neon-cyan bg-neon-cyan/10 text-neon-cyan shadow-sm' : 'border-white/5 bg-[#1D2027] text-gray-600'}`}>
                     {filter}
                   </button>
                 ))}
@@ -221,7 +222,7 @@ export default function TeamPage() {
             )}
 
             {playersData.length > 0 && (
-              <button onClick={() => router.push('/team/new')} className="w-full bg-[#050505] text-neon-cyan font-black text-[11px] py-6 rounded-[2rem] flex items-center justify-center gap-4 shadow-xl border-2 border-neon-cyan/20 hover:border-neon-cyan/50 active:scale-98 transition-all uppercase italic tracking-[0.2em] font-mono">
+              <button onClick={() => router.push('/team/new')} className="w-full bg-[#1D2027] text-neon-cyan font-black text-[11px] py-6 rounded-[2rem] flex items-center justify-center gap-4 shadow-sm border-2 border-neon-cyan/20 hover:border-neon-cyan/50 active:scale-98 transition-all uppercase italic tracking-[0.2em] font-mono">
                 <Plus size={20} strokeWidth={4} /> INITIALIZE_NEW_UNIT
               </button>
             )}
@@ -251,8 +252,8 @@ export default function TeamPage() {
 
 function TabButton({ active, onClick, icon, label }: any) {
   return (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1.5 px-4 py-2 rounded-lg transition-all ${active ? 'bg-neon-cyan/10 text-neon-cyan shadow-[inset_0_0_10px_rgba(0,240,255,0.2)]' : 'text-gray-600 hover:text-gray-400'}`}>
-      <div className={active ? 'drop-shadow-[0_0_8px_#00F0FF]' : ''}>{icon}</div>
+    <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1.5 px-4 py-2 rounded-lg transition-all ${active ? 'bg-neon-cyan/10 text-neon-cyan' : 'text-gray-600 hover:text-gray-400'}`}>
+      <div>{icon}</div>
       <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono">{label}</span>
     </button>
   );
@@ -282,7 +283,7 @@ function AttendanceView({ players }: { players: any[] }) {
       <div className="card-cyber p-8 border-neon-cyan/20">
         <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse shadow-[0_0_8px_#00F0FF]" />
+              <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse" />
               <h3 className="text-sm font-black text-white uppercase italic tracking-tighter">Bio_Metric_Check</h3>
            </div>
            <span className="text-[9px] font-black text-neon-cyan/50 font-mono tracking-widest">SEQ_7482_92</span>
@@ -292,7 +293,7 @@ function AttendanceView({ players }: { players: any[] }) {
             <div key={p.id} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0 group">
                <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-neon-cyan/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-neon-cyan/10 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                     <img src={`https://i.pravatar.cc/100?u=${p.name}`} className="w-10 h-10 rounded-xl border border-white/10 grayscale group-hover:grayscale-0 transition-all relative z-10" alt="" />
                   </div>
                   <div>
@@ -308,7 +309,7 @@ function AttendanceView({ players }: { players: any[] }) {
             </div>
           ))}
         </div>
-        <NeonButton variant="cyan" className="w-full mt-10 shadow-[0_10px_25px_rgba(0,240,255,0.2)]">UPLOAD_BIOMETRIC_DATA</NeonButton>
+        <NeonButton variant="cyan" className="w-full mt-10 shadow-lg">UPLOAD_BIOMETRIC_DATA</NeonButton>
       </div>
     </div>
   );
@@ -355,8 +356,8 @@ function ResultsHistoryView() {
 
 function ActionButton({ onClick, icon, label, color, active, isLight = false }: any) {
   return (
-    <button onClick={onClick} className={`${color} rounded-2xl p-4 flex flex-col items-center gap-2 transition-all ${active ? 'ring-2 ring-neon-cyan ring-offset-2 scale-95 shadow-[0_0_20px_currentColor]' : 'shadow-sm active:scale-90 border border-white/5 hover:border-white/20'} ${isLight ? 'text-neon-cyan' : 'text-white'}`}>
-      <div className={active ? 'scale-110 drop-shadow-[0_0_10px_currentColor]' : ''}>{icon}</div>
+    <button onClick={onClick} className={`${color} rounded-2xl p-4 flex flex-col items-center gap-2 transition-all ${active ? 'ring-2 ring-neon-cyan ring-offset-2 scale-95 shadow-md' : 'shadow-sm active:scale-90 border border-white/5 hover:border-white/20'} ${isLight ? 'text-neon-cyan' : 'text-white'}`}>
+      <div className={active ? 'scale-110' : ''}>{icon}</div>
       <span className="text-[7px] font-black uppercase tracking-[0.2em] font-mono">{label}</span>
     </button>
   );

@@ -13,9 +13,9 @@ import { ClubSearchInput } from '@/components/ClubSearchInput';
 type AnnouncementType = 'Match Amical' | 'Tournoi' | 'Plateau';
 
 const THEME: Record<AnnouncementType, { primary: string; glow: string; text: string; border: string }> = {
-  'Match Amical': { primary: 'bg-[#16a34a]', glow: 'shadow-[0_0_20px_#16a34a66]', text: 'text-[#16a34a]', border: 'border-[#16a34a]' },
-  'Plateau': { primary: 'bg-blue-600', glow: 'shadow-[0_0_20px_#2563eb66]', text: 'text-blue-500', border: 'border-blue-600' },
-  'Tournoi': { primary: 'bg-red-600', glow: 'shadow-[0_0_20px_#dc262666]', text: 'text-red-600', border: 'border-red-600' }
+  'Match Amical': { primary: 'bg-[#16a34a]', glow: 'shadow-lg shadow-emerald-900/20', text: 'text-[#16a34a]', border: 'border-[#16a34a]' },
+  'Plateau': { primary: 'bg-blue-600', glow: 'shadow-lg shadow-blue-900/20', text: 'text-blue-500', border: 'border-blue-600' },
+  'Tournoi': { primary: 'bg-red-600', glow: 'shadow-lg shadow-red-900/20', text: 'text-red-600', border: 'border-red-600' }
 };
 
 function NewSignalContent() {
@@ -252,14 +252,14 @@ function NewSignalContent() {
   };
 
   const styles = {
-    card: `bg-[#0A0A15] border-2 ${m.border} ${m.glow} rounded-[2.5rem] p-6 space-y-6 transition-all duration-500 shadow-2xl`,
+    card: `bg-[#1D2027] border-2 ${m.border} ${m.glow} rounded-[2.5rem] p-6 space-y-6 transition-all duration-500 shadow-xl`,
     input: `w-full bg-white/5 rounded-2xl p-5 text-sm font-black outline-none border-2 border-transparent focus:border-white/20 transition-all text-white uppercase`,
     label: `text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-2 ${m.text}`
   };
 
   return (
-    <div className="min-h-screen max-w-md mx-auto pb-40 bg-[#050510] font-sans overflow-x-hidden">
-      <header className="bg-black/60 backdrop-blur-xl border-b border-white/5 py-6 px-6 sticky top-0 z-50 flex items-center gap-4">
+    <div className="min-h-screen max-w-md mx-auto pb-40 bg-[#15171C] font-sans overflow-x-hidden">
+      <header className="bg-[#15171C]/80 backdrop-blur-xl border-b border-white/5 py-6 px-6 sticky top-0 z-50 flex items-center gap-4">
         <button onClick={() => router.back()} className="text-white active:scale-90"><ChevronLeft size={28} strokeWidth={3} /></button>
         <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white">
           {editingMatchId ? 'MODIFIER_SIGNAL' : 'PUBLIER_ANNONCE'}
@@ -270,7 +270,7 @@ function NewSignalContent() {
         <section className={styles.card}>
            <div className="space-y-4">
               <label className={styles.label}><Trophy size={14}/> TYPE DE MISSION</label>
-              <div className="flex gap-2 p-1 bg-black/40 rounded-[1.5rem] border border-white/5">
+              <div className="flex gap-2 p-1 bg-black/20 rounded-[1.5rem] border border-white/5">
                  {(['Match Amical', 'Plateau', 'Tournoi'] as AnnouncementType[]).map(t => (
                    <button
                      key={t} type="button"
@@ -417,7 +417,7 @@ function NewSignalContent() {
 
 export default function NewSignalPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#050510] flex items-center justify-center text-neon-cyan font-black uppercase italic tracking-widest">SYNC_FOOTCOACH...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#15171C] flex items-center justify-center text-neon-cyan font-black uppercase italic tracking-widest">SYNC_FOOTCOACH...</div>}>
       <NewSignalContent />
     </Suspense>
   );

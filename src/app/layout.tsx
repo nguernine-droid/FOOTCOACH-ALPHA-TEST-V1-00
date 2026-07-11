@@ -5,7 +5,6 @@ import { VersionGuard } from "@/components/VersionGuard";
 import { ClientGuard } from "@/components/ClientGuard";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { ScanlinesOverlay } from "@/components/ui/cyber/ScanlinesOverlay";
 import { TeamProvider } from "@/lib/context/TeamContext";
 import { MotionConfig } from "framer-motion";
 
@@ -65,12 +64,11 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased bg-black min-h-screen">
+      <body className="antialiased bg-[#15171C] min-h-screen">
         <MotionConfig reducedMotion="user">
           <TeamProvider>
             <VersionGuard>
               <ClientGuard>
-                <ScanlinesOverlay />
                 <PWAInstallPrompt />
                 {children}
               </ClientGuard>

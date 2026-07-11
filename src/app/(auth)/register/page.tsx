@@ -85,17 +85,17 @@ function RegisterContent() {
 
   // Configuration visuelle des rôles
   const roleConfig = {
-    coach: { icon: Shield, label: 'Coach', color: 'neon-orange', border: 'border-neon-orange', bg: 'bg-neon-orange/10', shadow: 'shadow-neon-orange/20', text: 'text-neon-orange' },
-    player: { icon: Zap, label: 'Joueur', color: 'neon-cyan', border: 'border-neon-cyan', bg: 'bg-neon-cyan/10', shadow: 'shadow-neon-cyan/20', text: 'text-neon-cyan' },
-    parent: { icon: User, label: 'Parent', color: 'neon-magenta', border: 'border-neon-magenta', bg: 'bg-neon-magenta/10', shadow: 'shadow-neon-magenta/20', text: 'text-neon-magenta' },
+    coach: { icon: Shield, label: 'Coach', color: 'neon-orange', border: 'border-neon-orange', bg: 'bg-neon-orange/10', shadow: 'shadow-orange-900/20', text: 'text-neon-orange' },
+    player: { icon: Zap, label: 'Joueur', color: 'neon-cyan', border: 'border-neon-cyan', bg: 'bg-neon-cyan/10', shadow: 'shadow-teal-900/20', text: 'text-neon-cyan' },
+    parent: { icon: User, label: 'Parent', color: 'neon-magenta', border: 'border-neon-magenta', bg: 'bg-neon-magenta/10', shadow: 'shadow-rose-900/20', text: 'text-neon-magenta' },
     supporter: { icon: Heart, label: 'Supporter', color: 'amber-500', border: 'border-amber-500', bg: 'bg-amber-500/10', shadow: 'shadow-amber-500/20', text: 'text-amber-500' }
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0A0A] text-white flex flex-col p-6 font-sans relative overflow-hidden">
+    <main className="min-h-screen bg-[#15171C] text-white flex flex-col p-6 font-sans relative overflow-hidden">
       {/* Background Decor */}
-      <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-[#39FF14] opacity-5 blur-[100px] rounded-full" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-neon-cyan opacity-5 blur-[100px] rounded-full" />
+      <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-neon-green opacity-10 blur-[100px] rounded-full" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-neon-cyan opacity-10 blur-[100px] rounded-full" />
 
       {/* Top Header */}
       <header className="flex justify-between items-center mb-10 relative z-10">
@@ -103,7 +103,7 @@ function RegisterContent() {
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-2">
-           <div className="w-8 h-8 bg-[#39FF14] rounded-lg flex items-center justify-center -rotate-12 shadow-lg shadow-[#39FF14]/30">
+           <div className="w-8 h-8 bg-neon-green rounded-lg flex items-center justify-center -rotate-12 shadow-md shadow-emerald-900/20">
               <Shield size={18} className="text-black" strokeWidth={3} />
            </div>
            <span className="font-black italic uppercase tracking-tighter text-xl">Nexus_OS</span>
@@ -113,24 +113,48 @@ function RegisterContent() {
 
       {/* Banner parrainage */}
       {referrerName && (
-        <div className="relative z-10 mb-6 px-4 py-3 rounded-2xl border border-[#39FF14]/30 bg-[#39FF14]/10 flex items-center gap-3">
+        <div className="relative z-10 mb-6 px-4 py-3 rounded-2xl border border-neon-green/30 bg-neon-green/10 flex items-center gap-3">
           <span className="text-xl">🎉</span>
           <div>
-            <p className="text-[10px] font-black uppercase text-[#39FF14] tracking-widest">Invitation de {referrerName}</p>
+            <p className="text-[10px] font-black uppercase text-neon-green tracking-widest">Invitation de {referrerName}</p>
             <p className="text-[9px] font-bold text-gray-400 uppercase">Vous avez été parrainé — bonus XP au démarrage !</p>
           </div>
         </div>
       )}
 
       {/* Intro Text */}
-      <div className="mb-10 relative z-10">
+      <div className="mb-8 relative z-10">
         <h1 className="text-4xl font-black italic uppercase leading-none tracking-tighter mb-2">
           Nouvelle <br />
-          <span className="text-[#39FF14] text-5xl drop-shadow-[0_0_10px_rgba(57,255,20,0.5)]">Recrue</span>
+          <span className="text-neon-green text-5xl">Recrue</span>
         </h1>
         <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">
-          PROTOCOLE ALPHA TEST V1 : POSITION COACH FORCÉE
+          Choisissez votre rôle pour commencer
         </p>
+      </div>
+
+      {/* Sélecteur de rôle */}
+      <div className="grid grid-cols-2 gap-3 mb-8 relative z-10">
+        {(Object.keys(roleConfig) as Role[]).map((r) => {
+          const cfg = roleConfig[r];
+          const Icon = cfg.icon;
+          const isActive = role === r;
+          return (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRole(r)}
+              className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all active:scale-95 ${
+                isActive ? `${cfg.border} ${cfg.bg} shadow-lg ${cfg.shadow}` : 'border-white/10 bg-white/5'
+              }`}
+            >
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isActive ? cfg.bg : 'bg-white/5'}`}>
+                <Icon size={18} className={isActive ? cfg.text : 'text-gray-500'} />
+              </div>
+              <span className={`text-sm font-black uppercase italic ${isActive ? cfg.text : 'text-gray-400'}`}>{cfg.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Register Form */}
@@ -147,7 +171,7 @@ function RegisterContent() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nom@nexus-os.app"
                 required
-                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-[#39FF14] focus:bg-white/10 focus:shadow-[0_0_15px_rgba(57,255,20,0.2)] transition-all placeholder:text-gray-700"
+                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-neon-green focus:bg-white/10 transition-all placeholder:text-gray-700"
               />
            </div>
         </div>
@@ -164,7 +188,7 @@ function RegisterContent() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Minimum 8 caractères"
                 required
-                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-[#39FF14] focus:bg-white/10 focus:shadow-[0_0_15px_rgba(57,255,20,0.2)] transition-all placeholder:text-gray-700"
+                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-neon-green focus:bg-white/10 transition-all placeholder:text-gray-700"
               />
            </div>
         </div>
@@ -172,7 +196,7 @@ function RegisterContent() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-[#39FF14] text-black font-black py-6 rounded-[2.5rem] shadow-xl shadow-[#39FF14]/30 flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl active:scale-95 transition-all mt-6 hover:bg-green-400 disabled:opacity-80 disabled:cursor-not-allowed"
+          className="w-full bg-neon-green text-black font-black py-6 rounded-[2.5rem] shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl active:scale-95 transition-all mt-6 hover:bg-emerald-400 disabled:opacity-80 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -196,8 +220,8 @@ function RegisterContent() {
 export default function RegisterPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#39FF14] border-t-transparent rounded-full animate-spin" />
+      <main className="min-h-screen bg-[#15171C] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin" />
       </main>
     }>
       <RegisterContent />

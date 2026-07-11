@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from 'next/navigation';
 import {
-  ChevronLeft,
   Users,
   Target,
   Activity,
@@ -18,7 +17,6 @@ import {
   StarHalf,
   Check,
 } from "lucide-react";
-import { ScanlinesOverlay } from "@/components/ui/cyber/ScanlinesOverlay";
 
 type Theme = 'classic' | 'nexus';
 
@@ -29,7 +27,7 @@ const accent = (theme: Theme) => ({
   border: theme === 'nexus' ? 'border-neon-cyan/30' : 'border-neon-orange/30',
   ring: theme === 'nexus' ? 'border-neon-cyan/40' : 'border-neon-orange/40',
   softBg: theme === 'nexus' ? 'bg-neon-cyan/10' : 'bg-neon-orange/10',
-  glow: theme === 'nexus' ? 'shadow-[0_0_20px_rgba(0,240,255,0.35)]' : 'shadow-[0_0_20px_rgba(255,107,0,0.35)]',
+  glow: theme === 'nexus' ? 'shadow-lg shadow-teal-900/20' : 'shadow-lg shadow-orange-900/20',
 });
 
 const features = [
@@ -120,21 +118,16 @@ export default function ShowcasePage() {
   const toggleTheme = () => setTheme(t => (t === 'nexus' ? 'classic' : 'nexus'));
 
   return (
-    <main className="min-h-screen bg-black text-white font-sans selection:bg-neon-cyan selection:text-black relative overflow-x-hidden">
-      {theme === 'nexus' && <ScanlinesOverlay />}
+    <main className="min-h-screen bg-[#15171C] text-white font-sans selection:bg-neon-cyan selection:text-black relative overflow-x-hidden">
       <StadiumBackdrop theme={theme} />
 
       {/* ── HEADER ── */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] bg-black/70 backdrop-blur-md border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-[100] bg-[#15171C]/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-5xl mx-auto px-6 h-16 flex justify-between items-center">
-          <button
-            onClick={() => router.push('/onboarding')}
-            aria-label="Revenir à l'accueil"
-            className={`flex items-center gap-2 font-black uppercase text-[10px] tracking-widest group ${a.text}`}
-          >
-            <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" aria-hidden="true" />
-            Retour
-          </button>
+          <div className="flex items-center gap-2.5">
+            <img src="/icons/icon.svg" alt="FootCoach" className="w-8 h-8 rounded-lg" />
+            <span className="font-black uppercase italic text-sm tracking-tight text-white">FootCoach</span>
+          </div>
 
           <div className="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
             <span className={`text-[8px] font-black uppercase tracking-widest ${theme === 'classic' ? a.text : 'text-gray-500'}`}>Classique</span>
@@ -146,7 +139,7 @@ export default function ShowcasePage() {
               onClick={toggleTheme}
               className="w-9 h-5 bg-gray-800 rounded-full relative shrink-0"
             >
-              <span className={`absolute top-1 w-3 h-3 rounded-full transition-all duration-300 ${theme === 'nexus' ? 'left-5 bg-neon-cyan shadow-[0_0_8px_#00F0FF]' : 'left-1 bg-neon-orange'}`} />
+              <span className={`absolute top-1 w-3 h-3 rounded-full transition-all duration-300 ${theme === 'nexus' ? 'left-5 bg-neon-cyan' : 'left-1 bg-neon-orange'}`} />
             </button>
             <span className={`text-[8px] font-black uppercase tracking-widest ${theme === 'nexus' ? a.text : 'text-gray-500'}`}>Nexus</span>
           </div>
@@ -172,10 +165,19 @@ export default function ShowcasePage() {
               {theme === 'nexus' ? 'Mode Nexus' : 'Mode Classique'}
             </div>
 
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.95]">
-              <span className="block">Communiquez.</span>
-              <span className={`block ${a.text}`}>Managez.</span>
-              <span className="block">Équipez.</span>
+            <h1
+              className="text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.95]"
+              aria-label="Communiquez. Managez. Équipez."
+            >
+              <span aria-hidden="true">
+                <TypewriterHeadline
+                  lines={[
+                    { text: 'Communiquez.' },
+                    { text: 'Managez.', className: a.text },
+                    { text: 'Équipez.' },
+                  ]}
+                />
+              </span>
             </h1>
 
             <p className="max-w-md mx-auto lg:mx-0 text-gray-300 text-base leading-relaxed">
@@ -228,7 +230,7 @@ export default function ShowcasePage() {
             {features.map((f, i) => {
               const Icon = f.icon;
               return (
-                <div key={i} className={`p-7 lg:p-8 rounded-[1.75rem] bg-[#070707] border-2 ${a.border} hover:-translate-y-1 transition-transform duration-300`}>
+                <div key={i} className={`p-7 lg:p-8 rounded-[1.75rem] bg-[#1D2027] border-2 ${a.border} hover:-translate-y-1 transition-transform duration-300`}>
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border border-white/10 bg-white/5 mb-5 ${a.text}`}>
                     <Icon size={22} aria-hidden="true" />
                   </div>
@@ -283,7 +285,7 @@ export default function ShowcasePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {testimonials.map((t, i) => (
-              <figure key={i} className={`p-7 rounded-[1.5rem] bg-[#070707] border-2 ${a.border}`}>
+              <figure key={i} className={`p-7 rounded-[1.5rem] bg-[#1D2027] border-2 ${a.border}`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border ${a.ring} ${a.text} shrink-0`} aria-hidden="true">
                     {t.avatar}
@@ -343,6 +345,52 @@ export default function ShowcasePage() {
 
 /* ═══════════════ SUB-COMPONENTS ═══════════════ */
 
+function TypewriterHeadline({ lines }: { lines: { text: string; className?: string }[] }) {
+  const [lineIndex, setLineIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion || lineIndex >= lines.length) return;
+    const current = lines[lineIndex].text;
+    if (charIndex < current.length) {
+      const t = setTimeout(() => setCharIndex((c) => c + 1), 55);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      setLineIndex((l) => l + 1);
+      setCharIndex(0);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [charIndex, lineIndex, reduceMotion, lines]);
+
+  const finished = reduceMotion || lineIndex >= lines.length;
+
+  return (
+    <>
+      {lines.map((l, i) => {
+        const cls = `block ${l.className || ''}`;
+        if (finished || i < lineIndex) {
+          return <span key={i} className={cls}>{l.text}</span>;
+        }
+        if (i === lineIndex) {
+          return (
+            <span key={i} className={cls}>
+              {l.text.slice(0, charIndex)}
+              <span className="inline-block w-[3px] md:w-[4px] h-[0.8em] bg-current ml-1 align-middle animate-pulse" />
+            </span>
+          );
+        }
+        return <span key={i} className={`${cls} invisible`}>{l.text}</span>;
+      })}
+    </>
+  );
+}
+
 function StarRating({ rating, theme }: { rating: number; theme: Theme }) {
   const a = accent(theme);
   const full = Math.floor(rating);
@@ -361,7 +409,7 @@ function StarRating({ rating, theme }: { rating: number; theme: Theme }) {
 function InstallCard({ theme, platform, steps }: { theme: Theme; platform: string; steps: React.ReactNode[] }) {
   const a = accent(theme);
   return (
-    <div className="bg-[#070707] border-2 border-white/10 p-8 rounded-[1.75rem]">
+    <div className="bg-[#1D2027] border-2 border-white/10 p-8 rounded-[1.75rem]">
       <div className="flex items-center gap-4 mb-6">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 bg-white/5 ${a.text}`}>
           <Smartphone size={22} aria-hidden="true" />
@@ -414,7 +462,7 @@ function StatCard({ value, label, theme, highlight }: { value: string; label: st
   }, [value]);
 
   return (
-    <div className={`rounded-2xl p-6 text-center border-2 ${highlight ? `${a.ring} ${a.softBg}` : 'border-white/10 bg-[#070707]'}`}>
+    <div className={`rounded-2xl p-6 text-center border-2 ${highlight ? `${a.ring} ${a.softBg}` : 'border-white/10 bg-[#1D2027]'}`}>
       <span
         ref={ref}
         className={`block font-black font-mono mb-1 ${highlight ? `text-3xl lg:text-4xl ${a.text}` : 'text-2xl text-white'}`}
@@ -429,7 +477,7 @@ function StatCard({ value, label, theme, highlight }: { value: string; label: st
 function PreviewCard({ theme }: { theme: Theme }) {
   const a = accent(theme);
   return (
-    <div className={`relative rounded-[2rem] border-2 ${a.border} bg-[#070707] overflow-hidden shadow-2xl`}>
+    <div className={`relative rounded-[2rem] border-2 ${a.border} bg-[#1D2027] overflow-hidden shadow-2xl`}>
       <div className="aspect-[4/3] relative">
         <img
           src="https://images.unsplash.com/photo-1552667466-07770ae110d0?q=80&w=1000&auto=format&fit=crop"

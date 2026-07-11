@@ -49,16 +49,16 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0A0A] text-white flex flex-col p-6 font-sans relative overflow-hidden">
-      <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-neon-orange opacity-5 blur-[100px] rounded-full" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-[#39FF14] opacity-5 blur-[100px] rounded-full" />
+    <main className="min-h-screen bg-[#15171C] text-white flex flex-col p-6 font-sans relative overflow-hidden">
+      <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-neon-orange opacity-10 blur-[100px] rounded-full" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-neon-green opacity-10 blur-[100px] rounded-full" />
 
       <header className="flex justify-between items-center mb-12 relative z-10">
         <button onClick={() => router.back()} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors border border-white/5">
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-2">
-           <div className="w-8 h-8 bg-neon-orange rounded-lg flex items-center justify-center rotate-12 shadow-lg shadow-neon-orange/30">
+           <div className="w-8 h-8 bg-neon-orange rounded-lg flex items-center justify-center rotate-12 shadow-md shadow-orange-900/20">
               <Shield size={18} className="text-black" strokeWidth={3} />
            </div>
            <span className="font-black italic uppercase tracking-tighter text-xl">Nexus_OS</span>
@@ -69,7 +69,7 @@ export default function LoginPage() {
       <div className="mb-10 relative z-10">
         <h1 className="text-4xl font-black italic uppercase leading-none tracking-tighter mb-2">
           Connexion <br />
-          <span className="text-neon-orange text-5xl drop-shadow-[0_0_10px_rgba(255,107,0,0.5)]">Tactique</span>
+          <span className="text-neon-orange text-5xl">Tactique</span>
         </h1>
         <p className="text-gray-500 font-bold uppercase tracking-widest text-[10px]">
           Reprenez le contrôle de votre unité.
@@ -89,7 +89,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nom@club.com"
                 required
-                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-neon-orange focus:bg-white/10 focus:shadow-[0_0_15px_rgba(255,107,0,0.2)] transition-all placeholder:text-gray-700"
+                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-neon-orange focus:bg-white/10 transition-all placeholder:text-gray-700"
               />
            </div>
         </div>
@@ -106,7 +106,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-neon-orange focus:bg-white/10 focus:shadow-[0_0_15px_rgba(255,107,0,0.2)] transition-all placeholder:text-gray-700"
+                className="w-full bg-white/5 border-2 border-white/5 rounded-3xl p-5 pl-14 text-sm font-bold outline-none focus:border-neon-orange focus:bg-white/10 transition-all placeholder:text-gray-700"
               />
            </div>
         </div>
@@ -135,7 +135,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setDemoRole(role)}
                 className={`p-2 rounded-xl text-[8px] font-black uppercase border transition-all ${
-                  demoRole === role ? 'bg-neon-orange border-neon-orange text-black shadow-[0_0_10px_rgba(255,107,0,0.3)]' : 'border-white/10 text-gray-500 hover:border-white/30'
+                  demoRole === role ? 'bg-neon-orange border-neon-orange text-black shadow-sm' : 'border-white/10 text-gray-500 hover:border-white/30'
                 }`}
               >
                 {role}
@@ -147,7 +147,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isLoading}
-          className={`w-full bg-neon-orange text-black font-black py-6 rounded-[2.5rem] shadow-xl shadow-neon-orange/30 flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl active:scale-95 transition-all mt-6 ${isLoading ? 'opacity-80 cursor-not-allowed' : 'hover:bg-orange-500'}`}
+          className={`w-full bg-neon-orange text-black font-black py-6 rounded-[2.5rem] shadow-lg shadow-orange-900/20 flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl active:scale-95 transition-all mt-6 ${isLoading ? 'opacity-80 cursor-not-allowed' : 'hover:bg-orange-500'}`}
         >
           {isLoading ? (
             <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -174,7 +174,7 @@ export default function LoginPage() {
       <footer className="mt-auto pt-10 text-center relative z-10">
          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
            Nouveau sur la touche ?
-           <Link href="/register" className="text-[#39FF14] ml-2 hover:text-white transition-colors">Créer un compte</Link>
+           <Link href="/register" className="text-neon-green ml-2 hover:text-white transition-colors">Créer un compte</Link>
          </p>
       </footer>
     </main>

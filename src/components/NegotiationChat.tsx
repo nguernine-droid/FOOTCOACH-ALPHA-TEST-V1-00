@@ -278,7 +278,7 @@ export function NegotiationChat({
         aria-label={`Négociation de match avec ${otherCoachName}`}
         tabIndex={-1}
         className={`relative w-full max-w-md h-[90vh] sm:h-[700px] flex flex-col rounded-t-[2.5rem] sm:rounded-[2.5rem] border-t-2 sm:border-2 overflow-hidden shadow-2xl outline-none
-        ${isPro ? 'bg-white border-gray-200' : 'bg-[#0A0A0A] border-white/10'}`}>
+        ${isPro ? 'bg-white border-gray-200' : 'bg-[#1D2027] border-white/10'}`}>
 
         {/* HEADER */}
         <div className={`p-5 border-b flex justify-between items-center shrink-0 ${isPro ? 'bg-gray-50 border-gray-100' : 'bg-white/5 border-white/5'}`}>
@@ -305,16 +305,16 @@ export function NegotiationChat({
         {summary && (
           <div className={`shrink-0 mx-4 mt-4 rounded-[1.5rem] border-2 overflow-hidden
             ${bothDone
-              ? 'border-[#39FF14] bg-[#39FF14]/5'
+              ? 'border-emerald-400 bg-emerald-400/5'
               : isPro ? 'border-orange-200 bg-orange-50' : 'border-neon-cyan/30 bg-neon-cyan/5'}`}>
 
             {/* Titre fiche */}
             <div className={`px-5 py-3 flex items-center justify-between border-b
-              ${bothDone ? 'border-[#39FF14]/20' : isPro ? 'border-orange-100' : 'border-white/5'}`}>
+              ${bothDone ? 'border-emerald-400/20' : isPro ? 'border-orange-100' : 'border-white/5'}`}>
               <div className="flex items-center gap-2">
-                <Trophy size={14} className={bothDone ? 'text-[#39FF14]' : isPro ? 'text-orange-600' : 'text-neon-cyan'} />
+                <Trophy size={14} className={bothDone ? 'text-emerald-400' : isPro ? 'text-orange-600' : 'text-neon-cyan'} />
                 <span className={`text-[10px] font-black uppercase tracking-widest
-                  ${bothDone ? 'text-[#39FF14]' : isPro ? 'text-orange-600' : 'text-neon-cyan'}`}>
+                  ${bothDone ? 'text-emerald-400' : isPro ? 'text-orange-600' : 'text-neon-cyan'}`}>
                   {bothDone ? '🎉 Match Confirmé !' : '📋 Fiche de Match — À valider'}
                 </span>
               </div>
@@ -416,7 +416,7 @@ export function NegotiationChat({
               onChange={e => setNewMessage(e.target.value)}
               placeholder="Écrire un message..."
               className={`flex-1 rounded-2xl p-4 pr-14 text-sm font-bold outline-none border transition-all
-                ${isPro ? 'bg-gray-100 border-gray-200 focus:border-orange-500 text-black' : 'bg-black border-white/10 focus:border-neon-cyan text-white'}`}
+                ${isPro ? 'bg-gray-100 border-gray-200 focus:border-orange-500 text-black' : 'bg-[#15171C] border-white/10 focus:border-neon-cyan text-white'}`}
             />
             <button type="submit" disabled={!newMessage.trim() || isSending}
               className={`absolute right-2 p-3 rounded-xl transition-all active:scale-90 ${isPro ? 'text-orange-600' : 'text-neon-cyan'} disabled:opacity-30`}>
@@ -433,17 +433,17 @@ function ValidationChip({ name, confirmed, isMe, isPro }: { name: string; confir
   return (
     <div className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
       ${confirmed
-        ? 'border-[#39FF14] bg-[#39FF14]/10'
+        ? 'border-emerald-400 bg-emerald-400/10'
         : isPro ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}>
       <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0
-        ${confirmed ? 'bg-[#39FF14]' : isPro ? 'bg-gray-200' : 'bg-white/10'}`}>
+        ${confirmed ? 'bg-emerald-400' : isPro ? 'bg-gray-200' : 'bg-white/10'}`}>
         {confirmed && <CheckCircle2 size={12} className="text-black" />}
       </div>
       <div className="min-w-0">
-        <p className={`text-[9px] font-black uppercase truncate ${confirmed ? 'text-[#39FF14]' : isPro ? 'text-gray-500' : 'text-gray-500'}`}>
+        <p className={`text-[9px] font-black uppercase truncate ${confirmed ? 'text-emerald-400' : isPro ? 'text-gray-500' : 'text-gray-500'}`}>
           {name} {isMe ? '(moi)' : ''}
         </p>
-        <p className={`text-[8px] uppercase font-bold ${confirmed ? 'text-[#39FF14]/70' : isPro ? 'text-gray-400' : 'text-gray-600'}`}>
+        <p className={`text-[8px] uppercase font-bold ${confirmed ? 'text-emerald-400/70' : isPro ? 'text-gray-400' : 'text-gray-600'}`}>
           {confirmed ? 'Validé ✓' : 'En attente...'}
         </p>
       </div>

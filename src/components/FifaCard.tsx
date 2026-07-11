@@ -31,7 +31,7 @@ export function FifaCard({
   variant = 'classic'
 }: FifaCardProps) {
   return (
-    <div className={`relative animate-in fade-in zoom-in duration-500 max-w-sm mx-auto shadow-2xl ${variant === 'cyber' ? 'after:absolute after:inset-0 after:rounded-[2.5rem] after:border-2 after:border-neon-cyan after:animate-pulse after:shadow-[0_0_15px_#00F0FF] after:pointer-events-none' : ''}`}>
+    <div className={`relative animate-in fade-in zoom-in duration-500 max-w-sm mx-auto shadow-2xl ${variant === 'cyber' ? 'after:absolute after:inset-0 after:rounded-[2.5rem] after:border-2 after:border-neon-orange/60 after:animate-soft-pulse after:pointer-events-none' : ''}`}>
       <div className={`bg-gradient-to-br ${color} rounded-[2.5rem] p-1 overflow-hidden flex flex-col relative border-2 border-white/20`}>
         <div className="bg-white/10 absolute inset-0 mix-blend-overlay" />
 

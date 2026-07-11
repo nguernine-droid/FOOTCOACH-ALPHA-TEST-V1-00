@@ -9,7 +9,6 @@ import {
   User,
   Loader2,
 } from 'lucide-react';
-import { ScanlinesOverlay } from '@/components/ui/cyber/ScanlinesOverlay';
 import { useTeam } from '@/lib/context/TeamContext';
 import { ClubSearchInput } from '@/components/ClubSearchInput';
 
@@ -31,7 +30,7 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const neonHex = selectedTheme === 'nexus' ? '#00F0FF' : '#FF6B00';
+  const neonHex = selectedTheme === 'nexus' ? '#2DD4BF' : '#F97316';
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -115,9 +114,11 @@ export default function OnboardingPage() {
         }
       }
 
+      const chosenRole = (localStorage.getItem('user_role') as 'coach' | 'player' | 'parent' | 'supporter') || 'coach';
+
       const { error: pErr } = await supabase.from('profiles').upsert([{
         id: user.id,
-        role: 'coach',
+        role: chosenRole,
         first_name: firstName,
         last_name: lastName,
         nickname: nickname,
@@ -131,7 +132,8 @@ export default function OnboardingPage() {
 
       if (pErr) throw pErr;
 
-      localStorage.setItem('user_role', 'coach');
+      localStorage.setItem('user_role', chosenRole);
+      localStorage.setItem('nexus_active_role', chosenRole);
       localStorage.setItem('app_theme', selectedTheme);
       await refreshData();
 
@@ -146,20 +148,19 @@ export default function OnboardingPage() {
 
   return (
     <div className="w-full pb-20 px-4">
-      <ScanlinesOverlay />
       <div className="text-center mb-12 mt-8">
         <User style={{ color: neonHex }} size={40} className="mx-auto mb-4" />
         <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white">Complète ton profil</h1>
-        <p className="text-[9px] font-black text-[#39FF14] uppercase tracking-[0.4em] mt-2">Nexus_OS // Auto_Feed_Engine</p>
+        <p className="text-[9px] font-black text-neon-green uppercase tracking-[0.4em] mt-2">Nexus_OS // Auto_Feed_Engine</p>
       </div>
 
       <form onSubmit={handleFinish} className="max-w-sm mx-auto space-y-8">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <input required placeholder="NOM" value={lastName} onChange={e => setLastName(e.target.value.toUpperCase())} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
-            <input required placeholder="PRÉNOM" value={firstName} onChange={e => setFirstName(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
+            <input required placeholder="NOM" value={lastName} onChange={e => setLastName(e.target.value.toUpperCase())} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-neon-green" />
+            <input required placeholder="PRÉNOM" value={firstName} onChange={e => setFirstName(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-neon-green" />
           </div>
-          <input placeholder="SURNOM / PSEUDO" value={nickname} onChange={e => setNickname(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
+          <input placeholder="SURNOM / PSEUDO" value={nickname} onChange={e => setNickname(e.target.value)} className="w-full bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-neon-green" />
         </div>
 
         <div className="space-y-4">
@@ -188,15 +189,15 @@ export default function OnboardingPage() {
               placeholder="VILLE DU CLUB *"
               value={clubCity}
               onChange={e => setClubCity(e.target.value.toUpperCase())}
-              className={`bg-white/5 border rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14] transition-all
-                ${clubCity ? 'border-[#39FF14]/50' : 'border-red-500/40'}`}
+              className={`bg-white/5 border rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-neon-green transition-all
+                ${clubCity ? 'border-neon-green/50' : 'border-red-500/40'}`}
             />
             <input
               placeholder="NOM DU STADE *"
               value={clubStadium}
               onChange={e => setClubStadium(e.target.value.toUpperCase())}
-              className={`bg-white/5 border rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14] transition-all
-                ${clubStadium ? 'border-[#39FF14]/50' : 'border-red-500/40'}`}
+              className={`bg-white/5 border rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-neon-green transition-all
+                ${clubStadium ? 'border-neon-green/50' : 'border-red-500/40'}`}
             />
           </div>
           {(!clubCity || !clubStadium) && selectedClubName && (
@@ -205,14 +206,14 @@ export default function OnboardingPage() {
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <input required placeholder="CATÉGORIE (U13...)" value={category} onChange={e => setCategory(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
-            <input required placeholder="NIVEAU (D1...)" value={level} onChange={e => setLevel(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-[#39FF14]" />
+            <input required placeholder="CATÉGORIE (U13...)" value={category} onChange={e => setCategory(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-neon-green" />
+            <input required placeholder="NIVEAU (D1...)" value={level} onChange={e => setLevel(e.target.value)} className="bg-white/5 border border-white/20 rounded-xl p-4 text-sm font-bold text-white outline-none focus:border-neon-green" />
           </div>
         </div>
 
         <div className="space-y-4 bg-white/5 p-6 rounded-2xl border border-white/10">
-          <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={acceptCGU} onChange={e => setAcceptCGU(e.target.checked)} className="mt-1 w-4 h-4 rounded bg-black border-white/20" /><span className="text-[9px] text-white/50 uppercase font-bold">Accepter CGU / Confidentialité</span></label>
-          <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={acceptPrivacy} onChange={e => setAcceptPrivacy(e.target.checked)} className="mt-1 w-4 h-4 rounded bg-black border-white/20" /><span className="text-[9px] text-white/50 uppercase font-bold">Autoriser stockage données</span></label>
+          <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={acceptCGU} onChange={e => setAcceptCGU(e.target.checked)} className="mt-1 w-4 h-4 rounded bg-[#15171C] border-white/20" /><span className="text-[9px] text-white/50 uppercase font-bold">Accepter CGU / Confidentialité</span></label>
+          <label className="flex items-start gap-3 cursor-pointer"><input type="checkbox" checked={acceptPrivacy} onChange={e => setAcceptPrivacy(e.target.checked)} className="mt-1 w-4 h-4 rounded bg-[#15171C] border-white/20" /><span className="text-[9px] text-white/50 uppercase font-bold">Autoriser stockage données</span></label>
         </div>
 
         {errorMessage && <p className="text-center text-[10px] font-black text-red-500 uppercase">{errorMessage}</p>}
@@ -228,12 +229,12 @@ export default function OnboardingPage() {
 function BionicAccessAnimation({ theme, onComplete }: { theme: 'classic' | 'nexus', onComplete: () => void }) {
   useEffect(() => { setTimeout(onComplete, 3000); }, [onComplete]);
   return (
-    <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center p-10 text-center">
-      <div className={`w-32 h-32 rounded-full border-4 flex items-center justify-center ${theme === 'nexus' ? 'border-neon-cyan text-neon-cyan' : 'border-neon-orange text-neon-orange'} shadow-[0_0_30px_currentColor]`}>
+    <div className="fixed inset-0 z-[1000] bg-[#15171C] flex flex-col items-center justify-center p-10 text-center">
+      <div className={`w-32 h-32 rounded-full border-4 flex items-center justify-center ${theme === 'nexus' ? 'border-neon-cyan text-neon-cyan' : 'border-neon-orange text-neon-orange'} shadow-lg`}>
         <CheckCircle2 size={64} />
       </div>
       <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter mt-12">Accès_Autorisé</h2>
-      <p className="text-[10px] font-mono text-[#39FF14] uppercase tracking-[0.4em] mt-4">Sync Engine V.204...</p>
+      <p className="text-[10px] font-mono text-neon-green uppercase tracking-[0.4em] mt-4">Sync Engine V.204...</p>
     </div>
   );
 }

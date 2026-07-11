@@ -59,7 +59,7 @@ export function RefuseModal({ isOpen, coachName, isPro, onConfirm, onCancel }: R
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={`relative w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 space-y-6 shadow-2xl outline-none
-              ${isPro ? 'bg-white' : 'bg-[#0A0A0A] border-t border-white/10'}`}
+              ${isPro ? 'bg-white' : 'bg-[#1D2027] border-t border-white/10'}`}
           >
             {/* Handle */}
             <div className="w-12 h-1.5 rounded-full bg-gray-300 mx-auto mb-2" />

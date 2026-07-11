@@ -16,7 +16,7 @@ export function ResultsModal({ isOpen, onClose }: ResultsModalProps) {
   const categories = [
     { id: 'matchs', label: 'Matchs', icon: <Trophy size={20} />, color: 'bg-match-red' },
     { id: 'plateau', label: 'Plateaux', icon: <Zap size={20} />, color: 'bg-purple-600' },
-    { id: 'tournois', label: 'Tournois', icon: <Shield size={20} />, color: 'bg-[#FFD700]', iconColor: 'text-black' },
+    { id: 'tournois', label: 'Tournois', icon: <Shield size={20} />, color: 'bg-amber-400', iconColor: 'text-black' },
     { id: 'interdistrict', label: 'Interdistrict', icon: <Users size={20} />, color: 'bg-sky-400' },
   ];
 

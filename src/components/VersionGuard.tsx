@@ -73,9 +73,9 @@ export function VersionGuard({ children }: { children: React.ReactNode }) {
   // CHARGEMENT INITIAL
   if (status === 'loading') {
     return (
-      <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center text-white">
-        <ShieldCheck className="text-neon-cyan animate-pulse mb-8" size={60} />
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-neon-cyan opacity-40">Verification_V.{CURRENT_APP_VERSION}</p>
+      <div className="fixed inset-0 z-[9999] bg-[#15171C] flex flex-col items-center justify-center text-white">
+        <ShieldCheck className="text-neon-orange animate-pulse mb-8" size={60} />
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-neon-orange opacity-40">Verification_V.{CURRENT_APP_VERSION}</p>
       </div>
     );
   }
@@ -83,9 +83,9 @@ export function VersionGuard({ children }: { children: React.ReactNode }) {
   // ÉCRAN DE BLOCAGE (DÉTECTION MAJ)
   if (status === 'blocked' || status === 'syncing') {
     return (
-      <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center text-white p-10 text-center">
-        <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-10 border-2 transition-all duration-1000 ${status === 'syncing' ? 'border-[#39FF14] bg-[#39FF14]/10' : 'border-neon-orange bg-neon-orange/10 shadow-[0_0_30px_#FF6B0044]'}`}>
-          {status === 'syncing' ? <CheckCircle2 className="text-[#39FF14] animate-bounce" size={48} /> : <RefreshCw className="text-neon-orange animate-spin" size={48} />}
+      <div className="fixed inset-0 z-[9999] bg-[#15171C] flex flex-col items-center justify-center text-white p-10 text-center">
+        <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mb-10 border-2 transition-all duration-1000 ${status === 'syncing' ? 'border-emerald-500 bg-emerald-500/10' : 'border-neon-orange bg-neon-orange/10 shadow-md'}`}>
+          {status === 'syncing' ? <CheckCircle2 className="text-emerald-500 animate-bounce" size={48} /> : <RefreshCw className="text-neon-orange animate-spin" size={48} />}
         </div>
 
         <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-2">
@@ -107,7 +107,7 @@ export function VersionGuard({ children }: { children: React.ReactNode }) {
         {status === 'blocked' && (
           <button
             onClick={handleUpdate}
-            className="mt-12 bg-neon-cyan text-black px-10 py-5 rounded-2xl font-black uppercase italic text-sm shadow-[0_0_20px_#00F0FF66] active:scale-90 transition-all"
+            className="mt-12 bg-neon-orange text-black px-10 py-5 rounded-2xl font-black uppercase italic text-sm shadow-md active:scale-90 transition-all"
           >
             Installer Maintenant
           </button>

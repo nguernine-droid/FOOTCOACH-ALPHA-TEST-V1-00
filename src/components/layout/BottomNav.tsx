@@ -55,7 +55,7 @@ export function BottomNav() {
 
   const accentColor = isPro
     ? 'bg-orange-600 shadow-orange-300'
-    : 'bg-neon-cyan shadow-[0_0_15px_#00F0FF]';
+    : 'bg-neon-orange shadow-orange-900/40';
 
   const getContext = () => {
     if (pathname?.startsWith('/radar'))   return 'radar';
@@ -66,8 +66,8 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className={`fixed bottom-0 left-0 right-0 max-w-md mx-auto backdrop-blur-xl border-t px-1 py-3 z-50 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.6)]
-        ${isPro ? 'bg-white/95 border-gray-100' : 'bg-black/90 border-white/10'}`}>
+      <nav className={`fixed bottom-0 left-0 right-0 max-w-md mx-auto backdrop-blur-xl border-t px-1 py-3 z-50 rounded-t-[2.5rem] shadow-2xl
+        ${isPro ? 'bg-white/95 border-gray-100' : 'bg-[#1D2027]/95 border-white/[0.06]'}`}>
 
         <div className="flex items-end justify-between px-2">
 
@@ -135,7 +135,7 @@ function NavItem({
   active: boolean;
   isPro: boolean;
 }) {
-  const activeColor = isPro ? 'text-orange-600' : 'text-neon-cyan';
+  const activeColor = isPro ? 'text-orange-600' : 'text-neon-orange';
   const inactiveColor = isPro ? 'text-gray-400' : 'text-gray-500';
 
   return (
@@ -144,14 +144,14 @@ function NavItem({
       className={`flex flex-col items-center gap-1 transition-all duration-200 flex-1 min-w-0 px-0.5
         ${active ? `${activeColor} scale-110` : inactiveColor}`}
     >
-      <div className={active ? 'drop-shadow-[0_0_6px_currentColor]' : ''}>
+      <div>
         {icon}
       </div>
-      <span className={`text-[8px] uppercase tracking-tighter whitespace-nowrap ${active ? 'font-black' : 'font-bold'}`}>
+      <span className={`text-[8px] uppercase tracking-tight whitespace-nowrap ${active ? 'font-bold' : 'font-semibold'}`}>
         {label}
       </span>
       {active && (
-        <div className={`w-1 h-1 rounded-full ${isPro ? 'bg-orange-600' : 'bg-neon-cyan'}`} />
+        <div className={`w-1 h-1 rounded-full ${isPro ? 'bg-orange-600' : 'bg-neon-orange'}`} />
       )}
     </Link>
   );

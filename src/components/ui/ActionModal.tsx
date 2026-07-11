@@ -43,7 +43,7 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
     onSend(actionData);
   };
 
-  const inputClass = "w-full bg-[#111827] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-orange transition-all text-white";
+  const inputClass = "w-full bg-[#15171C] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand-orange transition-all text-white";
   const quickMessages = ["⚽️ Arrivez 30 min avant", "⚠️ Match important", "🏥 Certificat médical requis"];
 
   const modalTitles: any = {
@@ -66,9 +66,9 @@ export function ActionModal({ isOpen, onClose, selectedPlayers, onSend, actionTy
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm bg-[#1c1f26] rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 duration-300"
+        className="w-full max-w-sm bg-[#1D2027] rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 duration-300"
       >
-        <div className="bg-[#111827] px-6 py-4 flex items-center justify-between border-b border-white/5">
+        <div className="bg-[#15171C] px-6 py-4 flex items-center justify-between border-b border-white/5">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-2">

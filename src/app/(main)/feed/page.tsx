@@ -110,7 +110,7 @@ export default function LiveFeedPage() {
     accent: 'bg-orange-600',
     text: 'text-gray-900'
   } : {
-    bg: 'bg-[#050510]',
+    bg: 'bg-[#15171C]',
     card: 'bg-white/5 border-white/10',
     accent: 'bg-neon-cyan',
     text: 'text-white'
@@ -119,7 +119,7 @@ export default function LiveFeedPage() {
   return (
     <main className={`min-h-screen pb-32 ${styles.bg} transition-colors duration-500`}>
       {/* HEADER LIVE */}
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/10 p-5 flex justify-between items-center">
+      <header className="sticky top-0 z-40 bg-[#15171C]/80 backdrop-blur-xl border-b border-white/10 p-5 flex justify-between items-center">
         <div className="flex items-center gap-3">
            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
            <h1 className="text-xl font-black uppercase italic tracking-tighter text-white">
@@ -170,7 +170,7 @@ export default function LiveFeedPage() {
               <div key={post.id} className={`${styles.card} p-5 rounded-[2rem] border animate-in slide-in-from-bottom-2 duration-500`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-black border border-white/10 overflow-hidden">
+                    <div className="w-10 h-10 rounded-xl bg-[#1D2027] border border-white/10 overflow-hidden">
                        <img src={post.profiles?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${post.author_id}`} alt="" />
                     </div>
                     <div className="text-left">
