@@ -73,7 +73,8 @@ export default function DashboardPage() {
       setChatCount(myReqs?.length || 0);
 
       const [ { count: mj }, { count: ap }, { count: mv }, { data: dispo } ] = await Promise.all([
-        supabase.from('events').select('*', { count: 'exact', head: true }).eq('type', 'match').eq('status', 'finished').is('deleted_at', null),
+        supabase.from('events').select('*', { count: 'exact', head: true }).eq('type', 'match').eq('status', 'finished').is('deleted_at', null)
+          .or(`created_by.eq.${user.id},home_club_id.eq.${teamInfo?.id},away_club_id.eq.${teamInfo?.id}`),
         supabase.from('match_requests').select('*', { count: 'exact', head: true }).eq('coach_id', user.id).is('deleted_at', null),
         supabase.from('match_requests').select('*', { count: 'exact', head: true }).or(`coach_id.eq.${user.id},respondent_id.eq.${user.id}`).eq('status', 'MATCHED'),
         supabase.from('event_attendees').select('status, events!inner(created_by)').eq('events.created_by', user.id),
@@ -103,7 +104,7 @@ export default function DashboardPage() {
 
     } catch (err) { console.error(err); }
     finally { setIsDataLoading(false); }
-  }, [teamInfo?.category]);
+  }, [teamInfo?.id]);
 
   useEffect(() => {
     if (events.length > 0 && scrollRef.current) {
@@ -142,7 +143,7 @@ export default function DashboardPage() {
 
   return (
     <div className={`min-h-screen pb-40 ${s.bg} transition-colors duration-500`}>
-      <div className="max-w-md mx-auto px-4 pt-5 space-y-6">
+      <div className="max-w-md lg:max-w-2xl mx-auto px-4 pt-5 space-y-6">
 
         {/* 1. RÉSUMÉ CLUB */}
         <section className={`rounded-[2.5rem] border p-5 flex items-center gap-4 ${s.card} shadow-sm active:scale-95 transition-all`} onClick={() => router.push('/profile')}>
@@ -152,7 +153,11 @@ export default function DashboardPage() {
           <div className="flex-1 min-w-0 text-left">
             <p className={`text-xs font-black uppercase italic tracking-tight ${s.text}`}>{teamInfo?.clubAcronym || teamInfo?.clubName || 'Mon Club'}</p>
             <p className={`text-[9px] font-bold uppercase ${s.sub}`}>{teamInfo?.category} · {teamInfo?.level}</p>
-            <p className={`text-[9px] font-black uppercase mt-0.5 ${s.accent}`}>{isPro ? `Coach ${teamInfo?.coachName}` : `Cmd. ${teamInfo?.coachName}`}</p>
+            <p className={`text-[9px] font-black uppercase mt-0.5 ${s.accent}`}>{(() => {
+              const name = teamInfo?.coachName || '';
+              const prefix = isPro ? 'Coach' : 'Cmd.';
+              return name.toLowerCase().startsWith('coach') ? name : `${prefix} ${name}`;
+            })()}</p>
           </div>
           <ChevronRight size={18} className={s.sub} />
         </section>
@@ -210,14 +215,22 @@ export default function DashboardPage() {
                       {/* PIED DE CARTE (REPLICA) */}
                       <div className="flex flex-col items-center gap-2">
                          <div className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-300 tracking-[0.2em]">
-                            <MapPin size={12} className={s.accent} /> {ev.city || ev.stadium_name || 'SETE'}
+                            <MapPin size={12} className={s.accent} /> {ev.city || ev.stadium_name || ev.location || 'Lieu à définir'}
                          </div>
                       </div>
                    </div>
                 </div>
               );
             }) : (
-              <div className="min-w-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-200 shadow-inner"><p className="text-[10px] font-black text-gray-300 uppercase">Aucune mission planifiée</p></div>
+              <div className="min-w-full py-16 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-200 shadow-inner space-y-4">
+                <p className="text-[10px] font-black text-gray-400 uppercase">{isPro ? 'Aucun événement planifié' : 'Aucune mission planifiée'}</p>
+                <button
+                  onClick={(e) => { e.stopPropagation(); router.push('/events/new'); }}
+                  className="px-6 py-3 rounded-2xl bg-orange-600 text-white text-[10px] font-black uppercase italic active:scale-95 transition-all shadow-lg"
+                >
+                  + Planifier mon premier événement
+                </button>
+              </div>
             )}
           </div>
         </section>
@@ -225,15 +238,14 @@ export default function DashboardPage() {
         {/* 3. COMPTEURS TEMPS RÉEL */}
         <section className="grid grid-cols-3 gap-3">
           {[
-            { icon: <Radio size={20} className={radarCount > 0 ? 'text-orange-500' : s.sub} />, count: radarCount, label: 'Signaux', alert: radarCount > 0 },
-            { icon: <MessageCircle size={20} className={chatCount > 0 ? 'text-purple-400' : s.sub} />, count: chatCount, label: 'Chats', alert: false },
-            { icon: <Bell size={20} className={responseCount > 0 ? 'text-green-500' : s.sub} />, count: responseCount, label: 'Réponses', alert: responseCount > 0 },
+            { icon: <Radio size={20} className={radarCount > 0 ? 'text-orange-500' : s.sub} />, count: radarCount, label: 'Annonces', route: '/radar', alert: radarCount > 0 },
+            { icon: <MessageCircle size={20} className={chatCount > 0 ? 'text-purple-400' : s.sub} />, count: chatCount, label: 'Discussions', route: '/comms', alert: false },
+            { icon: <Bell size={20} className={responseCount > 0 ? 'text-green-500' : s.sub} />, count: responseCount, label: 'Réponses', route: '/radar', alert: responseCount > 0 },
           ].map((item, i) => (
-            <button key={i} onClick={() => router.push('/radar')} className={`rounded-[2rem] border p-4 flex flex-col items-center gap-1 active:scale-95 transition-all ${s.card} ${item.alert ? `border-orange-200 shadow-md` : 'shadow-sm'}`}>
+            <button key={i} onClick={() => router.push(item.route)} className={`rounded-[2rem] border p-4 flex flex-col items-center gap-1 active:scale-95 transition-all ${s.card} ${item.alert ? `border-orange-200 shadow-md` : 'shadow-sm'}`}>
               {item.icon}
               <span className={`text-2xl font-black ${item.alert ? s.accent : s.text}`}>{item.count}</span>
               <span className={`text-[8px] font-black uppercase tracking-widest ${item.alert ? s.accent : s.sub}`}>{item.label}</span>
-              <p className="text-[6px] font-bold text-gray-400 uppercase opacity-40">{item.count > 1 ? 'en cours' : 'actif'}</p>
             </button>
           ))}
         </section>

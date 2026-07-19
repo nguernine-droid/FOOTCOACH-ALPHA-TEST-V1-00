@@ -258,7 +258,7 @@ function NewSignalContent() {
   };
 
   return (
-    <div className="min-h-screen max-w-md mx-auto pb-40 bg-[#15171C] font-sans overflow-x-hidden">
+    <div className="min-h-screen max-w-md lg:max-w-2xl mx-auto pb-40 bg-[#15171C] font-sans overflow-x-hidden">
       <header className="bg-[#15171C]/80 backdrop-blur-xl border-b border-white/5 py-6 px-6 sticky top-0 z-50 flex items-center gap-4">
         <button onClick={() => router.back()} className="text-white active:scale-90"><ChevronLeft size={28} strokeWidth={3} /></button>
         <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white">

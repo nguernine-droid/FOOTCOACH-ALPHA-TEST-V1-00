@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { useTeam } from '@/lib/context/TeamContext';
 import { LayoutDashboard, Radar, CalendarDays, Plus, Rss, Megaphone, Users } from 'lucide-react';
 import { CreateMenu } from './CreateMenu';
-import { isFeatureEnabled } from '@/lib/config/features';
 
 /**
  * BOTTOM_NAV — Alpha V1.3
@@ -18,7 +17,6 @@ export function BottomNav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const isPro = theme === 'classic';
-  const isProfilePage = pathname === '/profile';
 
   const navItems = [
     {
@@ -61,12 +59,14 @@ export function BottomNav() {
     if (pathname?.startsWith('/radar'))   return 'radar';
     if (pathname?.startsWith('/events'))  return 'events';
     if (pathname?.startsWith('/profile')) return 'profile';
+    if (pathname?.startsWith('/team'))    return 'team';
+    if (pathname?.startsWith('/comms'))   return 'com';
     return 'default';
   };
 
   return (
     <>
-      <nav className={`fixed bottom-0 left-0 right-0 max-w-md mx-auto backdrop-blur-xl border-t px-1 py-3 z-50 rounded-t-[2.5rem] shadow-2xl
+      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto backdrop-blur-xl border-t px-1 py-3 z-50 rounded-t-[2.5rem] shadow-2xl
         ${isPro ? 'bg-white/95 border-gray-100' : 'bg-[#1D2027]/95 border-white/[0.06]'}`}>
 
         <div className="flex items-end justify-between px-2">

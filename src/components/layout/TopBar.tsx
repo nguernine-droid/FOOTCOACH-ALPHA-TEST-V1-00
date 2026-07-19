@@ -84,7 +84,7 @@ export function TopBar() {
                  <div className="px-3 py-1 rounded-full bg-rose-500 text-white shadow-sm text-[8px] font-bold tracking-wide flex items-center gap-1">
                     <RefreshCw size={9} /> MAJ DISPONIBLE (V.{targetVersion})
                  </div>
-                 <p className="text-[6px] text-gray-400 font-semibold uppercase tracking-wide">Locale: V.{CURRENT_APP_VERSION}</p>
+                 <p className="text-[8px] text-gray-400 font-semibold uppercase tracking-wide">Version installée : {CURRENT_APP_VERSION}</p>
                </div>
              ) : (
                <div className="px-4 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 text-[8px] font-bold tracking-wide flex items-center gap-2">
@@ -98,18 +98,15 @@ export function TopBar() {
         {/* PHOTO PROFIL */}
         <div className="flex flex-col items-center">
           <Link href="/profile" className="block w-full">
-            <div className={`aspect-square w-full rounded-2xl border-2 transition-all active:scale-90 border-emerald-400/60 shadow-sm ${isPro ? 'bg-orange-50' : 'bg-white/5'} relative overflow-hidden`}>
+            <div className={`aspect-square w-full rounded-2xl border-2 transition-all active:scale-90 border-emerald-400/60 shadow-sm ${isPro ? 'bg-orange-50' : 'bg-white/5'} relative overflow-hidden flex items-center justify-center`}>
               {teamInfo?.coachPhoto ? (
                 <img src={teamInfo.coachPhoto} alt="Coach" className="w-full h-full object-cover" />
               ) : (
                 <User size={24} className={accentColor} />
               )}
-              <div className={`absolute bottom-0 inset-x-0 py-0.5 text-center text-[5px] font-bold uppercase ${isPro ? 'bg-white/70 text-gray-600' : 'bg-black/50 text-white'}`}>
-                COACH
-              </div>
             </div>
           </Link>
-          <p className={`text-[5px] font-semibold uppercase mt-1 tracking-tight ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>Profil</p>
+          <p className={`text-[8px] font-bold uppercase mt-1 tracking-tight ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>Profil</p>
         </div>
 
       </div>

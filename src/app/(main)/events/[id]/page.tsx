@@ -242,7 +242,7 @@ export default function EventDetailPage() {
   const isCoach  = event.created_by === userId;
 
   return (
-    <main className="min-h-screen bg-[#15171C] text-white pb-32 max-w-md mx-auto font-sans">
+    <main className="min-h-screen bg-[#15171C] text-white pb-32 max-w-md lg:max-w-2xl mx-auto font-sans">
       <header className="bg-[#15171C]/80 backdrop-blur-md py-5 px-6 sticky top-0 z-30 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="active:scale-90 transition-transform">

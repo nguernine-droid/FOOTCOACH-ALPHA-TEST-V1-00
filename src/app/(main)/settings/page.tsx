@@ -195,13 +195,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className={`min-h-screen ${styles.mainBg} max-w-md mx-auto shadow-2xl pb-32 transition-colors duration-500`}>
+    <main className={`min-h-screen ${styles.mainBg} max-w-md lg:max-w-2xl mx-auto shadow-2xl lg:shadow-none pb-32 transition-colors duration-500`}>
       {/* Header */}
-      <header className={`py-4 px-6 sticky top-0 z-50 border-b flex items-center gap-4 bg-[#15171C]/60 backdrop-blur-md ${styles.border}`}>
-        <button onClick={() => router.back()} className={`${styles.text} active:scale-90 transition-transform`}>
+      <header className={`py-4 px-6 sticky top-0 z-50 border-b flex items-center gap-4 backdrop-blur-md ${isPro ? 'bg-white/90' : 'bg-[#15171C]/60'} ${styles.border}`}>
+        <button onClick={() => router.back()} aria-label="Retour" className={`${styles.text} active:scale-90 transition-transform`}>
           <ChevronLeft size={24} strokeWidth={3} />
         </button>
-        <h1 className={`text-xl font-black uppercase italic tracking-tighter ${styles.text}`}>Configuration_Système</h1>
+        <h1 className={`text-xl font-black uppercase italic tracking-tighter ${styles.text}`}>{isPro ? 'Réglages' : 'Configuration_Système'}</h1>
       </header>
 
       <div className="p-6 space-y-10">
@@ -210,7 +210,7 @@ export default function SettingsPage() {
         <section className="space-y-4">
           <div className="flex items-center gap-3 px-2">
             <Zap size={14} className={styles.accent} />
-            <h4 className={`text-[10px] font-black uppercase tracking-widest ${styles.textSub}`}>Interface_Visuelle</h4>
+            <h4 className={`text-[10px] font-black uppercase tracking-widest ${styles.textSub}`}>Apparence</h4>
           </div>
           <div className={`rounded-3xl border ${styles.border} overflow-hidden divide-y ${styles.border} ${styles.cardBg}`}>
             <button
@@ -251,7 +251,7 @@ export default function SettingsPage() {
         <section className="space-y-4">
           <div className="flex items-center gap-3 px-2">
             <MessageSquare size={14} className={styles.accent} />
-            <h4 className={`text-[10px] font-black uppercase tracking-widest ${styles.textSub}`}>Bugs_&_Améliorations</h4>
+            <h4 className={`text-[10px] font-black uppercase tracking-widest ${styles.textSub}`}>Bugs & idées d'amélioration</h4>
           </div>
 
           <form onSubmit={handleSendFeedback} className={`${styles.cardBg} rounded-3xl border ${styles.border} p-6 space-y-4`}>
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                   key={t}
                   type="button"
                   onClick={() => setFeedbackType(t)}
-                  className={`py-2 rounded-xl text-[8px] font-black uppercase border transition-all ${feedbackType === t ? `${isPro ? 'bg-orange-600 text-white border-orange-600' : 'bg-neon-cyan text-black border-neon-cyan'}` : 'border-white/10 text-gray-500'}`}
+                  className={`py-2 rounded-xl text-[8px] font-black uppercase border transition-all ${feedbackType === t ? `${isPro ? 'bg-orange-600 text-white border-orange-600' : 'bg-neon-cyan text-black border-neon-cyan'}` : isPro ? 'border-gray-200 text-gray-500' : 'border-white/10 text-gray-500'}`}
                 >
                   {t === 'bug' && <Bug size={12} className="inline mr-1 mb-0.5" />}
                   {t === 'amélioration' && <Lightbulb size={12} className="inline mr-1 mb-0.5" />}
@@ -389,7 +389,7 @@ export default function SettingsPage() {
         <section className="space-y-4">
           <div className="flex items-center gap-3 px-2">
             <ShieldAlert size={14} className="text-red-500" />
-            <h4 className={`text-[10px] font-black uppercase tracking-widest text-red-500/60`}>Danger_Zone</h4>
+            <h4 className={`text-[10px] font-black uppercase tracking-widest text-red-500/60`}>Zone sensible</h4>
           </div>
           <div className={`rounded-3xl border border-red-500/20 overflow-hidden divide-y divide-red-500/10 ${styles.cardBg}`}>
             <button
@@ -434,7 +434,7 @@ export default function SettingsPage() {
               </div>
               <div className="text-left flex-1">
                 <p className="text-sm font-black uppercase italic text-red-500">Déconnexion</p>
-                <p className="text-[9px] font-bold text-red-500/40 uppercase tracking-widest">Terminer la session Nexus</p>
+                <p className="text-[9px] font-bold text-red-500/40 uppercase tracking-widest">Se déconnecter de l'application</p>
               </div>
               <ChevronRight size={18} className="text-red-500/20" />
             </button>

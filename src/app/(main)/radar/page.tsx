@@ -68,7 +68,6 @@ export default function RadarPage() {
   const [refuseTarget, setRefuseTarget] = useState<MatchRequest | null>(null);
 
   // FILTERS (VERITÉ TERRAIN - PLEIN PHARES V1.0.341)
-  const [showFilters, setShowFilters] = useState(false);
   const [filterCategory, setFilterCategory] = useState('TOUS');
   const [filterDistance, setFilterDistance] = useState(150);
   const [filterLevel, setFilterLevel] = useState('TOUS');
@@ -455,9 +454,8 @@ export default function RadarPage() {
 
       {/* 2. SECTION FILTRES INTÉGRÉE (ENTRE HEADER ET RADAR) */}
       <section className={`p-6 rounded-[2.5rem] border-2 space-y-5 animate-in slide-in-from-top-4 duration-500 shadow-lg ${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'}`}>
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-2">
-           <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><Filter size={14} className={styles.accent} /> Réglages Tactiques</h3>
-           <span className="text-[9px] font-bold text-gray-300 uppercase italic">Basé sur votre profil</span>
+        <div className={`flex items-center justify-between border-b pb-3 mb-2 ${isPro ? 'border-gray-100' : 'border-white/10'}`}>
+           <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><Filter size={14} className={styles.accent} /> {isPro ? 'Filtrer les annonces' : 'Réglages Tactiques'}</h3>
         </div>
 
         {/* Catégories (Scroll horizontal) */}
@@ -465,7 +463,7 @@ export default function RadarPage() {
            <p className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Catégorie cible</p>
            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
               {categories.map(c => (
-                <button key={c} onClick={() => setFilterCategory(c)} className={`px-4 py-2 rounded-xl text-[9px] font-black border-2 transition-all shrink-0 ${filterCategory === c ? styles.btn : 'bg-gray-50 border-gray-50 text-gray-400'}`}>{c}</button>
+                <button key={c} onClick={() => setFilterCategory(c)} className={`px-4 py-2 rounded-xl text-[9px] font-black border-2 transition-all shrink-0 ${filterCategory === c ? styles.btn : isPro ? 'bg-gray-50 border-gray-50 text-gray-400' : 'bg-white/5 border-white/10 text-gray-500'}`}>{c}</button>
               ))}
            </div>
         </div>
@@ -501,53 +499,9 @@ export default function RadarPage() {
           {/* FLUX DES MISSIONS ADVERSES */}
           <div className="space-y-6">
             <div className="flex items-center justify-between px-2 border-b border-gray-200 pb-2">
-               <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400">Radar de Missions</h3>
-               <button onClick={() => setShowFilters(!showFilters)} className={`p-2 rounded-lg border ${showFilters ? styles.btn : 'border-gray-200'}`}><Filter size={16}/></button>
+               <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400">{isPro ? 'Annonces à proximité' : 'Radar de Missions'}</h3>
+               <span className="text-[9px] font-bold text-gray-400 uppercase">{enemyRequests.length} annonce{enemyRequests.length > 1 ? 's' : ''}</span>
             </div>
-
-            {showFilters && (
-              <div className={`p-6 rounded-3xl border animate-in slide-in-from-top-2 duration-300 space-y-5 ${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'}`}>
-                {/* Filtre catégorie */}
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Catégorie</p>
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map(c => (
-                      <button key={c} onClick={() => setFilterCategory(c)}
-                        className={`px-3 py-2 rounded-xl text-[9px] font-black border transition-all ${filterCategory === c ? styles.btn : isPro ? 'border-gray-100 text-gray-400' : 'border-white/10 text-gray-500'}`}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Filtre niveau */}
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">Niveau</p>
-                  <div className="flex flex-wrap gap-2">
-                    {levels.map(l => (
-                      <button key={l} onClick={() => setFilterLevel(l)}
-                        className={`px-3 py-2 rounded-xl text-[9px] font-black border transition-all ${filterLevel === l ? styles.btn : isPro ? 'border-gray-100 text-gray-400' : 'border-white/10 text-gray-500'}`}>
-                        {l}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Filtre distance */}
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">
-                    Distance max — <span className={`${isPro ? 'text-orange-600' : 'text-neon-cyan'}`}>{filterDistance} km</span>
-                  </p>
-                  <input
-                    type="range" min={5} max={200} step={5}
-                    value={filterDistance}
-                    onChange={e => setFilterDistance(Number(e.target.value))}
-                    className="w-full accent-orange-500"
-                  />
-                  <div className="flex justify-between text-[8px] font-black text-gray-400 mt-1">
-                    <span>5 km</span><span>50 km</span><span>100 km</span><span>200 km</span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="grid grid-cols-1 gap-6">
                {enemyRequests.map(req => (
@@ -559,7 +513,12 @@ export default function RadarPage() {
                     onChat={(r) => setSelectedChatRequest(r)}
                  />
                ))}
-               {enemyRequests.length === 0 && !isLoading && <p className="text-center py-20 text-[10px] font-black text-gray-300 uppercase italic">Aucun adversaire détecté</p>}
+               {enemyRequests.length === 0 && !isLoading && (
+                 <div className="text-center py-20 space-y-2">
+                   <p className="text-[10px] font-black text-gray-400 uppercase italic">{isPro ? 'Aucune annonce ne correspond à vos filtres' : 'Aucun adversaire détecté'}</p>
+                   <p className="text-[9px] font-bold text-gray-400 uppercase">Élargissez le rayon ou changez de catégorie</p>
+                 </div>
+               )}
             </div>
           </div>
         </>
@@ -584,8 +543,8 @@ export default function RadarPage() {
                 />
               ))}
               {myRequests.length === 0 && (
-                <div className="py-10 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
-                  <p className="text-[9px] font-black text-gray-300 uppercase">Aucun signal émis</p>
+                <div className={`py-10 text-center rounded-[3rem] border-2 border-dashed ${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'}`}>
+                  <p className="text-[9px] font-black text-gray-400 uppercase">Aucune annonce publiée pour l'instant</p>
                 </div>
               )}
             </div>
@@ -606,8 +565,8 @@ export default function RadarPage() {
                 />
               ))}
               {challengesJoined.length === 0 && (
-                <div className="py-10 text-center bg-white rounded-[3rem] border-2 border-dashed border-gray-100">
-                  <p className="text-[9px] font-black text-gray-300 uppercase">Aucun défi relevé</p>
+                <div className={`py-10 text-center rounded-[3rem] border-2 border-dashed ${isPro ? 'bg-white border-gray-100' : 'bg-white/5 border-white/10'}`}>
+                  <p className="text-[9px] font-black text-gray-400 uppercase">Vous n'avez répondu à aucune annonce</p>
                 </div>
               )}
             </div>

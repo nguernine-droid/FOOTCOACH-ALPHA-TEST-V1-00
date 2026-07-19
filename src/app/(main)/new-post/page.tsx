@@ -74,7 +74,7 @@ export default function NewPostPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background-gray max-w-md mx-auto shadow-2xl pb-20 font-sans">
+    <main className="min-h-screen bg-background-gray max-w-md lg:max-w-2xl mx-auto shadow-2xl lg:shadow-none pb-20 font-sans">
       <input
         type="file"
         ref={fileInputRef}

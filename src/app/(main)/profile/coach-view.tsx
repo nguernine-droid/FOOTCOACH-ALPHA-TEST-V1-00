@@ -27,7 +27,8 @@ type EditingSection = 'user' | 'club' | 'logistics' | 'ranges' | 'cv' | null;
 export function CoachView({ onActivateParent }: CoachViewProps) {
   const router = useRouter();
   const { teamInfo, refreshData, theme, setTheme } = useTeam();
-  const [showFullProfile, setShowFullProfile] = useState(false);
+  // La carte coach est un écran secondaire : le profil s'affiche directement.
+  const [showCard, setShowCard] = useState(false);
   const [editingSection, setEditingSection] = useState<EditingSection>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -277,7 +278,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
 
   const handleBack = () => {
     if (editingSection) setEditingSection(null);
-    else setShowFullProfile(false);
+    else router.push('/dashboard');
   };
 
   const handleLogout = async () => {
@@ -286,11 +287,11 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
     window.location.href = '/showcase';
   };
 
-  if (!showFullProfile) {
+  if (showCard) {
     return (
-      <div className="fixed inset-0 z-10 flex flex-col items-center justify-center bg-[#15171C] overflow-hidden animate-in fade-in duration-1000">
-        <button onClick={() => router.push('/dashboard')} className="absolute top-12 left-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-white active:scale-90 z-[60]"><ChevronLeft size={24} strokeWidth={3} /></button>
-        <div className="w-full flex justify-center px-6 cursor-pointer transition-all duration-300 active:scale-95 group" onClick={() => setShowFullProfile(true)}>
+      <div className="fixed inset-0 lg:left-64 z-[80] flex flex-col items-center justify-center bg-[#15171C] overflow-hidden animate-in fade-in duration-500">
+        <button onClick={() => setShowCard(false)} aria-label="Fermer la carte" className="absolute top-12 left-6 p-3 rounded-2xl bg-white/5 border border-white/10 text-white active:scale-90 z-[60]"><ChevronLeft size={24} strokeWidth={3} /></button>
+        <div className="w-full flex justify-center px-6">
           <CoachCard
             name={teamInfo?.coachName || teamInfo?.userFirstName || 'COACH'}
             clubName={teamInfo?.clubAcronym || teamInfo?.clubName || 'UNITÉ_TACTIQUE'}
@@ -307,7 +308,12 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
             coachId={teamInfo?.coachId}
           />
         </div>
-        <p className="mt-12 text-white/20 font-black uppercase text-[11px] tracking-[0.5em] animate-pulse text-center">Toucher_Pour_Ouvrir</p>
+        <button
+          onClick={() => setShowCard(false)}
+          className="mt-10 px-8 py-4 rounded-2xl bg-white/10 border border-white/20 text-white text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all"
+        >
+          ← Retour à mon profil
+        </button>
       </div>
     );
   }
@@ -315,7 +321,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   const inputStyle = "w-full bg-white/5 border-2 border-white/10 rounded-2xl p-4 text-xs font-black uppercase outline-none focus:border-orange-500 transition-all text-white placeholder:text-gray-600";
 
   return (
-    <div className="fixed inset-0 z-[70] bg-[#15171C] overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
+    <div className="fixed inset-0 lg:left-64 z-[45] bg-[#15171C] overflow-y-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
 
       {/* --- NOTIFICATION TACTIQUE --- */}
       {notification && (
@@ -336,12 +342,28 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
            onClick={() => setTheme(theme === 'classic' ? 'nexus' : 'classic')}
            className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all ${theme === 'nexus' ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/30' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}
            aria-label="Changer de thème"
+           title={theme === 'classic' ? 'Passer en mode Nexus' : 'Passer en mode Professionnel'}
          >
-           <User size={20} />
+           {theme === 'classic' ? <Briefcase size={20} /> : <Zap size={20} />}
          </button>
       </div>
 
       <main className="p-5 max-w-2xl mx-auto space-y-10 pb-48 text-left">
+
+        {/* 0. MA CARTE COACH (accès dédié) */}
+        <button
+          onClick={() => setShowCard(true)}
+          className="w-full bg-gradient-to-r from-orange-600 to-orange-500 rounded-[2rem] p-5 flex items-center gap-4 shadow-xl active:scale-[0.98] transition-all"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+            <Star size={22} className="text-white" />
+          </div>
+          <div className="text-left flex-1">
+            <p className="text-sm font-black uppercase italic text-white">Ma carte coach</p>
+            <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest">Afficher ma carte et mon QR code</p>
+          </div>
+          <ChevronLeft size={18} className="text-white/60 rotate-180" />
+        </button>
 
         {/* 1. UTILISATEUR */}
         <section className="space-y-4">

@@ -1,9 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Send, Loader2, MessageSquare, Trophy, Heart, Share2, Camera } from 'lucide-react';
+import { Send, Loader2, Camera } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useTeam } from '@/lib/context/TeamContext';
+
+// "14:32" si aujourd'hui, sinon "12 juil. 14:32"
+function formatPostDate(iso: string): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const isToday = d.toDateString() === new Date().toDateString();
+  return isToday ? time : `${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} ${time}`;
+}
 
 type Post = {
   id: string;
@@ -106,49 +114,60 @@ export default function LiveFeedPage() {
 
   const styles = isPro ? {
     bg: 'bg-gray-50',
+    header: 'bg-white/90 border-gray-100',
     card: 'bg-white border-gray-100 shadow-sm',
     accent: 'bg-orange-600',
-    text: 'text-gray-900'
+    accentIcon: 'text-white',
+    text: 'text-gray-900',
+    input: 'text-gray-900 placeholder:text-gray-400',
+    inputIcon: 'bg-gray-50 border-gray-100 text-gray-400'
   } : {
     bg: 'bg-[#15171C]',
+    header: 'bg-[#15171C]/80 border-white/10',
     card: 'bg-white/5 border-white/10',
     accent: 'bg-neon-cyan',
-    text: 'text-white'
+    accentIcon: 'text-black',
+    text: 'text-white',
+    input: 'text-white placeholder:text-gray-600',
+    inputIcon: 'bg-white/5 border-white/10 text-gray-500'
   };
 
   return (
     <main className={`min-h-screen pb-32 ${styles.bg} transition-colors duration-500`}>
       {/* HEADER LIVE */}
-      <header className="sticky top-0 z-40 bg-[#15171C]/80 backdrop-blur-xl border-b border-white/10 p-5 flex justify-between items-center">
+      <header className={`sticky top-0 z-40 backdrop-blur-xl border-b p-5 flex justify-between items-center ${styles.header}`}>
         <div className="flex items-center gap-3">
            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-           <h1 className="text-xl font-black uppercase italic tracking-tighter text-white">
+           <h1 className={`text-xl font-black uppercase italic tracking-tighter ${styles.text}`}>
              {isPro ? 'Fil d\'actualité' : 'Radio_Nexus_Live'}
            </h1>
         </div>
-        <div className="text-[8px] font-black uppercase text-gray-500 tracking-[0.3em]">
-          {isPro ? teamInfo?.clubName || 'Mon club' : 'Secteur_Hérault'}
+        <div className="text-[9px] font-black uppercase text-gray-500 tracking-[0.3em] truncate max-w-[40%]">
+          {teamInfo?.clubName || 'Mon club'}
         </div>
       </header>
 
-      <div className="p-4 max-w-md mx-auto space-y-6">
+      <div className="p-4 max-w-md lg:max-w-2xl mx-auto space-y-6">
 
         {/* COMPOSER */}
         <form onSubmit={handlePost} className={`${styles.card} p-4 rounded-3xl border-2 flex items-center gap-3 shadow-2xl`}>
-           <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
-              <Camera size={18} className="text-gray-500" />
+           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border overflow-hidden ${styles.inputIcon}`}>
+              {teamInfo?.coachPhoto
+                ? <img src={teamInfo.coachPhoto} alt="" className="w-full h-full object-cover" />
+                : <Camera size={18} />}
            </div>
            <input
              type="text"
              value={newMessage}
              onChange={(e) => setNewMessage(e.target.value)}
              placeholder={isPro ? "Partagez une info, un résultat..." : "Émettre un signal..."}
-             className="flex-1 bg-transparent border-none outline-none text-sm font-bold text-white placeholder:text-gray-600"
+             className={`flex-1 bg-transparent border-none outline-none text-sm font-bold ${styles.input}`}
            />
            <button
              type="submit"
+             aria-label="Publier"
              disabled={!newMessage.trim() || isSending}
-             className={`${styles.accent} p-3 rounded-2xl text-black active:scale-90 transition-all shadow-lg disabled:opacity-20`}
+             className={`${styles.accent} p-3 rounded-2xl ${styles.accentIcon} active:scale-90 transition-all shadow-lg disabled:opacity-20`}
            >
              {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} strokeWidth={3} />}
            </button>
@@ -170,7 +189,7 @@ export default function LiveFeedPage() {
               <div key={post.id} className={`${styles.card} p-5 rounded-[2rem] border animate-in slide-in-from-bottom-2 duration-500`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#1D2027] border border-white/10 overflow-hidden">
+                    <div className={`w-10 h-10 rounded-xl border overflow-hidden ${styles.inputIcon}`}>
                        <img src={post.profiles?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${post.author_id}`} alt="" />
                     </div>
                     <div className="text-left">
@@ -178,12 +197,9 @@ export default function LiveFeedPage() {
                          {post.profiles?.nickname || post.profiles?.first_name || 'Inconnu'}
                        </p>
                        <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                         {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                         {formatPostDate(post.created_at)}
                        </p>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                     <button className="p-2 rounded-lg hover:bg-white/5 text-gray-600"><Heart size={14} /></button>
                   </div>
                 </div>
                 <p className={`text-sm font-medium leading-relaxed text-left ${isPro ? 'text-gray-700' : 'text-gray-300'}`}>

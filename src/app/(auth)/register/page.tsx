@@ -106,7 +106,7 @@ function RegisterContent() {
            <div className="w-8 h-8 bg-neon-green rounded-lg flex items-center justify-center -rotate-12 shadow-md shadow-emerald-900/20">
               <Shield size={18} className="text-black" strokeWidth={3} />
            </div>
-           <span className="font-black italic uppercase tracking-tighter text-xl">Nexus_OS</span>
+           <span className="font-black italic uppercase tracking-tighter text-xl">FootCoach</span>
         </div>
         <div className="w-10" />
       </header>

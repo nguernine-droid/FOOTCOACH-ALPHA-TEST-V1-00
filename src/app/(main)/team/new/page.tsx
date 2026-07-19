@@ -53,7 +53,7 @@ export default function NewPlayerPage() {
     `https://i.pravatar.cc/300?u=${encodeURIComponent(name || 'placeholder')}`;
 
   return (
-    <main className="min-h-screen bg-[#15171C] max-w-md mx-auto shadow-2xl pb-32 font-sans relative overflow-x-hidden">
+    <main className="min-h-screen bg-[#15171C] max-w-md lg:max-w-2xl mx-auto shadow-2xl lg:shadow-none pb-32 font-sans relative overflow-x-hidden">
       {/* Header Premium */}
       <header className="bg-[#1D2027]/80 backdrop-blur-md py-5 px-6 sticky top-0 z-40 border-b border-white/5 flex items-center gap-4">
         <button onClick={() => router.back()} className="text-white active:scale-90 transition-transform p-2 bg-white/5 rounded-xl">
@@ -164,11 +164,11 @@ export default function NewPlayerPage() {
            </div>
 
            {/* Bouton de Signature */}
-           <div className="fixed bottom-10 left-0 right-0 px-6 z-50 pointer-events-none">
-              <div className="max-w-md mx-auto pointer-events-auto">
+           <div className="fixed bottom-28 lg:bottom-8 left-0 right-0 lg:left-64 px-6 z-40 pointer-events-none">
+              <div className="max-w-md lg:max-w-2xl mx-auto pointer-events-auto">
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#15171C] font-black py-6 rounded-[2.5rem] shadow-lg shadow-orange-900/20 flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl active:scale-95 transition-all border-t-2 border-white/30"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 text-[#15171C] font-black py-5 rounded-[2.5rem] shadow-lg shadow-orange-900/20 flex items-center justify-center gap-3 uppercase italic tracking-tighter text-lg active:scale-95 transition-all border-t-2 border-white/30"
                 >
                   <Check size={28} strokeWidth={4} />
                   Signer le contrat

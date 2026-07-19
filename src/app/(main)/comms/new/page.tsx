@@ -86,7 +86,7 @@ export default function NewParentAnnouncementPage() {
   };
 
   return (
-    <main className={`min-h-screen max-w-md mx-auto shadow-2xl pb-32 font-sans relative transition-colors duration-500 ${styles.mainBg}`}>
+    <main className={`min-h-screen max-w-md lg:max-w-2xl mx-auto shadow-2xl lg:shadow-none pb-32 font-sans relative transition-colors duration-500 ${styles.mainBg}`}>
       {/* Header */}
       <header className={`backdrop-blur-md py-5 px-6 sticky top-0 z-40 border-b flex items-center gap-4 shadow-sm ${isPro ? 'bg-white/95 border-gray-100' : 'bg-[#15171C]/80 border-white/5'}`}>
         <button onClick={() => router.back()} className={`${styles.textMain} active:scale-90 transition-transform`}>
@@ -167,12 +167,12 @@ export default function NewParentAnnouncementPage() {
       </div>
 
       {/* Bouton Fixe Publier */}
-      <div className="fixed bottom-24 left-0 right-0 z-40 px-6 py-4 pointer-events-none">
-        <div className="max-w-md mx-auto w-full pointer-events-auto">
+      <div className="fixed bottom-24 lg:bottom-8 left-0 right-0 lg:left-64 z-40 px-6 py-4 pointer-events-none">
+        <div className="max-w-md lg:max-w-2xl mx-auto w-full pointer-events-auto">
           <div className="p-4 -m-4 text-left">
             <button
               onClick={handlePublish}
-              className={`w-full ${styles.btnPrimary} font-black py-6 rounded-[2.5rem] shadow-xl active:translate-y-1 active:shadow-lg transition-all flex items-center justify-center gap-3 uppercase italic tracking-tighter text-xl border-b-8 border-black/10`}
+              className={`w-full ${styles.btnPrimary} font-black py-5 rounded-[2.5rem] shadow-xl active:translate-y-1 active:shadow-lg transition-all flex items-center justify-center gap-3 uppercase italic tracking-tighter text-lg border-b-8 border-black/10`}
             >
               <Check size={28} strokeWidth={4} />
               Déployer le Briefing

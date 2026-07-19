@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Shield, Mail, Lock, ChevronRight, ArrowLeft, Chrome, Zap } from 'lucide-react';
+import { Shield, Mail, Lock, ChevronRight, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client'; // L'import est ici, proprement
 
 export default function LoginPage() {
@@ -11,7 +11,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [demoRole, setDemoRole] = useState<'coach' | 'player' | 'parent' | 'supporter'>('coach');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +60,7 @@ export default function LoginPage() {
            <div className="w-8 h-8 bg-neon-orange rounded-lg flex items-center justify-center rotate-12 shadow-md shadow-orange-900/20">
               <Shield size={18} className="text-black" strokeWidth={3} />
            </div>
-           <span className="font-black italic uppercase tracking-tighter text-xl">Nexus_OS</span>
+           <span className="font-black italic uppercase tracking-tighter text-xl">FootCoach</span>
         </div>
         <div className="w-10" />
       </header>
@@ -126,24 +125,6 @@ export default function LoginPage() {
            </button>
         </div>
 
-        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-3">
-          <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest text-center">🕹️ Mode Démo : Choisir le rôle</p>
-          <div className="grid grid-cols-4 gap-2">
-            {(['coach', 'player', 'parent', 'supporter'] as const).map(role => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => setDemoRole(role)}
-                className={`p-2 rounded-xl text-[8px] font-black uppercase border transition-all ${
-                  demoRole === role ? 'bg-neon-orange border-neon-orange text-black shadow-sm' : 'border-white/10 text-gray-500 hover:border-white/30'
-                }`}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <button
           type="submit"
           disabled={isLoading}
@@ -156,20 +137,6 @@ export default function LoginPage() {
           )}
         </button>
       </form>
-
-      <div className="mt-12 space-y-4 relative z-10">
-         <p className="text-center text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">Ou continuer avec</p>
-         <div className="grid grid-cols-2 gap-4">
-            <button className="flex items-center justify-center gap-2 bg-white/5 border border-white/5 p-4 rounded-2xl hover:bg-white/10 hover:border-white/10 transition-all active:scale-95">
-               <Chrome size={16} />
-               <span className="text-[10px] font-black uppercase tracking-widest">Google</span>
-            </button>
-            <button className="flex items-center justify-center gap-2 bg-white/5 border border-white/5 p-4 rounded-2xl hover:bg-white/10 hover:border-white/10 transition-all active:scale-95">
-               <Zap size={16} />
-               <span className="text-[10px] font-black uppercase tracking-widest">Apple</span>
-            </button>
-         </div>
-      </div>
 
       <footer className="mt-auto pt-10 text-center relative z-10">
          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">

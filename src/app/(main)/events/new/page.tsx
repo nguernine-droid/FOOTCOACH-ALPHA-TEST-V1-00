@@ -85,7 +85,7 @@ function NewEventContent() {
 
   const eventTypes = [
     { id: 'training', label: 'Entraînement', desc: 'Séance technique', icon: <Play size={24} />, color: 'bg-sky-500' },
-    { id: 'match', label: 'Match', desc: 'Rencontre de combat', icon: <Trophy size={24} />, color: 'bg-red-600' },
+    { id: 'match', label: 'Match', desc: 'Rencontre amicale ou officielle', icon: <Trophy size={24} />, color: 'bg-red-600' },
     { id: 'plateau', label: 'Plateau', desc: '3 Matchs max', icon: <Zap size={24} />, color: 'bg-purple-700' },
     { id: 'tournament', label: 'Tournoi', desc: 'Compétition complète', icon: <Shield size={24} />, color: 'bg-yellow-500' },
   ];
@@ -99,6 +99,13 @@ function NewEventContent() {
       setType(eventTypes[index].id as EventType);
       setIsOpponentMenuOpen(false);
     }
+  };
+
+  // Sélection au clic (indispensable sur ordinateur, plus clair que le swipe seul)
+  const selectType = (id: EventType, index: number) => {
+    setType(id);
+    setIsOpponentMenuOpen(false);
+    scrollRef.current?.scrollTo({ left: index * scrollRef.current.offsetWidth, behavior: 'smooth' });
   };
 
   const handleSave = async () => {
@@ -135,15 +142,30 @@ function NewEventContent() {
   };
 
   return (
-    <div className={`min-h-screen max-w-md mx-auto pb-44 ${m.bgSoft} transition-colors duration-700 font-sans`}>
+    <div className={`min-h-screen max-w-md lg:max-w-2xl mx-auto pb-32 ${m.bgSoft} transition-colors duration-700 font-sans`}>
       <main className="p-6 space-y-8 animate-in fade-in duration-700">
-        <div className="flex items-center gap-4"><button onClick={() => router.back()} className="text-white bg-white/10 p-2 rounded-xl active:scale-90 transition-transform"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">{editId ? 'Modifier_Planning' : 'Nouveau_Planning'}</h1></div>
+        <div className="flex items-center gap-4"><button onClick={() => router.back()} aria-label="Retour" className="text-white bg-white/10 p-2 rounded-xl active:scale-90 transition-transform"><ChevronLeft size={24} /></button><h1 className="text-xl font-black uppercase italic tracking-tighter text-white">{editId ? 'Modifier l\'événement' : 'Nouvel événement'}</h1></div>
 
-        {/* TYPE SELECTOR (CAROUSEL DYNAMIQUE) */}
+        {/* SÉLECTEUR DE TYPE (CHIPS CLIQUABLES + CAROUSEL) */}
+        <div className="grid grid-cols-4 gap-2">
+          {eventTypes.map((t, i) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => selectType(t.id as EventType, i)}
+              className={`py-3 rounded-2xl text-[9px] font-black uppercase border-2 transition-all flex flex-col items-center gap-1.5
+                ${type === t.id ? `${t.color} border-transparent text-white shadow-lg scale-105` : 'bg-white/5 border-white/10 text-gray-400'}`}
+            >
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <div ref={scrollRef} onScroll={handleScroll} className={`flex overflow-x-auto snap-x snap-mandatory no-scrollbar rounded-[3rem] border-4 ${m.border} h-48 shadow-2xl transition-all duration-500`}>
           {eventTypes.map((t) => (
             <div key={t.id} className={`min-w-full snap-center ${t.id === 'match' ? m.primary : t.color} p-8 flex flex-col justify-center text-left relative overflow-hidden transition-colors duration-500`}>
-              <h2 className={`text-5xl font-black uppercase italic leading-none ${t.id === 'match' && !isOfficial ? 'text-black' : 'text-white'}`}>{t.label}</h2>
+              <h2 className={`text-3xl sm:text-4xl font-black uppercase italic leading-none break-words ${t.id === 'match' && !isOfficial ? 'text-black' : 'text-white'}`}>{t.label}</h2>
 
               {t.id === 'match' && (
                 /* BATTLE SWITCH XXL */
@@ -218,12 +240,26 @@ function NewEventContent() {
 
         <button
           onClick={handleSave}
-          className={`fixed bottom-28 left-6 right-6 font-black py-7 rounded-[3.5rem] active:scale-95 transition-all z-[90] uppercase italic text-2xl shadow-2xl
+          disabled={isLoading}
+          className={`w-full font-black py-5 rounded-[2.5rem] active:scale-95 transition-all uppercase italic text-lg shadow-2xl flex items-center justify-center gap-3 disabled:opacity-60
             ${theme === 'classic' ? 'bg-orange-600 text-white' : 'bg-neon-cyan text-black shadow-neon-cyan/40'}`}
         >
-          VALIDER
+          {isLoading ? <Loader2 size={22} className="animate-spin" /> : <Check size={22} strokeWidth={3} />}
+          {editId ? 'Enregistrer les modifications' : 'Créer l\'événement'}
         </button>
       </main>
+
+      {/* CONFIRMATION DE CRÉATION */}
+      {showSuccess && (
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
+          <div className="w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center shadow-2xl">
+            <Check size={40} strokeWidth={4} className="text-black" />
+          </div>
+          <p className="text-white font-black uppercase italic tracking-tight text-lg">
+            {editId ? 'Événement modifié !' : 'Événement créé !'}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

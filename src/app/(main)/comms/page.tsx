@@ -141,7 +141,7 @@ export default function MessagesPage() {
   if (isContextLoading) return null;
 
   return (
-    <main className={`min-h-screen pb-32 max-w-md mx-auto transition-colors duration-500 ${styles.mainBg}`}>
+    <main className={`min-h-screen pb-32 max-w-md lg:max-w-2xl mx-auto transition-colors duration-500 ${styles.mainBg}`}>
       <header className={`backdrop-blur-md py-5 px-6 sticky top-0 z-40 flex flex-col gap-4 shadow-sm ${styles.headerBg}`}>
         <div className="flex justify-between items-center text-left">
           <h1 className={`text-2xl font-black uppercase italic tracking-tighter leading-none ${styles.textMain}`}>
