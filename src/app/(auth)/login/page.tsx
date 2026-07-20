@@ -25,10 +25,10 @@ export default function LoginPage() {
 
       if (error) throw error;
 
-      // 2. Récupérer le rôle pour le Guard et le Context
+      // 2. Récupérer le rôle + complétude du profil (Guard + Context)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, theme_preference')
+        .select('role, theme_preference, first_name, last_name')
         .eq('id', data.user.id)
         .single();
 
@@ -37,9 +37,11 @@ export default function LoginPage() {
         localStorage.setItem('app_theme', profile.theme_preference || 'classic');
       }
 
-      // 3. Succès : Redirection DIRECTE vers le Dashboard
+      // 3. Succès : première connexion (profil incomplet) → personnalisation assistée,
+      //    sinon accès direct au Dashboard.
       localStorage.setItem('is_authenticated', 'true');
-      router.push('/dashboard');
+      const profileComplete = !!(profile?.first_name && profile?.last_name);
+      router.push(profileComplete ? '/dashboard' : '/onboarding');
     } catch (error: any) {
       alert("Erreur de connexion : " + error.message);
     } finally {

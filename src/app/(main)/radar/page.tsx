@@ -394,7 +394,7 @@ export default function RadarPage() {
                        : { accent: 'text-neon-cyan', btn: 'bg-neon-cyan text-black', card: 'bg-[#1D2027] border-white/5 shadow-xl' };
 
   return (
-    <main className={`min-h-screen pb-40 max-w-2xl mx-auto p-4 space-y-8 ${isPro ? 'bg-gray-50' : 'bg-[#15171C]'}`}>
+    <main className={`min-h-screen pb-40 max-w-2xl lg:max-w-3xl mx-auto p-4 space-y-8 overflow-x-hidden ${isPro ? 'bg-gray-50' : 'bg-[#15171C]'}`}>
 
       {/* BANNIÈRE CLUB INCOMPLET */}
       {!isClubVerified && (
@@ -418,12 +418,14 @@ export default function RadarPage() {
       )}
 
       {/* 1. SWITCH DE VUE TACTIQUE (TRIPTYQUE) */}
-      <div className="flex justify-between items-center px-2">
-         <div className={`p-1 rounded-2xl flex border ${isPro ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'} w-fit`}>
-            <button onClick={() => setActiveTab('radar')} className={`px-4 py-3 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'radar' ? styles.btn : 'text-gray-500'}`}>
+      {/* min-w-0 sur le groupe + overflow-x-auto : sur petit écran les onglets défilent
+          À L'INTÉRIEUR du pill au lieu de faire déborder toute la page (fix scroll horizontal mobile). */}
+      <div className="flex justify-between items-center gap-2 px-2">
+         <div className={`p-1 rounded-2xl flex border min-w-0 overflow-x-auto no-scrollbar ${isPro ? 'bg-white border-gray-200' : 'bg-white/5 border-white/5'}`}>
+            <button onClick={() => setActiveTab('radar')} className={`shrink-0 px-3 sm:px-4 py-3 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'radar' ? styles.btn : 'text-gray-500'}`}>
               <Radio size={16} /> <span className="text-[10px] font-black uppercase italic">Sonar</span>
             </button>
-            <button onClick={() => setActiveTab('my_signals')} className={`px-4 py-3 rounded-xl flex items-center gap-2 transition-all relative ${activeTab === 'my_signals' ? styles.btn : 'text-gray-500'}`}>
+            <button onClick={() => setActiveTab('my_signals')} className={`shrink-0 px-3 sm:px-4 py-3 rounded-xl flex items-center gap-2 transition-all relative ${activeTab === 'my_signals' ? styles.btn : 'text-gray-500'}`}>
               <Wifi size={16} />
               <span className="text-[10px] font-black uppercase italic">Signaux</span>
               {pendingCount > 0 && (
@@ -432,7 +434,7 @@ export default function RadarPage() {
                 </span>
               )}
             </button>
-            <button onClick={() => setActiveTab('history')} className={`px-4 py-3 rounded-xl flex items-center gap-2 transition-all relative ${activeTab === 'history' ? styles.btn : 'text-gray-500'}`}>
+            <button onClick={() => setActiveTab('history')} className={`shrink-0 px-3 sm:px-4 py-3 rounded-xl flex items-center gap-2 transition-all relative ${activeTab === 'history' ? styles.btn : 'text-gray-500'}`}>
               <History size={16} />
               <span className="text-[10px] font-black uppercase italic">Historique</span>
               {myHistory.length > 0 && (
@@ -446,7 +448,7 @@ export default function RadarPage() {
            onClick={() => isClubVerified ? router.push('/radar/new') : null}
            disabled={!isClubVerified}
            title={!isClubVerified ? 'Complétez votre profil club pour déposer une annonce' : undefined}
-           className={`p-4 rounded-2xl shadow-xl transition-all ${isClubVerified ? `active:scale-90 ${styles.btn}` : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'}`}
+           className={`shrink-0 p-4 rounded-2xl shadow-xl transition-all ${isClubVerified ? `active:scale-90 ${styles.btn}` : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'}`}
          >
             <Plus size={24} strokeWidth={4} />
          </button>

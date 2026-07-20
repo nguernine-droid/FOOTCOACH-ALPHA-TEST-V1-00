@@ -255,6 +255,11 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'logo') => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Garde-fou : on ne peut pas rattacher un logo sans club sélectionné.
+    if (type === 'logo' && !teamInfo?.id) {
+      alert("Sélectionne d'abord ton club (dans la section Club) avant d'ajouter un logo.");
+      return;
+    }
     setIsUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -264,13 +269,31 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${id}-${Date.now()}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
-      const { error: uploadError } = await supabase.storage.from(bucket).upload(filePath, file);
+      // upsert:true -> réessayer sur un même chemin ne provoque pas d'erreur "already exists".
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file, { upsert: true, cacheControl: '3600' });
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(filePath);
+
       if (type === 'avatar') {
-        await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id);
+        const { data: updated, error: uErr } = await supabase
+          .from('profiles').update({ avatar_url: publicUrl }).eq('id', user?.id).select('id');
+        if (uErr) throw uErr;
+        if (!updated || updated.length === 0) throw new Error("Mise à jour du profil refusée.");
       } else {
-        await supabase.from('clubs').update({ logo_url: publicUrl }).eq('id', teamInfo?.id);
+        // La RLS clubs n'autorise l'UPDATE que par le créateur du club (auth.uid() = created_by).
+        // Si le coach a rejoint un club existant, l'update renvoie 0 ligne SANS erreur SQL :
+        // on le détecte via .select() pour afficher un message clair au lieu d'un échec muet.
+        const { data: updated, error: uErr } = await supabase
+          .from('clubs').update({ logo_url: publicUrl }).eq('id', teamInfo?.id).select('id');
+        if (uErr) throw uErr;
+        if (!updated || updated.length === 0) {
+          throw new Error(
+            "Logo envoyé mais non enregistré : seul le créateur du club peut modifier son logo. " +
+            "Demande à l'admin du club, ou contacte le support pour être désigné gestionnaire."
+          );
+        }
       }
       await refreshData();
     } catch (err: any) { alert(err.message); } finally { setIsUploading(false); }
@@ -388,7 +411,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                           {teamInfo?.coachPhoto ? <img src={teamInfo.coachPhoto} className="w-full h-full object-cover" /> : <User size={40} className="text-gray-600" />}
                           {isUploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-white" /></div>}
                         </div>
-                        <label className="absolute -bottom-2 -right-2 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'avatar')} /></label>
+                        <label className="absolute -bottom-2 -right-2 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" accept="image/*" className="hidden" onChange={e => handleUpload(e, 'avatar')} /></label>
                       </div>
                    </div>
                    <div className="grid grid-cols-2 gap-2">
@@ -517,7 +540,7 @@ export function CoachView({ onActivateParent }: CoachViewProps) {
                         {teamInfo?.clubLogo ? <img src={teamInfo.clubLogo} className="w-full h-full object-contain p-2" /> : <Shield size={40} className="text-gray-600" />}
                         {isUploading && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 size={24} className="animate-spin text-white" /></div>}
                       </div>
-                      <label className="absolute bottom-0 right-1/2 translate-x-12 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" className="hidden" onChange={e => handleUpload(e, 'logo')} /></label>
+                      <label className="absolute bottom-0 right-1/2 translate-x-12 bg-orange-600 text-white p-3 rounded-2xl cursor-pointer shadow-2xl active:scale-90"><Camera size={18}/><input type="file" accept="image/*" className="hidden" onChange={e => handleUpload(e, 'logo')} /></label>
                    </div>
                    <ClubSearchInput
                      value={formData.clubName}

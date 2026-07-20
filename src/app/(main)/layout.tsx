@@ -18,12 +18,17 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <SideNav />
 
       <div className="lg:pl-64">
-        <div className={`min-h-screen text-[#F5F3EF] max-w-md lg:max-w-2xl mx-auto relative flex flex-col
+        {/* Mobile : cadre "téléphone" centré (max-w-md + bordures).
+            Desktop : le conteneur remplit toute la largeur à côté de la SideNav
+            (lg:max-w-none) pour que le fond de chaque page soit CONTINU — plus
+            d'effet de couloir étroit dû au changement de couleur sur les côtés.
+            Les marges/largeur de lecture sont gérées PAR chaque page (max-w interne). */}
+        <div className={`min-h-screen text-[#F5F3EF] max-w-md lg:max-w-none mx-auto relative flex flex-col
           border-x lg:border-x-0 shadow-2xl lg:shadow-none ${isPro ? 'border-gray-200' : 'border-white/[0.06]'}`}>
           {/* TopBar mobile uniquement : sur desktop la sidebar affiche déjà club + profil */}
           {!isProfilePage && <div className="lg:hidden"><TopBar /></div>}
 
-          <main className={`flex-1 overflow-y-auto no-scrollbar ${isProfilePage ? 'pb-20' : 'pb-32'} lg:pb-10`}>
+          <main className={`flex-1 overflow-y-auto no-scrollbar ${isProfilePage ? 'pb-20' : 'pb-32'} lg:pb-14`}>
             {children}
           </main>
 

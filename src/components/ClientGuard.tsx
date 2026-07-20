@@ -32,15 +32,21 @@ export function ClientGuard({ children }: { children: React.ReactNode }) {
           router.replace('/showcase');
         }
       } else {
-        // Session valide -> On s'assure que le rôle est en cache pour le Context
-        const hasRole = localStorage.getItem('user_role');
-        if (!hasRole) {
-           const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
-           if (profile) localStorage.setItem('user_role', profile.role);
-        }
+        // Session valide -> On récupère rôle + complétude du profil
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, first_name, last_name')
+          .eq('id', session.user.id)
+          .single();
+        if (profile?.role) localStorage.setItem('user_role', profile.role);
 
-        // Redirection auto vers Dashboard si l'utilisateur tente de retourner sur Showcase en étant connecté
-        if (isPublicPage) {
+        const profileComplete = !!(profile?.first_name && profile?.last_name);
+
+        if (!profileComplete && !isOnboardingPage && !isPublicPage) {
+          // Première connexion : personnalisation assistée obligatoire.
+          router.replace('/onboarding');
+        } else if (profileComplete && (isPublicPage || isOnboardingPage)) {
+          // Profil déjà complet : pas de retour sur showcase/onboarding.
           router.replace('/dashboard');
         }
       }
