@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Car } from "lucide-react";
+import { Car, Check, X } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -41,9 +41,15 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
     }
   }
 
-  if (error) return <p className="text-sm text-match-red">{error}</p>;
-  if (!matches) return <p className="text-white/40 animate-soft-pulse text-sm">Chargement…</p>;
-  if (matches.length === 0) return <p className="text-sm text-white/40">Aucun match prévu pour votre équipe.</p>;
+  if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-2xl px-4 py-3">{error}</p>;
+  if (!matches) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
+  if (matches.length === 0)
+    return (
+      <div className="card p-8 text-center space-y-2">
+        <p className="text-3xl" aria-hidden>📅</p>
+        <p className="text-sm text-ink-soft font-medium">Aucun match prévu pour votre équipe.</p>
+      </div>
+    );
 
   return (
     <div className="space-y-3">
@@ -53,7 +59,10 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
         return (
           <MatchCard key={match.id} match={match}>
             {answerable ? (
-              <div className="space-y-3 pt-1">
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-ink-soft">
+                  {mine ? "Votre réponse (modifiable) :" : "Serez-vous là ?"}
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() =>
@@ -63,32 +72,32 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                       })
                     }
                     className={cn(
-                      "py-2.5 rounded-2xl border text-xs font-bold uppercase tracking-wide transition",
+                      "flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold transition active:scale-[0.97]",
                       mine?.status === "present"
-                        ? "border-neon-green/60 bg-neon-green/15 text-neon-green"
-                        : "border-white/10 text-white/50 hover:text-white hover:bg-white/5",
+                        ? "bg-pitch text-white shadow-[0_6px_16px_-6px_rgba(22,163,74,0.5)]"
+                        : "bg-paper text-ink-soft hover:bg-pitch-soft hover:text-pitch-deep",
                     )}
                   >
-                    Présent
+                    <Check size={16} /> Présent
                   </button>
                   <button
                     onClick={() => setAttendance(match.id, "absent")}
                     className={cn(
-                      "py-2.5 rounded-2xl border text-xs font-bold uppercase tracking-wide transition",
+                      "flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold transition active:scale-[0.97]",
                       mine?.status === "absent"
-                        ? "border-match-red/60 bg-match-red/15 text-match-red"
-                        : "border-white/10 text-white/50 hover:text-white hover:bg-white/5",
+                        ? "bg-coral text-white shadow-[0_6px_16px_-6px_rgba(239,68,68,0.5)]"
+                        : "bg-paper text-ink-soft hover:bg-coral-soft hover:text-coral",
                     )}
                   >
-                    Absent
+                    <X size={16} /> Absent
                   </button>
                 </div>
 
                 {parentMode && mine?.status === "present" && (
-                  <div className="flex items-center justify-between gap-3 border border-white/10 rounded-2xl px-4 py-3">
-                    <span className="text-xs text-white/60 flex items-center gap-2">
-                      <Car size={14} className="text-neon-cyan" /> Je peux transporter
-                    </span>
+                  <div className="bg-tangerine-soft/50 rounded-2xl px-4 py-3.5 space-y-2.5">
+                    <p className="text-xs font-bold text-ink flex items-center gap-1.5">
+                      <Car size={14} className="text-tangerine" /> Je peux emmener des joueurs
+                    </p>
                     <div className="flex items-center gap-2">
                       {[0, 1, 2, 3, 4].map((seats) => (
                         <button
@@ -97,25 +106,26 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                             setAttendance(match.id, "present", { canTransport: seats > 0, transportSeats: seats })
                           }
                           className={cn(
-                            "w-8 h-8 rounded-xl border text-xs font-bold transition",
+                            "flex-1 h-10 rounded-xl text-sm font-black transition active:scale-90",
                             (mine.canTransport ? mine.transportSeats : 0) === seats
-                              ? "border-neon-cyan/60 bg-neon-cyan/15 text-neon-cyan"
-                              : "border-white/10 text-white/40 hover:text-white",
+                              ? "bg-tangerine text-white shadow-sm"
+                              : "bg-white text-ink-soft hover:text-tangerine",
                           )}
-                          aria-label={seats === 0 ? "Pas de transport" : `${seats} places`}
+                          aria-label={seats === 0 ? "Pas de transport" : `${seats} place${seats > 1 ? "s" : ""}`}
                         >
-                          {seats}
+                          {seats === 0 ? "–" : seats}
                         </button>
                       ))}
                     </div>
+                    <p className="text-[10px] text-ink-soft">Nombre de places dans votre voiture (– si indisponible)</p>
                   </div>
                 )}
               </div>
             ) : (
               mine && (
-                <p className="text-xs pt-1 text-white/50">
-                  Votre réponse : {mine.status === "present" ? "présent" : "absent"}
-                  {parentMode && mine.canTransport && ` · ${mine.transportSeats} places de transport`}
+                <p className="text-xs font-semibold text-ink-soft bg-paper rounded-2xl px-4 py-3">
+                  Votre réponse : {mine.status === "present" ? "✅ présent" : "❌ absent"}
+                  {parentMode && mine.canTransport && ` · 🚗 ${mine.transportSeats} place${mine.transportSeats > 1 ? "s" : ""}`}
                 </p>
               )
             )}

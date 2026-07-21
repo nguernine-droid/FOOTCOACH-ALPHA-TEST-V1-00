@@ -1,36 +1,50 @@
 @import "tailwindcss";
 
 @theme {
-  --color-dark-bg: #15171C;
-  --color-dark-card: #1D2027;
+  /* Palette "terrain" — claire, chaleureuse, simple */
+  --color-pitch: #16A34A;
+  --color-pitch-dark: #15803D;
+  --color-pitch-deep: #14532D;
+  --color-pitch-soft: #DCFCE7;
 
-  /* Warm Dark Palette (design system repris de l'app legacy) */
-  --color-neon-orange: #F97316;
-  --color-neon-cyan: #2DD4BF;
-  --color-neon-magenta: #FB7185;
-  --color-neon-green: #34D399;
+  --color-tangerine: #F97316;
+  --color-tangerine-soft: #FFEDD5;
 
-  --color-brand-orange: #F97316;
-  --color-brand-orange-dark: #C2410C;
-  --color-brand-yellow: #FBBF24;
-  --color-grass-green: #34D399;
-  --color-match-red: #F87171;
-  --color-sky-blue: #38BDF8;
+  --color-sky: #0EA5E9;
+  --color-sky-soft: #E0F2FE;
 
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-input: rgba(255, 255, 255, 0.08);
-  --color-ring: #F97316;
-  --color-background: #15171C;
-  --color-foreground: #F5F3EF;
+  --color-coral: #EF4444;
+  --color-coral-soft: #FEE2E2;
+
+  --color-sun: #F59E0B;
+  --color-sun-soft: #FEF3C7;
+
+  --color-paper: #F7F6F2;
+  --color-ink: #1E2722;
+  --color-ink-soft: #5E6B64;
+  --color-line: #E9E7E1;
+
+  --color-border: #E9E7E1;
+  --color-input: #E9E7E1;
+  --color-ring: #16A34A;
+  --color-background: #F7F6F2;
+  --color-foreground: #1E2722;
+
+  --shadow-card: 0 1px 2px rgba(30, 39, 34, 0.04), 0 8px 24px -12px rgba(30, 39, 34, 0.12);
+  --shadow-pop: 0 12px 32px -12px rgba(20, 83, 45, 0.35);
 
   @keyframes soft-pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.85; }
+    50% { opacity: 0.55; }
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 }
 
 :root {
-  --radius: 1rem;
+  --radius: 1.25rem;
 }
 
 @layer base {
@@ -38,18 +52,40 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-[#15171C] text-[#F5F3EF] selection:bg-neon-orange selection:text-black;
+    @apply bg-paper text-ink selection:bg-pitch-soft selection:text-pitch-deep;
+    font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer utilities {
-  .animate-soft-pulse { animation: soft-pulse 2.5s infinite ease-in-out; }
+  .animate-soft-pulse { animation: soft-pulse 2s infinite ease-in-out; }
+  .animate-rise-in { animation: rise-in 0.35s ease-out both; }
 }
 
 @layer components {
-  .card-cyber {
-    @apply bg-[#1D2027] rounded-[2rem] border border-white/[0.06] shadow-lg relative overflow-hidden;
+  /* Carte standard : blanche, très arrondie, ombre douce */
+  .card {
+    @apply bg-white rounded-3xl border border-line relative overflow-hidden;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Bandeau héro vert gazon */
+  .hero-pitch {
+    @apply rounded-3xl text-white relative overflow-hidden;
+    background: linear-gradient(135deg, #16A34A 0%, #15803D 55%, #14532D 100%);
+    box-shadow: var(--shadow-pop);
+  }
+
+  /* Champ de formulaire */
+  .field {
+    @apply w-full bg-paper border border-line rounded-2xl px-4 py-3 text-sm text-ink outline-none transition
+      placeholder:text-ink-soft/50 focus:border-pitch focus:bg-white focus:ring-2 focus:ring-pitch/15;
+  }
+
+  /* Petite pastille de statut */
+  .chip {
+    @apply inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1;
   }
 
   .no-scrollbar::-webkit-scrollbar { display: none; }

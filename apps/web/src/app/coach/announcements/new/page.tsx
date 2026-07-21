@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Megaphone } from "lucide-react";
 import { api } from "@/lib/api";
-import { NeonButton } from "@/components/ui/NeonButton";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 
-const inputClass =
-  "w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-neon-orange/60 [color-scheme:dark]";
+const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
 
 export default function NewAnnouncementPage() {
   const router = useRouter();
@@ -35,42 +36,68 @@ export default function NewAnnouncementPage() {
   }
 
   return (
-    <form onSubmit={submit} className="card-cyber p-6 space-y-4">
-      <h2 className="text-sm font-bold uppercase tracking-widest text-white/60">Nouvelle annonce de match amical</h2>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label htmlFor="date" className="text-xs text-white/50 font-bold uppercase">Date</label>
-          <input id="date" type="date" required value={form.date} onChange={(e) => set("date", e.target.value)} className={inputClass} />
-        </div>
-        <div className="space-y-1">
-          <label htmlFor="time" className="text-xs text-white/50 font-bold uppercase">Heure</label>
-          <input id="time" type="time" required value={form.time} onChange={(e) => set("time", e.target.value)} className={inputClass} />
+    <div className="space-y-4">
+      <div className="hero-pitch p-5 flex items-center gap-4">
+        <span className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center shrink-0">
+          <Megaphone size={22} />
+        </span>
+        <div>
+          <h2 className="font-black">Proposer un match amical</h2>
+          <p className="text-xs text-white/85">Votre annonce sera visible par tous les coachs sur le radar.</p>
         </div>
       </div>
-      <div className="space-y-1">
-        <label htmlFor="category" className="text-xs text-white/50 font-bold uppercase">Catégorie</label>
-        <select id="category" value={form.category} onChange={(e) => set("category", e.target.value)} className={inputClass}>
-          {["U9", "U11", "U13", "U15", "U17", "Seniors"].map((c) => (
-            <option key={c} value={c} className="bg-dark-card">{c}</option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1">
-        <label htmlFor="stadium" className="text-xs text-white/50 font-bold uppercase">Stade</label>
-        <input id="stadium" required value={form.stadium} onChange={(e) => set("stadium", e.target.value)} className={inputClass} placeholder="Stade municipal" />
-      </div>
-      <div className="space-y-1">
-        <label htmlFor="city" className="text-xs text-white/50 font-bold uppercase">Ville</label>
-        <input id="city" required value={form.city} onChange={(e) => set("city", e.target.value)} className={inputClass} placeholder="Lyon" />
-      </div>
-      <div className="space-y-1">
-        <label htmlFor="comment" className="text-xs text-white/50 font-bold uppercase">Commentaire (optionnel)</label>
-        <textarea id="comment" value={form.comment} onChange={(e) => set("comment", e.target.value)} className={inputClass} rows={3} placeholder="Terrain synthétique, vestiaires…" />
-      </div>
-      {error && <p className="text-xs text-match-red">{error}</p>}
-      <NeonButton type="submit" size="lg" className="w-full" disabled={loading}>
-        {loading ? "Publication…" : "Publier l'annonce"}
-      </NeonButton>
-    </form>
+
+      <form onSubmit={submit} className="card p-6 space-y-4 animate-rise-in">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label htmlFor="date" className="text-xs font-bold text-ink-soft">Date</label>
+            <input id="date" type="date" required value={form.date} onChange={(e) => set("date", e.target.value)} className="field" />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="time" className="text-xs font-bold text-ink-soft">Heure</label>
+            <input id="time" type="time" required value={form.time} onChange={(e) => set("time", e.target.value)} className="field" />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold text-ink-soft">Catégorie</span>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => set("category", c)}
+                className={cn(
+                  "px-4 py-2 rounded-2xl text-xs font-bold border transition",
+                  form.category === c
+                    ? "bg-pitch text-white border-pitch shadow-sm"
+                    : "bg-white text-ink-soft border-line hover:border-pitch/40",
+                )}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="stadium" className="text-xs font-bold text-ink-soft">Stade</label>
+          <input id="stadium" required value={form.stadium} onChange={(e) => set("stadium", e.target.value)} className="field" placeholder="Stade municipal" />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="city" className="text-xs font-bold text-ink-soft">Ville</label>
+          <input id="city" required value={form.city} onChange={(e) => set("city", e.target.value)} className="field" placeholder="Lyon" />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="comment" className="text-xs font-bold text-ink-soft">Petit mot pour l&apos;adversaire (optionnel)</label>
+          <textarea id="comment" value={form.comment} onChange={(e) => set("comment", e.target.value)} className="field resize-none" rows={3} placeholder="Terrain synthétique, vestiaires dispo, ambiance conviviale…" />
+        </div>
+
+        {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
+        <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          {loading ? "Publication…" : "Publier l'annonce 📣"}
+        </Button>
+      </form>
+    </div>
   );
 }

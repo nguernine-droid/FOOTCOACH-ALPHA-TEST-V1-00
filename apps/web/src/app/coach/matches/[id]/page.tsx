@@ -1,21 +1,27 @@
 "use client";
 
 import { use, useCallback, useEffect, useState } from "react";
-import { Car, Goal, Minus, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Car, Minus, Plus, Trash2 } from "lucide-react";
 import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide } from "@footcoach/shared";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
-import { NeonButton } from "@/components/ui/NeonButton";
+import { Button } from "@/components/ui/Button";
 
-const EVENT_TYPES: { value: MatchEventType; label: string }[] = [
-  { value: "goal", label: "But" },
-  { value: "card", label: "Carton" },
-  { value: "substitution", label: "Remplacement" },
-  { value: "highlight", label: "Temps fort" },
+const EVENT_TYPES: { value: MatchEventType; label: string; emoji: string }[] = [
+  { value: "goal", label: "But", emoji: "⚽" },
+  { value: "card", label: "Carton", emoji: "🟨" },
+  { value: "substitution", label: "Remplacement", emoji: "🔄" },
+  { value: "highlight", label: "Temps fort", emoji: "✨" },
 ];
 
-const inputClass =
-  "w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm outline-none focus:border-neon-orange/60 [color-scheme:dark]";
+const EVENT_EMOJI: Record<MatchEventType, string> = {
+  goal: "⚽",
+  card: "🟨",
+  substitution: "🔄",
+  highlight: "✨",
+};
 
 export default function CoachMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -82,137 +88,167 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
     load();
   }
 
-  if (error) return <p className="text-sm text-match-red">{error}</p>;
-  if (!match) return <p className="text-white/40 animate-soft-pulse text-sm">Chargement…</p>;
+  if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-2xl px-4 py-3">{error}</p>;
+  if (!match) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
 
   const transporters = attendances.filter((a) => a.canTransport && a.transportSeats > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <Link href="/coach" className="text-xs font-bold text-ink-soft hover:text-ink inline-flex items-center gap-1.5">
+        <ArrowLeft size={14} /> Mes matchs
+      </Link>
+
       <MatchCard match={match} />
 
-      <section className="card-cyber p-5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-white/60">Score & statut</h3>
+      <section className="card p-5 space-y-4">
+        <h3 className="text-sm font-black">Score</h3>
         <div className="grid grid-cols-2 gap-3">
           {([["home", match.homeTeam.name], ["away", match.awayTeam.name]] as const).map(([side, name]) => (
-            <div key={side} className="space-y-2 text-center">
-              <p className="text-xs text-white/50 truncate">{name}</p>
+            <div key={side} className="bg-paper rounded-2xl p-4 space-y-3 text-center">
+              <p className="text-xs font-bold text-ink-soft truncate">{name}</p>
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={() => updateScore(side === "home" ? -1 : 0, side === "away" ? -1 : 0)}
-                  className="p-2 rounded-xl border border-white/10 text-white/50 hover:text-white"
+                  className="w-9 h-9 rounded-xl bg-white border border-line text-ink-soft hover:text-ink flex items-center justify-center transition active:scale-90"
                   aria-label={`Retirer un but (${name})`}
                 >
-                  <Minus size={14} />
+                  <Minus size={15} />
                 </button>
-                <span className="text-2xl font-black tabular-nums">{side === "home" ? match.homeScore : match.awayScore}</span>
+                <span className="text-3xl font-black tabular-nums w-10">
+                  {side === "home" ? match.homeScore : match.awayScore}
+                </span>
                 <button
                   onClick={() => updateScore(side === "home" ? 1 : 0, side === "away" ? 1 : 0)}
-                  className="p-2 rounded-xl border border-neon-green/40 bg-neon-green/10 text-neon-green"
+                  className="w-9 h-9 rounded-xl bg-pitch text-white flex items-center justify-center transition active:scale-90 shadow-sm"
                   aria-label={`Ajouter un but (${name})`}
                 >
-                  <Plus size={14} />
+                  <Plus size={15} />
                 </button>
               </div>
             </div>
           ))}
         </div>
-        <div className="flex gap-2">
-          {match.status === "scheduled" && (
-            <NeonButton size="sm" variant="green" className="flex-1" onClick={() => setStatus("live")}>
-              Coup d&apos;envoi
-            </NeonButton>
-          )}
-          {match.status === "live" && (
-            <NeonButton size="sm" variant="magenta" className="flex-1" onClick={() => setStatus("finished")}>
-              Coup de sifflet final
-            </NeonButton>
-          )}
-        </div>
+        {match.status === "scheduled" && (
+          <Button className="w-full" onClick={() => setStatus("live")}>
+            🏁 Coup d&apos;envoi !
+          </Button>
+        )}
+        {match.status === "live" && (
+          <Button variant="accent" className="w-full" onClick={() => setStatus("finished")}>
+            ⏱️ Coup de sifflet final
+          </Button>
+        )}
       </section>
 
-      <section className="card-cyber p-5 space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-white/60 flex items-center gap-2">
-          <Goal size={14} className="text-neon-orange" /> Temps forts
-        </h3>
-        {match.events.length === 0 && <p className="text-xs text-white/40">Aucun temps fort saisi.</p>}
+      <section className="card p-5 space-y-3">
+        <h3 className="text-sm font-black">Temps forts</h3>
+        {match.events.length === 0 && <p className="text-xs text-ink-soft">Aucun temps fort pour l&apos;instant.</p>}
         {match.events.map((ev) => (
-          <div key={ev.id} className="flex items-center gap-3 text-sm border-b border-white/5 pb-2 last:border-0">
-            <span className="text-neon-orange font-black tabular-nums w-9">{ev.minute}&apos;</span>
-            <span className="flex-1">
-              {ev.description}
-              <span className="text-white/40 text-xs"> · {ev.side === "home" ? match.homeTeam.name : match.awayTeam.name}</span>
+          <div key={ev.id} className="flex items-center gap-3 text-sm bg-paper rounded-2xl px-4 py-3">
+            <span className="text-pitch-deep font-black tabular-nums text-xs bg-pitch-soft rounded-full px-2.5 py-1 shrink-0">
+              {ev.minute}&apos;
             </span>
-            <button onClick={() => deleteEvent(ev.id)} className="text-white/30 hover:text-match-red" aria-label="Supprimer">
-              <Trash2 size={13} />
+            <span aria-hidden>{EVENT_EMOJI[ev.type]}</span>
+            <span className="flex-1 min-w-0">
+              <span className="font-semibold">{ev.description}</span>
+              <span className="text-ink-soft text-xs"> · {ev.side === "home" ? match.homeTeam.name : match.awayTeam.name}</span>
+            </span>
+            <button onClick={() => deleteEvent(ev.id)} className="text-ink-soft/50 hover:text-coral transition shrink-0" aria-label="Supprimer">
+              <Trash2 size={14} />
             </button>
           </div>
         ))}
-        <form onSubmit={addEvent} className="grid grid-cols-4 gap-2 pt-2">
-          <input
-            type="number"
-            min={0}
-            max={150}
-            required
-            placeholder="Min"
-            value={eventForm.minute}
-            onChange={(e) => setEventForm((f) => ({ ...f, minute: e.target.value }))}
-            className={inputClass}
-          />
-          <select
-            value={eventForm.type}
-            onChange={(e) => setEventForm((f) => ({ ...f, type: e.target.value as MatchEventType }))}
-            className={inputClass}
-          >
+
+        <form onSubmit={addEvent} className="space-y-3 border-t border-line pt-4">
+          <div className="flex flex-wrap gap-2">
             {EVENT_TYPES.map((t) => (
-              <option key={t.value} value={t.value} className="bg-dark-card">{t.label}</option>
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setEventForm((f) => ({ ...f, type: t.value }))}
+                className={cn(
+                  "px-3.5 py-2 rounded-2xl text-xs font-bold border transition",
+                  eventForm.type === t.value
+                    ? "bg-pitch text-white border-pitch shadow-sm"
+                    : "bg-white text-ink-soft border-line hover:border-pitch/40",
+                )}
+              >
+                {t.emoji} {t.label}
+              </button>
             ))}
-          </select>
-          <select
-            value={eventForm.side}
-            onChange={(e) => setEventForm((f) => ({ ...f, side: e.target.value as MatchSide }))}
-            className={`${inputClass} col-span-2`}
-          >
-            <option value="home" className="bg-dark-card">{match.homeTeam.name}</option>
-            <option value="away" className="bg-dark-card">{match.awayTeam.name}</option>
-          </select>
-          <input
-            required
-            placeholder="Description (ex : But de Paul sur corner)"
-            value={eventForm.description}
-            onChange={(e) => setEventForm((f) => ({ ...f, description: e.target.value }))}
-            className={`${inputClass} col-span-3`}
-          />
-          <NeonButton type="submit" size="sm">Ajouter</NeonButton>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <input
+              type="number"
+              min={0}
+              max={150}
+              required
+              placeholder="Minute"
+              value={eventForm.minute}
+              onChange={(e) => setEventForm((f) => ({ ...f, minute: e.target.value }))}
+              className="field"
+            />
+            <select
+              value={eventForm.side}
+              onChange={(e) => setEventForm((f) => ({ ...f, side: e.target.value as MatchSide }))}
+              className="field col-span-2"
+            >
+              <option value="home">{match.homeTeam.name}</option>
+              <option value="away">{match.awayTeam.name}</option>
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <input
+              required
+              placeholder="Ex : But de Paul sur corner"
+              value={eventForm.description}
+              onChange={(e) => setEventForm((f) => ({ ...f, description: e.target.value }))}
+              className="field flex-1"
+            />
+            <Button type="submit" size="md">Ajouter</Button>
+          </div>
         </form>
       </section>
 
-      <section className="card-cyber p-5 space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-white/60">
-          Présences ({match.presentCount} présent{match.presentCount > 1 ? "s" : ""}, {match.absentCount} absent{match.absentCount > 1 ? "s" : ""})
-        </h3>
-        {attendances.length === 0 && <p className="text-xs text-white/40">Personne n&apos;a encore répondu.</p>}
+      <section className="card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-black">Présences</h3>
+          <span className="chip bg-pitch-soft text-pitch-deep">
+            {match.presentCount} ✓ · {match.absentCount} ✗
+          </span>
+        </div>
+        {attendances.length === 0 && <p className="text-xs text-ink-soft">Personne n&apos;a encore répondu.</p>}
         {attendances.map((a) => (
-          <div key={a.userId} className="flex items-center justify-between text-sm border-b border-white/5 pb-2 last:border-0">
-            <span>
-              {a.firstName} {a.lastName}
-              <span className="text-white/40 text-xs"> · {a.role === "player" ? "joueur" : a.role === "parent" ? "parent" : a.role}</span>
-            </span>
-            <span className="flex items-center gap-2">
-              {a.canTransport && a.transportSeats > 0 && (
-                <span className="text-xs text-neon-cyan flex items-center gap-1">
-                  <Car size={13} /> {a.transportSeats} pl.
-                </span>
+          <div key={a.userId} className="flex items-center gap-3 text-sm bg-paper rounded-2xl px-4 py-3">
+            <span
+              className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0",
+                a.role === "parent" ? "bg-tangerine" : "bg-sky",
               )}
-              <span className={a.status === "present" ? "text-neon-green text-xs font-bold" : "text-match-red text-xs font-bold"}>
-                {a.status === "present" ? "Présent" : "Absent"}
+            >
+              {a.firstName[0]}
+              {a.lastName[0]}
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="font-bold block truncate">
+                {a.firstName} {a.lastName}
               </span>
+              <span className="text-xs text-ink-soft">{a.role === "player" ? "Joueur" : a.role === "parent" ? "Parent" : a.role}</span>
+            </span>
+            {a.canTransport && a.transportSeats > 0 && (
+              <span className="chip bg-tangerine-soft text-tangerine shrink-0">
+                <Car size={12} /> {a.transportSeats} pl.
+              </span>
+            )}
+            <span className={cn("chip shrink-0", a.status === "present" ? "bg-pitch-soft text-pitch-deep" : "bg-coral-soft text-coral")}>
+              {a.status === "present" ? "Présent" : "Absent"}
             </span>
           </div>
         ))}
         {transporters.length > 0 && (
-          <p className="text-xs text-white/50 pt-1">
-            Total transport : {transporters.reduce((s, t) => s + t.transportSeats, 0)} places ({transporters.map((t) => t.firstName).join(", ")})
+          <p className="text-xs text-ink-soft font-semibold bg-tangerine-soft/50 rounded-2xl px-4 py-3">
+            🚗 {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage au total ({transporters.map((t) => t.firstName).join(", ")})
           </p>
         )}
       </section>
