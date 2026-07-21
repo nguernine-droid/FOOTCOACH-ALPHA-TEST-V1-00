@@ -10,7 +10,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # 5433 côté hôte pour ne pas entrer en conflit avec un postgres local
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-footcoach} -d ${POSTGRES_DB:-footcoach}"]
       interval: 5s
@@ -49,7 +50,8 @@ services:
     environment:
       API_INTERNAL_URL: http://api:4000
     ports:
-      - "3000:3000"
+      # 3002 côté hôte : 3000 et 3001 sont occupés par d'autres projets locaux
+      - "3002:3000"
     volumes:
       - ./apps/web/src:/app/apps/web/src
       - ./packages/shared/src:/app/packages/shared/src

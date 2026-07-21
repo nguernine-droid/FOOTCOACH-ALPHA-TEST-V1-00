@@ -15,6 +15,10 @@ CMD ["npm", "run", "dev", "--workspace", "apps/web"]
 FROM deps AS build
 COPY packages/shared packages/shared
 COPY apps/web apps/web
+# Les rewrites Next sont figés au build en mode standalone : l'URL interne de
+# l'API doit être fournie ici (le DNS Docker résout "api" vers les réplicas).
+ARG API_INTERNAL_URL=http://api:4000
+ENV API_INTERNAL_URL=$API_INTERNAL_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build --workspace apps/web
 
