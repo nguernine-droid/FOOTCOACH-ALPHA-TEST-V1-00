@@ -61,6 +61,7 @@ export default function RadarPage() {
           <p className="text-sm text-ink-soft font-medium">Aucune annonce ouverte pour le moment. Revenez bientôt !</p>
         </div>
       )}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
       {announcements.map((a) => (
         <div key={a.id} className="card p-5 space-y-3 animate-rise-in">
           <div className="flex items-center justify-between gap-2">
@@ -92,6 +93,7 @@ export default function RadarPage() {
           </Button>
         </div>
       ))}
+      </div>
     </div>
   );
 }

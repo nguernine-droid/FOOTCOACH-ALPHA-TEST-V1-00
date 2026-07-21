@@ -19,6 +19,9 @@ export type MatchEventType = (typeof MATCH_EVENT_TYPES)[number];
 export const MATCH_SIDES = ["home", "away"] as const;
 export type MatchSide = (typeof MATCH_SIDES)[number];
 
+export const BOOKING_STATUSES = ["pending", "approved", "declined"] as const;
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
 // ---------- Schémas de requêtes ----------
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -55,6 +58,20 @@ export const createMatchEventSchema = z.object({
 });
 export type CreateMatchEventInput = z.infer<typeof createMatchEventSchema>;
 
+export const driverInfoSchema = z.object({
+  licensePlate: z
+    .string()
+    .min(4)
+    .max(15)
+    .regex(/^[A-Za-z0-9 -]+$/, "Format de plaque invalide"),
+  driverLicenseNumber: z
+    .string()
+    .min(5)
+    .max(20)
+    .regex(/^[A-Za-z0-9]+$/, "Format de permis invalide"),
+});
+export type DriverInfoInput = z.infer<typeof driverInfoSchema>;
+
 export const setAttendanceSchema = z.object({
   status: z.enum(ATTENDANCE_STATUSES),
   canTransport: z.boolean().optional(),
@@ -71,6 +88,10 @@ export interface UserDto {
   lastName: string;
   teamId: string | null;
   teamName: string | null;
+  /** Parent : infos conducteur renseignées (requises pour proposer un covoiturage) */
+  hasDriverInfo: boolean;
+  /** Joueur : id du compte parent assigné (ses réservations devront être validées) */
+  parentId: string | null;
 }
 
 export interface TeamDto {
@@ -134,6 +155,33 @@ export interface MatchDto {
 
 export interface MatchDetailDto extends MatchDto {
   events: MatchEventDto[];
+}
+
+export interface CarpoolBookingDto {
+  id: string;
+  playerId: string;
+  playerName: string;
+  status: BookingStatus;
+}
+
+export interface CarpoolDto {
+  driverId: string;
+  driverName: string;
+  licensePlate: string | null;
+  seatsTotal: number;
+  seatsRemaining: number;
+  bookings: CarpoolBookingDto[];
+  myBooking: { id: string; status: BookingStatus } | null;
+}
+
+export interface ApprovalDto {
+  id: string;
+  playerName: string;
+  driverName: string;
+  licensePlate: string | null;
+  matchLabel: string;
+  matchDate: string;
+  status: BookingStatus;
 }
 
 export interface AuthResponseDto {

@@ -5,8 +5,8 @@ Application de gestion de matchs amicaux avec 4 rôles :
 | Rôle | Ce qu'il peut faire |
 |---|---|
 | **Coach** | Poster des annonces de match amical, répondre aux annonces des autres coachs (→ crée un match confirmé), saisir le score et les temps forts, consulter présences et transports |
-| **Joueur** | Indiquer sa présence (présent / absent) aux matchs de son équipe |
-| **Parent** | Indiquer sa présence + proposer un transport (nombre de places) |
+| **Joueur** | Indiquer sa présence (présent / absent), réserver une place dans un covoiturage (soumise à l'accord de son parent assigné) |
+| **Parent** | Indiquer sa présence + proposer un covoiturage (après avoir renseigné plaque d'immatriculation et n° de permis), autoriser/refuser les demandes de ses joueurs |
 | **Supporter** | Suivre le score et les temps forts en direct (rafraîchissement automatique) |
 
 ## Architecture
@@ -66,6 +66,14 @@ npm run dev:api    # API sur :4000
 npm run dev:web    # Web sur :3000 (API_INTERNAL_URL=http://localhost:4000)
 npm run db:seed
 ```
+
+### Covoiturage
+
+1. Le **parent** renseigne sa plaque et son n° de permis (carte « Mes infos conducteur ») — sans cela, impossible de proposer des places.
+2. Présent à un match, il indique le nombre de places dans sa voiture.
+3. Le **joueur** voit les voitures proposées (plaque, places restantes) et clique « Je monte dans cette voiture » → une place est décomptée.
+4. Si le joueur a un **parent assigné** (Paul → Patricia dans le seed), la réservation reste « en attente de l'accord parental » jusqu'à ce que ce parent l'autorise ou la refuse depuis sa page.
+5. Le parent conducteur ne peut pas réduire ses places en dessous du nombre déjà réservé.
 
 ## Scénario de démonstration
 

@@ -7,6 +7,7 @@ import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide } from "@
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
+import { CarpoolSection } from "@/components/CarpoolSection";
 import { Button } from "@/components/ui/Button";
 
 const EVENT_TYPES: { value: MatchEventType; label: string; emoji: string }[] = [
@@ -99,6 +100,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         <ArrowLeft size={14} /> Mes matchs
       </Link>
 
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
+      <div className="space-y-4">
       <MatchCard match={match} />
 
       <section className="card p-5 space-y-4">
@@ -140,7 +143,9 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
           </Button>
         )}
       </section>
+      </div>
 
+      <div className="space-y-4">
       <section className="card p-5 space-y-3">
         <h3 className="text-sm font-black">Temps forts</h3>
         {match.events.length === 0 && <p className="text-xs text-ink-soft">Aucun temps fort pour l&apos;instant.</p>}
@@ -248,10 +253,13 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         ))}
         {transporters.length > 0 && (
           <p className="text-xs text-ink-soft font-semibold bg-tangerine-soft/50 rounded-2xl px-4 py-3">
-            🚗 {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage au total ({transporters.map((t) => t.firstName).join(", ")})
+            🚗 {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage proposées ({transporters.map((t) => t.firstName).join(", ")})
           </p>
         )}
+        <CarpoolSection matchId={id} canBook={false} />
       </section>
+      </div>
+      </div>
     </div>
   );
 }

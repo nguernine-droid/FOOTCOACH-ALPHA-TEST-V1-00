@@ -61,6 +61,7 @@ export default function CoachDashboard() {
             }
           />
         )}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
         {matches.map((match) => (
           <MatchCard key={match.id} match={match}>
             <div className="flex items-center justify-between">
@@ -75,6 +76,7 @@ export default function CoachDashboard() {
             </div>
           </MatchCard>
         ))}
+        </div>
       </section>
 
       <section className="space-y-3">
@@ -90,6 +92,7 @@ export default function CoachDashboard() {
             }
           />
         )}
+        <div className="grid gap-3 md:grid-cols-2 items-start">
         {announcements.map((a) => (
           <div key={a.id} className="card p-4 flex items-center justify-between gap-3 animate-rise-in">
             <div className="flex items-center gap-3 min-w-0">
@@ -121,6 +124,7 @@ export default function CoachDashboard() {
             </div>
           </div>
         ))}
+        </div>
       </section>
     </div>
   );

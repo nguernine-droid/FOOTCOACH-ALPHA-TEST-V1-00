@@ -51,6 +51,14 @@ async function main() {
   const parent = await upsertUser({ email: "parent@demo.fr", role: "parent", firstName: "Patricia", lastName: "Parent", teamId: teamA.id });
   await upsertUser({ email: "supporter@demo.fr", role: "supporter", firstName: "Sam", lastName: "Supporter", teamId: teamA.id });
 
+  // Patricia est le parent assigné de Paul (elle valide ses covoiturages)
+  // et a déjà renseigné ses infos conducteur pour la démo.
+  await db.update(users).set({ parentId: parent.id }).where(eq(users.id, player.id));
+  await db
+    .update(users)
+    .set({ licensePlate: "AB-123-CD", driverLicenseNumber: "123456789012" })
+    .where(eq(users.id, parent.id));
+
   const existing = await db.select().from(matchAnnouncements);
   if (existing.length === 0) {
     // Annonce ouverte du coach B — pour démontrer le flux "répondre"

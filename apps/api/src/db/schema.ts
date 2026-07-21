@@ -17,6 +17,7 @@ export const matchStatus = pgEnum("match_status", ["scheduled", "live", "finishe
 export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"]);
 export const matchEventType = pgEnum("match_event_type", ["goal", "card", "substitution", "highlight"]);
 export const matchSide = pgEnum("match_side", ["home", "away"]);
+export const bookingStatus = pgEnum("booking_status", ["pending", "approved", "declined"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -26,6 +27,11 @@ export const users = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   teamId: uuid("team_id"),
+  // Joueur : compte parent assigné (valide ses réservations de covoiturage)
+  parentId: uuid("parent_id"),
+  // Parent : infos conducteur, requises pour proposer un covoiturage
+  licensePlate: text("license_plate"),
+  driverLicenseNumber: text("driver_license_number"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -106,6 +112,23 @@ export const matchEvents = pgTable("match_events", {
   createdBy: uuid("created_by")
     .notNull()
     .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Réservation d'une place dans la voiture d'un parent pour un match.
+// pending = en attente de validation par le parent assigné du joueur.
+export const carpoolBookings = pgTable("carpool_bookings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  matchId: uuid("match_id")
+    .notNull()
+    .references(() => matches.id, { onDelete: "cascade" }),
+  driverId: uuid("driver_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  playerId: uuid("player_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  status: bookingStatus("status").notNull().default("pending"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -54,6 +54,7 @@ function LiveMatch({ id }: { id: string }) {
         <ArrowLeft size={14} /> Tous les matchs
       </Link>
 
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
       <MatchCard match={match}>
         {match.status === "live" && (
           <p className="text-[11px] font-bold text-coral text-center animate-soft-pulse">
@@ -80,6 +81,7 @@ function LiveMatch({ id }: { id: string }) {
           </div>
         ))}
       </section>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { alias } from "drizzle-orm/pg-core";
-import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, or } from "drizzle-orm";
 import {
   createMatchEventSchema,
   setAttendanceSchema,
@@ -11,7 +11,7 @@ import {
   type MatchEventDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { attendances, matchEvents, matches, teams, users } from "../db/schema.js";
+import { attendances, carpoolBookings, matchEvents, matches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
@@ -36,10 +36,15 @@ async function attachCounts(rows: MatchRow[], userId: string): Promise<MatchDto[
   if (rows.length === 0) return [];
   const matchIds = rows.map((r) => r.match.id);
   const allAttendances = await db.select().from(attendances).where(inArray(attendances.matchId, matchIds));
+  const activeBookings = await db
+    .select()
+    .from(carpoolBookings)
+    .where(and(inArray(carpoolBookings.matchId, matchIds), ne(carpoolBookings.status, "declined")));
 
   return rows.map(({ match, home, away }) => {
     const list = allAttendances.filter((a) => a.matchId === match.id);
     const mine = list.find((a) => a.userId === userId);
+    const booked = activeBookings.filter((b) => b.matchId === match.id).length;
     return {
       id: match.id,
       homeTeam: { id: home.id, name: home.name, city: home.city },
@@ -52,7 +57,8 @@ async function attachCounts(rows: MatchRow[], userId: string): Promise<MatchDto[
       awayScore: match.awayScore,
       presentCount: list.filter((a) => a.status === "present").length,
       absentCount: list.filter((a) => a.status === "absent").length,
-      transportSeats: list.reduce((sum, a) => sum + (a.canTransport ? a.transportSeats : 0), 0),
+      // Places de covoiturage encore disponibles (offertes moins réservées)
+      transportSeats: Math.max(0, list.reduce((sum, a) => sum + (a.canTransport ? a.transportSeats : 0), 0) - booked),
       myAttendance: mine
         ? { status: mine.status, canTransport: mine.canTransport, transportSeats: mine.transportSeats }
         : null,
@@ -184,6 +190,33 @@ export function matchRoutes(app: FastifyInstance) {
     assertMemberOfMatch(row.match, request.user.teamId);
 
     const canTransport = input.status === "present" && (input.canTransport ?? false);
+
+    if (canTransport) {
+      // Un parent doit avoir renseigné plaque + permis avant de proposer un covoiturage
+      const [me] = await db.select().from(users).where(eq(users.id, request.user.id));
+      if (!me?.licensePlate || !me?.driverLicenseNumber) {
+        throw new HttpError(400, "Renseignez d'abord votre plaque d'immatriculation et votre numéro de permis");
+      }
+    }
+
+    // Interdit de retirer des places déjà réservées par des joueurs
+    const activeBookings = await db
+      .select()
+      .from(carpoolBookings)
+      .where(
+        and(
+          eq(carpoolBookings.matchId, id),
+          eq(carpoolBookings.driverId, request.user.id),
+          ne(carpoolBookings.status, "declined"),
+        ),
+      );
+    const newSeats = canTransport ? (input.transportSeats ?? 0) : 0;
+    if (activeBookings.length > newSeats) {
+      throw new HttpError(
+        400,
+        `${activeBookings.length} joueur(s) ont réservé une place dans votre voiture : impossible de descendre en dessous`,
+      );
+    }
     const values = {
       matchId: id,
       userId: request.user.id,

@@ -45,7 +45,7 @@ export function RoleGuard({ role, children }: { role: Role; children: React.Reac
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
 
   return (
-    <div className="min-h-dvh max-w-lg mx-auto px-4 pb-12">
+    <div className="min-h-dvh w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pb-12">
       <header className="flex items-center justify-between py-5">
         <div className="flex items-center gap-3">
           <div

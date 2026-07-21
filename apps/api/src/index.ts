@@ -6,6 +6,7 @@ import { registerErrorHandler } from "./plugins/errors.js";
 import { authRoutes } from "./routes/auth.js";
 import { announcementRoutes } from "./routes/announcements.js";
 import { matchRoutes } from "./routes/matches.js";
+import { carpoolRoutes } from "./routes/carpools.js";
 
 const app = Fastify({ logger: true });
 
@@ -17,6 +18,7 @@ app.get("/health", async () => ({ status: "ok" }));
 app.register((instance) => authRoutes(instance));
 app.register((instance) => announcementRoutes(instance));
 app.register((instance) => matchRoutes(instance));
+app.register((instance) => carpoolRoutes(instance));
 
 try {
   await runMigrations();

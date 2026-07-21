@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, eq, isNull } from "drizzle-orm";
-import { loginSchema, refreshSchema, type AuthResponseDto, type UserDto } from "@footcoach/shared";
+import { driverInfoSchema, loginSchema, refreshSchema, type AuthResponseDto, type UserDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { refreshTokens, teams, users } from "../db/schema.js";
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
@@ -43,6 +43,8 @@ async function toUserDto(user: typeof users.$inferSelect): Promise<UserDto> {
     lastName: user.lastName,
     teamId,
     teamName,
+    hasDriverInfo: Boolean(user.licensePlate && user.driverLicenseNumber),
+    parentId: user.parentId,
   };
 }
 
@@ -106,5 +108,20 @@ export function authRoutes(app: FastifyInstance) {
     const [user] = await db.select().from(users).where(eq(users.id, request.user.id));
     if (!user) throw new HttpError(404, "Utilisateur introuvable");
     return toUserDto(user);
+  });
+
+  // Infos conducteur (parent) — prérequis pour proposer un covoiturage
+  app.patch("/me/driver-info", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
+    if (request.user.role !== "parent") throw new HttpError(403, "Réservé aux comptes parents");
+    const input = driverInfoSchema.parse(request.body);
+    const [updated] = await db
+      .update(users)
+      .set({
+        licensePlate: input.licensePlate.toUpperCase().trim(),
+        driverLicenseNumber: input.driverLicenseNumber.toUpperCase().trim(),
+      })
+      .where(eq(users.id, request.user.id))
+      .returning();
+    return toUserDto(updated);
   });
 }

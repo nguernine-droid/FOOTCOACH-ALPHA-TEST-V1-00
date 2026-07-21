@@ -18,6 +18,10 @@ export function registerErrorHandler(app: FastifyInstance) {
     if (error instanceof HttpError) {
       return reply.code(error.statusCode).send({ error: error.message });
     }
+    // Erreurs Fastify natives (body invalide, etc.) : conserver leur statut 4xx
+    if ("statusCode" in error && typeof error.statusCode === "number" && error.statusCode < 500) {
+      return reply.code(error.statusCode).send({ error: error.message });
+    }
     app.log.error(error);
     return reply.code(500).send({ error: "Erreur interne" });
   });

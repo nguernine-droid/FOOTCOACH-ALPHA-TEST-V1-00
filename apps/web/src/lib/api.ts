@@ -22,6 +22,10 @@ function storeSession(auth: AuthResponseDto) {
   localStorage.setItem(USER_KEY, JSON.stringify(auth.user));
 }
 
+export function updateStoredUser(user: UserDto) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
 export function clearSession() {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
@@ -59,7 +63,7 @@ export async function api<T>(path: string, options: RequestInit = {}, retried = 
   const res = await fetch(`/api${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },

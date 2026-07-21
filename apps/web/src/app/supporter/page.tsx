@@ -30,7 +30,7 @@ function SupporterMatches() {
     );
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
       {matches.map((match) => (
         <MatchCard key={match.id} match={match}>
           <Link href={`/supporter/matches/${match.id}`} className="block">
