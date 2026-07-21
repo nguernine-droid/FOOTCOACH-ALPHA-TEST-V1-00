@@ -132,6 +132,23 @@ export const carpoolBookings = pgTable("carpool_bookings", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Codes d'invitation générés par le coach.
+// role=player : crée un compte joueur dans l'équipe.
+// role=parent : crée un compte parent lié au joueur (player_user_id).
+export const invitations = pgTable("invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(),
+  teamId: uuid("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  role: userRole("role").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  playerUserId: uuid("player_user_id").references(() => users.id, { onDelete: "cascade" }),
+  usedByUserId: uuid("used_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const refreshTokens = pgTable("refresh_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")

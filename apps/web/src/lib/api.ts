@@ -78,6 +78,12 @@ export async function api<T>(path: string, options: RequestInit = {}, retried = 
   return (await res.json()) as T;
 }
 
+export async function register(path: "/auth/register-coach" | "/auth/register-invite", payload: unknown): Promise<UserDto> {
+  const auth = await api<AuthResponseDto>(path, { method: "POST", body: JSON.stringify(payload) });
+  storeSession(auth);
+  return auth.user;
+}
+
 export async function login(email: string, password: string): Promise<UserDto> {
   const auth = await api<AuthResponseDto>("/auth/login", {
     method: "POST",

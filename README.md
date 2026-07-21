@@ -67,6 +67,13 @@ npm run dev:web    # Web sur :3000 (API_INTERNAL_URL=http://localhost:4000)
 npm run db:seed
 ```
 
+### Créer un compte (sans compte de démo)
+
+1. **Coach** : « Créer un compte » → « Je suis coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte.
+2. Dans l'onglet **Mon équipe**, le coach ajoute un joueur (prénom + nom) → un **code d'invitation** apparaît (ex. `3KYZE3`), à transmettre par SMS ou papier.
+3. Le **joueur** va sur « Créer un compte » → « J'ai un code d'invitation » (ou ouvre `/register?code=XXX`) : l'écran confirme « Vous rejoignez l'équipe … », il choisit email + mot de passe, c'est fini.
+4. Une fois le compte du joueur créé, le coach clique **« Inviter le parent »** sur sa fiche → nouveau code. Le **parent** s'inscrit avec ce code et devient automatiquement le parent assigné du joueur (il validera ses covoiturages).
+
 ### Covoiturage
 
 1. Le **parent** renseigne sa plaque et son n° de permis (carte « Mes infos conducteur ») — sans cela, impossible de proposer des places.

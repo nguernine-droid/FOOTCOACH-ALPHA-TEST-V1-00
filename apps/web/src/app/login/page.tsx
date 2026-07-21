@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Hand, Heart, Volleyball } from "lucide-react";
 import { homeForRole, login } from "@/lib/api";
@@ -78,6 +79,13 @@ export default function LoginPage() {
             {loading ? "Connexion…" : "C'est parti !"}
           </Button>
         </form>
+
+        <p className="text-center text-xs text-ink-soft">
+          Pas encore de compte ?{" "}
+          <Link href="/register" className="font-bold text-pitch hover:underline">
+            Créer un compte
+          </Link>
+        </p>
 
         <div className="card p-4 space-y-3">
           <p className="text-xs font-bold text-ink-soft text-center">Essayez avec un compte de démo</p>

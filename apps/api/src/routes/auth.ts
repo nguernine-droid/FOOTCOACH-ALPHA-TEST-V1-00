@@ -14,7 +14,7 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-async function issueRefreshToken(userId: string): Promise<string> {
+export async function issueRefreshToken(userId: string): Promise<string> {
   const token = crypto.randomBytes(48).toString("base64url");
   await db.insert(refreshTokens).values({
     userId,
@@ -24,7 +24,7 @@ async function issueRefreshToken(userId: string): Promise<string> {
   return token;
 }
 
-async function toUserDto(user: typeof users.$inferSelect): Promise<UserDto> {
+export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDto> {
   let teamId = user.teamId;
   let teamName: string | null = null;
   if (user.role === "coach") {

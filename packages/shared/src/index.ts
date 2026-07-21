@@ -58,6 +58,31 @@ export const createMatchEventSchema = z.object({
 });
 export type CreateMatchEventInput = z.infer<typeof createMatchEventSchema>;
 
+export const registerCoachSchema = z.object({
+  firstName: z.string().min(1).max(50),
+  lastName: z.string().min(1).max(50),
+  email: z.string().email(),
+  password: z.string().min(8, "8 caractères minimum"),
+  teamName: z.string().min(2).max(60),
+  teamCity: z.string().min(1).max(60),
+});
+export type RegisterCoachInput = z.infer<typeof registerCoachSchema>;
+
+export const registerInviteSchema = z.object({
+  code: z.string().min(4).max(12),
+  email: z.string().email(),
+  password: z.string().min(8, "8 caractères minimum"),
+  // Renseignés par le parent à l'inscription (le joueur a déjà son nom via l'invitation)
+  firstName: z.string().min(1).max(50).optional(),
+  lastName: z.string().min(1).max(50).optional(),
+});
+export type RegisterInviteInput = z.infer<typeof registerInviteSchema>;
+
+export const createPlayerInviteSchema = z.object({
+  firstName: z.string().min(1).max(50),
+  lastName: z.string().min(1).max(50),
+});
+
 export const driverInfoSchema = z.object({
   licensePlate: z
     .string()
@@ -182,6 +207,28 @@ export interface ApprovalDto {
   matchLabel: string;
   matchDate: string;
   status: BookingStatus;
+}
+
+/** Aperçu d'une invitation (écran de confirmation avant inscription) */
+export interface InvitationInfoDto {
+  role: Extract<Role, "player" | "parent">;
+  teamName: string;
+  firstName: string | null;
+  lastName: string | null;
+  /** Pour un parent : nom du joueur auquel il sera lié */
+  playerName: string | null;
+}
+
+/** Ligne de l'effectif côté coach */
+export interface TeamMemberDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  accountStatus: "active" | "invited";
+  inviteCode: string | null;
+  parentStatus: "linked" | "invited" | "none";
+  parentName: string | null;
+  parentInviteCode: string | null;
 }
 
 export interface AuthResponseDto {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Radar, Plus } from "lucide-react";
+import { LayoutDashboard, Radar, Plus, Users } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ const TABS = [
   { href: "/coach", label: "Mes matchs", icon: LayoutDashboard },
   { href: "/coach/radar", label: "Radar", icon: Radar },
   { href: "/coach/announcements/new", label: "Annonce", icon: Plus },
+  { href: "/coach/team", label: "Mon équipe", icon: Users },
 ];
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {

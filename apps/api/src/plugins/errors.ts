@@ -19,8 +19,9 @@ export function registerErrorHandler(app: FastifyInstance) {
       return reply.code(error.statusCode).send({ error: error.message });
     }
     // Erreurs Fastify natives (body invalide, etc.) : conserver leur statut 4xx
-    if ("statusCode" in error && typeof error.statusCode === "number" && error.statusCode < 500) {
-      return reply.code(error.statusCode).send({ error: error.message });
+    const fastifyError = error as { statusCode?: number; message?: string };
+    if (typeof fastifyError.statusCode === "number" && fastifyError.statusCode < 500) {
+      return reply.code(fastifyError.statusCode).send({ error: fastifyError.message ?? "Requête invalide" });
     }
     app.log.error(error);
     return reply.code(500).send({ error: "Erreur interne" });
