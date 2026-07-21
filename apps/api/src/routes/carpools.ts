@@ -27,11 +27,18 @@ export function carpoolRoutes(app: FastifyInstance) {
     const match = await getMatchOr404(id);
     if (request.user.role !== "supporter") assertMemberOfMatch(match, request.user.teamId);
 
+    // Confidentialité : on ne montre que les voitures de sa propre équipe
     const drivers = await db
       .select({ attendance: attendances, driver: users })
       .from(attendances)
       .innerJoin(users, eq(attendances.userId, users.id))
-      .where(and(eq(attendances.matchId, id), eq(attendances.canTransport, true)));
+      .where(
+        and(
+          eq(attendances.matchId, id),
+          eq(attendances.canTransport, true),
+          ...(request.user.teamId ? [eq(users.teamId, request.user.teamId)] : []),
+        ),
+      );
 
     const bookings = await db
       .select({ booking: carpoolBookings, player: users })

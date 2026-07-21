@@ -8,6 +8,7 @@ import { RoleGuard } from "@/components/RoleGuard";
 import { MatchCard } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
+import { groupMatches } from "@/lib/utils";
 
 function SupporterMatches() {
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
@@ -30,15 +31,22 @@ function SupporterMatches() {
     );
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
-      {matches.map((match) => (
-        <MatchCard key={match.id} match={match}>
-          <Link href={`/supporter/matches/${match.id}`} className="block">
-            <Button variant={match.status === "live" ? "accent" : "soft"} className="w-full">
-              {match.status === "live" ? "🔴 Suivre en direct" : "Voir le match"} <ChevronRight size={14} />
-            </Button>
-          </Link>
-        </MatchCard>
+    <div className="space-y-3">
+      {groupMatches(matches).map((section) => (
+        <div key={section.key} className="space-y-3">
+          <h3 className="text-xs font-bold text-ink-soft px-1 pt-2">{section.label}</h3>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
+            {section.items.map((match) => (
+              <MatchCard key={match.id} match={match}>
+                <Link href={`/supporter/matches/${match.id}`} className="block">
+                  <Button variant={match.status === "live" ? "accent" : "soft"} className="w-full">
+                    {match.status === "live" ? "🔴 Suivre en direct" : "Voir le match"} <ChevronRight size={14} />
+                  </Button>
+                </Link>
+              </MatchCard>
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );

@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
 import { CarpoolSection } from "@/components/CarpoolSection";
+import { LineupEditor } from "@/components/LineupEditor";
 import { Button } from "@/components/ui/Button";
 
 const EVENT_TYPES: { value: MatchEventType; label: string; emoji: string }[] = [
@@ -216,47 +217,68 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         </form>
       </section>
 
-      <section className="card p-5 space-y-3">
+      <section className="card p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black">Présences</h3>
+          <h3 className="text-sm font-black">Présences de mon équipe</h3>
           <span className="chip bg-pitch-soft text-pitch-deep">
             {match.presentCount} ✓ · {match.absentCount} ✗
           </span>
         </div>
+        <p className="text-[10px] text-ink-soft -mt-2">🔒 Visible uniquement par vous — le coach adverse ne voit pas ces informations.</p>
         {attendances.length === 0 && <p className="text-xs text-ink-soft">Personne n&apos;a encore répondu.</p>}
-        {attendances.map((a) => (
-          <div key={a.userId} className="flex items-center gap-3 text-sm bg-paper rounded-2xl px-4 py-3">
-            <span
-              className={cn(
-                "w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0",
-                a.role === "parent" ? "bg-tangerine" : "bg-sky",
-              )}
-            >
-              {a.firstName[0]}
-              {a.lastName[0]}
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="font-bold block truncate">
-                {a.firstName} {a.lastName}
-              </span>
-              <span className="text-xs text-ink-soft">{a.role === "player" ? "Joueur" : a.role === "parent" ? "Parent" : a.role}</span>
-            </span>
-            {a.canTransport && a.transportSeats > 0 && (
-              <span className="chip bg-tangerine-soft text-tangerine shrink-0">
-                <Car size={12} /> {a.transportSeats} pl.
-              </span>
-            )}
-            <span className={cn("chip shrink-0", a.status === "present" ? "bg-pitch-soft text-pitch-deep" : "bg-coral-soft text-coral")}>
-              {a.status === "present" ? "Présent" : "Absent"}
-            </span>
-          </div>
-        ))}
+        {(
+          [
+            { label: "⚽ Joueurs", rows: attendances.filter((a) => a.role === "player") },
+            { label: "🚗 Parents", rows: attendances.filter((a) => a.role === "parent") },
+          ] as const
+        )
+          .filter((g) => g.rows.length > 0)
+          .map((group) => (
+            <div key={group.label} className="space-y-2">
+              <p className="text-xs font-bold text-ink-soft">
+                {group.label} ({group.rows.filter((r) => r.status === "present").length} présent
+                {group.rows.filter((r) => r.status === "present").length > 1 ? "s" : ""} / {group.rows.length})
+              </p>
+              {group.rows.map((a) => (
+                <div key={a.userId} className="flex items-center gap-3 text-sm bg-paper rounded-2xl px-4 py-3">
+                  <span
+                    className={cn(
+                      "w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0",
+                      a.role === "parent" ? "bg-tangerine" : "bg-sky",
+                    )}
+                  >
+                    {a.firstName[0]}
+                    {a.lastName[0]}
+                  </span>
+                  <span className="flex-1 min-w-0 font-bold truncate">
+                    {a.firstName} {a.lastName}
+                  </span>
+                  {a.canTransport && a.transportSeats > 0 && (
+                    <span className="chip bg-tangerine-soft text-tangerine shrink-0">
+                      <Car size={12} /> {a.transportSeats} pl.
+                    </span>
+                  )}
+                  <span className={cn("chip shrink-0", a.status === "present" ? "bg-pitch-soft text-pitch-deep" : "bg-coral-soft text-coral")}>
+                    {a.status === "present" ? "Présent" : "Absent"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
         {transporters.length > 0 && (
           <p className="text-xs text-ink-soft font-semibold bg-tangerine-soft/50 rounded-2xl px-4 py-3">
             🚗 {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage proposées ({transporters.map((t) => t.firstName).join(", ")})
           </p>
         )}
         <CarpoolSection matchId={id} canBook={false} />
+      </section>
+
+      <section className="card p-5 space-y-3">
+        <h3 className="text-sm font-black">Composition</h3>
+        <LineupEditor
+          matchId={id}
+          presentPlayerIds={attendances.filter((a) => a.role === "player" && a.status === "present").map((a) => a.userId)}
+        />
       </section>
       </div>
       </div>

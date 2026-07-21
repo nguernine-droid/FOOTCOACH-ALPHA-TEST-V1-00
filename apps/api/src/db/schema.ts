@@ -132,6 +132,28 @@ export const carpoolBookings = pgTable("carpool_bookings", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Composition d'équipe pour un match (placement libre style FIFA, coordonnées en %).
+// La compo adverse n'est révélée que 2h avant le coup d'envoi.
+export const lineups = pgTable(
+  "lineups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    playerUserId: uuid("player_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    posX: integer("pos_x").notNull(),
+    posY: integer("pos_y").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("lineups_match_player_idx").on(t.matchId, t.playerUserId)],
+);
+
 // Codes d'invitation générés par le coach.
 // role=player : crée un compte joueur dans l'équipe.
 // role=parent : crée un compte parent lié au joueur (player_user_id).

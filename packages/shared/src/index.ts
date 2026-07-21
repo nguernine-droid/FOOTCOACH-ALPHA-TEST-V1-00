@@ -97,6 +97,19 @@ export const driverInfoSchema = z.object({
 });
 export type DriverInfoInput = z.infer<typeof driverInfoSchema>;
 
+export const saveLineupSchema = z.object({
+  players: z
+    .array(
+      z.object({
+        playerId: z.string().uuid(),
+        x: z.number().int().min(0).max(100),
+        y: z.number().int().min(0).max(100),
+      }),
+    )
+    .max(15),
+});
+export type SaveLineupInput = z.infer<typeof saveLineupSchema>;
+
 export const setAttendanceSchema = z.object({
   status: z.enum(ATTENDANCE_STATUSES),
   canTransport: z.boolean().optional(),
@@ -229,6 +242,24 @@ export interface TeamMemberDto {
   parentStatus: "linked" | "invited" | "none";
   parentName: string | null;
   parentInviteCode: string | null;
+}
+
+export interface LineupPlayerDto {
+  playerId: string;
+  firstName: string;
+  lastName: string;
+  x: number;
+  y: number;
+}
+
+export interface LineupDto {
+  /** Ma composition (coach) */
+  mine: LineupPlayerDto[];
+  /** Compo adverse — null tant qu'elle est verrouillée (> 2h avant le match) */
+  opponent: LineupPlayerDto[] | null;
+  opponentLocked: boolean;
+  /** Date/heure ISO à partir de laquelle la compo adverse devient visible */
+  opponentVisibleAt: string;
 }
 
 export interface AuthResponseDto {

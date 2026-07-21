@@ -4,7 +4,7 @@ Application de gestion de matchs amicaux avec 4 rôles :
 
 | Rôle | Ce qu'il peut faire |
 |---|---|
-| **Coach** | Poster des annonces de match amical, répondre aux annonces des autres coachs (→ crée un match confirmé), saisir le score et les temps forts, consulter présences et transports |
+| **Coach** | Poster des annonces de match amical, répondre aux annonces des autres coachs (→ crée un match confirmé), saisir le score et les temps forts, consulter les présences de **sa propre équipe** (joueurs et parents séparés — jamais celles de l'adversaire), composer son équipe sur un terrain façon FIFA (la compo adverse se dévoile 2h avant le coup d'envoi) |
 | **Joueur** | Indiquer sa présence (présent / absent), réserver une place dans un covoiturage (soumise à l'accord de son parent assigné) |
 | **Parent** | Indiquer sa présence + proposer un covoiturage (après avoir renseigné plaque d'immatriculation et n° de permis), autoriser/refuser les demandes de ses joueurs |
 | **Supporter** | Suivre le score et les temps forts en direct (rafraîchissement automatique) |

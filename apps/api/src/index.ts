@@ -8,6 +8,7 @@ import { announcementRoutes } from "./routes/announcements.js";
 import { matchRoutes } from "./routes/matches.js";
 import { carpoolRoutes } from "./routes/carpools.js";
 import { registrationRoutes } from "./routes/registration.js";
+import { lineupRoutes } from "./routes/lineups.js";
 
 const app = Fastify({ logger: true });
 
@@ -21,6 +22,7 @@ app.register((instance) => announcementRoutes(instance));
 app.register((instance) => matchRoutes(instance));
 app.register((instance) => carpoolRoutes(instance));
 app.register((instance) => registrationRoutes(instance));
+app.register((instance) => lineupRoutes(instance));
 
 try {
   await runMigrations();

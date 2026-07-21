@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarPlus, Car, ChevronRight, Megaphone, Trash2 } from "lucide-react";
 import type { AnnouncementDto, MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDate, groupMatches } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
 
@@ -61,22 +61,27 @@ export default function CoachDashboard() {
             }
           />
         )}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
-        {matches.map((match) => (
-          <MatchCard key={match.id} match={match}>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-ink-soft font-semibold flex items-center gap-1.5">
-                <Car size={13} className="text-tangerine" /> {match.transportSeats} place{match.transportSeats > 1 ? "s" : ""} dispo
-              </span>
-              <Link href={`/coach/matches/${match.id}`}>
-                <Button size="sm">
-                  Gérer <ChevronRight size={14} />
-                </Button>
-              </Link>
+        {groupMatches(matches).map((section) => (
+          <div key={section.key} className="space-y-3">
+            <h3 className="text-xs font-bold text-ink-soft px-1 pt-2">{section.label}</h3>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
+              {section.items.map((match) => (
+                <MatchCard key={match.id} match={match}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-ink-soft font-semibold flex items-center gap-1.5">
+                      <Car size={13} className="text-tangerine" /> {match.transportSeats} place{match.transportSeats > 1 ? "s" : ""} dispo
+                    </span>
+                    <Link href={`/coach/matches/${match.id}`}>
+                      <Button size="sm">
+                        Gérer <ChevronRight size={14} />
+                      </Button>
+                    </Link>
+                  </div>
+                </MatchCard>
+              ))}
             </div>
-          </MatchCard>
+          </div>
         ))}
-        </div>
       </section>
 
       <section className="space-y-3">

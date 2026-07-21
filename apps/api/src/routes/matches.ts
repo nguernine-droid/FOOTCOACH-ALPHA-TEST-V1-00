@@ -32,7 +32,7 @@ function baseSelect() {
     .innerJoin(awayTeam, eq(matches.awayTeamId, awayTeam.id));
 }
 
-async function attachCounts(rows: MatchRow[], userId: string): Promise<MatchDto[]> {
+async function attachCounts(rows: MatchRow[], userId: string, viewerTeamId: string | null): Promise<MatchDto[]> {
   if (rows.length === 0) return [];
   const matchIds = rows.map((r) => r.match.id);
   const allAttendances = await db.select().from(attendances).where(inArray(attendances.matchId, matchIds));
@@ -41,10 +41,20 @@ async function attachCounts(rows: MatchRow[], userId: string): Promise<MatchDto[
     .from(carpoolBookings)
     .where(and(inArray(carpoolBookings.matchId, matchIds), ne(carpoolBookings.status, "declined")));
 
+  // Confidentialité : les compteurs de présence ne portent que sur l'équipe du demandeur
+  // (le coach adverse ne doit pas savoir qui vient). Supporter sans équipe : vue globale.
+  const attendeeIds = [...new Set(allAttendances.map((a) => a.userId))];
+  const attendeeUsers = attendeeIds.length ? await db.select().from(users).where(inArray(users.id, attendeeIds)) : [];
+  const teamOf = new Map(attendeeUsers.map((u) => [u.id, u.teamId]));
+
   return rows.map(({ match, home, away }) => {
-    const list = allAttendances.filter((a) => a.matchId === match.id);
+    const list = allAttendances.filter(
+      (a) => a.matchId === match.id && (!viewerTeamId || teamOf.get(a.userId) === viewerTeamId),
+    );
     const mine = list.find((a) => a.userId === userId);
-    const booked = activeBookings.filter((b) => b.matchId === match.id).length;
+    const booked = activeBookings.filter(
+      (b) => b.matchId === match.id && (!viewerTeamId || teamOf.get(b.driverId) === viewerTeamId),
+    ).length;
     return {
       id: match.id,
       homeTeam: { id: home.id, name: home.name, city: home.city },
@@ -97,14 +107,14 @@ export function matchRoutes(app: FastifyInstance) {
         : await baseSelect()
             .where(or(eq(matches.homeTeamId, teamId ?? ""), eq(matches.awayTeamId, teamId ?? "")))
             .orderBy(desc(matches.date), desc(matches.time));
-    return attachCounts(rows, request.user.id);
+    return attachCounts(rows, request.user.id, request.user.teamId);
   });
 
   // Endpoint de polling : score + temps forts + compteurs
   app.get("/matches/:id", async (request): Promise<MatchDetailDto> => {
     const { id } = request.params as { id: string };
     const row = await getMatchOr404(id);
-    const [dto] = await attachCounts([row], request.user.id);
+    const [dto] = await attachCounts([row], request.user.id, request.user.teamId);
     const events = await db
       .select()
       .from(matchEvents)
@@ -158,7 +168,8 @@ export function matchRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Liste nominative des présences + transports (coach du match uniquement)
+  // Liste nominative des présences + transports — UNIQUEMENT les membres de sa propre
+  // équipe : le coach adverse ne voit jamais qui sera présent en face.
   app.get("/matches/:id/attendances", { preHandler: requireRole("coach") }, async (request): Promise<AttendanceDto[]> => {
     const { id } = request.params as { id: string };
     const row = await getMatchOr404(id);
@@ -167,7 +178,7 @@ export function matchRoutes(app: FastifyInstance) {
       .select({ attendance: attendances, user: users })
       .from(attendances)
       .innerJoin(users, eq(attendances.userId, users.id))
-      .where(eq(attendances.matchId, id));
+      .where(and(eq(attendances.matchId, id), eq(users.teamId, request.user.teamId ?? "")));
     return rows.map(({ attendance, user }) => ({
       userId: user.id,
       firstName: user.firstName,

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Car, Check, X } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
 import { api, getStoredUser } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, groupMatches } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
 import { CarpoolSection } from "@/components/CarpoolSection";
 
@@ -59,8 +59,11 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
   return (
     <div className="space-y-3">
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-2xl px-4 py-3">{error}</p>}
+      {groupMatches(matches).map((section) => (
+      <div key={section.key} className="space-y-3">
+      <h3 className="text-xs font-bold text-ink-soft px-1 pt-2">{section.label}</h3>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
-        {matches.map((match) => {
+        {section.items.map((match) => {
           const mine = match.myAttendance;
           const answerable = match.status === "scheduled";
           return (
@@ -149,6 +152,8 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
           );
         })}
       </div>
+      </div>
+      ))}
     </div>
   );
 }
