@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowLeftRight, Goal, Sparkles, Square } from "lucide-react";
 import type { MatchDetailDto, MatchEventType } from "@footcoach/shared";
-import { RoleGuard } from "@/components/RoleGuard";
 import { MatchCard } from "@/components/MatchCard";
 import { api } from "@/lib/api";
 
@@ -91,9 +90,5 @@ function LiveMatch({ id }: { id: string }) {
 
 export default function SupporterMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  return (
-    <RoleGuard role="supporter">
-      <LiveMatch id={id} />
-    </RoleGuard>
-  );
+  return <LiveMatch id={id} />;
 }

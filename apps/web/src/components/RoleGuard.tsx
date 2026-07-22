@@ -160,10 +160,16 @@ export function RoleGuard({
           </div>
         </header>
 
-        {nav && <div className="bg-navy-800 border-t border-white/10">{nav}</div>}
+        {nav}
       </div>
 
-      <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-12">
+      <div
+        className={cn(
+          "w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pt-6",
+          // La barre de navigation mobile est fixée en bas : réserver la place du contenu
+          nav ? "pb-28 min-[960px]:pb-12" : "pb-12",
+        )}
+      >
         {children}
       </div>
     </div>

@@ -159,6 +159,9 @@ export interface UserDto {
   hasDriverInfo: boolean;
   /** Joueur : id du compte parent assigné (ses réservations devront être validées) */
   parentId: string | null;
+  /** Joueur : fiche sportive (optionnels — absents des sessions stockées avant leur ajout) */
+  position?: PlayerPosition | null;
+  jerseyNumber?: number | null;
 }
 
 export interface TeamDto {

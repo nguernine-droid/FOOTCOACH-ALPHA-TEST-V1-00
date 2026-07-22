@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
-import { RoleGuard } from "@/components/RoleGuard";
 import { MatchCard } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";
@@ -53,9 +52,9 @@ function SupporterMatches() {
 
 export default function SupporterPage() {
   return (
-    <RoleGuard role="supporter">
+    <>
       <h2 className="display text-lg px-1 mb-3">Matchs à suivre</h2>
       <SupporterMatches />
-    </RoleGuard>
+    </>
   );
 }

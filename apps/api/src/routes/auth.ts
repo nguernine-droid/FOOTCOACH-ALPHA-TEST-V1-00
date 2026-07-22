@@ -45,6 +45,8 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     teamName,
     hasDriverInfo: Boolean(user.licensePlate && user.driverLicenseNumber),
     parentId: user.parentId,
+    position: user.position,
+    jerseyNumber: user.jerseyNumber,
   };
 }
 
