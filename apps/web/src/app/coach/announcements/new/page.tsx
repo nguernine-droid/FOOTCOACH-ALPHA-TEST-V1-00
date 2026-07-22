@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Megaphone } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
+import { DateField } from "@/components/ui/DateField";
+import { TimeField } from "@/components/ui/TimeField";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
@@ -65,11 +67,11 @@ export default function NewAnnouncementPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label htmlFor="date" className="text-xs font-bold text-ink-soft">Date</label>
-            <input id="date" type="date" required value={form.date} onChange={(e) => set("date", e.target.value)} className="field" />
+            <DateField id="date" required min={new Date().toISOString().slice(0, 10)} value={form.date} onChange={(v) => set("date", v)} />
           </div>
           <div className="space-y-1.5">
             <label htmlFor="time" className="text-xs font-bold text-ink-soft">Heure</label>
-            <input id="time" type="time" required value={form.time} onChange={(e) => set("time", e.target.value)} className="field" />
+            <TimeField id="time" required value={form.time} onChange={(v) => set("time", v)} />
           </div>
         </div>
 

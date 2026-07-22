@@ -7,6 +7,14 @@ import { api, getStoredUser } from "@/lib/api";
 import { cn, groupMatches } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
 import { CarpoolSection } from "@/components/CarpoolSection";
+import { TimeField } from "@/components/ui/TimeField";
+
+type TransportInput = {
+  canTransport: boolean;
+  transportSeats: number;
+  departureTime?: string | null;
+  departureArea?: string | null;
+};
 
 // Liste des matchs avec réponse de présence.
 // parentMode : ajoute la proposition de transport (nombre de places).
@@ -29,11 +37,7 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
     load();
   }, [load, version]);
 
-  async function setAttendance(
-    matchId: string,
-    status: "present" | "absent",
-    transport?: { canTransport: boolean; transportSeats: number },
-  ) {
+  async function setAttendance(matchId: string, status: "present" | "absent", transport?: TransportInput) {
     setError(null);
     try {
       await api(`/matches/${matchId}/attendance`, {
@@ -81,13 +85,15 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                         setAttendance(match.id, "present", {
                           canTransport: mine?.canTransport ?? false,
                           transportSeats: mine?.transportSeats ?? 0,
+                          departureTime: mine?.departureTime,
+                          departureArea: mine?.departureArea,
                         })
                       }
                       className={cn(
                         "flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition active:scale-[0.97]",
                         mine?.status === "present"
-                          ? "bg-pitch text-white shadow-[0_6px_16px_-6px_rgba(22,163,74,0.5)]"
-                          : "bg-paper text-ink-soft hover:bg-pitch-soft hover:text-pitch-deep",
+                          ? "bg-success text-white shadow-[0_4px_12px_-4px_rgba(30,158,88,0.5)]"
+                          : "bg-paper text-ink-soft hover:bg-success-soft hover:text-success",
                       )}
                     >
                       <Check size={16} /> Présent
@@ -117,7 +123,12 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                             <button
                               key={seats}
                               onClick={() =>
-                                setAttendance(match.id, "present", { canTransport: seats > 0, transportSeats: seats })
+                                setAttendance(match.id, "present", {
+                                  canTransport: seats > 0,
+                                  transportSeats: seats,
+                                  departureTime: mine.departureTime,
+                                  departureArea: mine.departureArea,
+                                })
                               }
                               className={cn(
                                 "flex-1 h-10 rounded-xl text-sm font-black transition active:scale-90",
@@ -132,6 +143,48 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                           ))}
                         </div>
                         <p className="text-[10px] text-ink-soft">Nombre de places dans votre voiture (– si indisponible)</p>
+
+                        {mine.canTransport && mine.transportSeats > 0 && (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold text-ink-soft">Heure de départ</p>
+                              <TimeField
+                                value={mine.departureTime ?? ""}
+                                onChange={(v) =>
+                                  setAttendance(match.id, "present", {
+                                    canTransport: true,
+                                    transportSeats: mine.transportSeats,
+                                    departureTime: v,
+                                    departureArea: mine.departureArea,
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-ink-soft" htmlFor={`area-${match.id}`}>
+                                Quartier de départ
+                              </label>
+                              <input
+                                id={`area-${match.id}`}
+                                defaultValue={mine.departureArea ?? ""}
+                                onBlur={(e) => {
+                                  const value = e.target.value.trim() || null;
+                                  if (value !== (mine.departureArea ?? null)) {
+                                    setAttendance(match.id, "present", {
+                                      canTransport: true,
+                                      transportSeats: mine.transportSeats,
+                                      departureTime: mine.departureTime,
+                                      departureArea: value,
+                                    });
+                                  }
+                                }}
+                                className="field"
+                                placeholder="Croix-Rousse"
+                                maxLength={80}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <p className="text-xs font-semibold text-ink-soft bg-sun-soft/60 rounded-lg px-4 py-3">

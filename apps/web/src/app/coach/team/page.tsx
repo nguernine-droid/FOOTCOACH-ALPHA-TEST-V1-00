@@ -323,14 +323,19 @@ function TeamContent() {
                   <span
                     className={cn(
                       "chip",
-                      m.nextMatchStatus === "present" && "bg-pitch-soft text-pitch-deep",
+                      m.nextMatchStatus === "present" && "bg-success-soft text-success",
                       m.nextMatchStatus === "absent" && "bg-coral-soft text-coral",
                       m.nextMatchStatus === "pending" && "bg-sun-soft text-sun",
                     )}
                   >
-                    {m.nextMatchStatus === "present" && "Présent"}
-                    {m.nextMatchStatus === "absent" && "Absent"}
-                    {m.nextMatchStatus === "pending" && "Sans réponse"}
+                    {(() => {
+                      const day = m.nextMatchDate
+                        ? new Date(`${m.nextMatchDate}T00:00:00`).toLocaleDateString("fr-FR", { weekday: "long" })
+                        : "";
+                      if (m.nextMatchStatus === "present") return `Présent ${day}`;
+                      if (m.nextMatchStatus === "absent") return `Absent ${day}`;
+                      return "En attente";
+                    })()}
                   </span>
                 )}
                 <button
@@ -368,7 +373,7 @@ function TeamContent() {
               <div className="bg-paper rounded-lg px-4 py-3 space-y-1.5">
                 <p className="text-xs font-bold text-ink-soft">Parent</p>
                 {m.parentStatus === "linked" && (
-                  <span className="chip bg-pitch-soft text-pitch-deep">✓ {m.parentName}</span>
+                  <span className="chip bg-success-soft text-success">✓ {m.parentName}</span>
                 )}
                 {m.parentStatus === "invited" && m.parentInviteCode && (
                   <>

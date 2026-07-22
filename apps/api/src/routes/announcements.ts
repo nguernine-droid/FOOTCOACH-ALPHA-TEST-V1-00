@@ -5,13 +5,19 @@ import { db } from "../db/client.js";
 import { matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
+import { haversineKm } from "../lib/cities.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
   myTeamId: string | null,
   link?: { matchId: string; opponentTeam: TeamDto },
+  myCoords?: { lat: number; lng: number } | null,
 ): AnnouncementDto {
   const { announcement, team } = row;
+  const distanceKm =
+    myCoords && team.lat != null && team.lng != null && team.id !== myTeamId
+      ? haversineKm(myCoords, { lat: team.lat, lng: team.lng })
+      : null;
   return {
     id: announcement.id,
     team: { id: team.id, name: team.name, city: team.city },
@@ -28,6 +34,7 @@ function toDto(
     createdAt: announcement.createdAt.toISOString(),
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
+    distanceKm,
   };
 }
 
@@ -63,7 +70,11 @@ export function announcementRoutes(app: FastifyInstance) {
     const links = await loadMatchLinks(
       rows.filter((r) => r.announcement.status === "matched").map((r) => r.announcement.id),
     );
-    return rows.map((r) => toDto(r, request.user.teamId, links.get(r.announcement.id)));
+    const [myTeam] = request.user.teamId
+      ? await db.select().from(teams).where(eq(teams.id, request.user.teamId))
+      : [];
+    const myCoords = myTeam?.lat != null && myTeam?.lng != null ? { lat: myTeam.lat, lng: myTeam.lng } : null;
+    return rows.map((r) => toDto(r, request.user.teamId, links.get(r.announcement.id), myCoords));
   });
 
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {

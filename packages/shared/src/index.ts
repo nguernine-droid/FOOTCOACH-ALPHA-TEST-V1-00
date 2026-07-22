@@ -133,6 +133,8 @@ export const setAttendanceSchema = z.object({
   status: z.enum(ATTENDANCE_STATUSES),
   canTransport: z.boolean().optional(),
   transportSeats: z.number().int().min(0).max(9).optional(),
+  departureTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+  departureArea: z.string().max(80).nullable().optional(),
 });
 export type SetAttendanceInput = z.infer<typeof setAttendanceSchema>;
 
@@ -174,6 +176,8 @@ export interface AnnouncementDto {
   /** Renseignés quand l'annonce est matchée : le match créé et l'équipe qui a répondu */
   matchId: string | null;
   opponentTeam: TeamDto | null;
+  /** Distance à vol d'oiseau entre ma ville et celle de l'annonceur (null si ville inconnue) */
+  distanceKm: number | null;
 }
 
 export interface MatchEventDto {
@@ -212,6 +216,8 @@ export interface MatchDto {
     status: AttendanceStatus;
     canTransport: boolean;
     transportSeats: number;
+    departureTime: string | null;
+    departureArea: string | null;
   } | null;
 }
 
@@ -230,6 +236,8 @@ export interface CarpoolDto {
   driverId: string;
   driverName: string;
   licensePlate: string | null;
+  departureTime: string | null;
+  departureArea: string | null;
   seatsTotal: number;
   seatsRemaining: number;
   bookings: CarpoolBookingDto[];
@@ -270,6 +278,7 @@ export interface TeamMemberDto {
   jerseyNumber: number | null;
   /** Réponse au prochain match programmé — null s'il n'y a pas de match à venir */
   nextMatchStatus: AttendanceStatus | "pending" | null;
+  nextMatchDate: string | null;
 }
 
 export interface LineupPlayerDto {

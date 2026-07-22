@@ -89,7 +89,7 @@
 @layer components {
   /* Carte standard : blanche, coins mesurés, bordure fine + ombre discrète */
   .card {
-    @apply bg-white rounded-xl border border-line relative overflow-hidden;
+    @apply bg-white rounded-xl border border-line relative;
     box-shadow: var(--shadow-card);
   }
 

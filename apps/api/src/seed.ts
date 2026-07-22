@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
 import { attendances, matchAnnouncements, matchEvents, matches, teams, users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
+import { cityCoords } from "./lib/cities.js";
 
 const PASSWORD = "Demo1234!";
 
@@ -31,10 +32,11 @@ async function upsertUser(input: {
 }
 
 async function upsertTeam(name: string, city: string, coachId: string) {
+  const coords = cityCoords(city);
   const [team] = await db
     .insert(teams)
-    .values({ name, city, coachId })
-    .onConflictDoUpdate({ target: teams.coachId, set: { name, city } })
+    .values({ name, city, coachId, lat: coords?.lat ?? null, lng: coords?.lng ?? null })
+    .onConflictDoUpdate({ target: teams.coachId, set: { name, city, lat: coords?.lat ?? null, lng: coords?.lng ?? null } })
     .returning();
   return team;
 }
@@ -142,7 +144,15 @@ async function main() {
     await db.insert(attendances).values([
       { matchId: finished.id, userId: player.id, status: "present" },
       { matchId: finished.id, userId: parent.id, status: "present", canTransport: true, transportSeats: 3 },
-      { matchId: upcoming.id, userId: parent.id, status: "present", canTransport: true, transportSeats: 2 },
+      {
+        matchId: upcoming.id,
+        userId: parent.id,
+        status: "present",
+        canTransport: true,
+        transportSeats: 2,
+        departureTime: "09:15",
+        departureArea: "Croix-Rousse",
+      },
     ]);
   }
 

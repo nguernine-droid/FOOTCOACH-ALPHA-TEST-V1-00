@@ -17,6 +17,7 @@ import { attendances, invitations, matches, teams, users } from "../db/schema.js
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
+import { cityCoords } from "../lib/cities.js";
 
 // Alphabet sans caractères ambigus (pas de O/0, I/1…) : codes faciles à dicter
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -57,7 +58,14 @@ export function registrationRoutes(app: FastifyInstance) {
           lastName: input.lastName,
         })
         .returning();
-      await tx.insert(teams).values({ name: input.teamName, city: input.teamCity, coachId: created.id });
+      const coords = cityCoords(input.teamCity);
+      await tx.insert(teams).values({
+        name: input.teamName,
+        city: input.teamCity,
+        coachId: created.id,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+      });
       return created;
     });
 
@@ -172,6 +180,7 @@ export function registrationRoutes(app: FastifyInstance) {
           position: p.position,
           jerseyNumber: p.jerseyNumber,
           nextMatchStatus: nextMatch ? (attendance?.status ?? "pending") : null,
+          nextMatchDate: nextMatch?.date ?? null,
         };
       });
 
@@ -189,6 +198,7 @@ export function registrationRoutes(app: FastifyInstance) {
           position: i.position,
           jerseyNumber: i.jerseyNumber,
           nextMatchStatus: null,
+          nextMatchDate: null,
         }));
 
       return [...activeRows, ...invitedRows];

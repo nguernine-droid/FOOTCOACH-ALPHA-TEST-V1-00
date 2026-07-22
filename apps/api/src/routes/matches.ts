@@ -70,7 +70,13 @@ async function attachCounts(rows: MatchRow[], userId: string, viewerTeamId: stri
       // Places de covoiturage encore disponibles (offertes moins réservées)
       transportSeats: Math.max(0, list.reduce((sum, a) => sum + (a.canTransport ? a.transportSeats : 0), 0) - booked),
       myAttendance: mine
-        ? { status: mine.status, canTransport: mine.canTransport, transportSeats: mine.transportSeats }
+        ? {
+            status: mine.status,
+            canTransport: mine.canTransport,
+            transportSeats: mine.transportSeats,
+            departureTime: mine.departureTime?.slice(0, 5) ?? null,
+            departureArea: mine.departureArea,
+          }
         : null,
     };
   });
@@ -234,6 +240,8 @@ export function matchRoutes(app: FastifyInstance) {
       status: input.status,
       canTransport,
       transportSeats: canTransport ? (input.transportSeats ?? 0) : 0,
+      departureTime: canTransport ? (input.departureTime ?? null) : null,
+      departureArea: canTransport ? (input.departureArea ?? null) : null,
       updatedAt: new Date(),
     };
     await db
@@ -245,6 +253,8 @@ export function matchRoutes(app: FastifyInstance) {
           status: values.status,
           canTransport: values.canTransport,
           transportSeats: values.transportSeats,
+          departureTime: values.departureTime,
+          departureArea: values.departureArea,
           updatedAt: values.updatedAt,
         },
       });

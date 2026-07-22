@@ -55,6 +55,8 @@ export function carpoolRoutes(app: FastifyInstance) {
           driverId: driver.id,
           driverName: `${driver.firstName} ${driver.lastName}`,
           licensePlate: driver.licensePlate,
+          departureTime: attendance.departureTime?.slice(0, 5) ?? null,
+          departureArea: attendance.departureArea,
           seatsTotal: attendance.transportSeats,
           seatsRemaining: Math.max(0, attendance.transportSeats - carBookings.length),
           bookings: carBookings.map(({ booking, player }) => ({

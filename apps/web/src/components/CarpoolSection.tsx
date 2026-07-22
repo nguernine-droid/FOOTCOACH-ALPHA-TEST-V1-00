@@ -73,10 +73,22 @@ export function CarpoolSection({
       </p>
       {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
       {carpools.map((c) => (
-        <div key={c.driverId} className="bg-paper rounded-lg px-4 py-3 space-y-2">
+        <div
+          key={c.driverId}
+          className={cn("bg-paper rounded-lg px-4 py-3 space-y-2", c.seatsRemaining === 0 && "opacity-70")}
+        >
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-bold truncate">Voiture de {c.driverName}</p>
+              <p className="text-sm font-bold truncate flex items-center gap-2">
+                Voiture de {c.driverName}
+                {c.seatsRemaining === 0 && <span className="chip bg-line text-ink-soft">Complet</span>}
+              </p>
+              {(c.departureTime || c.departureArea) && (
+                <p className="text-[11px] font-semibold text-ink">
+                  Départ{c.departureTime && ` ${c.departureTime}`}
+                  {c.departureArea && ` · ${c.departureArea}`}
+                </p>
+              )}
               <p className="text-[11px] text-ink-soft">
                 {c.licensePlate && <span className="font-mono bg-white border border-line rounded px-1.5 py-0.5 mr-2">{c.licensePlate}</span>}
                 {c.seatsRemaining}/{c.seatsTotal} place{c.seatsTotal > 1 ? "s" : ""} libre{c.seatsRemaining > 1 ? "s" : ""}
@@ -102,7 +114,7 @@ export function CarpoolSection({
                   key={b.id}
                   className={cn(
                     "chip",
-                    b.status === "approved" ? "bg-pitch-soft text-pitch-deep" : "bg-sun-soft text-sun",
+                    b.status === "approved" ? "bg-success-soft text-success" : "bg-sun-soft text-sun",
                   )}
                 >
                   {b.playerName}
@@ -115,7 +127,7 @@ export function CarpoolSection({
           {canBook &&
             (c.myBooking ? (
               <div className="flex items-center justify-between gap-2">
-                <span className={cn("chip", c.myBooking.status === "approved" ? "bg-pitch-soft text-pitch-deep" : "bg-sun-soft text-sun")}>
+                <span className={cn("chip", c.myBooking.status === "approved" ? "bg-success-soft text-success" : "bg-sun-soft text-sun")}>
                   {c.myBooking.status === "approved" ? "Place confirmée" : "En attente de l'accord parental"}
                 </span>
                 <button

@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  doublePrecision,
   integer,
   pgEnum,
   pgTable,
@@ -45,6 +46,9 @@ export const teams = pgTable("teams", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   city: text("city").notNull(),
+  // Coordonnées approximatives de la ville (annuaire statique, pas d'API externe)
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
   coachId: uuid("coach_id")
     .notNull()
     .unique()
@@ -103,6 +107,9 @@ export const attendances = pgTable(
     status: attendanceStatus("status").notNull(),
     canTransport: boolean("can_transport").notNull().default(false),
     transportSeats: integer("transport_seats").notNull().default(0),
+    // Conducteur : heure et quartier de départ affichés aux joueurs
+    departureTime: time("departure_time"),
+    departureArea: text("departure_area"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("attendances_match_user_idx").on(t.matchId, t.userId)],

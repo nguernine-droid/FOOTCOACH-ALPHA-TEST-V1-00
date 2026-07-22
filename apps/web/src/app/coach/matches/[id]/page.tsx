@@ -223,7 +223,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
       <section className="card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black">Présences de mon équipe</h3>
-          <span className="chip bg-pitch-soft text-pitch-deep">
+          <span className="chip bg-success-soft text-success">
             {match.presentCount} ✓ · {match.absentCount} ✗
           </span>
         </div>
@@ -263,7 +263,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                       <Car size={12} /> {a.transportSeats} pl.
                     </span>
                   )}
-                  <span className={cn("chip shrink-0", a.status === "present" ? "bg-pitch-soft text-pitch-deep" : "bg-coral-soft text-coral")}>
+                  <span className={cn("chip shrink-0", a.status === "present" ? "bg-success-soft text-success" : "bg-coral-soft text-coral")}>
                     {a.status === "present" ? "Présent" : "Absent"}
                   </span>
                 </div>
