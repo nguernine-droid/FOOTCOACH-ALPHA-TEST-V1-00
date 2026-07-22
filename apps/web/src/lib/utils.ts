@@ -21,6 +21,23 @@ export function groupMatches<T extends MatchLike>(matches: T[]) {
   ].filter((s) => s.items.length > 0);
 }
 
+// Groupes de la vue liste de l'agenda (les occurrences passées ne sont pas listées)
+export function groupAgendaItems<T extends { occurrenceDate: string }>(items: T[], todayIso: string) {
+  const tomorrow = new Date(new Date(`${todayIso}T12:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+  const weekEnd = new Date(new Date(`${todayIso}T12:00:00Z`).getTime() + 7 * 86400000).toISOString().slice(0, 10);
+  const upcoming = items.filter((i) => i.occurrenceDate >= todayIso);
+  return [
+    { key: "today", label: "Aujourd'hui", items: upcoming.filter((i) => i.occurrenceDate === todayIso) },
+    { key: "tomorrow", label: "Demain", items: upcoming.filter((i) => i.occurrenceDate === tomorrow) },
+    {
+      key: "week",
+      label: "Cette semaine",
+      items: upcoming.filter((i) => i.occurrenceDate > tomorrow && i.occurrenceDate <= weekEnd),
+    },
+    { key: "later", label: "Plus tard", items: upcoming.filter((i) => i.occurrenceDate > weekEnd) },
+  ].filter((g) => g.items.length > 0);
+}
+
 export function formatDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("fr-FR", {
     weekday: "short",
