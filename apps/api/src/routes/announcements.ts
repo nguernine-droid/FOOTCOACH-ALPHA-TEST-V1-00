@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq } from "drizzle-orm";
-import { createAnnouncementSchema, type AnnouncementDto } from "@footcoach/shared";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { createAnnouncementSchema, type AnnouncementDto, type TeamDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
@@ -9,6 +9,7 @@ import { HttpError } from "../plugins/errors.js";
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
   myTeamId: string | null,
+  link?: { matchId: string; opponentTeam: TeamDto },
 ): AnnouncementDto {
   const { announcement, team } = row;
   return {
@@ -25,7 +26,27 @@ function toDto(
     status: announcement.status,
     isMine: team.id === myTeamId,
     createdAt: announcement.createdAt.toISOString(),
+    matchId: link?.matchId ?? null,
+    opponentTeam: link?.opponentTeam ?? null,
   };
+}
+
+/** Pour les annonces matchées : match créé + équipe qui a répondu, indexés par annonce */
+async function loadMatchLinks(announcementIds: string[]) {
+  const links = new Map<string, { matchId: string; opponentTeam: TeamDto }>();
+  if (announcementIds.length === 0) return links;
+  const rows = await db
+    .select({ match: matches, opponent: teams })
+    .from(matches)
+    .innerJoin(teams, eq(matches.awayTeamId, teams.id))
+    .where(inArray(matches.announcementId, announcementIds));
+  for (const { match, opponent } of rows) {
+    links.set(match.announcementId, {
+      matchId: match.id,
+      opponentTeam: { id: opponent.id, name: opponent.name, city: opponent.city },
+    });
+  }
+  return links;
 }
 
 export function announcementRoutes(app: FastifyInstance) {
@@ -39,7 +60,10 @@ export function announcementRoutes(app: FastifyInstance) {
       .innerJoin(teams, eq(matchAnnouncements.teamId, teams.id))
       .where(status === "open" ? eq(matchAnnouncements.status, "open") : undefined)
       .orderBy(desc(matchAnnouncements.createdAt));
-    return rows.map((r) => toDto(r, request.user.teamId));
+    const links = await loadMatchLinks(
+      rows.filter((r) => r.announcement.status === "matched").map((r) => r.announcement.id),
+    );
+    return rows.map((r) => toDto(r, request.user.teamId, links.get(r.announcement.id)));
   });
 
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {

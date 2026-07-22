@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, ChevronDown, LogOut } from "lucide-react";
-import type { Role, UserDto } from "@footcoach/shared";
-import { getStoredUser, homeForRole, logout } from "@/lib/api";
+import type { ActivityDto, Role, UserDto } from "@footcoach/shared";
+import { api, getStoredUser, homeForRole, logout } from "@/lib/api";
 import { ClubCrest } from "@/components/ClubCrest";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,8 @@ export function RoleGuard({
   const router = useRouter();
   const [user, setUser] = useState<UserDto | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [latestActivity, setLatestActivity] = useState<string | null>(null);
+  const [activitySeen, setActivitySeen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,6 +51,15 @@ export function RoleGuard({
     }
     setUser(stored);
   }, [role, router]);
+
+  // Point "non-lu" sur la cloche : dernière activité plus récente que la dernière consultation
+  useEffect(() => {
+    if (!user || user.role !== "coach") return;
+    setActivitySeen(localStorage.getItem("fc_activity_seen"));
+    api<ActivityDto[]>("/activity")
+      .then((events) => setLatestActivity(events[0]?.createdAt ?? null))
+      .catch(() => undefined);
+  }, [user]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -87,8 +98,20 @@ export function RoleGuard({
               <button
                 className="relative p-2.5 rounded-lg hover:bg-white/10 transition"
                 aria-label="Notifications"
+                onClick={() => {
+                  if (latestActivity) {
+                    localStorage.setItem("fc_activity_seen", latestActivity);
+                    setActivitySeen(latestActivity);
+                  }
+                }}
               >
                 <Bell size={18} className="text-white/80" />
+                {latestActivity && (!activitySeen || latestActivity > activitySeen) && (
+                  <span
+                    className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gold ring-2 ring-navy-900"
+                    aria-label="Nouvelles activités"
+                  />
+                )}
               </button>
 
               <div className="relative" ref={menuRef}>

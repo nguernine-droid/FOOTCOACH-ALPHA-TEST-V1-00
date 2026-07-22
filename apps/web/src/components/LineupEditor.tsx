@@ -55,7 +55,18 @@ export function LineupEditor({ matchId, presentPlayerIds }: { matchId: string; p
     if (!selected) return;
     const member = roster.find((m) => m.id === selected);
     if (!member) return;
-    save([...lineup!.mine, { playerId: member.id, firstName: member.firstName, lastName: member.lastName, x, y }]);
+    save([
+      ...lineup!.mine,
+      {
+        playerId: member.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        position: member.position ?? null,
+        jerseyNumber: member.jerseyNumber ?? null,
+        x,
+        y,
+      },
+    ]);
     setSelected(null);
   }
 

@@ -171,6 +171,9 @@ export interface AnnouncementDto {
   status: AnnouncementStatus;
   isMine: boolean;
   createdAt: string;
+  /** Renseignés quand l'annonce est matchée : le match créé et l'équipe qui a répondu */
+  matchId: string | null;
+  opponentTeam: TeamDto | null;
 }
 
 export interface MatchEventDto {
@@ -273,8 +276,20 @@ export interface LineupPlayerDto {
   playerId: string;
   firstName: string;
   lastName: string;
+  position: PlayerPosition | null;
+  jerseyNumber: number | null;
   x: number;
   y: number;
+}
+
+/** Événement du fil d'activité (espace coach) */
+export interface ActivityDto {
+  id: string;
+  type: "attendance" | "carpool" | "announcement";
+  /** Nom mis en gras côté client */
+  actor: string;
+  detail: string;
+  createdAt: string;
 }
 
 export interface LineupDto {

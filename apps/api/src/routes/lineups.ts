@@ -6,7 +6,8 @@ import { lineups, matches, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
-const REVEAL_BEFORE_MS = 2 * 3600 * 1000; // la compo adverse est visible 2h avant le match
+// La compo adverse est visible N heures avant le match (2h par défaut, configurable)
+const REVEAL_BEFORE_MS = Number(process.env.LINEUP_REVEAL_HOURS ?? 2) * 3600 * 1000;
 
 function kickoff(match: typeof matches.$inferSelect): Date {
   return new Date(`${match.date}T${match.time}`);
@@ -28,6 +29,8 @@ async function loadLineup(matchId: string, teamId: string): Promise<LineupPlayer
     playerId: player.id,
     firstName: player.firstName,
     lastName: player.lastName,
+    position: player.position,
+    jerseyNumber: player.jerseyNumber,
     x: lineup.posX,
     y: lineup.posY,
   }));

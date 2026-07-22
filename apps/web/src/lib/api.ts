@@ -41,20 +41,31 @@ export class ApiError extends Error {
   }
 }
 
-async function tryRefresh(): Promise<boolean> {
-  const refreshToken = localStorage.getItem(REFRESH_KEY);
-  if (!refreshToken) return false;
-  const res = await fetch("/api/auth/refresh", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
-  if (!res.ok) {
-    clearSession();
-    return false;
-  }
-  storeSession((await res.json()) as AuthResponseDto);
-  return true;
+// Single-flight : plusieurs requêtes en 401 simultané partagent le même refresh,
+// sinon la rotation du token invalide la session (course entre refresh concurrents).
+let refreshInFlight: Promise<boolean> | null = null;
+
+function tryRefresh(): Promise<boolean> {
+  refreshInFlight ??= (async () => {
+    try {
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+      if (!refreshToken) return false;
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) {
+        clearSession();
+        return false;
+      }
+      storeSession((await res.json()) as AuthResponseDto);
+      return true;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
 }
 
 // Client API : Bearer automatique + refresh transparent sur 401
