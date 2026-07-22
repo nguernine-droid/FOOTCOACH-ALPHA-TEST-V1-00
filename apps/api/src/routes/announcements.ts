@@ -19,6 +19,8 @@ function toDto(
     city: announcement.city,
     stadium: announcement.stadium,
     category: announcement.category,
+    level: announcement.level,
+    format: announcement.format,
     comment: announcement.comment,
     status: announcement.status,
     isMine: team.id === myTeamId,
@@ -52,6 +54,8 @@ export function announcementRoutes(app: FastifyInstance) {
         city: input.city,
         stadium: input.stadium,
         category: input.category,
+        level: input.level,
+        format: input.format,
         comment: input.comment ?? null,
       })
       .returning();

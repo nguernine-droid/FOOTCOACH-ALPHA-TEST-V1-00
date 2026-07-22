@@ -44,7 +44,7 @@ function DriverInfoCard({ onSaved }: { onSaved: () => void }) {
     return (
       <div className="card p-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-2xl bg-pitch-soft text-pitch flex items-center justify-center shrink-0">
+          <span className="w-10 h-10 rounded-lg bg-pitch-soft text-pitch flex items-center justify-center shrink-0">
             <ShieldCheck size={18} />
           </span>
           <div>
@@ -62,7 +62,7 @@ function DriverInfoCard({ onSaved }: { onSaved: () => void }) {
   return (
     <form onSubmit={submit} className="card p-5 space-y-4">
       <div className="flex items-center gap-3">
-        <span className="w-10 h-10 rounded-2xl bg-tangerine-soft text-tangerine flex items-center justify-center shrink-0">
+        <span className="w-10 h-10 rounded-lg bg-tangerine-soft text-tangerine flex items-center justify-center shrink-0">
           <IdCard size={18} />
         </span>
         <div>
@@ -140,7 +140,7 @@ function ApprovalsCard({ version, onDecided }: { version: number; onDecided: () 
       <p className="text-sm font-bold">Autorisations de covoiturage</p>
       {pending.length === 0 && <p className="text-xs text-ink-soft">Aucune demande en attente.</p>}
       {pending.map((a) => (
-        <div key={a.id} className="bg-sun-soft/60 rounded-2xl px-4 py-3 space-y-2.5">
+        <div key={a.id} className="bg-sun-soft/60 rounded-lg px-4 py-3 space-y-2.5">
           <p className="text-sm">
             <span className="font-bold">{a.playerName}</span> souhaite monter dans la voiture de{" "}
             <span className="font-bold">{a.driverName}</span>
@@ -160,8 +160,8 @@ function ApprovalsCard({ version, onDecided }: { version: number; onDecided: () 
         </div>
       ))}
       {decided.map((a) => (
-        <p key={a.id} className="text-xs font-semibold text-ink-soft bg-paper rounded-2xl px-4 py-2.5">
-          {a.status === "approved" ? "✅" : "❌"} {a.playerName} → voiture de {a.driverName} ({a.matchLabel})
+        <p key={a.id} className="text-xs font-semibold text-ink-soft bg-paper rounded-lg px-4 py-2.5">
+          {a.status === "approved" ? "Autorisé" : "Refusé"} · {a.playerName}, voiture de {a.driverName} ({a.matchLabel})
         </p>
       ))}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Car, Check, X } from "lucide-react";
+import { Car, CalendarDays, Check, X } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
 import { api, getStoredUser } from "@/lib/api";
 import { cn, groupMatches } from "@/lib/utils";
@@ -46,22 +46,24 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
     }
   }
 
-  if (error && !matches) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-2xl px-4 py-3">{error}</p>;
+  if (error && !matches) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
   if (!matches) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
   if (matches.length === 0)
     return (
       <div className="card p-8 text-center space-y-2">
-        <p className="text-3xl" aria-hidden>📅</p>
+        <span className="w-12 h-12 rounded-lg bg-pitch-soft text-pitch flex items-center justify-center mx-auto">
+          <CalendarDays size={22} />
+        </span>
         <p className="text-sm text-ink-soft font-medium">Aucun match prévu pour votre équipe.</p>
       </div>
     );
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-2xl px-4 py-3">{error}</p>}
+      {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
       {groupMatches(matches).map((section) => (
       <div key={section.key} className="space-y-3">
-      <h3 className="text-xs font-bold text-ink-soft px-1 pt-2">{section.label}</h3>
+      <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider px-1 pt-2">{section.label}</h3>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
         {section.items.map((match) => {
           const mine = match.myAttendance;
@@ -82,7 +84,7 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                         })
                       }
                       className={cn(
-                        "flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold transition active:scale-[0.97]",
+                        "flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition active:scale-[0.97]",
                         mine?.status === "present"
                           ? "bg-pitch text-white shadow-[0_6px_16px_-6px_rgba(22,163,74,0.5)]"
                           : "bg-paper text-ink-soft hover:bg-pitch-soft hover:text-pitch-deep",
@@ -93,7 +95,7 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                     <button
                       onClick={() => setAttendance(match.id, "absent")}
                       className={cn(
-                        "flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold transition active:scale-[0.97]",
+                        "flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition active:scale-[0.97]",
                         mine?.status === "absent"
                           ? "bg-coral text-white shadow-[0_6px_16px_-6px_rgba(239,68,68,0.5)]"
                           : "bg-paper text-ink-soft hover:bg-coral-soft hover:text-coral",
@@ -106,7 +108,7 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                   {parentMode &&
                     mine?.status === "present" &&
                     (hasDriverInfo ? (
-                      <div className="bg-tangerine-soft/50 rounded-2xl px-4 py-3.5 space-y-2.5">
+                      <div className="bg-tangerine-soft/50 rounded-lg px-4 py-3.5 space-y-2.5">
                         <p className="text-xs font-bold text-ink flex items-center gap-1.5">
                           <Car size={14} className="text-tangerine" /> Je peux emmener des joueurs
                         </p>
@@ -132,8 +134,8 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                         <p className="text-[10px] text-ink-soft">Nombre de places dans votre voiture (– si indisponible)</p>
                       </div>
                     ) : (
-                      <p className="text-xs font-semibold text-ink-soft bg-sun-soft/60 rounded-2xl px-4 py-3">
-                        🚗 Pour proposer un covoiturage, renseignez d&apos;abord votre plaque et votre permis dans la carte
+                      <p className="text-xs font-semibold text-ink-soft bg-sun-soft/60 rounded-lg px-4 py-3">
+                        Pour proposer un covoiturage, renseignez d&apos;abord votre plaque et votre permis dans la carte
                         « Mes infos conducteur ».
                       </p>
                     ))}
@@ -142,9 +144,9 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
                 </div>
               ) : (
                 mine && (
-                  <p className="text-xs font-semibold text-ink-soft bg-paper rounded-2xl px-4 py-3">
-                    Votre réponse : {mine.status === "present" ? "✅ présent" : "❌ absent"}
-                    {parentMode && mine.canTransport && ` · 🚗 ${mine.transportSeats} place${mine.transportSeats > 1 ? "s" : ""} proposée${mine.transportSeats > 1 ? "s" : ""}`}
+                  <p className="text-xs font-semibold text-ink-soft bg-paper rounded-lg px-4 py-3">
+                    Votre réponse : {mine.status === "present" ? "présent" : "absent"}
+                    {parentMode && mine.canTransport && ` · covoiturage : ${mine.transportSeats} place${mine.transportSeats > 1 ? "s" : ""} proposée${mine.transportSeats > 1 ? "s" : ""}`}
                   </p>
                 )
               )}

@@ -31,7 +31,7 @@ export function Pitch({
     <div
       onClick={handleClick}
       className={cn(
-        "relative w-full aspect-[3/4] rounded-2xl overflow-hidden select-none",
+        "relative w-full aspect-[3/4] rounded-lg overflow-hidden select-none",
         "bg-gradient-to-b from-green-600 via-green-700 to-green-800",
         interactive && "cursor-crosshair",
       )}

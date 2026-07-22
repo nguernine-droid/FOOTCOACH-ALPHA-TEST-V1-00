@@ -22,6 +22,15 @@ export type MatchSide = (typeof MATCH_SIDES)[number];
 export const BOOKING_STATUSES = ["pending", "approved", "declined"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
+export const MATCH_LEVELS = ["loisir", "competition"] as const;
+export type MatchLevel = (typeof MATCH_LEVELS)[number];
+
+export const MATCH_FORMATS = ["5v5", "8v8", "11v11"] as const;
+export type MatchFormat = (typeof MATCH_FORMATS)[number];
+
+export const PLAYER_POSITIONS = ["gardien", "defenseur", "milieu", "attaquant"] as const;
+export type PlayerPosition = (typeof PLAYER_POSITIONS)[number];
+
 // ---------- Schémas de requêtes ----------
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -39,6 +48,8 @@ export const createAnnouncementSchema = z.object({
   city: z.string().min(1).max(100),
   stadium: z.string().min(1).max(150),
   category: z.string().min(1).max(50),
+  level: z.enum(MATCH_LEVELS),
+  format: z.enum(MATCH_FORMATS),
   comment: z.string().max(500).optional(),
 });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
@@ -81,7 +92,15 @@ export type RegisterInviteInput = z.infer<typeof registerInviteSchema>;
 export const createPlayerInviteSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
+  position: z.enum(PLAYER_POSITIONS).optional(),
+  jerseyNumber: z.number().int().min(1).max(99).optional(),
 });
+
+export const updatePlayerSchema = z.object({
+  position: z.enum(PLAYER_POSITIONS).nullable().optional(),
+  jerseyNumber: z.number().int().min(1).max(99).nullable().optional(),
+});
+export type UpdatePlayerInput = z.infer<typeof updatePlayerSchema>;
 
 export const driverInfoSchema = z.object({
   licensePlate: z
@@ -146,6 +165,8 @@ export interface AnnouncementDto {
   city: string;
   stadium: string;
   category: string;
+  level: MatchLevel;
+  format: MatchFormat;
   comment: string | null;
   status: AnnouncementStatus;
   isMine: boolean;
@@ -242,6 +263,10 @@ export interface TeamMemberDto {
   parentStatus: "linked" | "invited" | "none";
   parentName: string | null;
   parentInviteCode: string | null;
+  position: PlayerPosition | null;
+  jerseyNumber: number | null;
+  /** Réponse au prochain match programmé — null s'il n'y a pas de match à venir */
+  nextMatchStatus: AttendanceStatus | "pending" | null;
 }
 
 export interface LineupPlayerDto {

@@ -73,7 +73,7 @@ export function CarpoolSection({
       </p>
       {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
       {carpools.map((c) => (
-        <div key={c.driverId} className="bg-paper rounded-2xl px-4 py-3 space-y-2">
+        <div key={c.driverId} className="bg-paper rounded-lg px-4 py-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-bold truncate">Voiture de {c.driverName}</p>
@@ -116,7 +116,7 @@ export function CarpoolSection({
             (c.myBooking ? (
               <div className="flex items-center justify-between gap-2">
                 <span className={cn("chip", c.myBooking.status === "approved" ? "bg-pitch-soft text-pitch-deep" : "bg-sun-soft text-sun")}>
-                  {c.myBooking.status === "approved" ? "✅ Place confirmée" : "⏳ En attente de l'accord parental"}
+                  {c.myBooking.status === "approved" ? "Place confirmée" : "En attente de l'accord parental"}
                 </span>
                 <button
                   onClick={() => cancel(c.myBooking!.id)}
@@ -130,7 +130,7 @@ export function CarpoolSection({
               !myActiveBooking &&
               c.seatsRemaining > 0 && (
                 <Button size="sm" variant="soft" className="w-full" onClick={() => book(c.driverId)} disabled={busy}>
-                  Je monte dans cette voiture 🚗
+                  <Car size={14} /> Réserver une place
                 </Button>
               )
             ))}

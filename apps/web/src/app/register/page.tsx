@@ -131,7 +131,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
             </div>
             {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Création…" : "Créer mon compte et mon équipe 🎉"}
+              {loading ? "Création…" : "Créer mon compte et mon équipe"}
             </Button>
           </form>
         </StepCard>
@@ -202,7 +202,7 @@ function InviteWizard({ initialCode, onBack }: { initialCode: string; onBack: ()
         </StepCard>
       ) : (
         <StepCard
-          title={info.role === "player" ? `Bienvenue ${info.firstName} ! ⚽` : "Bienvenue ! 👋"}
+          title={info.role === "player" ? `Bienvenue ${info.firstName} !` : "Bienvenue !"}
           subtitle={
             info.role === "player"
               ? `Vous rejoignez l'équipe ${info.teamName} en tant que joueur.`
@@ -251,14 +251,16 @@ function RegisterContent() {
     <div className="min-h-dvh flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md space-y-4">
         <div className="text-center space-y-1">
-          <p className="text-3xl" aria-hidden>⚽</p>
+          <p className="display text-xl text-pitch-deep leading-none">
+            FOOT<span className="text-pitch">COACH</span>
+          </p>
           <h1 className="text-2xl font-black">Créer un compte</h1>
         </div>
 
         {path === "choice" && (
           <div className="space-y-3 animate-rise-in">
             <button onClick={() => setPath("coach")} className="card w-full p-5 flex items-center gap-4 text-left hover:border-pitch/50 transition">
-              <span className="w-12 h-12 rounded-2xl bg-pitch-soft text-pitch flex items-center justify-center shrink-0">
+              <span className="w-12 h-12 rounded-lg bg-pitch-soft text-pitch flex items-center justify-center shrink-0">
                 <ClipboardList size={22} />
               </span>
               <span>
@@ -267,7 +269,7 @@ function RegisterContent() {
               </span>
             </button>
             <button onClick={() => setPath("invite")} className="card w-full p-5 flex items-center gap-4 text-left hover:border-pitch/50 transition">
-              <span className="w-12 h-12 rounded-2xl bg-tangerine-soft text-tangerine flex items-center justify-center shrink-0">
+              <span className="w-12 h-12 rounded-lg bg-tangerine-soft text-tangerine flex items-center justify-center shrink-0">
                 <Ticket size={22} />
               </span>
               <span>

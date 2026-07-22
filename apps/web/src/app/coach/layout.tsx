@@ -23,7 +23,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
             key={href}
             href={href}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[1.15rem] text-xs font-bold transition",
+              "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold transition",
               pathname === href ? "bg-pitch text-white shadow-sm" : "text-ink-soft hover:bg-paper hover:text-ink",
             )}
           >

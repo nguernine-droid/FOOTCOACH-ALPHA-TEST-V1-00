@@ -15,9 +15,9 @@ export interface MatchLike {
 export function groupMatches<T extends MatchLike>(matches: T[]) {
   const byKickoff = (a: T, b: T) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`);
   return [
-    { key: "live", label: "🔴 En ce moment", items: matches.filter((m) => m.status === "live") },
-    { key: "upcoming", label: "📅 À venir", items: matches.filter((m) => m.status === "scheduled").sort(byKickoff) },
-    { key: "past", label: "✅ Matchs passés", items: matches.filter((m) => m.status === "finished").sort(byKickoff).reverse() },
+    { key: "live", label: "En ce moment", items: matches.filter((m) => m.status === "live") },
+    { key: "upcoming", label: "À venir", items: matches.filter((m) => m.status === "scheduled").sort(byKickoff) },
+    { key: "past", label: "Matchs passés", items: matches.filter((m) => m.status === "finished").sort(byKickoff).reverse() },
   ].filter((s) => s.items.length > 0);
 }
 

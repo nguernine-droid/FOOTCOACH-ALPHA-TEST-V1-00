@@ -11,6 +11,10 @@ export default function Home() {
     router.replace(user ? homeForRole(user.role) : "/login");
   }, [router]);
   return (
-    <div className="min-h-dvh flex items-center justify-center text-ink-soft animate-soft-pulse font-bold">⚽ FOOTCOACH</div>
+    <div className="min-h-dvh flex items-center justify-center animate-soft-pulse">
+      <span className="display text-2xl text-pitch-deep">
+        FOOT<span className="text-pitch">COACH</span>
+      </span>
+    </div>
   );
 }

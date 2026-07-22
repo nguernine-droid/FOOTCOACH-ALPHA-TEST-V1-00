@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Goal, Sparkles, Square } from "lucide-react";
 import type { MatchDetailDto, MatchEventType } from "@footcoach/shared";
 import { RoleGuard } from "@/components/RoleGuard";
 import { MatchCard } from "@/components/MatchCard";
@@ -10,11 +10,11 @@ import { api } from "@/lib/api";
 
 const POLL_INTERVAL_MS = 5000;
 
-const EVENT_EMOJI: Record<MatchEventType, string> = {
-  goal: "⚽",
-  card: "🟨",
-  substitution: "🔄",
-  highlight: "✨",
+const EVENT_ICONS: Record<MatchEventType, React.ElementType> = {
+  goal: Goal,
+  card: Square,
+  substitution: ArrowLeftRight,
+  highlight: Sparkles,
 };
 
 function LiveMatch({ id }: { id: string }) {
@@ -43,7 +43,7 @@ function LiveMatch({ id }: { id: string }) {
     };
   }, [id]);
 
-  if (error && !match) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-2xl px-4 py-3">{error}</p>;
+  if (error && !match) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
   if (!match) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
 
   const sortedEvents = [...match.events].sort((a, b) => b.minute - a.minute);
@@ -58,7 +58,7 @@ function LiveMatch({ id }: { id: string }) {
       <MatchCard match={match}>
         {match.status === "live" && (
           <p className="text-[11px] font-bold text-coral text-center animate-soft-pulse">
-            🔴 En direct — mise à jour automatique toutes les 5 s
+            ● En direct — mise à jour automatique toutes les 5 s
           </p>
         )}
       </MatchCard>
@@ -66,14 +66,17 @@ function LiveMatch({ id }: { id: string }) {
       <section className="card p-5 space-y-3">
         <h3 className="text-sm font-black">Temps forts</h3>
         {sortedEvents.length === 0 && (
-          <p className="text-xs text-ink-soft">Rien à signaler pour le moment… l&apos;échauffement bat son plein ! 🔥</p>
+          <p className="text-xs text-ink-soft">Rien à signaler pour le moment.</p>
         )}
         {sortedEvents.map((ev) => (
-          <div key={ev.id} className="flex items-center gap-3 text-sm bg-paper rounded-2xl px-4 py-3 animate-rise-in">
+          <div key={ev.id} className="flex items-center gap-3 text-sm bg-paper rounded-lg px-4 py-3 animate-rise-in">
             <span className="text-pitch-deep font-black tabular-nums text-xs bg-pitch-soft rounded-full px-2.5 py-1 shrink-0">
               {ev.minute}&apos;
             </span>
-            <span aria-hidden>{EVENT_EMOJI[ev.type]}</span>
+            {(() => {
+              const Icon = EVENT_ICONS[ev.type];
+              return <Icon size={15} className="text-pitch shrink-0" aria-hidden />;
+            })()}
             <span className="flex-1 min-w-0">
               <span className="font-semibold">{ev.description}</span>
               <span className="text-ink-soft text-xs"> · {ev.side === "home" ? match.homeTeam.name : match.awayTeam.name}</span>

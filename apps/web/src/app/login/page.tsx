@@ -40,8 +40,9 @@ export default function LoginPage() {
     <div className="min-h-dvh flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm space-y-4 animate-rise-in">
         <div className="hero-pitch p-7 text-center space-y-2">
-          <p className="text-4xl" aria-hidden>⚽</p>
-          <h1 className="text-3xl font-black tracking-tight">FOOTCOACH</h1>
+          <h1 className="display text-4xl leading-none">
+            FOOT<span className="text-pitch-soft/80">COACH</span>
+          </h1>
           <p className="text-sm text-white/85 font-medium">Organisez vos matchs amicaux en deux touches de balle.</p>
         </div>
 
@@ -76,7 +77,7 @@ export default function LoginPage() {
           </div>
           {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
           <Button type="submit" size="lg" className="w-full" disabled={loading}>
-            {loading ? "Connexion…" : "C'est parti !"}
+            {loading ? "Connexion…" : "Se connecter"}
           </Button>
         </form>
 
@@ -99,7 +100,7 @@ export default function LoginPage() {
                   setPassword("Demo1234!");
                 }}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-2xl border border-line px-3 py-2.5 text-left transition hover:border-pitch/40 hover:bg-paper",
+                  "flex items-center gap-2.5 rounded-lg border border-line px-3 py-2.5 text-left transition hover:border-pitch/40 hover:bg-paper",
                   email === demoEmail && "border-pitch bg-pitch-soft/50",
                 )}
               >

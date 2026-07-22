@@ -1,18 +1,19 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import {
   createPlayerInviteSchema,
   registerCoachSchema,
   registerInviteSchema,
+  updatePlayerSchema,
   type AuthResponseDto,
   type InvitationInfoDto,
   type TeamMemberDto,
 } from "@footcoach/shared";
 import { z } from "zod";
 import { db } from "../db/client.js";
-import { invitations, teams, users } from "../db/schema.js";
+import { attendances, invitations, matches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
@@ -111,6 +112,8 @@ export function registrationRoutes(app: FastifyInstance) {
           firstName: invite.firstName ?? input.firstName ?? "Parent",
           lastName: invite.lastName ?? input.lastName ?? "",
           teamId: invite.teamId,
+          position: invite.position,
+          jerseyNumber: invite.jerseyNumber,
         })
         .returning();
 
@@ -142,9 +145,21 @@ export function registrationRoutes(app: FastifyInstance) {
         .where(and(eq(invitations.teamId, teamId), isNull(invitations.usedByUserId)));
       const parents = await db.select().from(users).where(and(eq(users.teamId, teamId), eq(users.role, "parent")));
 
+      // Prochain match programmé de l'équipe → réponse de présence de chaque joueur
+      const [nextMatch] = await db
+        .select()
+        .from(matches)
+        .where(and(or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)), eq(matches.status, "scheduled")))
+        .orderBy(asc(matches.date), asc(matches.time))
+        .limit(1);
+      const nextAttendances = nextMatch
+        ? await db.select().from(attendances).where(eq(attendances.matchId, nextMatch.id))
+        : [];
+
       const activeRows: TeamMemberDto[] = players.map((p) => {
         const parent = parents.find((u) => u.id === p.parentId);
         const parentInvite = pendingInvites.find((i) => i.role === "parent" && i.playerUserId === p.id);
+        const attendance = nextAttendances.find((a) => a.userId === p.id);
         return {
           id: p.id,
           firstName: p.firstName,
@@ -154,6 +169,9 @@ export function registrationRoutes(app: FastifyInstance) {
           parentStatus: parent ? "linked" : parentInvite ? "invited" : "none",
           parentName: parent ? `${parent.firstName} ${parent.lastName}` : null,
           parentInviteCode: parentInvite?.code ?? null,
+          position: p.position,
+          jerseyNumber: p.jerseyNumber,
+          nextMatchStatus: nextMatch ? (attendance?.status ?? "pending") : null,
         };
       });
 
@@ -168,9 +186,47 @@ export function registrationRoutes(app: FastifyInstance) {
           parentStatus: "none",
           parentName: null,
           parentInviteCode: null,
+          position: i.position,
+          jerseyNumber: i.jerseyNumber,
+          nextMatchStatus: null,
         }));
 
       return [...activeRows, ...invitedRows];
+    });
+
+    // Mise à jour de la fiche sportive d'un joueur (poste, n° de maillot)
+    coach.patch("/team/members/:id", async (request) => {
+      const teamId = request.user.teamId;
+      if (!teamId) throw new HttpError(400, "Aucune équipe associée");
+      const { id } = request.params as { id: string };
+      const input = updatePlayerSchema.parse(request.body);
+
+      const [player] = await db.select().from(users).where(eq(users.id, id));
+      if (player && player.teamId === teamId && player.role === "player") {
+        await db
+          .update(users)
+          .set({
+            ...(input.position !== undefined && { position: input.position }),
+            ...(input.jerseyNumber !== undefined && { jerseyNumber: input.jerseyNumber }),
+          })
+          .where(eq(users.id, id));
+        return { ok: true };
+      }
+
+      // Le membre peut aussi être une invitation en attente
+      const [invite] = await db
+        .select()
+        .from(invitations)
+        .where(and(eq(invitations.id, id), eq(invitations.teamId, teamId), isNull(invitations.usedByUserId)));
+      if (!invite || invite.role !== "player") throw new HttpError(404, "Joueur introuvable dans votre équipe");
+      await db
+        .update(invitations)
+        .set({
+          ...(input.position !== undefined && { position: input.position }),
+          ...(input.jerseyNumber !== undefined && { jerseyNumber: input.jerseyNumber }),
+        })
+        .where(eq(invitations.id, id));
+      return { ok: true };
     });
 
     // Inviter un joueur (nom + prénom) ou le parent d'un joueur existant
@@ -183,7 +239,15 @@ export function registrationRoutes(app: FastifyInstance) {
         const input = createPlayerInviteSchema.parse(request.body);
         const [invite] = await db
           .insert(invitations)
-          .values({ code: generateCode(), teamId, role: "player", firstName: input.firstName, lastName: input.lastName })
+          .values({
+            code: generateCode(),
+            teamId,
+            role: "player",
+            firstName: input.firstName,
+            lastName: input.lastName,
+            position: input.position ?? null,
+            jerseyNumber: input.jerseyNumber ?? null,
+          })
           .returning();
         reply.code(201);
         return { code: invite.code };

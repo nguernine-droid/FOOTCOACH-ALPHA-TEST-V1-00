@@ -18,6 +18,9 @@ export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"
 export const matchEventType = pgEnum("match_event_type", ["goal", "card", "substitution", "highlight"]);
 export const matchSide = pgEnum("match_side", ["home", "away"]);
 export const bookingStatus = pgEnum("booking_status", ["pending", "approved", "declined"]);
+export const matchLevel = pgEnum("match_level", ["loisir", "competition"]);
+export const matchFormat = pgEnum("match_format", ["5v5", "8v8", "11v11"]);
+export const playerPosition = pgEnum("player_position", ["gardien", "defenseur", "milieu", "attaquant"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -29,6 +32,9 @@ export const users = pgTable("users", {
   teamId: uuid("team_id"),
   // Joueur : compte parent assigné (valide ses réservations de covoiturage)
   parentId: uuid("parent_id"),
+  // Joueur : fiche sportive renseignée par le coach
+  position: playerPosition("position"),
+  jerseyNumber: integer("jersey_number"),
   // Parent : infos conducteur, requises pour proposer un covoiturage
   licensePlate: text("license_plate"),
   driverLicenseNumber: text("driver_license_number"),
@@ -56,6 +62,8 @@ export const matchAnnouncements = pgTable("match_announcements", {
   city: text("city").notNull(),
   stadium: text("stadium").notNull(),
   category: text("category").notNull(),
+  level: matchLevel("level").notNull().default("loisir"),
+  format: matchFormat("format").notNull().default("11v11"),
   comment: text("comment"),
   status: announcementStatus("status").notNull().default("open"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -166,6 +174,8 @@ export const invitations = pgTable("invitations", {
   role: userRole("role").notNull(),
   firstName: text("first_name"),
   lastName: text("last_name"),
+  position: playerPosition("position"),
+  jerseyNumber: integer("jersey_number"),
   playerUserId: uuid("player_user_id").references(() => users.id, { onDelete: "cascade" }),
   usedByUserId: uuid("used_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

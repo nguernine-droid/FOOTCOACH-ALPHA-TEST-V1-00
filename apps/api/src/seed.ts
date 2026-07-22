@@ -53,7 +53,7 @@ async function main() {
 
   // Patricia est le parent assigné de Paul (elle valide ses covoiturages)
   // et a déjà renseigné ses infos conducteur pour la démo.
-  await db.update(users).set({ parentId: parent.id }).where(eq(users.id, player.id));
+  await db.update(users).set({ parentId: parent.id, position: "milieu", jerseyNumber: 10 }).where(eq(users.id, player.id));
   await db
     .update(users)
     .set({ licensePlate: "AB-123-CD", driverLicenseNumber: "123456789012" })
@@ -69,6 +69,8 @@ async function main() {
       city: "Villeurbanne",
       stadium: "Stade des Iris",
       category: "U13",
+      level: "loisir",
+      format: "8v8",
       comment: "Match amical, terrain synthétique. Vestiaires disponibles.",
     });
 
@@ -82,6 +84,8 @@ async function main() {
         city: "Lyon",
         stadium: "Plaine des Jeux de Gerland",
         category: "U13",
+        level: "competition",
+        format: "8v8",
         comment: "Amical de préparation.",
         status: "matched",
       })
@@ -108,6 +112,8 @@ async function main() {
         city: "Villeurbanne",
         stadium: "Stade des Iris",
         category: "U13",
+        level: "loisir",
+        format: "8v8",
         status: "matched",
       })
       .returning();

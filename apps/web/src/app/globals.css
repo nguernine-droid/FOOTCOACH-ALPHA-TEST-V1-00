@@ -1,37 +1,40 @@
 @import "tailwindcss";
 
 @theme {
-  /* Palette "terrain" — claire, chaleureuse, simple */
-  --color-pitch: #16A34A;
-  --color-pitch-dark: #15803D;
-  --color-pitch-deep: #14532D;
-  --color-pitch-soft: #DCFCE7;
+  /* Palette "club house" — vert forêt structurel, accents calmes, blanc cassé */
+  --color-pitch: #178A4C;
+  --color-pitch-dark: #116B3B;
+  --color-pitch-deep: #0E3B24;
+  --color-pitch-soft: #E3F1E8;
 
-  --color-tangerine: #F97316;
-  --color-tangerine-soft: #FFEDD5;
+  --color-tangerine: #D9640F;
+  --color-tangerine-soft: #FBEADB;
 
-  --color-sky: #0EA5E9;
-  --color-sky-soft: #E0F2FE;
+  --color-sky: #2C7FB8;
+  --color-sky-soft: #E3EFF7;
 
-  --color-coral: #EF4444;
-  --color-coral-soft: #FEE2E2;
+  --color-coral: #D24545;
+  --color-coral-soft: #FAE5E5;
 
-  --color-sun: #F59E0B;
-  --color-sun-soft: #FEF3C7;
+  --color-sun: #B37E10;
+  --color-sun-soft: #F8EED8;
 
-  --color-paper: #F7F6F2;
-  --color-ink: #1E2722;
+  --color-paper: #F6F5F0;
+  --color-ink: #1C2620;
   --color-ink-soft: #5E6B64;
-  --color-line: #E9E7E1;
+  --color-line: #E6E4DD;
 
-  --color-border: #E9E7E1;
-  --color-input: #E9E7E1;
-  --color-ring: #16A34A;
-  --color-background: #F7F6F2;
-  --color-foreground: #1E2722;
+  --color-border: #E6E4DD;
+  --color-input: #E6E4DD;
+  --color-ring: #178A4C;
+  --color-background: #F6F5F0;
+  --color-foreground: #1C2620;
 
-  --shadow-card: 0 1px 2px rgba(30, 39, 34, 0.04), 0 8px 24px -12px rgba(30, 39, 34, 0.12);
-  --shadow-pop: 0 12px 32px -12px rgba(20, 83, 45, 0.35);
+  /* Fonte titre condensée (scores, wordmark, titres) — chargée via next/font */
+  --font-display: var(--font-barlow), "Arial Narrow", "Segoe UI", sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(14, 59, 36, 0.04), 0 4px 14px -8px rgba(14, 59, 36, 0.1);
+  --shadow-pop: 0 10px 28px -14px rgba(14, 59, 36, 0.45);
 
   @keyframes soft-pulse {
     0%, 100% { opacity: 1; }
@@ -44,7 +47,7 @@
 }
 
 :root {
-  --radius: 1.25rem;
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -53,7 +56,7 @@
   }
   body {
     @apply bg-paper text-ink selection:bg-pitch-soft selection:text-pitch-deep;
-    font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -64,26 +67,32 @@
 }
 
 @layer components {
-  /* Carte standard : blanche, très arrondie, ombre douce */
+  /* Carte standard : blanche, coins mesurés, bordure fine + ombre discrète */
   .card {
-    @apply bg-white rounded-3xl border border-line relative overflow-hidden;
+    @apply bg-white rounded-xl border border-line relative overflow-hidden;
     box-shadow: var(--shadow-card);
   }
 
-  /* Bandeau héro vert gazon */
+  /* Bandeau structurel vert forêt (headers de sections, hero) */
   .hero-pitch {
-    @apply rounded-3xl text-white relative overflow-hidden;
-    background: linear-gradient(135deg, #16A34A 0%, #15803D 55%, #14532D 100%);
+    @apply rounded-xl text-white relative overflow-hidden;
+    background: linear-gradient(135deg, #14532d 0%, #0e3b24 60%, #0a2b1a 100%);
     box-shadow: var(--shadow-pop);
+  }
+
+  /* Wordmark / titres façon club : condensé, capitales, serré */
+  .display {
+    font-family: var(--font-barlow), "Arial Narrow", sans-serif;
+    @apply font-bold uppercase tracking-wide;
   }
 
   /* Champ de formulaire */
   .field {
-    @apply w-full bg-paper border border-line rounded-2xl px-4 py-3 text-sm text-ink outline-none transition
+    @apply w-full bg-paper border border-line rounded-lg px-4 py-3 text-sm text-ink outline-none transition
       placeholder:text-ink-soft/50 focus:border-pitch focus:bg-white focus:ring-2 focus:ring-pitch/15;
   }
 
-  /* Petite pastille de statut */
+  /* Petite pastille de statut (seul élément full-round avec les avatars) */
   .chip {
     @apply inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1;
   }

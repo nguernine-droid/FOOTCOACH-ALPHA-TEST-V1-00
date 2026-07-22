@@ -70,7 +70,7 @@ export function LineupEditor({ matchId, presentPlayerIds }: { matchId: string; p
       <div className="space-y-2">
         <p className="text-xs text-ink-soft">
           {selected
-            ? "👉 Cliquez sur le terrain pour placer le joueur sélectionné."
+            ? "Cliquez sur le terrain pour placer le joueur sélectionné."
             : "Sélectionnez un joueur ci-dessous, puis cliquez sur le terrain. Cliquez un joueur placé pour le retirer."}
         </p>
         <Pitch players={lineup.mine} tone="green" interactive onPitchClick={place} onPlayerClick={remove} />
@@ -103,7 +103,7 @@ export function LineupEditor({ matchId, presentPlayerIds }: { matchId: string; p
       <div className="border-t border-line pt-4 space-y-2">
         <p className="text-xs font-bold text-ink">Composition adverse</p>
         {lineup.opponentLocked ? (
-          <p className="text-xs font-semibold text-ink-soft bg-paper rounded-2xl px-4 py-3 flex items-center gap-2">
+          <p className="text-xs font-semibold text-ink-soft bg-paper rounded-lg px-4 py-3 flex items-center gap-2">
             <Lock size={14} className="text-ink-soft shrink-0" />
             Visible 2h avant le coup d&apos;envoi — le{" "}
             {visibleAt.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} à{" "}
@@ -112,7 +112,7 @@ export function LineupEditor({ matchId, presentPlayerIds }: { matchId: string; p
         ) : lineup.opponent && lineup.opponent.length > 0 ? (
           <Pitch players={lineup.opponent} tone="orange" />
         ) : (
-          <p className="text-xs text-ink-soft bg-paper rounded-2xl px-4 py-3">
+          <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
             Le coach adverse n&apos;a pas encore publié sa composition.
           </p>
         )}

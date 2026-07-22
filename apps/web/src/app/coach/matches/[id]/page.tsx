@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Car, Minus, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Car, Flag, Goal, Lock, Minus, Play, Plus, Sparkles, Square, Trash2 } from "lucide-react";
 import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -11,18 +11,18 @@ import { CarpoolSection } from "@/components/CarpoolSection";
 import { LineupEditor } from "@/components/LineupEditor";
 import { Button } from "@/components/ui/Button";
 
-const EVENT_TYPES: { value: MatchEventType; label: string; emoji: string }[] = [
-  { value: "goal", label: "But", emoji: "⚽" },
-  { value: "card", label: "Carton", emoji: "🟨" },
-  { value: "substitution", label: "Remplacement", emoji: "🔄" },
-  { value: "highlight", label: "Temps fort", emoji: "✨" },
+const EVENT_TYPES: { value: MatchEventType; label: string; icon: React.ElementType }[] = [
+  { value: "goal", label: "But", icon: Goal },
+  { value: "card", label: "Carton", icon: Square },
+  { value: "substitution", label: "Remplacement", icon: ArrowLeftRight },
+  { value: "highlight", label: "Temps fort", icon: Sparkles },
 ];
 
-const EVENT_EMOJI: Record<MatchEventType, string> = {
-  goal: "⚽",
-  card: "🟨",
-  substitution: "🔄",
-  highlight: "✨",
+const EVENT_ICONS: Record<MatchEventType, React.ElementType> = {
+  goal: Goal,
+  card: Square,
+  substitution: ArrowLeftRight,
+  highlight: Sparkles,
 };
 
 export default function CoachMatchPage({ params }: { params: Promise<{ id: string }> }) {
@@ -90,7 +90,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
     load();
   }
 
-  if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-2xl px-4 py-3">{error}</p>;
+  if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
   if (!match) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
 
   const transporters = attendances.filter((a) => a.canTransport && a.transportSeats > 0);
@@ -109,7 +109,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         <h3 className="text-sm font-black">Score</h3>
         <div className="grid grid-cols-2 gap-3">
           {([["home", match.homeTeam.name], ["away", match.awayTeam.name]] as const).map(([side, name]) => (
-            <div key={side} className="bg-paper rounded-2xl p-4 space-y-3 text-center">
+            <div key={side} className="bg-paper rounded-lg p-4 space-y-3 text-center">
               <p className="text-xs font-bold text-ink-soft truncate">{name}</p>
               <div className="flex items-center justify-center gap-3">
                 <button
@@ -119,7 +119,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                 >
                   <Minus size={15} />
                 </button>
-                <span className="text-3xl font-black tabular-nums w-10">
+                <span className="display text-4xl tabular-nums w-10">
                   {side === "home" ? match.homeScore : match.awayScore}
                 </span>
                 <button
@@ -135,12 +135,12 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         </div>
         {match.status === "scheduled" && (
           <Button className="w-full" onClick={() => setStatus("live")}>
-            🏁 Coup d&apos;envoi !
+            <Play size={15} /> Coup d&apos;envoi
           </Button>
         )}
         {match.status === "live" && (
           <Button variant="accent" className="w-full" onClick={() => setStatus("finished")}>
-            ⏱️ Coup de sifflet final
+            <Flag size={15} /> Coup de sifflet final
           </Button>
         )}
       </section>
@@ -151,11 +151,14 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         <h3 className="text-sm font-black">Temps forts</h3>
         {match.events.length === 0 && <p className="text-xs text-ink-soft">Aucun temps fort pour l&apos;instant.</p>}
         {match.events.map((ev) => (
-          <div key={ev.id} className="flex items-center gap-3 text-sm bg-paper rounded-2xl px-4 py-3">
+          <div key={ev.id} className="flex items-center gap-3 text-sm bg-paper rounded-lg px-4 py-3">
             <span className="text-pitch-deep font-black tabular-nums text-xs bg-pitch-soft rounded-full px-2.5 py-1 shrink-0">
               {ev.minute}&apos;
             </span>
-            <span aria-hidden>{EVENT_EMOJI[ev.type]}</span>
+            {(() => {
+              const Icon = EVENT_ICONS[ev.type];
+              return <Icon size={15} className="text-pitch shrink-0" aria-hidden />;
+            })()}
             <span className="flex-1 min-w-0">
               <span className="font-semibold">{ev.description}</span>
               <span className="text-ink-soft text-xs"> · {ev.side === "home" ? match.homeTeam.name : match.awayTeam.name}</span>
@@ -174,13 +177,13 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                 type="button"
                 onClick={() => setEventForm((f) => ({ ...f, type: t.value }))}
                 className={cn(
-                  "px-3.5 py-2 rounded-2xl text-xs font-bold border transition",
+                  "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border transition",
                   eventForm.type === t.value
                     ? "bg-pitch text-white border-pitch shadow-sm"
                     : "bg-white text-ink-soft border-line hover:border-pitch/40",
                 )}
               >
-                {t.emoji} {t.label}
+                <t.icon size={13} /> {t.label}
               </button>
             ))}
           </div>
@@ -224,12 +227,14 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
             {match.presentCount} ✓ · {match.absentCount} ✗
           </span>
         </div>
-        <p className="text-[10px] text-ink-soft -mt-2">🔒 Visible uniquement par vous — le coach adverse ne voit pas ces informations.</p>
+        <p className="text-[10px] text-ink-soft -mt-2 flex items-center gap-1">
+          <Lock size={10} className="shrink-0" /> Visible uniquement par vous — le coach adverse ne voit pas ces informations.
+        </p>
         {attendances.length === 0 && <p className="text-xs text-ink-soft">Personne n&apos;a encore répondu.</p>}
         {(
           [
-            { label: "⚽ Joueurs", rows: attendances.filter((a) => a.role === "player") },
-            { label: "🚗 Parents", rows: attendances.filter((a) => a.role === "parent") },
+            { label: "Joueurs", rows: attendances.filter((a) => a.role === "player") },
+            { label: "Parents", rows: attendances.filter((a) => a.role === "parent") },
           ] as const
         )
           .filter((g) => g.rows.length > 0)
@@ -240,7 +245,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                 {group.rows.filter((r) => r.status === "present").length > 1 ? "s" : ""} / {group.rows.length})
               </p>
               {group.rows.map((a) => (
-                <div key={a.userId} className="flex items-center gap-3 text-sm bg-paper rounded-2xl px-4 py-3">
+                <div key={a.userId} className="flex items-center gap-3 text-sm bg-paper rounded-lg px-4 py-3">
                   <span
                     className={cn(
                       "w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0",
@@ -266,8 +271,9 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
             </div>
           ))}
         {transporters.length > 0 && (
-          <p className="text-xs text-ink-soft font-semibold bg-tangerine-soft/50 rounded-2xl px-4 py-3">
-            🚗 {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage proposées ({transporters.map((t) => t.firstName).join(", ")})
+          <p className="text-xs text-ink-soft font-semibold bg-tangerine-soft/50 rounded-lg px-4 py-3 flex items-center gap-2">
+            <Car size={14} className="text-tangerine shrink-0" />
+            {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage proposées ({transporters.map((t) => t.firstName).join(", ")})
           </p>
         )}
         <CarpoolSection matchId={id} canBook={false} />
