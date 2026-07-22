@@ -3,11 +3,19 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ClipboardList, Ticket } from "lucide-react";
-import type { InvitationInfoDto } from "@footcoach/shared";
+import { ArrowLeft, ClipboardList, Ticket, UserRound, Users } from "lucide-react";
+import type { PlayerPosition, TeamJoinInfoDto } from "@footcoach/shared";
+import { PLAYER_POSITIONS } from "@footcoach/shared";
 import { api, homeForRole, register } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+
+const POSITION_LABELS: Record<PlayerPosition, string> = {
+  gardien: "Gardien",
+  defenseur: "Défenseur",
+  milieu: "Milieu",
+  attaquant: "Attaquant",
+};
 
 // Inscription volontairement découpée en petites étapes :
 // une seule question à l'écran, pour rester simple même sans être à l'aise avec la technologie.
@@ -140,11 +148,20 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   );
 }
 
-function InviteWizard({ initialCode, onBack }: { initialCode: string; onBack: () => void }) {
+function JoinWizard({ initialCode, onBack }: { initialCode: string; onBack: () => void }) {
   const router = useRouter();
   const [code, setCode] = useState(initialCode);
-  const [info, setInfo] = useState<InvitationInfoDto | null>(null);
-  const [form, setForm] = useState({ email: "", password: "", firstName: "", lastName: "" });
+  const [info, setInfo] = useState<TeamJoinInfoDto | null>(null);
+  const [role, setRole] = useState<"player" | "parent" | null>(null);
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    position: "" as PlayerPosition | "",
+    jerseyNumber: "",
+    childUserId: "",
+  });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -153,7 +170,7 @@ function InviteWizard({ initialCode, onBack }: { initialCode: string; onBack: ()
     setLoading(true);
     setError(null);
     try {
-      setInfo(await api<InvitationInfoDto>(`/invitations/${code.trim().toUpperCase()}`));
+      setInfo(await api<TeamJoinInfoDto>(`/teams/join/${code.trim().toUpperCase()}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Code invalide");
     } finally {
@@ -163,15 +180,22 @@ function InviteWizard({ initialCode, onBack }: { initialCode: string; onBack: ()
 
   async function finish(e: React.FormEvent) {
     e.preventDefault();
+    if (!role) return;
     setLoading(true);
     setError(null);
     try {
-      const user = await register("/auth/register-invite", {
+      const user = await register("/auth/register-join", {
         code: code.trim().toUpperCase(),
+        role,
+        firstName: form.firstName,
+        lastName: form.lastName,
         email: form.email,
         password: form.password,
-        ...(info?.role === "parent" && form.firstName ? { firstName: form.firstName, lastName: form.lastName } : {}),
+        ...(role === "player" && form.position ? { position: form.position } : {}),
+        ...(role === "player" && form.jerseyNumber ? { jerseyNumber: Number(form.jerseyNumber) } : {}),
+        ...(role === "parent" ? { childUserId: form.childUserId } : {}),
       });
+      // Le RoleGuard affichera l'écran "demande en attente de validation"
       router.replace(homeForRole(user.role));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Inscription impossible");
@@ -179,11 +203,13 @@ function InviteWizard({ initialCode, onBack }: { initialCode: string; onBack: ()
     }
   }
 
+  const step = !info ? 0 : !role ? 1 : 2;
+
   return (
     <div className="space-y-4">
-      <Dots total={2} current={info ? 1 : 0} />
-      {!info ? (
-        <StepCard title="Votre code d'invitation" subtitle="Il vous a été transmis par le coach (ou par votre enfant)." onBack={onBack}>
+      <Dots total={3} current={step} />
+      {step === 0 && (
+        <StepCard title="Le code de votre équipe" subtitle="Le coach a transmis un code unique à toute l'équipe." onBack={onBack}>
           <form onSubmit={checkCode} className="space-y-4">
             <input
               required
@@ -192,7 +218,7 @@ function InviteWizard({ initialCode, onBack }: { initialCode: string; onBack: ()
               className="field text-center text-xl font-black tracking-[0.3em] uppercase"
               placeholder="ABC123"
               maxLength={10}
-              aria-label="Code d'invitation"
+              aria-label="Code d'équipe"
             />
             {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
@@ -200,40 +226,130 @@ function InviteWizard({ initialCode, onBack }: { initialCode: string; onBack: ()
             </Button>
           </form>
         </StepCard>
-      ) : (
+      )}
+      {step === 1 && info && (
         <StepCard
-          title={info.role === "player" ? `Bienvenue ${info.firstName} !` : "Bienvenue !"}
-          subtitle={
-            info.role === "player"
-              ? `Vous rejoignez l'équipe ${info.teamName} en tant que joueur.`
-              : `Vous rejoignez ${info.teamName} en tant que parent${info.playerName ? ` de ${info.playerName}` : ""}.`
-          }
+          title={`Vous rejoignez ${info.teamName}`}
+          subtitle={`${info.city} — qui êtes-vous ?`}
           onBack={() => setInfo(null)}
         >
+          <div className="space-y-3">
+            <button onClick={() => setRole("player")} className="card w-full p-5 flex items-center gap-4 text-left hover:border-pitch/50 transition">
+              <span className="w-12 h-12 rounded-lg bg-pitch-soft text-pitch flex items-center justify-center shrink-0">
+                <UserRound size={22} />
+              </span>
+              <span>
+                <span className="block font-bold">Je suis joueur</span>
+                <span className="block text-xs text-ink-soft">Je fais partie de l&apos;effectif de {info.teamName}.</span>
+              </span>
+            </button>
+            <button onClick={() => setRole("parent")} className="card w-full p-5 flex items-center gap-4 text-left hover:border-pitch/50 transition">
+              <span className="w-12 h-12 rounded-lg bg-tangerine-soft text-tangerine flex items-center justify-center shrink-0">
+                <Users size={22} />
+              </span>
+              <span>
+                <span className="block font-bold">Je suis parent</span>
+                <span className="block text-xs text-ink-soft">Mon enfant joue dans cette équipe.</span>
+              </span>
+            </button>
+          </div>
+        </StepCard>
+      )}
+      {step === 2 && info && role && (
+        <StepCard
+          title={role === "player" ? "Votre fiche joueur" : "Votre compte parent"}
+          subtitle="Votre demande sera envoyée au coach pour validation."
+          onBack={() => setRole(null)}
+        >
           <form onSubmit={finish} className="space-y-4">
-            {info.role === "parent" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label htmlFor="pFirstName" className="text-xs font-bold text-ink-soft">Votre prénom</label>
-                  <input id="pFirstName" required value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} className="field" placeholder="Patricia" />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="pLastName" className="text-xs font-bold text-ink-soft">Votre nom</label>
-                  <input id="pLastName" required value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} className="field" placeholder="Petit" />
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label htmlFor="jFirstName" className="text-xs font-bold text-ink-soft">Prénom</label>
+                <input id="jFirstName" required value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} className="field" placeholder={role === "player" ? "Paul" : "Patricia"} />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="jLastName" className="text-xs font-bold text-ink-soft">Nom</label>
+                <input id="jLastName" required value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} className="field" placeholder="Petit" />
+              </div>
+            </div>
+
+            {role === "parent" && (
+              <div className="space-y-1.5">
+                <label htmlFor="jChild" className="text-xs font-bold text-ink-soft">Votre enfant dans l&apos;équipe</label>
+                {info.players.length === 0 ? (
+                  <p className="text-xs font-semibold text-ink-soft bg-sun-soft/60 rounded-lg px-3 py-2.5">
+                    Aucun joueur n&apos;est encore inscrit : demandez à votre enfant de créer son compte d&apos;abord.
+                  </p>
+                ) : (
+                  <select
+                    id="jChild"
+                    required
+                    value={form.childUserId}
+                    onChange={(e) => setForm((f) => ({ ...f, childUserId: e.target.value }))}
+                    className="field"
+                  >
+                    <option value="">Choisir…</option>
+                    {info.players.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.firstName} {p.lastName}
+                        {p.hasParent ? " (a déjà un parent lié)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
+
+            {role === "player" && (
+              <>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-ink-soft">Votre poste (optionnel)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PLAYER_POSITIONS.map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, position: f.position === p ? "" : p }))}
+                        aria-pressed={form.position === p}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-bold border transition",
+                          form.position === p
+                            ? "bg-pitch text-white border-pitch shadow-sm"
+                            : "bg-white text-ink-soft border-line hover:border-pitch/40",
+                        )}
+                      >
+                        {POSITION_LABELS[p]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="jJersey" className="text-xs font-bold text-ink-soft">N° de maillot (optionnel)</label>
+                  <input
+                    id="jJersey"
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={form.jerseyNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, jerseyNumber: e.target.value }))}
+                    className="field w-24"
+                    placeholder="10"
+                  />
+                </div>
+              </>
+            )}
+
             <div className="space-y-1.5">
-              <label htmlFor="inviteEmail" className="text-xs font-bold text-ink-soft">Email</label>
-              <input id="inviteEmail" type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="field" placeholder="vous@exemple.fr" />
+              <label htmlFor="jEmail" className="text-xs font-bold text-ink-soft">Email</label>
+              <input id="jEmail" type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="field" placeholder="vous@exemple.fr" />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="invitePassword" className="text-xs font-bold text-ink-soft">Choisissez un mot de passe (8 caractères minimum)</label>
-              <input id="invitePassword" type="password" required minLength={8} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="field" />
+              <label htmlFor="jPassword" className="text-xs font-bold text-ink-soft">Choisissez un mot de passe (8 caractères minimum)</label>
+              <input id="jPassword" type="password" required minLength={8} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} className="field" />
             </div>
             {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
-            <Button type="submit" size="lg" className="w-full" disabled={loading}>
-              {loading ? "Création…" : "Créer mon compte"}
+            <Button type="submit" size="lg" className="w-full" disabled={loading || (role === "parent" && !form.childUserId)}>
+              {loading ? "Envoi…" : "Envoyer ma demande au coach"}
             </Button>
           </form>
         </StepCard>
@@ -265,7 +381,7 @@ function RegisterContent() {
               </span>
               <span>
                 <span className="block font-bold">Je suis coach</span>
-                <span className="block text-xs text-ink-soft">Je crée mon équipe, puis j&apos;invite mes joueurs et leurs parents.</span>
+                <span className="block text-xs text-ink-soft">Je crée mon équipe et je partage son code aux joueurs et parents.</span>
               </span>
             </button>
             <button onClick={() => setPath("invite")} className="card w-full p-5 flex items-center gap-4 text-left hover:border-pitch/50 transition">
@@ -273,14 +389,14 @@ function RegisterContent() {
                 <Ticket size={22} />
               </span>
               <span>
-                <span className="block font-bold">J&apos;ai un code d&apos;invitation</span>
-                <span className="block text-xs text-ink-soft">Un coach ou un joueur m&apos;a transmis un code pour rejoindre l&apos;équipe.</span>
+                <span className="block font-bold">J&apos;ai un code d&apos;équipe</span>
+                <span className="block text-xs text-ink-soft">Le coach m&apos;a transmis le code de l&apos;équipe : je fais ma demande pour la rejoindre.</span>
               </span>
             </button>
           </div>
         )}
         {path === "coach" && <CoachWizard onBack={() => setPath("choice")} />}
-        {path === "invite" && <InviteWizard initialCode={codeFromUrl} onBack={() => setPath("choice")} />}
+        {path === "invite" && <JoinWizard initialCode={codeFromUrl} onBack={() => setPath("choice")} />}
 
         <p className="text-center text-xs text-ink-soft">
           Déjà un compte ?{" "}

@@ -68,6 +68,15 @@ function tryRefresh(): Promise<boolean> {
   return refreshInFlight;
 }
 
+/**
+ * Force un refresh de session : re-signe le JWT côté serveur (teamId à jour)
+ * et réécrit fc_user. Utilisé par l'écran "demande en attente" pour détecter
+ * l'acceptation par le coach sans re-login.
+ */
+export async function refreshSession(): Promise<UserDto | null> {
+  return (await tryRefresh()) ? getStoredUser() : null;
+}
+
 // Client API : Bearer automatique + refresh transparent sur 401
 export async function api<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
   const token = localStorage.getItem(ACCESS_KEY);
@@ -89,7 +98,7 @@ export async function api<T>(path: string, options: RequestInit = {}, retried = 
   return (await res.json()) as T;
 }
 
-export async function register(path: "/auth/register-coach" | "/auth/register-invite", payload: unknown): Promise<UserDto> {
+export async function register(path: "/auth/register-coach" | "/auth/register-join", payload: unknown): Promise<UserDto> {
   const auth = await api<AuthResponseDto>(path, { method: "POST", body: JSON.stringify(payload) });
   storeSession(auth);
   return auth.user;

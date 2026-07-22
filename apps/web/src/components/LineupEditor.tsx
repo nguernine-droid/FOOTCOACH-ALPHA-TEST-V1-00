@@ -22,7 +22,7 @@ export function LineupEditor({ matchId, presentPlayerIds }: { matchId: string; p
         api<TeamMemberDto[]>("/team/members"),
       ]);
       setLineup(l);
-      setRoster(members.filter((m) => m.accountStatus === "active"));
+      setRoster(members);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }

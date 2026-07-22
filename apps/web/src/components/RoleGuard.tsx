@@ -6,6 +6,7 @@ import { Bell, Car, ChevronDown, LogOut, Megaphone, UserCheck } from "lucide-rea
 import type { ActivityDto, Role, UserDto } from "@footcoach/shared";
 import { api, getStoredUser, homeForRole, logout } from "@/lib/api";
 import { ClubCrest } from "@/components/ClubCrest";
+import { PendingScreen } from "@/components/PendingScreen";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -63,14 +64,17 @@ export function RoleGuard({
     setUser(stored);
   }, [role, router]);
 
+  // Joueur/parent sans équipe : demande d'adhésion pas encore acceptée par le coach
+  const isPending = user != null && (user.role === "player" || user.role === "parent") && user.teamId === null;
+
   // Point "non-lu" sur la cloche : dernière activité plus récente que la dernière consultation
   useEffect(() => {
-    if (!user || !hasNotifications) return;
+    if (!user || !hasNotifications || isPending) return;
     setActivitySeen(localStorage.getItem("fc_activity_seen"));
     api<ActivityDto[]>("/activity")
       .then(setActivities)
       .catch(() => setActivities([]));
-  }, [user, hasNotifications]);
+  }, [user, hasNotifications, isPending]);
 
   useEffect(() => {
     if (!menuOpen && !notifOpen) return;
@@ -223,17 +227,17 @@ export function RoleGuard({
           </div>
         </header>
 
-        {nav}
+        {!isPending && nav}
       </div>
 
       <div
         className={cn(
           "w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pt-6",
           // La barre de navigation mobile est fixée en bas : réserver la place du contenu
-          nav ? "pb-28 min-[960px]:pb-12" : "pb-12",
+          nav && !isPending ? "pb-28 min-[960px]:pb-12" : "pb-12",
         )}
       >
-        {children}
+        {isPending ? <PendingScreen user={user} onRefreshed={setUser} /> : children}
       </div>
     </div>
   );
