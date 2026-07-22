@@ -2,11 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, ChevronDown, LogOut } from "lucide-react";
+import { Bell, Car, ChevronDown, LogOut, Megaphone, UserCheck } from "lucide-react";
 import type { ActivityDto, Role, UserDto } from "@footcoach/shared";
 import { api, getStoredUser, homeForRole, logout } from "@/lib/api";
 import { ClubCrest } from "@/components/ClubCrest";
+import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
+
+const ACTIVITY_ICONS = {
+  attendance: UserCheck,
+  carpool: Car,
+  announcement: Megaphone,
+} as const;
 
 const ROLE_LABELS: Record<Role, string> = {
   coach: "Coach",
@@ -35,9 +42,13 @@ export function RoleGuard({
   const router = useRouter();
   const [user, setUser] = useState<UserDto | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [latestActivity, setLatestActivity] = useState<string | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [activities, setActivities] = useState<ActivityDto[] | null>(null);
   const [activitySeen, setActivitySeen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+  // Le supporter n'a pas accès au fil d'activité : pas de cloche pour lui
+  const hasNotifications = role !== "supporter";
 
   useEffect(() => {
     const stored = getStoredUser();
@@ -54,21 +65,22 @@ export function RoleGuard({
 
   // Point "non-lu" sur la cloche : dernière activité plus récente que la dernière consultation
   useEffect(() => {
-    if (!user || user.role !== "coach") return;
+    if (!user || !hasNotifications) return;
     setActivitySeen(localStorage.getItem("fc_activity_seen"));
     api<ActivityDto[]>("/activity")
-      .then((events) => setLatestActivity(events[0]?.createdAt ?? null))
-      .catch(() => undefined);
-  }, [user]);
+      .then(setActivities)
+      .catch(() => setActivities([]));
+  }, [user, hasNotifications]);
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !notifOpen) return;
     function onClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [menuOpen]);
+  }, [menuOpen, notifOpen]);
 
   if (!user) {
     return <div className="min-h-dvh flex items-center justify-center text-ink-soft animate-soft-pulse">Chargement…</div>;
@@ -95,24 +107,75 @@ export function RoleGuard({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                className="relative p-2.5 rounded-lg hover:bg-white/10 transition"
-                aria-label="Notifications"
-                onClick={() => {
-                  if (latestActivity) {
-                    localStorage.setItem("fc_activity_seen", latestActivity);
-                    setActivitySeen(latestActivity);
-                  }
-                }}
-              >
-                <Bell size={18} className="text-white/80" />
-                {latestActivity && (!activitySeen || latestActivity > activitySeen) && (
-                  <span
-                    className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gold ring-2 ring-navy-900"
-                    aria-label="Nouvelles activités"
-                  />
-                )}
-              </button>
+              {hasNotifications && (
+                <div className="relative" ref={notifRef}>
+                  <button
+                    className="relative p-2.5 rounded-lg hover:bg-white/10 transition"
+                    aria-label="Notifications"
+                    aria-haspopup="menu"
+                    aria-expanded={notifOpen}
+                    onClick={() => {
+                      const latest = activities?.[0]?.createdAt;
+                      setNotifOpen((o) => !o);
+                      if (latest) {
+                        localStorage.setItem("fc_activity_seen", latest);
+                        setActivitySeen(latest);
+                      }
+                    }}
+                  >
+                    <Bell size={18} className="text-white/80" />
+                    {activities?.[0] && (!activitySeen || activities[0].createdAt > activitySeen) && (
+                      <span
+                        className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gold ring-2 ring-navy-900"
+                        aria-label="Nouvelles activités"
+                      />
+                    )}
+                  </button>
+
+                  {notifOpen && (
+                    <div
+                      role="menu"
+                      aria-label="Notifications"
+                      className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] card p-2 text-ink z-50 animate-rise-in"
+                    >
+                      <p className="px-3 py-2 text-sm font-bold border-b border-line mb-1">Notifications</p>
+                      <div className="max-h-80 overflow-y-auto">
+                        {!activities && (
+                          <p className="px-3 py-4 text-xs text-ink-soft animate-soft-pulse">Chargement…</p>
+                        )}
+                        {activities && activities.length === 0 && (
+                          <p className="px-3 py-4 text-xs text-ink-soft">Aucune notification pour le moment.</p>
+                        )}
+                        {activities?.map((ev) => {
+                          const Icon = ACTIVITY_ICONS[ev.type];
+                          return (
+                            <div key={ev.id} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-paper transition">
+                              <span
+                                className={cn(
+                                  "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                                  ev.type === "attendance" && "bg-success-soft text-success",
+                                  ev.type === "carpool" && "bg-blue-soft text-blue",
+                                  ev.type === "announcement" && "bg-sun-soft text-sun",
+                                )}
+                              >
+                                <Icon size={13} />
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-xs text-ink leading-snug">
+                                  <span className="font-bold">{ev.actor}</span> {ev.detail}
+                                </p>
+                                <p className="text-[10px] text-ink-faint font-semibold">
+                                  {timeAgo(ev.createdAt, new Date())}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="relative" ref={menuRef}>
                 <button
