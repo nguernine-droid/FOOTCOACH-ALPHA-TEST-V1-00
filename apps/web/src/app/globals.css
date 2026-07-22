@@ -1,40 +1,60 @@
 @import "tailwindcss";
 
 @theme {
-  /* Palette "club house" — vert forêt structurel, accents calmes, blanc cassé */
-  --color-pitch: #178A4C;
-  --color-pitch-dark: #116B3B;
-  --color-pitch-deep: #0E3B24;
-  --color-pitch-soft: #E3F1E8;
+  /* Palette "FootCoach" — club house premium : navy structurel, bleu d'action, or d'accent */
+  --color-navy-900: #071B3F;
+  --color-navy-800: #0A2452;
+  --color-navy-700: #0C2E6B;
 
-  --color-tangerine: #D9640F;
-  --color-tangerine-soft: #FBEADB;
+  --color-blue: #1D6FE0;
+  --color-blue-dark: #1659B8;
+  --color-blue-soft: #E3ECFA;
+  --color-blue-faint: #F0F5FC;
 
-  --color-sky: #2C7FB8;
-  --color-sky-soft: #E3EFF7;
+  /* Or pur : réservé aux surfaces navy (onglet actif, points, gardien) */
+  --color-gold: #F5B301;
 
-  --color-coral: #D24545;
-  --color-coral-soft: #FAE5E5;
+  --color-success: #1E9E58;
+  --color-success-soft: #DFF2E7;
 
-  --color-sun: #B37E10;
-  --color-sun-soft: #F8EED8;
+  /* Alias historiques re-thémés :
+     pitch = couleur d'action (bleu), pitch-deep = structurel (navy-700) */
+  --color-pitch: #1D6FE0;
+  --color-pitch-dark: #1659B8;
+  --color-pitch-deep: #0C2E6B;
+  --color-pitch-soft: #E3ECFA;
 
-  --color-paper: #F6F5F0;
-  --color-ink: #1C2620;
-  --color-ink-soft: #5E6B64;
-  --color-line: #E6E4DD;
+  /* Or foncé lisible sur fond clair (texte, icônes, boutons accent) */
+  --color-tangerine: #A16207;
+  --color-tangerine-soft: #FBEED0;
 
-  --color-border: #E6E4DD;
-  --color-input: #E6E4DD;
-  --color-ring: #178A4C;
-  --color-background: #F6F5F0;
-  --color-foreground: #1C2620;
+  --color-sky: #1D6FE0;
+  --color-sky-soft: #E3ECFA;
 
-  /* Fonte titre condensée (scores, wordmark, titres) — chargée via next/font */
+  --color-coral: #E23D3D;
+  --color-coral-soft: #FBE2E2;
+
+  --color-sun: #8A6A00;
+  --color-sun-soft: #FCF0CF;
+
+  --color-paper: #EDF1F8;
+  --color-ink: #10203C;
+  --color-ink-soft: #4A5A78;
+  --color-ink-faint: #8A97B0;
+  --color-line: #DDE4F0;
+
+  --color-border: #DDE4F0;
+  --color-input: #DDE4F0;
+  --color-ring: #1D6FE0;
+  --color-background: #EDF1F8;
+  --color-foreground: #10203C;
+
+  /* Fontes chargées via next/font (voir layout.tsx) */
   --font-display: var(--font-barlow), "Arial Narrow", "Segoe UI", sans-serif;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
 
-  --shadow-card: 0 1px 2px rgba(14, 59, 36, 0.04), 0 4px 14px -8px rgba(14, 59, 36, 0.1);
-  --shadow-pop: 0 10px 28px -14px rgba(14, 59, 36, 0.45);
+  --shadow-card: 0 1px 2px rgba(7, 27, 63, 0.06), 0 8px 24px rgba(7, 27, 63, 0.07);
+  --shadow-pop: 0 10px 28px -14px rgba(7, 27, 63, 0.5);
 
   @keyframes soft-pulse {
     0%, 100% { opacity: 1; }
@@ -55,8 +75,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-paper text-ink selection:bg-pitch-soft selection:text-pitch-deep;
-    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    @apply bg-paper text-ink selection:bg-blue-soft selection:text-navy-700;
+    font-family: var(--font-inter), "Segoe UI", system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -73,10 +93,10 @@
     box-shadow: var(--shadow-card);
   }
 
-  /* Bandeau structurel vert forêt (headers de sections, hero) */
+  /* Bandeau structurel navy (headers de sections, hero) */
   .hero-pitch {
     @apply rounded-xl text-white relative overflow-hidden;
-    background: linear-gradient(135deg, #14532d 0%, #0e3b24 60%, #0a2b1a 100%);
+    background: linear-gradient(135deg, #071b3f 0%, #0a2452 55%, #0c2e6b 100%);
     box-shadow: var(--shadow-pop);
   }
 
@@ -89,7 +109,7 @@
   /* Champ de formulaire */
   .field {
     @apply w-full bg-paper border border-line rounded-lg px-4 py-3 text-sm text-ink outline-none transition
-      placeholder:text-ink-soft/50 focus:border-pitch focus:bg-white focus:ring-2 focus:ring-pitch/15;
+      placeholder:text-ink-faint focus:border-blue focus:bg-white focus:ring-2 focus:ring-blue/15;
   }
 
   /* Petite pastille de statut (seul élément full-round avec les avatars) */

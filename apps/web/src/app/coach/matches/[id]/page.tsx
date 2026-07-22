@@ -97,8 +97,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-4">
-      <Link href="/coach" className="text-xs font-bold text-ink-soft hover:text-ink inline-flex items-center gap-1.5">
-        <ArrowLeft size={14} /> Mes matchs
+      <Link href="/coach/matches" className="text-xs font-bold text-ink-soft hover:text-ink inline-flex items-center gap-1.5">
+        <ArrowLeft size={14} /> Matchs
       </Link>
 
       <div className="grid gap-4 lg:grid-cols-2 items-start">

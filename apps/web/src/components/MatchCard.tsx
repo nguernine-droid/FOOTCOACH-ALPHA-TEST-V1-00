@@ -12,7 +12,7 @@ const STATUS = {
 
 // Couleur d'identité stable par équipe (dérivée de l'id) : une équipe garde
 // la même couleur sur toutes les cards, qu'elle joue à domicile ou non.
-const TEAM_COLORS = ["bg-pitch-deep", "bg-tangerine", "bg-sky", "bg-[#6B4FA3]", "bg-[#0F766E]", "bg-[#8A5A2B]"];
+const TEAM_COLORS = ["bg-navy-700", "bg-tangerine", "bg-blue", "bg-[#6B4FA3]", "bg-[#0F766E]", "bg-[#8A5A2B]"];
 
 export function teamColor(team: TeamDto): string {
   let hash = 0;
