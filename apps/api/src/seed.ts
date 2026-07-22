@@ -31,11 +31,11 @@ async function upsertUser(input: {
   return user;
 }
 
-async function upsertTeam(name: string, city: string, coachId: string) {
+async function upsertTeam(name: string, city: string, coachId: string, joinCode: string) {
   const coords = cityCoords(city);
   const [team] = await db
     .insert(teams)
-    .values({ name, city, coachId, lat: coords?.lat ?? null, lng: coords?.lng ?? null })
+    .values({ name, city, coachId, joinCode, lat: coords?.lat ?? null, lng: coords?.lng ?? null })
     .onConflictDoUpdate({ target: teams.coachId, set: { name, city, lat: coords?.lat ?? null, lng: coords?.lng ?? null } })
     .returning();
   return team;
@@ -46,8 +46,8 @@ async function main() {
 
   const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", firstName: "Alexandre", lastName: "Martin" });
   const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", firstName: "Bruno", lastName: "Silva" });
-  const teamA = await upsertTeam("FC Nexus", "Lyon", coachA.id);
-  const teamB = await upsertTeam("AS Cyber", "Villeurbanne", coachB.id);
+  const teamA = await upsertTeam("FC Nexus", "Lyon", coachA.id, "DEMOA1");
+  const teamB = await upsertTeam("AS Cyber", "Villeurbanne", coachB.id, "DEMOB2");
 
   const player = await upsertUser({ email: "player@demo.fr", role: "player", firstName: "Paul", lastName: "Joueur", teamId: teamA.id });
   const parent = await upsertUser({ email: "parent@demo.fr", role: "parent", firstName: "Patricia", lastName: "Parent", teamId: teamA.id });

@@ -130,14 +130,17 @@ export function matchRoutes(app: FastifyInstance) {
   // Tous rôles. Coach/player/parent : matchs de leur équipe. Supporter : son équipe, ou tout si non rattaché.
   app.get("/matches", async (request): Promise<MatchDto[]> => {
     const { teamId, role } = request.user;
-    const query = baseSelect().orderBy(desc(matches.date), desc(matches.time));
-    const rows =
-      role === "supporter" && !teamId
-        ? await query
-        : await baseSelect()
-            .where(or(eq(matches.homeTeamId, teamId ?? ""), eq(matches.awayTeamId, teamId ?? "")))
-            .orderBy(desc(matches.date), desc(matches.time));
-    return attachCounts(rows, request.user.id, request.user.teamId);
+    if (!teamId) {
+      // Supporter non rattaché : tous les matchs. Autres rôles sans équipe
+      // (demande d'adhésion en attente) : aucun match.
+      if (role !== "supporter") return [];
+      const rows = await baseSelect().orderBy(desc(matches.date), desc(matches.time));
+      return attachCounts(rows, request.user.id, null);
+    }
+    const rows = await baseSelect()
+      .where(or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)))
+      .orderBy(desc(matches.date), desc(matches.time));
+    return attachCounts(rows, request.user.id, teamId);
   });
 
   // Endpoint de polling : score + temps forts + compteurs

@@ -1,10 +1,10 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { driverInfoSchema, loginSchema, refreshSchema, type AuthResponseDto, type UserDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { refreshTokens, teams, users } from "../db/schema.js";
+import { joinRequests, refreshTokens, teams, users } from "../db/schema.js";
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
@@ -35,6 +35,25 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
     teamName = team?.name ?? null;
   }
+
+  // Joueur/parent sans équipe : exposer l'état de sa dernière demande d'adhésion
+  // (alimente l'écran "demande en attente de validation")
+  let joinRequestStatus: UserDto["joinRequestStatus"] = null;
+  let pendingTeamName: string | null = null;
+  if (!teamId && (user.role === "player" || user.role === "parent")) {
+    const [latest] = await db
+      .select({ request: joinRequests, team: teams })
+      .from(joinRequests)
+      .innerJoin(teams, eq(joinRequests.teamId, teams.id))
+      .where(eq(joinRequests.userId, user.id))
+      .orderBy(desc(joinRequests.createdAt))
+      .limit(1);
+    if (latest) {
+      joinRequestStatus = latest.request.status;
+      pendingTeamName = latest.team.name;
+    }
+  }
+
   return {
     id: user.id,
     email: user.email,
@@ -47,6 +66,8 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     parentId: user.parentId,
     position: user.position,
     jerseyNumber: user.jerseyNumber,
+    joinRequestStatus,
+    pendingTeamName,
   };
 }
 

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -27,6 +28,7 @@ export const playerPosition = pgEnum("player_position", ["gardien", "defenseur",
 // ils sont projetés dans l'agenda à la lecture (zéro double saisie).
 export const teamEventType = pgEnum("team_event_type", ["entrainement", "tournoi", "reunion", "autre"]);
 export const eventRecurrence = pgEnum("event_recurrence", ["none", "weekly"]);
+export const joinRequestStatus = pgEnum("join_request_status", ["pending", "approved", "declined"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -58,6 +60,8 @@ export const teams = pgTable("teams", {
     .notNull()
     .unique()
     .references(() => users.id),
+  // Code d'équipe unique partagé aux joueurs/parents pour rejoindre en autonomie
+  joinCode: text("join_code").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -196,24 +200,28 @@ export const lineups = pgTable(
   (t) => [uniqueIndex("lineups_match_player_idx").on(t.matchId, t.playerUserId)],
 );
 
-// Codes d'invitation générés par le coach.
-// role=player : crée un compte joueur dans l'équipe.
-// role=parent : crée un compte parent lié au joueur (player_user_id).
-export const invitations = pgTable("invitations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  code: text("code").notNull().unique(),
-  teamId: uuid("team_id")
-    .notNull()
-    .references(() => teams.id, { onDelete: "cascade" }),
-  role: userRole("role").notNull(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  position: playerPosition("position"),
-  jerseyNumber: integer("jersey_number"),
-  playerUserId: uuid("player_user_id").references(() => users.id, { onDelete: "cascade" }),
-  usedByUserId: uuid("used_by_user_id").references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// Demande d'adhésion à une équipe via son code unique. Le compte users est créé
+// dès l'inscription (teamId NULL) ; le coach accepte ou refuse. À l'acceptation :
+// users.teamId est posé, et pour un parent child.parentId = demandeur.
+export const joinRequests = pgTable(
+  "join_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    role: userRole("role").notNull(),
+    // Parent : joueur désigné comme son enfant (le coach peut corriger à l'acceptation)
+    childUserId: uuid("child_user_id").references(() => users.id, { onDelete: "cascade" }),
+    status: joinRequestStatus("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("join_requests_pending_user_idx").on(t.userId).where(sql`status = 'pending'`)],
+);
 
 // Événement d'agenda d'équipe (entraînement, tournoi, réunion…).
 // recurrence=weekly : occurrences générées à la lecture jusqu'à recurrence_until.

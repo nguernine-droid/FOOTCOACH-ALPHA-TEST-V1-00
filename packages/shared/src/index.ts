@@ -97,21 +97,39 @@ export const registerCoachSchema = z.object({
 });
 export type RegisterCoachInput = z.infer<typeof registerCoachSchema>;
 
-export const registerInviteSchema = z.object({
-  code: z.string().min(4).max(12),
-  email: z.string().email(),
-  password: z.string().min(8, "8 caractères minimum"),
-  // Renseignés par le parent à l'inscription (le joueur a déjà son nom via l'invitation)
-  firstName: z.string().min(1).max(50).optional(),
-  lastName: z.string().min(1).max(50).optional(),
-});
-export type RegisterInviteInput = z.infer<typeof registerInviteSchema>;
+export const JOIN_REQUEST_STATUSES = ["pending", "approved", "declined"] as const;
+export type JoinRequestStatus = (typeof JOIN_REQUEST_STATUSES)[number];
 
-export const createPlayerInviteSchema = z.object({
-  firstName: z.string().min(1).max(50),
-  lastName: z.string().min(1).max(50),
+// Inscription en autonomie avec le code d'équipe unique (joueur ou parent)
+export const registerJoinSchema = z
+  .object({
+    code: z.string().min(4).max(12),
+    role: z.enum(["player", "parent"]),
+    firstName: z.string().min(1).max(50),
+    lastName: z.string().min(1).max(50),
+    email: z.string().email(),
+    password: z.string().min(8, "8 caractères minimum"),
+    // Joueur : fiche sportive optionnelle (le coach garde la main ensuite)
+    position: z.enum(PLAYER_POSITIONS).optional(),
+    jerseyNumber: z.number().int().min(1).max(99).optional(),
+    // Parent : joueur désigné comme son enfant
+    childUserId: z.string().uuid().optional(),
+  })
+  .refine((v) => v.role !== "parent" || !!v.childUserId, { message: "Choisissez votre enfant dans la liste" });
+export type RegisterJoinInput = z.infer<typeof registerJoinSchema>;
+
+// Nouvelle demande d'un compte existant (refusé ou sans équipe)
+export const resubmitJoinSchema = z.object({
+  code: z.string().min(4).max(12),
   position: z.enum(PLAYER_POSITIONS).optional(),
   jerseyNumber: z.number().int().min(1).max(99).optional(),
+  childUserId: z.string().uuid().optional(),
+});
+export type ResubmitJoinInput = z.infer<typeof resubmitJoinSchema>;
+
+export const approveJoinRequestSchema = z.object({
+  /** Le coach peut corriger l'enfant désigné par un parent avant d'accepter */
+  childUserId: z.string().uuid().optional(),
 });
 
 export const updatePlayerSchema = z.object({
@@ -202,6 +220,9 @@ export interface UserDto {
   /** Joueur : fiche sportive (optionnels — absents des sessions stockées avant leur ajout) */
   position?: PlayerPosition | null;
   jerseyNumber?: number | null;
+  /** Joueur/parent sans équipe : état de sa dernière demande d'adhésion */
+  joinRequestStatus?: JoinRequestStatus | null;
+  pendingTeamName?: string | null;
 }
 
 export interface TeamDto {
@@ -332,14 +353,26 @@ export interface ApprovalDto {
   status: BookingStatus;
 }
 
-/** Aperçu d'une invitation (écran de confirmation avant inscription) */
-export interface InvitationInfoDto {
-  role: Extract<Role, "player" | "parent">;
+/** Aperçu public d'une équipe via son code (écran "vous allez rejoindre…") */
+export interface TeamJoinInfoDto {
   teamName: string;
-  firstName: string | null;
-  lastName: string | null;
-  /** Pour un parent : nom du joueur auquel il sera lié */
-  playerName: string | null;
+  city: string;
+  /** Joueurs inscrits — pour qu'un parent désigne son enfant */
+  players: { id: string; firstName: string; lastName: string; hasParent: boolean }[];
+}
+
+/** Demande d'adhésion en attente, vue coach */
+export interface JoinRequestDto {
+  id: string;
+  role: Extract<Role, "player" | "parent">;
+  firstName: string;
+  lastName: string;
+  email: string;
+  position: PlayerPosition | null;
+  jerseyNumber: number | null;
+  childUserId: string | null;
+  childName: string | null;
+  createdAt: string;
 }
 
 /** Ligne de l'effectif côté coach */
@@ -347,11 +380,8 @@ export interface TeamMemberDto {
   id: string;
   firstName: string;
   lastName: string;
-  accountStatus: "active" | "invited";
-  inviteCode: string | null;
-  parentStatus: "linked" | "invited" | "none";
+  parentStatus: "linked" | "none";
   parentName: string | null;
-  parentInviteCode: string | null;
   position: PlayerPosition | null;
   jerseyNumber: number | null;
   /** Réponse au prochain match programmé — null s'il n'y a pas de match à venir */

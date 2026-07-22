@@ -1,19 +1,20 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
-import { and, asc, eq, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 import {
-  createPlayerInviteSchema,
+  approveJoinRequestSchema,
   registerCoachSchema,
-  registerInviteSchema,
+  registerJoinSchema,
+  resubmitJoinSchema,
   updatePlayerSchema,
   type AuthResponseDto,
-  type InvitationInfoDto,
+  type JoinRequestDto,
+  type TeamJoinInfoDto,
   type TeamMemberDto,
 } from "@footcoach/shared";
-import { z } from "zod";
 import { db } from "../db/client.js";
-import { attendances, invitations, matches, teams, users } from "../db/schema.js";
+import { attendances, joinRequests, matches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
@@ -22,7 +23,7 @@ import { cityCoords } from "../lib/cities.js";
 // Alphabet sans caractères ambigus (pas de O/0, I/1…) : codes faciles à dicter
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
-function generateCode(): string {
+export function generateCode(): string {
   return Array.from(crypto.randomBytes(6), (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
 }
 
@@ -40,8 +41,23 @@ async function buildAuthResponse(user: typeof users.$inferSelect): Promise<AuthR
   };
 }
 
+async function getTeamByCode(code: string) {
+  const [team] = await db.select().from(teams).where(eq(teams.joinCode, code.toUpperCase().trim()));
+  if (!team) throw new HttpError(404, "Code d'équipe invalide");
+  return team;
+}
+
+// Parent : l'enfant désigné doit être un joueur de l'équipe rejointe
+async function assertChildInTeam(childUserId: string, teamId: string) {
+  const [child] = await db.select().from(users).where(eq(users.id, childUserId));
+  if (!child || child.teamId !== teamId || child.role !== "player") {
+    throw new HttpError(400, "Le joueur désigné n'appartient pas à cette équipe");
+  }
+  return child;
+}
+
 export function registrationRoutes(app: FastifyInstance) {
-  // Inscription coach : crée le compte ET son équipe en une fois
+  // Inscription coach : crée le compte ET son équipe (avec son code) en une fois
   app.post("/auth/register-coach", async (request, reply): Promise<AuthResponseDto> => {
     const input = registerCoachSchema.parse(request.body);
     await assertEmailFree(input.email);
@@ -63,6 +79,7 @@ export function registrationRoutes(app: FastifyInstance) {
         name: input.teamName,
         city: input.teamCity,
         coachId: created.id,
+        joinCode: generateCode(),
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
       });
@@ -73,63 +90,55 @@ export function registrationRoutes(app: FastifyInstance) {
     return buildAuthResponse(user);
   });
 
-  // Aperçu public d'un code (écran "vous allez rejoindre…")
-  app.get("/invitations/:code", async (request): Promise<InvitationInfoDto> => {
+  // Aperçu public d'un code d'équipe : nom + joueurs (pour le choix d'enfant du parent).
+  // La liste (prénoms/noms uniquement) n'est exposée qu'avec un code valide.
+  app.get("/teams/join/:code", async (request): Promise<TeamJoinInfoDto> => {
     const { code } = request.params as { code: string };
-    const [invite] = await db
+    const team = await getTeamByCode(code);
+    const players = await db
       .select()
-      .from(invitations)
-      .where(and(eq(invitations.code, code.toUpperCase().trim()), isNull(invitations.usedByUserId)));
-    if (!invite) throw new HttpError(404, "Code invalide ou déjà utilisé");
-    const [team] = await db.select().from(teams).where(eq(teams.id, invite.teamId));
-
-    let playerName: string | null = null;
-    if (invite.playerUserId) {
-      const [player] = await db.select().from(users).where(eq(users.id, invite.playerUserId));
-      playerName = player ? `${player.firstName} ${player.lastName}` : null;
-    }
+      .from(users)
+      .where(and(eq(users.teamId, team.id), eq(users.role, "player")));
     return {
-      role: invite.role as "player" | "parent",
-      teamName: team?.name ?? "?",
-      firstName: invite.firstName,
-      lastName: invite.lastName,
-      playerName,
+      teamName: team.name,
+      city: team.city,
+      players: players
+        .map((p) => ({ id: p.id, firstName: p.firstName, lastName: p.lastName, hasParent: p.parentId != null }))
+        .sort((a, b) => a.firstName.localeCompare(b.firstName)),
     };
   });
 
-  // Inscription avec un code d'invitation (joueur ou parent)
-  app.post("/auth/register-invite", async (request, reply): Promise<AuthResponseDto> => {
-    const input = registerInviteSchema.parse(request.body);
+  // Inscription en autonomie avec le code d'équipe : le compte est créé SANS équipe
+  // (teamId null) + une demande d'adhésion que le coach devra accepter.
+  app.post("/auth/register-join", async (request, reply): Promise<AuthResponseDto> => {
+    const input = registerJoinSchema.parse(request.body);
     await assertEmailFree(input.email);
     const passwordHash = await bcrypt.hash(input.password, 10);
+    const team = await getTeamByCode(input.code);
+    if (input.role === "parent" && input.childUserId) {
+      await assertChildInTeam(input.childUserId, team.id);
+    }
 
     const user = await db.transaction(async (tx) => {
-      const [invite] = await tx
-        .select()
-        .from(invitations)
-        .where(and(eq(invitations.code, input.code.toUpperCase().trim()), isNull(invitations.usedByUserId)))
-        .for("update");
-      if (!invite) throw new HttpError(404, "Code invalide ou déjà utilisé");
-
       const [created] = await tx
         .insert(users)
         .values({
           email: input.email.toLowerCase(),
           passwordHash,
-          role: invite.role,
-          firstName: invite.firstName ?? input.firstName ?? "Parent",
-          lastName: invite.lastName ?? input.lastName ?? "",
-          teamId: invite.teamId,
-          position: invite.position,
-          jerseyNumber: invite.jerseyNumber,
+          role: input.role,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          teamId: null,
+          position: input.role === "player" ? (input.position ?? null) : null,
+          jerseyNumber: input.role === "player" ? (input.jerseyNumber ?? null) : null,
         })
         .returning();
-
-      // Un parent invité depuis la fiche d'un joueur devient son parent assigné
-      if (invite.role === "parent" && invite.playerUserId) {
-        await tx.update(users).set({ parentId: created.id }).where(eq(users.id, invite.playerUserId));
-      }
-      await tx.update(invitations).set({ usedByUserId: created.id }).where(eq(invitations.id, invite.id));
+      await tx.insert(joinRequests).values({
+        userId: created.id,
+        teamId: team.id,
+        role: input.role,
+        childUserId: input.role === "parent" ? (input.childUserId ?? null) : null,
+      });
       return created;
     });
 
@@ -137,20 +146,166 @@ export function registrationRoutes(app: FastifyInstance) {
     return buildAuthResponse(user);
   });
 
-  // --- Espace coach : effectif et invitations ---
+  // Nouvelle demande d'un compte existant (refusé, ou parti sans équipe)
+  app.post(
+    "/join-requests",
+    { preHandler: [requireAuth, requireRole("player", "parent")] },
+    async (request, reply) => {
+      if (request.user.teamId) throw new HttpError(400, "Vous appartenez déjà à une équipe");
+      const input = resubmitJoinSchema.parse(request.body);
+      const team = await getTeamByCode(input.code);
+
+      const [pending] = await db
+        .select()
+        .from(joinRequests)
+        .where(and(eq(joinRequests.userId, request.user.id), eq(joinRequests.status, "pending")));
+      if (pending) throw new HttpError(400, "Vous avez déjà une demande en attente");
+
+      if (request.user.role === "parent") {
+        if (!input.childUserId) throw new HttpError(400, "Choisissez votre enfant dans la liste");
+        await assertChildInTeam(input.childUserId, team.id);
+      }
+
+      await db.transaction(async (tx) => {
+        if (request.user.role === "player" && (input.position !== undefined || input.jerseyNumber !== undefined)) {
+          await tx
+            .update(users)
+            .set({
+              ...(input.position !== undefined && { position: input.position }),
+              ...(input.jerseyNumber !== undefined && { jerseyNumber: input.jerseyNumber }),
+            })
+            .where(eq(users.id, request.user.id));
+        }
+        await tx.insert(joinRequests).values({
+          userId: request.user.id,
+          teamId: team.id,
+          role: request.user.role,
+          childUserId: request.user.role === "parent" ? (input.childUserId ?? null) : null,
+        });
+      });
+      reply.code(201);
+      return { ok: true };
+    },
+  );
+
+  // --- Espace coach : code d'équipe, demandes d'adhésion, effectif ---
   app.register((coach) => {
     coach.addHook("preHandler", requireAuth);
     coach.addHook("preHandler", requireRole("coach"));
+
+    async function getCoachTeam(teamId: string | null) {
+      if (!teamId) throw new HttpError(400, "Aucune équipe associée");
+      const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
+      if (!team) throw new HttpError(404, "Équipe introuvable");
+      return team;
+    }
+
+    coach.get("/team/join-code", async (request) => {
+      const team = await getCoachTeam(request.user.teamId);
+      return { code: team.joinCode };
+    });
+
+    // Régénérer le code (l'ancien cesse immédiatement de fonctionner)
+    coach.post("/team/join-code/regenerate", async (request) => {
+      const team = await getCoachTeam(request.user.teamId);
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const code = generateCode();
+        try {
+          await db.update(teams).set({ joinCode: code }).where(eq(teams.id, team.id));
+          return { code };
+        } catch {
+          // Collision d'unicité (rarissime) : on retente avec un autre code
+        }
+      }
+      throw new HttpError(500, "Impossible de générer un nouveau code, réessayez");
+    });
+
+    // Demandes d'adhésion en attente
+    coach.get("/team/requests", async (request): Promise<JoinRequestDto[]> => {
+      const team = await getCoachTeam(request.user.teamId);
+      const rows = await db
+        .select({ request: joinRequests, applicant: users })
+        .from(joinRequests)
+        .innerJoin(users, eq(joinRequests.userId, users.id))
+        .where(and(eq(joinRequests.teamId, team.id), eq(joinRequests.status, "pending")))
+        .orderBy(asc(joinRequests.createdAt));
+
+      const childIds = rows.map((r) => r.request.childUserId).filter((id): id is string => id != null);
+      const children = childIds.length
+        ? await db.select().from(users).where(or(...childIds.map((id) => eq(users.id, id))))
+        : [];
+      const childById = new Map(children.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
+
+      return rows.map(({ request: r, applicant }) => ({
+        id: r.id,
+        role: r.role as "player" | "parent",
+        firstName: applicant.firstName,
+        lastName: applicant.lastName,
+        email: applicant.email,
+        position: applicant.position,
+        jerseyNumber: applicant.jerseyNumber,
+        childUserId: r.childUserId,
+        childName: r.childUserId ? (childById.get(r.childUserId) ?? null) : null,
+        createdAt: r.createdAt.toISOString(),
+      }));
+    });
+
+    // Accepter : le demandeur intègre l'équipe ; un parent est lié à son enfant
+    // (le coach peut corriger l'enfant désigné via le body).
+    coach.post("/team/requests/:id/approve", async (request) => {
+      const team = await getCoachTeam(request.user.teamId);
+      const { id } = request.params as { id: string };
+      const input = approveJoinRequestSchema.parse(request.body ?? {});
+
+      await db.transaction(async (tx) => {
+        const [joinRequest] = await tx
+          .select()
+          .from(joinRequests)
+          .where(and(eq(joinRequests.id, id), eq(joinRequests.teamId, team.id), eq(joinRequests.status, "pending")))
+          .for("update");
+        if (!joinRequest) throw new HttpError(404, "Demande introuvable ou déjà traitée");
+
+        await tx.update(users).set({ teamId: team.id }).where(eq(users.id, joinRequest.userId));
+
+        if (joinRequest.role === "parent") {
+          const childUserId = input.childUserId ?? joinRequest.childUserId;
+          if (!childUserId) throw new HttpError(400, "Désignez l'enfant de ce parent avant d'accepter");
+          const [child] = await tx.select().from(users).where(eq(users.id, childUserId));
+          if (!child || child.teamId !== team.id || child.role !== "player") {
+            throw new HttpError(400, "Le joueur désigné n'appartient pas à votre équipe");
+          }
+          await tx.update(users).set({ parentId: joinRequest.userId }).where(eq(users.id, childUserId));
+          if (input.childUserId && input.childUserId !== joinRequest.childUserId) {
+            await tx.update(joinRequests).set({ childUserId: input.childUserId }).where(eq(joinRequests.id, id));
+          }
+        }
+
+        await tx
+          .update(joinRequests)
+          .set({ status: "approved", decidedAt: new Date() })
+          .where(eq(joinRequests.id, id));
+      });
+      return { ok: true };
+    });
+
+    // Refuser : le compte subsiste sans équipe et peut soumettre une nouvelle demande
+    coach.post("/team/requests/:id/decline", async (request) => {
+      const team = await getCoachTeam(request.user.teamId);
+      const { id } = request.params as { id: string };
+      const [updated] = await db
+        .update(joinRequests)
+        .set({ status: "declined", decidedAt: new Date() })
+        .where(and(eq(joinRequests.id, id), eq(joinRequests.teamId, team.id), eq(joinRequests.status, "pending")))
+        .returning();
+      if (!updated) throw new HttpError(404, "Demande introuvable ou déjà traitée");
+      return { ok: true };
+    });
 
     coach.get("/team/members", async (request): Promise<TeamMemberDto[]> => {
       const teamId = request.user.teamId;
       if (!teamId) throw new HttpError(400, "Aucune équipe associée");
 
       const players = await db.select().from(users).where(and(eq(users.teamId, teamId), eq(users.role, "player")));
-      const pendingInvites = await db
-        .select()
-        .from(invitations)
-        .where(and(eq(invitations.teamId, teamId), isNull(invitations.usedByUserId)));
       const parents = await db.select().from(users).where(and(eq(users.teamId, teamId), eq(users.role, "parent")));
 
       // Prochain match programmé de l'équipe → réponse de présence de chaque joueur
@@ -164,44 +319,21 @@ export function registrationRoutes(app: FastifyInstance) {
         ? await db.select().from(attendances).where(eq(attendances.matchId, nextMatch.id))
         : [];
 
-      const activeRows: TeamMemberDto[] = players.map((p) => {
+      return players.map((p) => {
         const parent = parents.find((u) => u.id === p.parentId);
-        const parentInvite = pendingInvites.find((i) => i.role === "parent" && i.playerUserId === p.id);
         const attendance = nextAttendances.find((a) => a.userId === p.id);
         return {
           id: p.id,
           firstName: p.firstName,
           lastName: p.lastName,
-          accountStatus: "active",
-          inviteCode: null,
-          parentStatus: parent ? "linked" : parentInvite ? "invited" : "none",
+          parentStatus: parent ? "linked" : "none",
           parentName: parent ? `${parent.firstName} ${parent.lastName}` : null,
-          parentInviteCode: parentInvite?.code ?? null,
           position: p.position,
           jerseyNumber: p.jerseyNumber,
           nextMatchStatus: nextMatch ? (attendance?.status ?? "pending") : null,
           nextMatchDate: nextMatch?.date ?? null,
         };
       });
-
-      const invitedRows: TeamMemberDto[] = pendingInvites
-        .filter((i) => i.role === "player")
-        .map((i) => ({
-          id: i.id,
-          firstName: i.firstName ?? "?",
-          lastName: i.lastName ?? "",
-          accountStatus: "invited",
-          inviteCode: i.code,
-          parentStatus: "none",
-          parentName: null,
-          parentInviteCode: null,
-          position: i.position,
-          jerseyNumber: i.jerseyNumber,
-          nextMatchStatus: null,
-          nextMatchDate: null,
-        }));
-
-      return [...activeRows, ...invitedRows];
     });
 
     // Mise à jour de la fiche sportive d'un joueur (poste, n° de maillot)
@@ -212,78 +344,17 @@ export function registrationRoutes(app: FastifyInstance) {
       const input = updatePlayerSchema.parse(request.body);
 
       const [player] = await db.select().from(users).where(eq(users.id, id));
-      if (player && player.teamId === teamId && player.role === "player") {
-        await db
-          .update(users)
-          .set({
-            ...(input.position !== undefined && { position: input.position }),
-            ...(input.jerseyNumber !== undefined && { jerseyNumber: input.jerseyNumber }),
-          })
-          .where(eq(users.id, id));
-        return { ok: true };
+      if (!player || player.teamId !== teamId || player.role !== "player") {
+        throw new HttpError(404, "Joueur introuvable dans votre équipe");
       }
-
-      // Le membre peut aussi être une invitation en attente
-      const [invite] = await db
-        .select()
-        .from(invitations)
-        .where(and(eq(invitations.id, id), eq(invitations.teamId, teamId), isNull(invitations.usedByUserId)));
-      if (!invite || invite.role !== "player") throw new HttpError(404, "Joueur introuvable dans votre équipe");
       await db
-        .update(invitations)
+        .update(users)
         .set({
           ...(input.position !== undefined && { position: input.position }),
           ...(input.jerseyNumber !== undefined && { jerseyNumber: input.jerseyNumber }),
         })
-        .where(eq(invitations.id, id));
+        .where(eq(users.id, id));
       return { ok: true };
-    });
-
-    // Inviter un joueur (nom + prénom) ou le parent d'un joueur existant
-    coach.post("/team/invitations", async (request, reply) => {
-      const teamId = request.user.teamId;
-      if (!teamId) throw new HttpError(400, "Aucune équipe associée");
-      const body = request.body as { role?: string; playerId?: string };
-
-      if (body.role === "player") {
-        const input = createPlayerInviteSchema.parse(request.body);
-        const [invite] = await db
-          .insert(invitations)
-          .values({
-            code: generateCode(),
-            teamId,
-            role: "player",
-            firstName: input.firstName,
-            lastName: input.lastName,
-            position: input.position ?? null,
-            jerseyNumber: input.jerseyNumber ?? null,
-          })
-          .returning();
-        reply.code(201);
-        return { code: invite.code };
-      }
-
-      if (body.role === "parent") {
-        const { playerId } = z.object({ playerId: z.string().uuid() }).parse(request.body);
-        const [player] = await db.select().from(users).where(eq(users.id, playerId));
-        if (!player || player.teamId !== teamId || player.role !== "player") {
-          throw new HttpError(404, "Joueur introuvable dans votre équipe");
-        }
-        if (player.parentId) throw new HttpError(400, "Ce joueur a déjà un parent lié");
-        const [existing] = await db
-          .select()
-          .from(invitations)
-          .where(and(eq(invitations.playerUserId, playerId), isNull(invitations.usedByUserId)));
-        if (existing) return { code: existing.code };
-        const [invite] = await db
-          .insert(invitations)
-          .values({ code: generateCode(), teamId, role: "parent", playerUserId: playerId })
-          .returning();
-        reply.code(201);
-        return { code: invite.code };
-      }
-
-      throw new HttpError(400, "role doit être player ou parent");
     });
   });
 }
