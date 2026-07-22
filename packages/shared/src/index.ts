@@ -212,6 +212,17 @@ export interface MatchEventDto {
   createdAt: string;
 }
 
+/** Présence d'un coéquipier vue par un membre de l'équipe (joueur/parent) */
+export interface TeamPresenceDto {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  jerseyNumber: number | null;
+  position: PlayerPosition | null;
+  /** null = pas encore répondu */
+  status: AttendanceStatus | null;
+}
+
 export interface AttendanceDto {
   userId: string;
   firstName: string;

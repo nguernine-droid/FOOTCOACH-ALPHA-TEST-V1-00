@@ -10,6 +10,7 @@ import {
   type MatchDetailDto,
   type MatchDto,
   type MatchEventDto,
+  type TeamPresenceDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { attendances, carpoolBookings, matchEvents, matches, teams, users } from "../db/schema.js";
@@ -114,6 +115,15 @@ function assertMemberOfMatch(match: typeof matches.$inferSelect, teamId: string 
   }
 }
 
+// Verrou fixe : les réponses de présence sont figées 24h avant le coup d'envoi
+const ATTENDANCE_LOCK_MS = 24 * 3600 * 1000;
+
+function assertAttendanceOpen(match: typeof matches.$inferSelect) {
+  if (new Date(`${match.date}T${match.time}`).getTime() - Date.now() < ATTENDANCE_LOCK_MS) {
+    throw new HttpError(400, "Les réponses sont verrouillées 24h avant le coup d'envoi");
+  }
+}
+
 export function matchRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
@@ -201,6 +211,32 @@ export function matchRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  // Présences des joueurs de MON équipe, visibles par tout membre de l'équipe
+  // (joueur/parent/coach). Ne liste que les joueurs — jamais l'équipe adverse.
+  app.get("/matches/:id/presence", async (request): Promise<TeamPresenceDto[]> => {
+    if (!["coach", "player", "parent"].includes(request.user.role)) {
+      throw new HttpError(403, "Réservé aux membres de l'équipe");
+    }
+    const { id } = request.params as { id: string };
+    const row = await getMatchOr404(id);
+    assertMemberOfMatch(row.match, request.user.teamId);
+    const rows = await db
+      .select({ user: users, attendance: attendances })
+      .from(users)
+      .leftJoin(attendances, and(eq(attendances.userId, users.id), eq(attendances.matchId, id)))
+      .where(and(eq(users.teamId, request.user.teamId ?? ""), eq(users.role, "player")));
+    return rows
+      .map(({ user, attendance }) => ({
+        userId: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        jerseyNumber: user.jerseyNumber,
+        position: user.position,
+        status: attendance?.status ?? null,
+      }))
+      .sort((a, b) => a.firstName.localeCompare(b.firstName));
+  });
+
   // Liste nominative des présences + transports — UNIQUEMENT les membres de sa propre
   // équipe : le coach adverse ne voit jamais qui sera présent en face.
   app.get("/matches/:id/attendances", { preHandler: requireRole("coach") }, async (request): Promise<AttendanceDto[]> => {
@@ -232,6 +268,7 @@ export function matchRoutes(app: FastifyInstance) {
     }
     const row = await getMatchOr404(id);
     assertMemberOfMatch(row.match, request.user.teamId);
+    assertAttendanceOpen(row.match);
 
     const canTransport = input.status === "present" && (input.canTransport ?? false);
 

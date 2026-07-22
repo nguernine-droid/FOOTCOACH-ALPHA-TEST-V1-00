@@ -38,31 +38,34 @@ async function loadLineup(matchId: string, teamId: string): Promise<LineupPlayer
 
 export function lineupRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
-  app.addHook("preHandler", requireRole("coach"));
 
-  app.get("/matches/:id/lineup", async (request): Promise<LineupDto> => {
+  // Lecture : coach (sa compo + l'adverse une fois révélée) mais aussi joueur/parent
+  // de l'équipe (leur compo uniquement — jamais celle de l'adversaire).
+  app.get("/matches/:id/lineup", { preHandler: requireRole("coach", "player", "parent") }, async (request): Promise<LineupDto> => {
     const { id } = request.params as { id: string };
     const match = await getMatchOr404(id);
     const myTeamId = request.user.teamId;
     if (myTeamId !== match.homeTeamId && myTeamId !== match.awayTeamId) {
-      throw new HttpError(403, "Vous n'êtes pas le coach d'une des équipes de ce match");
+      throw new HttpError(403, "Vous n'appartenez pas à une des équipes de ce match");
     }
     const opponentTeamId = myTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
 
     const visibleAt = new Date(kickoff(match).getTime() - REVEAL_BEFORE_MS);
     // Match en cours ou terminé : la compo n'a plus rien de secret
     const opponentLocked = match.status === "scheduled" && new Date() < visibleAt;
+    // Seul le coach accède à la compo adverse ; joueurs/parents ne voient que la leur
+    const opponentVisible = !opponentLocked && request.user.role === "coach";
 
     return {
       mine: await loadLineup(id, myTeamId!),
-      opponent: opponentLocked ? null : await loadLineup(id, opponentTeamId),
-      opponentLocked,
+      opponent: opponentVisible ? await loadLineup(id, opponentTeamId) : null,
+      opponentLocked: !opponentVisible,
       opponentVisibleAt: visibleAt.toISOString(),
     };
   });
 
   // Remplace entièrement la compo de SON équipe pour ce match
-  app.put("/matches/:id/lineup", async (request) => {
+  app.put("/matches/:id/lineup", { preHandler: requireRole("coach") }, async (request) => {
     const { id } = request.params as { id: string };
     const match = await getMatchOr404(id);
     const myTeamId = request.user.teamId;

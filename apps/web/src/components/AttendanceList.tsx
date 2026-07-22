@@ -1,14 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Car, CalendarDays, Check, X } from "lucide-react";
+import { Car, CalendarDays, Check, Lock, X } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
 import { api, getStoredUser } from "@/lib/api";
 import { cn, groupMatches } from "@/lib/utils";
+import { kickoffDate } from "@/lib/time";
 import { MatchCard } from "@/components/MatchCard";
 import { CarpoolSection } from "@/components/CarpoolSection";
 import { TimeField } from "@/components/ui/TimeField";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
+
+// Même règle que l'API : réponses figées 24h avant le coup d'envoi
+const LOCK_MS = 24 * 3600 * 1000;
 
 type TransportInput = {
   canTransport: boolean;
@@ -72,9 +76,17 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
         {section.items.map((match) => {
           const mine = match.myAttendance;
-          const answerable = match.status === "scheduled";
+          const locked = kickoffDate(match.date, match.time).getTime() - Date.now() < LOCK_MS;
+          const answerable = match.status === "scheduled" && !locked;
           return (
             <MatchCard key={match.id} match={match}>
+              {match.status === "scheduled" && locked && (
+                <p className="text-xs font-semibold text-ink-soft bg-paper rounded-lg px-4 py-3 flex items-center gap-1.5">
+                  <Lock size={12} className="shrink-0" />
+                  Réponses verrouillées 24h avant le coup d&apos;envoi
+                  {mine && ` — votre réponse : ${mine.status === "present" ? "présent" : "absent"}`}.
+                </p>
+              )}
               {answerable ? (
                 <div className="space-y-3">
                   <p className="text-xs font-bold text-ink-soft">

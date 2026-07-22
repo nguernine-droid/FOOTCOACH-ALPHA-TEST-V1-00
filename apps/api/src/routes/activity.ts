@@ -12,7 +12,7 @@ const FEED_LIMIT = 15;
 // présences de son équipe, réservations de covoiturage, annonces acceptées.
 export function activityRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
-  app.addHook("preHandler", requireRole("coach"));
+  app.addHook("preHandler", requireRole("coach", "player", "parent"));
 
   app.get("/activity", async (request): Promise<ActivityDto[]> => {
     const teamId = request.user.teamId;
@@ -95,6 +95,11 @@ export function activityRoutes(app: FastifyInstance) {
           createdAt: booking.createdAt.toISOString(),
         });
       }
+    }
+
+    // Les sections annonces/propositions sont du ressort du coach uniquement
+    if (request.user.role !== "coach") {
+      return events.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, FEED_LIMIT);
     }
 
     // 3. Propositions reçues sur mes annonces (en attente de ma validation)
