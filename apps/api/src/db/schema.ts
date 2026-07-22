@@ -19,6 +19,7 @@ export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"
 export const matchEventType = pgEnum("match_event_type", ["goal", "card", "substitution", "highlight"]);
 export const matchSide = pgEnum("match_side", ["home", "away"]);
 export const bookingStatus = pgEnum("booking_status", ["pending", "approved", "declined"]);
+export const responseStatus = pgEnum("response_status", ["pending", "accepted", "declined"]);
 export const matchLevel = pgEnum("match_level", ["loisir", "competition"]);
 export const matchFormat = pgEnum("match_format", ["5v5", "8v8", "11v11"]);
 export const playerPosition = pgEnum("player_position", ["gardien", "defenseur", "milieu", "attaquant"]);
@@ -73,6 +74,25 @@ export const matchAnnouncements = pgTable("match_announcements", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Proposition d'un coach sur une annonce. L'annonce reste "open" (visible au radar)
+// tant que le coach émetteur n'a pas accepté une proposition — c'est l'acceptation
+// qui crée le match et passe l'annonce en "matched".
+export const announcementResponses = pgTable(
+  "announcement_responses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    announcementId: uuid("announcement_id")
+      .notNull()
+      .references(() => matchAnnouncements.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    status: responseStatus("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("announcement_responses_ann_team_idx").on(t.announcementId, t.teamId)],
+);
+
 export const matches = pgTable("matches", {
   id: uuid("id").primaryKey().defaultRandom(),
   announcementId: uuid("announcement_id")
@@ -91,6 +111,9 @@ export const matches = pgTable("matches", {
   status: matchStatus("status").notNull().default("scheduled"),
   homeScore: integer("home_score").notNull().default(0),
   awayScore: integer("away_score").notNull().default(0),
+  // Le coach émetteur de l'annonce (équipe domicile) peut autoriser le coach
+  // adverse à éditer score et temps forts ; par défaut lui seul le peut.
+  awayCoachCanEdit: boolean("away_coach_can_edit").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

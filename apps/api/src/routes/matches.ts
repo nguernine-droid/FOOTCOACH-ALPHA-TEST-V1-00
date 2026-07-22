@@ -4,6 +4,7 @@ import { and, asc, desc, eq, inArray, ne, or } from "drizzle-orm";
 import {
   createMatchEventSchema,
   setAttendanceSchema,
+  updateEditAuthorizationSchema,
   updateScoreSchema,
   type AttendanceDto,
   type MatchDetailDto,
@@ -65,6 +66,8 @@ async function attachCounts(rows: MatchRow[], userId: string, viewerTeamId: stri
       status: match.status,
       homeScore: match.homeScore,
       awayScore: match.awayScore,
+      mySide: viewerTeamId === match.homeTeamId ? "home" : viewerTeamId === match.awayTeamId ? "away" : null,
+      awayCoachCanEdit: match.awayCoachCanEdit,
       presentCount: list.filter((a) => a.status === "present").length,
       absentCount: list.filter((a) => a.status === "absent").length,
       // Places de covoiturage encore disponibles (offertes moins réservées)
@@ -92,6 +95,17 @@ function assertCoachOfMatch(match: typeof matches.$inferSelect, teamId: string |
   if (teamId !== match.homeTeamId && teamId !== match.awayTeamId) {
     throw new HttpError(403, "Vous n'êtes pas le coach d'une des équipes de ce match");
   }
+}
+
+// Score et temps forts : réservés au coach émetteur de l'annonce (équipe domicile),
+// sauf s'il a explicitement autorisé le coach adverse.
+function assertCanEditMatch(match: typeof matches.$inferSelect, teamId: string | null) {
+  if (teamId === match.homeTeamId) return;
+  if (teamId === match.awayTeamId && match.awayCoachCanEdit) return;
+  if (teamId === match.awayTeamId) {
+    throw new HttpError(403, "Seul le coach organisateur peut modifier ce match (il peut vous y autoriser)");
+  }
+  throw new HttpError(403, "Vous n'êtes pas le coach d'une des équipes de ce match");
 }
 
 function assertMemberOfMatch(match: typeof matches.$inferSelect, teamId: string | null) {
@@ -141,7 +155,7 @@ export function matchRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const input = updateScoreSchema.parse(request.body);
     const row = await getMatchOr404(id);
-    assertCoachOfMatch(row.match, request.user.teamId);
+    assertCanEditMatch(row.match, request.user.teamId);
     await db
       .update(matches)
       .set({
@@ -157,7 +171,7 @@ export function matchRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const input = createMatchEventSchema.parse(request.body);
     const row = await getMatchOr404(id);
-    assertCoachOfMatch(row.match, request.user.teamId);
+    assertCanEditMatch(row.match, request.user.teamId);
     const [created] = await db
       .insert(matchEvents)
       .values({ matchId: id, createdBy: request.user.id, ...input })
@@ -169,8 +183,21 @@ export function matchRoutes(app: FastifyInstance) {
   app.delete("/matches/:id/events/:eventId", { preHandler: requireRole("coach") }, async (request) => {
     const { id, eventId } = request.params as { id: string; eventId: string };
     const row = await getMatchOr404(id);
-    assertCoachOfMatch(row.match, request.user.teamId);
+    assertCanEditMatch(row.match, request.user.teamId);
     await db.delete(matchEvents).where(and(eq(matchEvents.id, eventId), eq(matchEvents.matchId, id)));
+    return { ok: true };
+  });
+
+  // Autoriser (ou retirer) l'édition du score/temps forts au coach adverse —
+  // réservé au coach émetteur de l'annonce (équipe domicile).
+  app.patch("/matches/:id/edit-authorization", { preHandler: requireRole("coach") }, async (request) => {
+    const { id } = request.params as { id: string };
+    const input = updateEditAuthorizationSchema.parse(request.body);
+    const row = await getMatchOr404(id);
+    if (request.user.teamId !== row.match.homeTeamId) {
+      throw new HttpError(403, "Seul le coach organisateur peut gérer cette autorisation");
+    }
+    await db.update(matches).set({ awayCoachCanEdit: input.awayCoachCanEdit }).where(eq(matches.id, id));
     return { ok: true };
   });
 

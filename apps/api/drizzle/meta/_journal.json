@@ -50,6 +50,13 @@
       "when": 1784712841949,
       "tag": "0006_fresh_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784722781581,
+      "tag": "0007_aromatic_prowler",
+      "breakpoints": true
     }
   ]
 }

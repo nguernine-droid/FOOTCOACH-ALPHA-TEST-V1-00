@@ -1,8 +1,13 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, inArray } from "drizzle-orm";
-import { createAnnouncementSchema, type AnnouncementDto, type TeamDto } from "@footcoach/shared";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import {
+  createAnnouncementSchema,
+  type AnnouncementDto,
+  type AnnouncementResponseDto,
+  type TeamDto,
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { matchAnnouncements, matches, teams } from "../db/schema.js";
+import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { haversineKm } from "../lib/cities.js";
@@ -12,6 +17,8 @@ function toDto(
   myTeamId: string | null,
   link?: { matchId: string; opponentTeam: TeamDto },
   myCoords?: { lat: number; lng: number } | null,
+  responses?: AnnouncementResponseDto[],
+  myResponseStatus?: AnnouncementResponseDto["status"] | null,
 ): AnnouncementDto {
   const { announcement, team } = row;
   const distanceKm =
@@ -35,6 +42,8 @@ function toDto(
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
     distanceKm,
+    responses: responses ?? [],
+    myResponseStatus: myResponseStatus ?? null,
   };
 }
 
@@ -56,6 +65,30 @@ async function loadMatchLinks(announcementIds: string[]) {
   return links;
 }
 
+/** Propositions (avec équipe) indexées par annonce */
+async function loadResponses(announcementIds: string[]) {
+  const byAnnouncement = new Map<string, (AnnouncementResponseDto & { teamId: string })[]>();
+  if (announcementIds.length === 0) return byAnnouncement;
+  const rows = await db
+    .select({ response: announcementResponses, team: teams })
+    .from(announcementResponses)
+    .innerJoin(teams, eq(announcementResponses.teamId, teams.id))
+    .where(inArray(announcementResponses.announcementId, announcementIds))
+    .orderBy(desc(announcementResponses.createdAt));
+  for (const { response, team } of rows) {
+    const list = byAnnouncement.get(response.announcementId) ?? [];
+    list.push({
+      id: response.id,
+      team: { id: team.id, name: team.name, city: team.city },
+      status: response.status,
+      createdAt: response.createdAt.toISOString(),
+      teamId: team.id,
+    });
+    byAnnouncement.set(response.announcementId, list);
+  }
+  return byAnnouncement;
+}
+
 export function announcementRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
@@ -70,11 +103,19 @@ export function announcementRoutes(app: FastifyInstance) {
     const links = await loadMatchLinks(
       rows.filter((r) => r.announcement.status === "matched").map((r) => r.announcement.id),
     );
+    const responsesByAnn = await loadResponses(rows.map((r) => r.announcement.id));
     const [myTeam] = request.user.teamId
       ? await db.select().from(teams).where(eq(teams.id, request.user.teamId))
       : [];
     const myCoords = myTeam?.lat != null && myTeam?.lng != null ? { lat: myTeam.lat, lng: myTeam.lng } : null;
-    return rows.map((r) => toDto(r, request.user.teamId, links.get(r.announcement.id), myCoords));
+    return rows.map((r) => {
+      const all = responsesByAnn.get(r.announcement.id) ?? [];
+      const isMine = r.announcement.teamId === request.user.teamId;
+      // L'émetteur voit les propositions reçues ; un visiteur ne voit que la sienne.
+      const responses = isMine ? all.map(({ teamId: _teamId, ...dto }) => dto) : [];
+      const myResponseStatus = isMine ? null : (all.find((x) => x.teamId === request.user.teamId)?.status ?? null);
+      return toDto(r, request.user.teamId, links.get(r.announcement.id), myCoords, responses, myResponseStatus);
+    });
   });
 
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {
@@ -109,43 +150,117 @@ export function announcementRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Répondre à une annonce = la passer en "matched" et créer le match (transaction)
+  // Proposer de jouer : crée une proposition en attente. L'annonce RESTE ouverte
+  // (visible au radar) tant que le coach émetteur n'a pas accepté une proposition.
   app.post("/announcements/:id/respond", { preHandler: requireRole("coach") }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const responderTeamId = request.user.teamId;
     if (!responderTeamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
 
-    const match = await db.transaction(async (tx) => {
-      const [announcement] = await tx
-        .select()
-        .from(matchAnnouncements)
-        .where(eq(matchAnnouncements.id, id))
-        .for("update");
-      if (!announcement) throw new HttpError(404, "Annonce introuvable");
-      if (announcement.teamId === responderTeamId)
-        throw new HttpError(400, "Vous ne pouvez pas répondre à votre propre annonce");
-      if (announcement.status !== "open") throw new HttpError(400, "Cette annonce n'est plus disponible");
+    const [announcement] = await db.select().from(matchAnnouncements).where(eq(matchAnnouncements.id, id));
+    if (!announcement) throw new HttpError(404, "Annonce introuvable");
+    if (announcement.teamId === responderTeamId)
+      throw new HttpError(400, "Vous ne pouvez pas répondre à votre propre annonce");
+    if (announcement.status !== "open") throw new HttpError(400, "Cette annonce n'est plus disponible");
 
-      await tx
-        .update(matchAnnouncements)
-        .set({ status: "matched" })
-        .where(and(eq(matchAnnouncements.id, id), eq(matchAnnouncements.status, "open")));
+    const [existing] = await db
+      .select()
+      .from(announcementResponses)
+      .where(and(eq(announcementResponses.announcementId, id), eq(announcementResponses.teamId, responderTeamId)));
+    if (existing) throw new HttpError(400, "Vous avez déjà proposé de jouer sur cette annonce");
 
-      const [created] = await tx
-        .insert(matches)
-        .values({
-          announcementId: announcement.id,
-          homeTeamId: announcement.teamId,
-          awayTeamId: responderTeamId,
-          date: announcement.date,
-          time: announcement.time,
-          location: `${announcement.stadium}, ${announcement.city}`,
-        })
-        .returning();
-      return created;
-    });
-
+    const [created] = await db
+      .insert(announcementResponses)
+      .values({ announcementId: id, teamId: responderTeamId })
+      .returning();
     reply.code(201);
-    return { matchId: match.id };
+    return { responseId: created.id };
   });
+
+  // Le coach émetteur accepte une proposition : l'annonce passe en "matched",
+  // le match est créé et les autres propositions en attente sont déclinées.
+  app.post(
+    "/announcements/:id/responses/:responseId/accept",
+    { preHandler: requireRole("coach") },
+    async (request, reply) => {
+      const { id, responseId } = request.params as { id: string; responseId: string };
+
+      const match = await db.transaction(async (tx) => {
+        const [announcement] = await tx
+          .select()
+          .from(matchAnnouncements)
+          .where(eq(matchAnnouncements.id, id))
+          .for("update");
+        if (!announcement) throw new HttpError(404, "Annonce introuvable");
+        if (announcement.teamId !== request.user.teamId)
+          throw new HttpError(403, "Cette annonce ne vous appartient pas");
+        if (announcement.status !== "open") throw new HttpError(400, "Cette annonce n'est plus ouverte");
+
+        const [response] = await tx
+          .select()
+          .from(announcementResponses)
+          .where(and(eq(announcementResponses.id, responseId), eq(announcementResponses.announcementId, id)));
+        if (!response) throw new HttpError(404, "Proposition introuvable");
+        if (response.status !== "pending") throw new HttpError(400, "Cette proposition n'est plus en attente");
+
+        await tx.update(matchAnnouncements).set({ status: "matched" }).where(eq(matchAnnouncements.id, id));
+        await tx
+          .update(announcementResponses)
+          .set({ status: "accepted" })
+          .where(eq(announcementResponses.id, responseId));
+        await tx
+          .update(announcementResponses)
+          .set({ status: "declined" })
+          .where(
+            and(
+              eq(announcementResponses.announcementId, id),
+              ne(announcementResponses.id, responseId),
+              eq(announcementResponses.status, "pending"),
+            ),
+          );
+
+        const [created] = await tx
+          .insert(matches)
+          .values({
+            announcementId: announcement.id,
+            homeTeamId: announcement.teamId,
+            awayTeamId: response.teamId,
+            date: announcement.date,
+            time: announcement.time,
+            location: `${announcement.stadium}, ${announcement.city}`,
+          })
+          .returning();
+        return created;
+      });
+
+      reply.code(201);
+      return { matchId: match.id };
+    },
+  );
+
+  // Le coach émetteur décline une proposition ; l'annonce reste ouverte.
+  app.post(
+    "/announcements/:id/responses/:responseId/decline",
+    { preHandler: requireRole("coach") },
+    async (request) => {
+      const { id, responseId } = request.params as { id: string; responseId: string };
+      const [announcement] = await db.select().from(matchAnnouncements).where(eq(matchAnnouncements.id, id));
+      if (!announcement) throw new HttpError(404, "Annonce introuvable");
+      if (announcement.teamId !== request.user.teamId)
+        throw new HttpError(403, "Cette annonce ne vous appartient pas");
+
+      const [response] = await db
+        .select()
+        .from(announcementResponses)
+        .where(and(eq(announcementResponses.id, responseId), eq(announcementResponses.announcementId, id)));
+      if (!response) throw new HttpError(404, "Proposition introuvable");
+      if (response.status !== "pending") throw new HttpError(400, "Cette proposition n'est plus en attente");
+
+      await db
+        .update(announcementResponses)
+        .set({ status: "declined" })
+        .where(eq(announcementResponses.id, responseId));
+      return { ok: true };
+    },
+  );
 }

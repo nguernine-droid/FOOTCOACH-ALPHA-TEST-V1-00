@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowLeftRight, Car, Flag, Goal, Lock, Minus, Play, Plus, Sparkles, Square, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Car, Flag, Goal, Lock, Minus, Play, Plus, ShieldCheck, Sparkles, Square, Trash2 } from "lucide-react";
 import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -91,6 +91,15 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
     load();
   }
 
+  // Organisateur : autoriser/retirer l'édition au coach adverse
+  async function toggleEditAuthorization(allowed: boolean) {
+    await api(`/matches/${id}/edit-authorization`, {
+      method: "PATCH",
+      body: JSON.stringify({ awayCoachCanEdit: allowed }),
+    });
+    load();
+  }
+
   if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
   if (!match) {
     return (
@@ -108,6 +117,10 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
   }
 
   const transporters = attendances.filter((a) => a.canTransport && a.transportSeats > 0);
+  // Seul le coach organisateur (équipe domicile, émetteur de l'annonce) édite le
+  // score et les temps forts — sauf s'il a autorisé le coach adverse.
+  const isOrganizer = match.mySide === "home";
+  const canEdit = isOrganizer || (match.mySide === "away" && match.awayCoachCanEdit);
 
   return (
     <div className="space-y-4">
@@ -121,41 +134,65 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
 
       <section className="card p-5 space-y-4">
         <h3 className="text-sm font-black">Score</h3>
+        {!canEdit && (
+          <p className="text-xs font-semibold text-ink-soft bg-paper rounded-lg px-4 py-3 flex items-center gap-2">
+            <Lock size={13} className="shrink-0" />
+            Seul le coach organisateur ({match.homeTeam.name}) peut modifier le score et les temps forts, sauf s&apos;il vous y autorise.
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-3">
           {([["home", match.homeTeam.name], ["away", match.awayTeam.name]] as const).map(([side, name]) => (
             <div key={side} className="bg-paper rounded-lg p-4 space-y-3 text-center">
               <p className="text-xs font-bold text-ink-soft truncate">{name}</p>
               <div className="flex items-center justify-center gap-3">
-                <button
-                  onClick={() => updateScore(side === "home" ? -1 : 0, side === "away" ? -1 : 0)}
-                  className="w-9 h-9 rounded-xl bg-white border border-line text-ink-soft hover:text-ink flex items-center justify-center transition active:scale-90"
-                  aria-label={`Retirer un but (${name})`}
-                >
-                  <Minus size={15} />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => updateScore(side === "home" ? -1 : 0, side === "away" ? -1 : 0)}
+                    className="w-9 h-9 rounded-xl bg-white border border-line text-ink-soft hover:text-ink flex items-center justify-center transition active:scale-90"
+                    aria-label={`Retirer un but (${name})`}
+                  >
+                    <Minus size={15} />
+                  </button>
+                )}
                 <span className="display text-4xl tabular-nums w-10">
                   {side === "home" ? match.homeScore : match.awayScore}
                 </span>
-                <button
-                  onClick={() => updateScore(side === "home" ? 1 : 0, side === "away" ? 1 : 0)}
-                  className="w-9 h-9 rounded-xl bg-pitch text-white flex items-center justify-center transition active:scale-90 shadow-sm"
-                  aria-label={`Ajouter un but (${name})`}
-                >
-                  <Plus size={15} />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => updateScore(side === "home" ? 1 : 0, side === "away" ? 1 : 0)}
+                    className="w-9 h-9 rounded-xl bg-pitch text-white flex items-center justify-center transition active:scale-90 shadow-sm"
+                    aria-label={`Ajouter un but (${name})`}
+                  >
+                    <Plus size={15} />
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
-        {match.status === "scheduled" && (
+        {canEdit && match.status === "scheduled" && (
           <Button className="w-full" onClick={() => setStatus("live")}>
             <Play size={15} /> Coup d&apos;envoi
           </Button>
         )}
-        {match.status === "live" && (
+        {canEdit && match.status === "live" && (
           <Button variant="accent" className="w-full" onClick={() => setStatus("finished")}>
             <Flag size={15} /> Coup de sifflet final
           </Button>
+        )}
+        {isOrganizer && (
+          <label className="flex items-center gap-3 bg-paper rounded-lg px-4 py-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={match.awayCoachCanEdit}
+              onChange={(e) => toggleEditAuthorization(e.target.checked)}
+              className="accent-navy-700 w-4 h-4 shrink-0"
+            />
+            <span className="text-xs font-semibold text-ink-soft flex items-center gap-1.5">
+              <ShieldCheck size={13} className="text-navy-700 shrink-0" />
+              Autoriser le coach de {match.awayTeam.name} à modifier le score et les temps forts
+            </span>
+          </label>
         )}
       </section>
       </div>
@@ -177,12 +214,20 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
               <span className="font-semibold">{ev.description}</span>
               <span className="text-ink-soft text-xs"> · {ev.side === "home" ? match.homeTeam.name : match.awayTeam.name}</span>
             </span>
-            <button onClick={() => deleteEvent(ev.id)} className="text-ink-soft/50 hover:text-coral transition shrink-0" aria-label="Supprimer">
-              <Trash2 size={14} />
-            </button>
+            {canEdit && (
+              <button onClick={() => deleteEvent(ev.id)} className="text-ink-soft/50 hover:text-coral transition shrink-0" aria-label="Supprimer">
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         ))}
 
+        {!canEdit && (
+          <p className="text-[10px] text-ink-soft flex items-center gap-1">
+            <Lock size={10} className="shrink-0" /> Saisie réservée au coach organisateur.
+          </p>
+        )}
+        {canEdit && (
         <form onSubmit={addEvent} className="space-y-3 border-t border-line pt-4">
           <div className="flex flex-wrap gap-2">
             {EVENT_TYPES.map((t) => (
@@ -232,6 +277,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
             <Button type="submit" size="md">Ajouter</Button>
           </div>
         </form>
+        )}
       </section>
 
       <section className="card p-5 space-y-4">

@@ -22,6 +22,9 @@ export type MatchSide = (typeof MATCH_SIDES)[number];
 export const BOOKING_STATUSES = ["pending", "approved", "declined"] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
+export const RESPONSE_STATUSES = ["pending", "accepted", "declined"] as const;
+export type ResponseStatus = (typeof RESPONSE_STATUSES)[number];
+
 export const MATCH_LEVELS = ["loisir", "competition"] as const;
 export type MatchLevel = (typeof MATCH_LEVELS)[number];
 
@@ -60,6 +63,11 @@ export const updateScoreSchema = z.object({
   status: z.enum(MATCH_STATUSES).optional(),
 });
 export type UpdateScoreInput = z.infer<typeof updateScoreSchema>;
+
+export const updateEditAuthorizationSchema = z.object({
+  awayCoachCanEdit: z.boolean(),
+});
+export type UpdateEditAuthorizationInput = z.infer<typeof updateEditAuthorizationSchema>;
 
 export const createMatchEventSchema = z.object({
   minute: z.number().int().min(0).max(150),
@@ -159,6 +167,14 @@ export interface TeamDto {
   city: string;
 }
 
+/** Proposition d'un coach adverse sur une annonce (visible par l'émetteur) */
+export interface AnnouncementResponseDto {
+  id: string;
+  team: TeamDto;
+  status: ResponseStatus;
+  createdAt: string;
+}
+
 export interface AnnouncementDto {
   id: string;
   team: TeamDto;
@@ -178,6 +194,10 @@ export interface AnnouncementDto {
   opponentTeam: TeamDto | null;
   /** Distance à vol d'oiseau entre ma ville et celle de l'annonceur (null si ville inconnue) */
   distanceKm: number | null;
+  /** Émetteur uniquement : propositions reçues (vide sinon) */
+  responses: AnnouncementResponseDto[];
+  /** Coach visiteur : statut de ma proposition sur cette annonce (null si aucune) */
+  myResponseStatus: ResponseStatus | null;
 }
 
 export interface MatchEventDto {
@@ -209,6 +229,10 @@ export interface MatchDto {
   status: MatchStatus;
   homeScore: number;
   awayScore: number;
+  /** Côté de l'équipe du spectateur (null : non rattaché à une des deux équipes) */
+  mySide: MatchSide | null;
+  /** true si le coach émetteur a autorisé le coach adverse à éditer score/temps forts */
+  awayCoachCanEdit: boolean;
   presentCount: number;
   absentCount: number;
   transportSeats: number;

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Car,
   CheckCircle2,
@@ -54,6 +55,7 @@ function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
 }
 
 export default function CoachDashboard() {
+  const router = useRouter();
   const now = useNow(1000);
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
@@ -82,6 +84,27 @@ export default function CoachDashboard() {
 
   async function cancelAnnouncement(id: string) {
     await api(`/announcements/${id}`, { method: "DELETE" }).catch(() => undefined);
+    loadAll();
+  }
+
+  // Accepter une proposition : le match est créé, on ouvre sa feuille de match
+  async function acceptResponse(announcementId: string, responseId: string) {
+    try {
+      const { matchId } = await api<{ matchId: string }>(
+        `/announcements/${announcementId}/responses/${responseId}/accept`,
+        { method: "POST" },
+      );
+      router.push(`/coach/matches/${matchId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'accepter cette proposition");
+      loadAll();
+    }
+  }
+
+  async function declineResponse(announcementId: string, responseId: string) {
+    await api(`/announcements/${announcementId}/responses/${responseId}/decline`, { method: "POST" }).catch(
+      () => undefined,
+    );
     loadAll();
   }
 
@@ -302,6 +325,7 @@ export default function CoachDashboard() {
           )}
 
           {announcements.map((a) => {
+            const pending = a.responses.filter((r) => r.status === "pending");
             const inner = (
               <div
                 className={cn(
@@ -313,23 +337,49 @@ export default function CoachDashboard() {
                   {a.category} · {a.format} · {formatDate(a.date)} à {a.time}
                 </p>
                 {a.status === "open" ? (
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
-                      En attente de réponse
-                    </p>
-                    <button
-                      onClick={() => cancelAnnouncement(a.id)}
-                      className="p-1.5 rounded-lg text-ink-faint hover:text-coral hover:bg-coral-soft transition"
-                      aria-label="Annuler cette annonce"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
+                        {pending.length === 0
+                          ? "En attente de proposition"
+                          : `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider`}
+                      </p>
+                      <button
+                        onClick={() => cancelAnnouncement(a.id)}
+                        className="p-1.5 rounded-lg text-ink-faint hover:text-coral hover:bg-coral-soft transition"
+                        aria-label="Annuler cette annonce"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                    {pending.map((r) => (
+                      <div key={r.id} className="flex items-center gap-2 bg-paper rounded-lg px-3 py-2 mt-1.5">
+                        <span
+                          className={cn(
+                            "w-7 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0",
+                            teamColor(r.team),
+                          )}
+                        >
+                          {teamInitials(r.team.name)}
+                        </span>
+                        <span className="flex-1 min-w-0 text-xs font-bold truncate">
+                          {r.team.name}
+                          <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
+                        </span>
+                        <Button size="sm" onClick={() => acceptResponse(a.id, r.id)}>
+                          Accepter
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => declineResponse(a.id, r.id)}>
+                          Décliner
+                        </Button>
+                      </div>
+                    ))}
+                  </>
                 ) : (
                   <p className="text-xs font-semibold text-success flex items-center gap-1.5">
                     <CheckCircle2 size={12} className="shrink-0" />
-                    Réponse reçue — {a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}
+                    Match confirmé — {a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}
                   </p>
                 )}
               </div>

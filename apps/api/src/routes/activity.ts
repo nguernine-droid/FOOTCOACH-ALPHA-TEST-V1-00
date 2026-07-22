@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import type { ActivityDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { attendances, carpoolBookings, matchAnnouncements, matches, teams, users } from "../db/schema.js";
+import { announcementResponses, attendances, carpoolBookings, matchAnnouncements, matches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
@@ -97,7 +97,26 @@ export function activityRoutes(app: FastifyInstance) {
       }
     }
 
-    // 3. Mes annonces acceptées par un autre coach
+    // 3. Propositions reçues sur mes annonces (en attente de ma validation)
+    const proposals = await db
+      .select({ response: announcementResponses, proposer: teams, announcement: matchAnnouncements })
+      .from(announcementResponses)
+      .innerJoin(matchAnnouncements, eq(announcementResponses.announcementId, matchAnnouncements.id))
+      .innerJoin(teams, eq(announcementResponses.teamId, teams.id))
+      .where(and(eq(matchAnnouncements.teamId, teamId), eq(announcementResponses.status, "pending")))
+      .orderBy(desc(announcementResponses.createdAt))
+      .limit(FEED_LIMIT);
+    for (const { response, proposer, announcement } of proposals) {
+      events.push({
+        id: `resp-${response.id}`,
+        type: "announcement",
+        actor: proposer.name,
+        detail: `propose de jouer votre annonce ${announcement.category} du ${new Date(`${announcement.date}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — à valider`,
+        createdAt: response.createdAt.toISOString(),
+      });
+    }
+
+    // 4. Matchs confirmés à partir de mes annonces
     const answered = await db
       .select({ match: matches, opponent: teams, announcement: matchAnnouncements })
       .from(matches)
@@ -111,7 +130,7 @@ export function activityRoutes(app: FastifyInstance) {
         id: `ann-${match.id}`,
         type: "announcement",
         actor: opponent.name,
-        detail: `a accepté votre annonce ${announcement.category} du ${new Date(`${match.date}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`,
+        detail: `jouera votre annonce ${announcement.category} du ${new Date(`${match.date}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — match confirmé`,
         createdAt: match.createdAt.toISOString(),
       });
     }

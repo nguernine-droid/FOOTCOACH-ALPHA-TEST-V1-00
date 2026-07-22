@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CalendarDays, MapPin, Navigation, Radar, X } from "lucide-react";
+import { CalendarDays, Clock3, MapPin, Navigation, Radar, X, XCircle } from "lucide-react";
 import type { AnnouncementDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
@@ -26,7 +25,6 @@ function byProximity(a: AnnouncementDto, b: AnnouncementDto): number {
 }
 
 export default function RadarPage() {
-  const router = useRouter();
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
@@ -50,12 +48,13 @@ export default function RadarPage() {
     setResponding(id);
     setError(null);
     try {
-      const { matchId } = await api<{ matchId: string }>(`/announcements/${id}/respond`, { method: "POST" });
-      router.push(`/coach/matches/${matchId}`);
+      await api(`/announcements/${id}/respond`, { method: "POST" });
+      await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de répondre");
-      setResponding(null);
       load();
+    } finally {
+      setResponding(null);
     }
   }
 
@@ -192,9 +191,21 @@ export default function RadarPage() {
             </div>
           )}
 
-          <Button className="w-full" onClick={() => respond(a.id)} disabled={responding === a.id}>
-            {responding === a.id ? "Confirmation…" : "Proposer de jouer"}
-          </Button>
+          {a.myResponseStatus === "pending" ? (
+            <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
+              <Clock3 size={14} className="shrink-0" />
+              Proposition envoyée — en attente de validation du coach
+            </p>
+          ) : a.myResponseStatus === "declined" ? (
+            <p className="text-xs font-bold text-coral bg-coral-soft rounded-lg px-4 py-3 flex items-center gap-2">
+              <XCircle size={14} className="shrink-0" />
+              Proposition déclinée par le coach
+            </p>
+          ) : (
+            <Button className="w-full" onClick={() => respond(a.id)} disabled={responding === a.id}>
+              {responding === a.id ? "Envoi…" : "Proposer de jouer"}
+            </Button>
+          )}
         </div>
       ))}
       </div>
