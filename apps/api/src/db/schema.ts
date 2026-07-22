@@ -23,6 +23,10 @@ export const responseStatus = pgEnum("response_status", ["pending", "accepted", 
 export const matchLevel = pgEnum("match_level", ["loisir", "competition"]);
 export const matchFormat = pgEnum("match_format", ["5v5", "8v8", "11v11"]);
 export const playerPosition = pgEnum("player_position", ["gardien", "defenseur", "milieu", "attaquant"]);
+// Types d'événements d'agenda créables — les matchs ne sont PAS stockés ici,
+// ils sont projetés dans l'agenda à la lecture (zéro double saisie).
+export const teamEventType = pgEnum("team_event_type", ["entrainement", "tournoi", "reunion", "autre"]);
+export const eventRecurrence = pgEnum("event_recurrence", ["none", "weekly"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -210,6 +214,47 @@ export const invitations = pgTable("invitations", {
   usedByUserId: uuid("used_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Événement d'agenda d'équipe (entraînement, tournoi, réunion…).
+// recurrence=weekly : occurrences générées à la lecture jusqu'à recurrence_until.
+export const teamEvents = pgTable("team_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamId: uuid("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  type: teamEventType("type").notNull(),
+  title: text("title").notNull(),
+  date: date("date").notNull(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time"),
+  location: text("location"),
+  description: text("description"),
+  recurrence: eventRecurrence("recurrence").notNull().default("none"),
+  recurrenceUntil: date("recurrence_until"),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Réponse de présence à UNE occurrence d'un événement (un entraînement hebdo
+// a une réponse par date). Les présences aux matchs restent dans attendances.
+export const eventAttendances = pgTable(
+  "event_attendances",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => teamEvents.id, { onDelete: "cascade" }),
+    occurrenceDate: date("occurrence_date").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: attendanceStatus("status").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("event_att_event_date_user_idx").on(t.eventId, t.occurrenceDate, t.userId)],
+);
 
 export const refreshTokens = pgTable("refresh_tokens", {
   id: uuid("id").primaryKey().defaultRandom(),

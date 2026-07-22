@@ -34,6 +34,16 @@ export type MatchFormat = (typeof MATCH_FORMATS)[number];
 export const PLAYER_POSITIONS = ["gardien", "defenseur", "milieu", "attaquant"] as const;
 export type PlayerPosition = (typeof PLAYER_POSITIONS)[number];
 
+/** Types d'événements d'agenda. "match" est virtuel : projeté depuis les matchs. */
+export const EVENT_TYPES = ["match", "entrainement", "tournoi", "reunion", "autre"] as const;
+export type EventType = (typeof EVENT_TYPES)[number];
+/** Types créables par le coach (tout sauf "match") */
+export const TEAM_EVENT_TYPES = ["entrainement", "tournoi", "reunion", "autre"] as const;
+export type TeamEventType = (typeof TEAM_EVENT_TYPES)[number];
+
+export const EVENT_RECURRENCES = ["none", "weekly"] as const;
+export type EventRecurrence = (typeof EVENT_RECURRENCES)[number];
+
 // ---------- Schémas de requêtes ----------
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -136,6 +146,36 @@ export const saveLineupSchema = z.object({
     .max(15),
 });
 export type SaveLineupInput = z.infer<typeof saveLineupSchema>;
+
+export const createEventSchema = z
+  .object({
+    type: z.enum(TEAM_EVENT_TYPES),
+    title: z.string().min(1).max(80),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
+    location: z.string().max(150).nullable().optional(),
+    description: z.string().max(500).nullable().optional(),
+    recurrence: z.enum(EVENT_RECURRENCES).default("none"),
+    recurrenceUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  })
+  .refine((v) => v.recurrence === "none" || !!v.recurrenceUntil, {
+    message: "Date de fin de récurrence requise",
+  })
+  .refine((v) => !v.recurrenceUntil || v.recurrenceUntil >= v.date, {
+    message: "La fin de récurrence doit être après la première date",
+  })
+  .refine((v) => !v.endTime || v.endTime > v.startTime, {
+    message: "L'heure de fin doit être après l'heure de début",
+  });
+export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+export const setEventAttendanceSchema = z.object({
+  /** Occurrence visée (= date de l'événement, ou date + k semaines si récurrent) */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  status: z.enum(ATTENDANCE_STATUSES),
+});
+export type SetEventAttendanceInput = z.infer<typeof setEventAttendanceSchema>;
 
 export const setAttendanceSchema = z.object({
   status: z.enum(ATTENDANCE_STATUSES),
@@ -347,6 +387,41 @@ export interface LineupDto {
   opponentLocked: boolean;
   /** Date/heure ISO à partir de laquelle la compo adverse devient visible */
   opponentVisibleAt: string;
+}
+
+/** Occurrence d'agenda : événement d'équipe OU match projeté */
+export interface AgendaItemDto {
+  /** Clé unique d'occurrence (affichage React uniquement — ne pas parser) */
+  id: string;
+  kind: "match" | "event";
+  matchId: string | null;
+  eventId: string | null;
+  occurrenceDate: string;
+  type: EventType;
+  title: string;
+  startTime: string;
+  endTime: string | null;
+  location: string | null;
+  description: string | null;
+  recurrence: EventRecurrence;
+  recurrenceUntil: string | null;
+  /** Compteurs filtrés sur l'équipe du demandeur */
+  presentCount: number;
+  absentCount: number;
+  /** Ma réponse à cette occurrence (null si pas répondu / non concerné) */
+  myStatus: AttendanceStatus | null;
+  matchStatus: MatchStatus | null;
+  /** true si le début est à moins de 24h : réponses verrouillées */
+  locked: boolean;
+}
+
+/** Réponse d'un joueur à une occurrence d'événement (vue coach) */
+export interface EventAttendanceDto {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  jerseyNumber: number | null;
+  status: AttendanceStatus | null;
 }
 
 export interface AuthResponseDto {
