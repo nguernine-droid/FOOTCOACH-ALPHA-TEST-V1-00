@@ -10,6 +10,7 @@ import {
   MapPin,
   Megaphone,
   Radar,
+  Trash2,
   UserCheck,
 } from "lucide-react";
 import type { ActivityDto, AnnouncementDto, LineupDto, LineupPlayerDto, MatchDto } from "@footcoach/shared";
@@ -19,6 +20,7 @@ import { formatCountdown, kickoffDate, timeAgo, useNow } from "@/lib/time";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { Pitch } from "@/components/Pitch";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 // Emplacements du 4-3-3 par défaut (x/y en %, but adverse en haut)
 const FORMATION_433 = [
@@ -39,9 +41,6 @@ function deriveFormation(players: LineupPlayerDto[]): string | null {
   return `${def}-${mid}-${att}`;
 }
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-lg bg-line/70", className)} aria-hidden />;
-}
 
 function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
   return (
@@ -63,7 +62,7 @@ export default function CoachDashboard() {
   const [error, setError] = useState<string | null>(null);
   const revealAttempted = useRef(false);
 
-  useEffect(() => {
+  const loadAll = useCallback(() => {
     Promise.all([
       api<MatchDto[]>("/matches"),
       api<AnnouncementDto[]>("/announcements"),
@@ -76,6 +75,15 @@ export default function CoachDashboard() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  async function cancelAnnouncement(id: string) {
+    await api(`/announcements/${id}`, { method: "DELETE" }).catch(() => undefined);
+    loadAll();
+  }
 
   const live = matches?.filter((m) => m.status === "live") ?? [];
   const upcoming = (matches?.filter((m) => m.status === "scheduled") ?? []).sort((a, b) =>
@@ -305,10 +313,19 @@ export default function CoachDashboard() {
                   {a.category} · {a.format} · {formatDate(a.date)} à {a.time}
                 </p>
                 {a.status === "open" ? (
-                  <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
-                    En attente de réponse
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
+                      En attente de réponse
+                    </p>
+                    <button
+                      onClick={() => cancelAnnouncement(a.id)}
+                      className="p-1.5 rounded-lg text-ink-faint hover:text-coral hover:bg-coral-soft transition"
+                      aria-label="Annuler cette annonce"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 ) : (
                   <p className="text-xs font-semibold text-success flex items-center gap-1.5">
                     <CheckCircle2 size={12} className="shrink-0" />

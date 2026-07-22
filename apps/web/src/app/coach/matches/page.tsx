@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { groupMatches } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 export default function CoachMatchesPage() {
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
@@ -20,7 +21,7 @@ export default function CoachMatchesPage() {
   }, []);
 
   if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
-  if (!matches) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
+  if (!matches) return <CardGridSkeleton cards={3} />;
 
   return (
     <div className="space-y-4">

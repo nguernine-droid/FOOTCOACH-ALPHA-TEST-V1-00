@@ -10,6 +10,7 @@ import { MatchCard } from "@/components/MatchCard";
 import { CarpoolSection } from "@/components/CarpoolSection";
 import { LineupEditor } from "@/components/LineupEditor";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const EVENT_TYPES: { value: MatchEventType; label: string; icon: React.ElementType }[] = [
   { value: "goal", label: "But", icon: Goal },
@@ -91,7 +92,20 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
   }
 
   if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
-  if (!match) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
+  if (!match) {
+    return (
+      <div className="grid gap-4 lg:grid-cols-2 items-start" aria-busy aria-label="Chargement">
+        <div className="space-y-4">
+          <Skeleton className="h-48" />
+          <Skeleton className="h-40" />
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-56" />
+          <Skeleton className="h-40" />
+        </div>
+      </div>
+    );
+  }
 
   const transporters = attendances.filter((a) => a.canTransport && a.transportSeats > 0);
 

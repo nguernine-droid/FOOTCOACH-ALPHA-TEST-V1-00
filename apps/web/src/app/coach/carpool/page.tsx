@@ -6,6 +6,7 @@ import type { MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { CarpoolSection } from "@/components/CarpoolSection";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 export default function CoachCarpoolPage() {
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
@@ -18,7 +19,7 @@ export default function CoachCarpoolPage() {
   }, []);
 
   if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
-  if (!matches) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
+  if (!matches) return <CardGridSkeleton cards={2} />;
 
   return (
     <div className="space-y-4">

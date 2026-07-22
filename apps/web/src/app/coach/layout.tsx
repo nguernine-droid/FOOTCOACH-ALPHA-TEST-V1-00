@@ -31,7 +31,7 @@ function CoachTabs() {
             role="tab"
             aria-selected={active}
             className={cn(
-              "inline-flex items-center gap-1.5 px-3.5 py-3 text-xs font-bold whitespace-nowrap border-b-2 -mb-px transition",
+              "inline-flex items-center gap-1.5 px-3.5 py-3 text-xs font-bold whitespace-nowrap border-b-2 -mb-px transition focus-visible:!outline-gold",
               active ? "text-white border-gold" : "text-white/55 border-transparent hover:text-white",
             )}
           >

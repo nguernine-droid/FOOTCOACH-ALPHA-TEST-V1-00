@@ -7,6 +7,7 @@ import type { PlayerPosition, TeamMemberDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 const POSITIONS: { value: PlayerPosition; label: string }[] = [
   { value: "gardien", label: "Gardien" },
@@ -196,7 +197,7 @@ function TeamContent() {
   }
 
   if (error && !members) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
-  if (!members) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
+  if (!members) return <CardGridSkeleton cards={2} />;
 
   const filtered = query
     ? members.filter((m) => `${m.firstName} ${m.lastName}`.toLowerCase().includes(query.toLowerCase()))

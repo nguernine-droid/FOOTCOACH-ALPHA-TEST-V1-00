@@ -8,6 +8,7 @@ import { cn, groupMatches } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
 import { CarpoolSection } from "@/components/CarpoolSection";
 import { TimeField } from "@/components/ui/TimeField";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 type TransportInput = {
   canTransport: boolean;
@@ -51,7 +52,7 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
   }
 
   if (error && !matches) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
-  if (!matches) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Chargement…</p>;
+  if (!matches) return <CardGridSkeleton cards={2} />;
   if (matches.length === 0)
     return (
       <div className="card p-8 text-center space-y-2">

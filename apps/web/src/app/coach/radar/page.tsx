@@ -10,6 +10,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
@@ -58,7 +59,7 @@ export default function RadarPage() {
     }
   }
 
-  if (!announcements) return <p className="text-ink-soft animate-soft-pulse text-sm font-semibold">Balayage du radar…</p>;
+  if (!announcements) return <CardGridSkeleton cards={3} />;
 
   const filtered = announcements
     .filter((a) => (category ? a.category === category : true))

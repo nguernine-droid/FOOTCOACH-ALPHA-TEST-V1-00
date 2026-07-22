@@ -74,6 +74,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Focus clavier visible et homogène sur tous les éléments interactifs */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="tab"]:focus-visible {
+    outline: 2px solid var(--color-blue);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
   body {
     @apply bg-paper text-ink selection:bg-blue-soft selection:text-navy-700;
     font-family: var(--font-inter), "Segoe UI", system-ui, -apple-system, sans-serif;
