@@ -115,12 +115,18 @@ function assertMemberOfMatch(match: typeof matches.$inferSelect, teamId: string 
   }
 }
 
-// Verrou fixe : les réponses de présence sont figées 24h avant le coup d'envoi
+// Verrou fixe : une réponse DÉJÀ DONNÉE ne peut plus être modifiée à moins de
+// 24h du coup d'envoi. Une première réponse reste possible jusqu'au début du
+// match (cas d'un match créé à moins de 24h de sa tenue).
 const ATTENDANCE_LOCK_MS = 24 * 3600 * 1000;
 
-function assertAttendanceOpen(match: typeof matches.$inferSelect) {
-  if (new Date(`${match.date}T${match.time}`).getTime() - Date.now() < ATTENDANCE_LOCK_MS) {
-    throw new HttpError(400, "Les réponses sont verrouillées 24h avant le coup d'envoi");
+function assertAttendanceOpen(match: typeof matches.$inferSelect, hasExistingAnswer: boolean) {
+  const untilKickoff = new Date(`${match.date}T${match.time}`).getTime() - Date.now();
+  if (untilKickoff <= 0) {
+    throw new HttpError(400, "Le match a déjà commencé : les réponses sont closes");
+  }
+  if (hasExistingAnswer && untilKickoff < ATTENDANCE_LOCK_MS) {
+    throw new HttpError(400, "À moins de 24h du coup d'envoi, votre réponse ne peut plus être modifiée");
   }
 }
 
@@ -240,6 +246,27 @@ export function matchRoutes(app: FastifyInstance) {
       .sort((a, b) => a.firstName.localeCompare(b.firstName));
   });
 
+  // Le coach fixe manuellement la réponse d'un joueur de SON équipe
+  // (missclick, désistement obligatoire…) — sans verrou temporel.
+  app.put("/matches/:id/attendance/:userId", { preHandler: requireRole("coach") }, async (request) => {
+    const { id, userId } = request.params as { id: string; userId: string };
+    const input = setAttendanceSchema.pick({ status: true }).parse(request.body);
+    const row = await getMatchOr404(id);
+    assertCoachOfMatch(row.match, request.user.teamId);
+    const [player] = await db.select().from(users).where(eq(users.id, userId));
+    if (!player || player.teamId !== request.user.teamId || player.role !== "player") {
+      throw new HttpError(404, "Joueur introuvable dans votre équipe");
+    }
+    await db
+      .insert(attendances)
+      .values({ matchId: id, userId, status: input.status, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [attendances.matchId, attendances.userId],
+        set: { status: input.status, updatedAt: new Date() },
+      });
+    return { ok: true };
+  });
+
   // Liste nominative des présences + transports — UNIQUEMENT les membres de sa propre
   // équipe : le coach adverse ne voit jamais qui sera présent en face.
   app.get("/matches/:id/attendances", { preHandler: requireRole("coach") }, async (request): Promise<AttendanceDto[]> => {
@@ -271,7 +298,11 @@ export function matchRoutes(app: FastifyInstance) {
     }
     const row = await getMatchOr404(id);
     assertMemberOfMatch(row.match, request.user.teamId);
-    assertAttendanceOpen(row.match);
+    const [existing] = await db
+      .select()
+      .from(attendances)
+      .where(and(eq(attendances.matchId, id), eq(attendances.userId, request.user.id)));
+    assertAttendanceOpen(row.match, existing != null);
 
     const canTransport = input.status === "present" && (input.canTransport ?? false);
 

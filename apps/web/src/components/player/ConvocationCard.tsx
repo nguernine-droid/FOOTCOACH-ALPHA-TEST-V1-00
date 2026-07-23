@@ -33,8 +33,12 @@ export function ConvocationCard({ match, onChanged }: { match: MatchDto; onChang
 
   const kickoff = kickoffDate(match.date, match.time);
   const countdown = formatCountdown(kickoff.getTime() - now.getTime());
-  const locked = match.status !== "scheduled" || kickoff.getTime() - now.getTime() < LOCK_MS;
   const mine = match.myAttendance;
+  const started = kickoff.getTime() - now.getTime() <= 0;
+  const inLockWindow = kickoff.getTime() - now.getTime() < LOCK_MS;
+  // Une réponse déjà donnée est figée à moins de 24h ; une première réponse
+  // reste possible jusqu'au coup d'envoi (match créé tardivement)
+  const locked = match.status !== "scheduled" || started || (inLockWindow && mine != null);
 
   async function answer(status: "present" | "absent") {
     if (mine?.status === status) return;
@@ -137,7 +141,11 @@ export function ConvocationCard({ match, onChanged }: { match: MatchDto; onChang
           </div>
           {locked ? (
             <p className="text-[11px] font-semibold text-ink-soft flex items-center gap-1.5">
-              <Lock size={11} className="shrink-0" /> Réponses verrouillées 24h avant le coup d&apos;envoi.
+              <Lock size={11} className="shrink-0" /> Ta réponse est verrouillée — contacte ton coach pour la changer.
+            </p>
+          ) : inLockWindow ? (
+            <p className="text-[11px] font-semibold text-sun flex items-center gap-1.5">
+              <Lock size={11} className="shrink-0" /> Attention : à moins de 24h du match, ta réponse ne pourra plus être modifiée.
             </p>
           ) : (
             mine && (

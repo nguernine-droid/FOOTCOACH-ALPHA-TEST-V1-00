@@ -76,15 +76,24 @@ export function AttendanceList({ parentMode }: { parentMode: boolean }) {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
         {section.items.map((match) => {
           const mine = match.myAttendance;
-          const locked = kickoffDate(match.date, match.time).getTime() - Date.now() < LOCK_MS;
+          const untilKickoff = kickoffDate(match.date, match.time).getTime() - Date.now();
+          // Une réponse déjà donnée est figée à moins de 24h ; une première
+          // réponse reste possible jusqu'au coup d'envoi
+          const locked = untilKickoff <= 0 || (untilKickoff < LOCK_MS && mine != null);
           const answerable = match.status === "scheduled" && !locked;
           return (
             <MatchCard key={match.id} match={match}>
               {match.status === "scheduled" && locked && (
                 <p className="text-xs font-semibold text-ink-soft bg-paper rounded-lg px-4 py-3 flex items-center gap-1.5">
                   <Lock size={12} className="shrink-0" />
-                  Réponses verrouillées 24h avant le coup d&apos;envoi
-                  {mine && ` — votre réponse : ${mine.status === "present" ? "présent" : "absent"}`}.
+                  Réponse verrouillée à moins de 24h du coup d&apos;envoi
+                  {mine && ` — votre réponse : ${mine.status === "present" ? "présent" : "absent"}`}. Contactez le coach pour la changer.
+                </p>
+              )}
+              {answerable && !locked && untilKickoff < LOCK_MS && (
+                <p className="text-xs font-semibold text-sun bg-sun-soft/60 rounded-lg px-4 py-3 flex items-center gap-1.5">
+                  <Lock size={12} className="shrink-0" />
+                  À moins de 24h du match : votre réponse ne pourra plus être modifiée.
                 </p>
               )}
               {answerable ? (

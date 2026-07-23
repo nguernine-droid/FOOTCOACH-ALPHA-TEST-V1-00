@@ -58,6 +58,28 @@ export function EventDetail({
     }
   }
 
+  // Correction manuelle d'un joueur par le coach — sans verrou temporel
+  async function setPlayerStatus(userId: string, status: "present" | "absent") {
+    setError(null);
+    try {
+      if (item.kind === "match") {
+        await api(`/matches/${item.matchId}/attendance/${userId}`, {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+        });
+      } else {
+        await api(`/events/${item.eventId}/attendances/${userId}`, {
+          method: "PUT",
+          body: JSON.stringify({ date: item.occurrenceDate, status }),
+        });
+      }
+      setResponses((rs) => rs?.map((r) => (r.userId === userId ? { ...r, status } : r)) ?? null);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'enregistrer");
+    }
+  }
+
   async function remove() {
     await api(`/events/${item.eventId}`, { method: "DELETE" }).catch(() => undefined);
     onChanged();
@@ -164,7 +186,7 @@ export function EventDetail({
                 </div>
                 {item.locked && (
                   <p className="text-[11px] font-semibold text-ink-soft flex items-center gap-1.5">
-                    <Lock size={11} className="shrink-0" /> Réponses verrouillées 24h avant le début.
+                    <Lock size={11} className="shrink-0" /> Réponse verrouillée à moins de 24h — contactez votre coach pour la changer.
                   </p>
                 )}
               </>
@@ -174,21 +196,41 @@ export function EventDetail({
               <div className="space-y-1.5 max-h-56 overflow-y-auto">
                 {responses.length === 0 && <p className="text-xs text-ink-soft">Aucun joueur dans l&apos;effectif.</p>}
                 {responses.map((r) => (
-                  <div key={r.userId} className="flex items-center gap-2.5 text-sm bg-paper rounded-lg px-3.5 py-2">
+                  <div key={r.userId} className="flex items-center gap-2 text-sm bg-paper rounded-lg px-3.5 py-2">
                     <span className="flex-1 min-w-0 font-bold truncate">
                       {r.firstName} {r.lastName}
                       {r.jerseyNumber != null && <span className="text-ink-faint font-semibold"> · {r.jerseyNumber}</span>}
                     </span>
-                    <span
+                    {/* Correction manuelle par le coach (missclick, désistement…) */}
+                    <button
+                      type="button"
+                      onClick={() => setPlayerStatus(r.userId, "present")}
+                      aria-pressed={r.status === "present"}
+                      aria-label={`Marquer ${r.firstName} présent`}
                       className={cn(
-                        "chip shrink-0",
-                        r.status === "present" && "bg-success-soft text-success",
-                        r.status === "absent" && "bg-coral-soft text-coral",
-                        r.status === null && "bg-white border border-line text-ink-soft",
+                        "p-1.5 rounded-lg transition shrink-0",
+                        r.status === "present"
+                          ? "bg-success text-white"
+                          : "bg-white border border-line text-ink-soft hover:text-success hover:border-success/40",
                       )}
                     >
-                      {r.status === "present" ? "Présent" : r.status === "absent" ? "Absent" : "Sans réponse"}
-                    </span>
+                      <Check size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPlayerStatus(r.userId, "absent")}
+                      aria-pressed={r.status === "absent"}
+                      aria-label={`Marquer ${r.firstName} absent`}
+                      className={cn(
+                        "p-1.5 rounded-lg transition shrink-0",
+                        r.status === "absent"
+                          ? "bg-coral text-white"
+                          : "bg-white border border-line text-ink-soft hover:text-coral hover:border-coral/40",
+                      )}
+                    >
+                      <X size={13} />
+                    </button>
+                    {r.status === null && <span className="chip bg-white border border-line text-ink-soft shrink-0">Sans réponse</span>}
                   </div>
                 ))}
               </div>

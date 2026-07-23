@@ -31,8 +31,20 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function isLocked(date: string, time: string): boolean {
+function isStarted(date: string, time: string): boolean {
+  return new Date(`${date}T${time}`).getTime() - Date.now() <= 0;
+}
+
+function isWithinLockWindow(date: string, time: string): boolean {
   return new Date(`${date}T${time}`).getTime() - Date.now() < LOCK_MS;
+}
+
+/**
+ * Une réponse déjà donnée est figée à moins de 24h du début ; une première
+ * réponse reste possible jusqu'au début (événement créé tardivement).
+ */
+function isLockedFor(date: string, time: string, hasAnswer: boolean): boolean {
+  return isStarted(date, time) || (hasAnswer && isWithinLockWindow(date, time));
 }
 
 /** Dates d'occurrence d'un événement dans [from, to] */
@@ -137,7 +149,7 @@ export function eventRoutes(app: FastifyInstance) {
         absentCount: list.filter((a) => a.status === "absent").length,
         myStatus: mine?.status ?? null,
         matchStatus: match.status,
-        locked: match.status !== "scheduled" || isLocked(match.date, match.time),
+        locked: match.status !== "scheduled" || isLockedFor(match.date, match.time, mine != null),
       });
     }
 
@@ -165,7 +177,7 @@ export function eventRoutes(app: FastifyInstance) {
           absentCount: list.filter((r) => r.status === "absent").length,
           myStatus: mine?.status ?? null,
           matchStatus: null,
-          locked: isLocked(date, event.startTime),
+          locked: isLockedFor(date, event.startTime, mine != null),
         });
       }
     }
@@ -235,12 +247,47 @@ export function eventRoutes(app: FastifyInstance) {
     const event = await getEventOr404(id);
     if (event.teamId !== request.user.teamId) throw new HttpError(403, "Cet événement ne concerne pas votre équipe");
     if (!isValidOccurrence(event, input.date)) throw new HttpError(400, "Cette date ne correspond à aucune occurrence");
-    if (isLocked(input.date, event.startTime)) {
-      throw new HttpError(400, "Les réponses sont verrouillées 24h avant le début");
+    if (isStarted(input.date, event.startTime)) {
+      throw new HttpError(400, "L'événement a déjà commencé : les réponses sont closes");
+    }
+    const [existing] = await db
+      .select()
+      .from(eventAttendances)
+      .where(
+        and(
+          eq(eventAttendances.eventId, id),
+          eq(eventAttendances.occurrenceDate, input.date),
+          eq(eventAttendances.userId, request.user.id),
+        ),
+      );
+    if (existing && isWithinLockWindow(input.date, event.startTime)) {
+      throw new HttpError(400, "À moins de 24h du début, votre réponse ne peut plus être modifiée");
     }
     await db
       .insert(eventAttendances)
       .values({ eventId: id, occurrenceDate: input.date, userId: request.user.id, status: input.status, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [eventAttendances.eventId, eventAttendances.occurrenceDate, eventAttendances.userId],
+        set: { status: input.status, updatedAt: new Date() },
+      });
+    return { ok: true };
+  });
+
+  // Le coach fixe manuellement la réponse d'un joueur pour une occurrence
+  // (missclick, désistement obligatoire…) — sans verrou temporel.
+  app.put("/events/:id/attendances/:userId", { preHandler: requireRole("coach") }, async (request) => {
+    const { id, userId } = request.params as { id: string; userId: string };
+    const input = setEventAttendanceSchema.parse(request.body);
+    const event = await getEventOr404(id);
+    if (event.teamId !== request.user.teamId) throw new HttpError(403, "Cet événement ne vous appartient pas");
+    if (!isValidOccurrence(event, input.date)) throw new HttpError(400, "Cette date ne correspond à aucune occurrence");
+    const [player] = await db.select().from(users).where(eq(users.id, userId));
+    if (!player || player.teamId !== event.teamId || player.role !== "player") {
+      throw new HttpError(404, "Joueur introuvable dans votre équipe");
+    }
+    await db
+      .insert(eventAttendances)
+      .values({ eventId: id, occurrenceDate: input.date, userId, status: input.status, updatedAt: new Date() })
       .onConflictDoUpdate({
         target: [eventAttendances.eventId, eventAttendances.occurrenceDate, eventAttendances.userId],
         set: { status: input.status, updatedAt: new Date() },

@@ -2,8 +2,8 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowLeftRight, Car, Flag, Goal, Lock, Minus, Play, Plus, ShieldCheck, Sparkles, Square, Trash2 } from "lucide-react";
-import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide } from "@footcoach/shared";
+import { ArrowLeft, ArrowLeftRight, Car, Flag, Goal, Lock, Minus, Play, Plus, ShieldCheck, Sparkles, Square, Trash2, UserCheck, UserX } from "lucide-react";
+import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide, TeamPresenceDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
@@ -30,6 +30,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const [match, setMatch] = useState<MatchDetailDto | null>(null);
   const [attendances, setAttendances] = useState<AttendanceDto[]>([]);
+  const [presence, setPresence] = useState<TeamPresenceDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [eventForm, setEventForm] = useState<{ minute: string; type: MatchEventType; side: MatchSide; description: string }>({
     minute: "",
@@ -40,12 +41,14 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
 
   const load = useCallback(async () => {
     try {
-      const [m, a] = await Promise.all([
+      const [m, a, p] = await Promise.all([
         api<MatchDetailDto>(`/matches/${id}`),
         api<AttendanceDto[]>(`/matches/${id}/attendances`),
+        api<TeamPresenceDto[]>(`/matches/${id}/presence`),
       ]);
       setMatch(m);
       setAttendances(a);
+      setPresence(p);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }
@@ -88,6 +91,12 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
 
   async function deleteEvent(eventId: string) {
     await api(`/matches/${id}/events/${eventId}`, { method: "DELETE" });
+    load();
+  }
+
+  // Correction manuelle de la réponse d'un joueur (missclick, désistement…)
+  async function setPlayerStatus(userId: string, status: "present" | "absent") {
+    await api(`/matches/${id}/attendance/${userId}`, { method: "PUT", body: JSON.stringify({ status }) });
     load();
   }
 
@@ -290,28 +299,72 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         <p className="text-[10px] text-ink-soft -mt-2 flex items-center gap-1">
           <Lock size={10} className="shrink-0" /> Visible uniquement par vous — le coach adverse ne voit pas ces informations.
         </p>
-        {attendances.length === 0 && <p className="text-xs text-ink-soft">Personne n&apos;a encore répondu.</p>}
-        {(
-          [
-            { label: "Joueurs", rows: attendances.filter((a) => a.role === "player") },
-            { label: "Parents", rows: attendances.filter((a) => a.role === "parent") },
-          ] as const
-        )
-          .filter((g) => g.rows.length > 0)
-          .map((group) => (
-            <div key={group.label} className="space-y-2">
-              <p className="text-xs font-bold text-ink-soft">
-                {group.label} ({group.rows.filter((r) => r.status === "present").length} présent
-                {group.rows.filter((r) => r.status === "present").length > 1 ? "s" : ""} / {group.rows.length})
-              </p>
-              {group.rows.map((a) => (
+        {/* Joueurs : roster complet, réponse corrigeable par le coach */}
+        {presence.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-ink-soft">
+              Joueurs ({presence.filter((r) => r.status === "present").length} présent
+              {presence.filter((r) => r.status === "present").length > 1 ? "s" : ""} / {presence.length})
+            </p>
+            {presence.map((p) => (
+              <div key={p.userId} className="flex items-center gap-2.5 text-sm bg-paper rounded-lg px-4 py-2.5">
+                <span className="w-9 h-9 rounded-xl bg-sky flex items-center justify-center text-white text-xs font-black shrink-0">
+                  {p.firstName[0]}
+                  {p.lastName[0]}
+                </span>
+                <span className="flex-1 min-w-0 font-bold truncate">
+                  {p.firstName} {p.lastName}
+                  {p.status === null && <span className="block text-[10px] font-semibold text-ink-faint">Pas encore répondu</span>}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPlayerStatus(p.userId, "present")}
+                  aria-pressed={p.status === "present"}
+                  aria-label={`Marquer ${p.firstName} présent`}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-lg text-xs font-bold transition shrink-0 inline-flex items-center gap-1",
+                    p.status === "present"
+                      ? "bg-success text-white"
+                      : "bg-white border border-line text-ink-soft hover:text-success hover:border-success/40",
+                  )}
+                >
+                  <UserCheck size={12} /> Présent
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlayerStatus(p.userId, "absent")}
+                  aria-pressed={p.status === "absent"}
+                  aria-label={`Marquer ${p.firstName} absent`}
+                  className={cn(
+                    "px-2.5 py-1.5 rounded-lg text-xs font-bold transition shrink-0 inline-flex items-center gap-1",
+                    p.status === "absent"
+                      ? "bg-coral text-white"
+                      : "bg-white border border-line text-ink-soft hover:text-coral hover:border-coral/40",
+                  )}
+                >
+                  <UserX size={12} /> Absent
+                </button>
+              </div>
+            ))}
+            <p className="text-[10px] text-ink-soft">
+              En cas de missclick ou de désistement, vous pouvez corriger la réponse d&apos;un joueur à tout moment.
+            </p>
+          </div>
+        )}
+
+        {/* Parents : réponses + covoiturage proposés */}
+        {attendances.filter((a) => a.role === "parent").length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-ink-soft">
+              Parents ({attendances.filter((a) => a.role === "parent" && a.status === "present").length} présent
+              {attendances.filter((a) => a.role === "parent" && a.status === "present").length > 1 ? "s" : ""} /{" "}
+              {attendances.filter((a) => a.role === "parent").length})
+            </p>
+            {attendances
+              .filter((a) => a.role === "parent")
+              .map((a) => (
                 <div key={a.userId} className="flex items-center gap-3 text-sm bg-paper rounded-lg px-4 py-3">
-                  <span
-                    className={cn(
-                      "w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0",
-                      a.role === "parent" ? "bg-tangerine" : "bg-sky",
-                    )}
-                  >
+                  <span className="w-9 h-9 rounded-xl bg-tangerine flex items-center justify-center text-white text-xs font-black shrink-0">
                     {a.firstName[0]}
                     {a.lastName[0]}
                   </span>
@@ -328,8 +381,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                   </span>
                 </div>
               ))}
-            </div>
-          ))}
+          </div>
+        )}
         {transporters.length > 0 && (
           <p className="text-xs text-ink-soft font-semibold bg-tangerine-soft/50 rounded-lg px-4 py-3 flex items-center gap-2">
             <Car size={14} className="text-tangerine shrink-0" />
