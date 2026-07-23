@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<Role, string> = {
   player: "Joueur",
   parent: "Parent",
   supporter: "Supporter",
+  admin: "Administrateur",
 };
 
 const ROLE_SPACES: Record<Role, string> = {
@@ -28,6 +29,7 @@ const ROLE_SPACES: Record<Role, string> = {
   player: "Espace joueur",
   parent: "Espace parent",
   supporter: "Espace supporter",
+  admin: "Administration",
 };
 
 export function RoleGuard({
@@ -48,8 +50,8 @@ export function RoleGuard({
   const [activitySeen, setActivitySeen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-  // Le supporter n'a pas accès au fil d'activité : pas de cloche pour lui
-  const hasNotifications = role !== "supporter";
+  // Le fil d'activité n'existe que pour coach/joueur/parent : pas de cloche sinon
+  const hasNotifications = role === "coach" || role === "player" || role === "parent";
 
   useEffect(() => {
     const stored = getStoredUser();

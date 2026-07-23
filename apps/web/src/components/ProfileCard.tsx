@@ -13,6 +13,7 @@ const ROLE_LABELS: Record<Role, string> = {
   player: "Joueur",
   parent: "Parent",
   supporter: "Supporter",
+  admin: "Administrateur",
 };
 
 const POSITION_LABELS: Record<PlayerPosition, string> = {

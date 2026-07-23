@@ -13,7 +13,7 @@ export function getStoredUser(): UserDto | null {
 }
 
 export function homeForRole(role: Role): string {
-  return { coach: "/coach", player: "/player", parent: "/parent", supporter: "/supporter" }[role];
+  return { coach: "/coach", player: "/player", parent: "/parent", supporter: "/supporter", admin: "/admin" }[role];
 }
 
 function storeSession(auth: AuthResponseDto) {
