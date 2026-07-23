@@ -14,7 +14,7 @@ function plusDays(days: number): string {
 
 async function upsertUser(input: {
   email: string;
-  role: "coach" | "player" | "parent" | "supporter";
+  role: "coach" | "player" | "parent" | "supporter" | "admin";
   firstName: string;
   lastName: string;
   teamId?: string | null;
@@ -52,6 +52,7 @@ async function main() {
   const player = await upsertUser({ email: "player@demo.fr", role: "player", firstName: "Paul", lastName: "Joueur", teamId: teamA.id });
   const parent = await upsertUser({ email: "parent@demo.fr", role: "parent", firstName: "Patricia", lastName: "Parent", teamId: teamA.id });
   await upsertUser({ email: "supporter@demo.fr", role: "supporter", firstName: "Sam", lastName: "Supporter", teamId: teamA.id });
+  await upsertUser({ email: "admin@demo.fr", role: "admin", firstName: "Alice", lastName: "Admin" });
 
   // Patricia est le parent assigné de Paul (elle valide ses covoiturages)
   // et a déjà renseigné ses infos conducteur pour la démo.

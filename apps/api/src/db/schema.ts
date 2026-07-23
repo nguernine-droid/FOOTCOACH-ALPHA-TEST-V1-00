@@ -13,7 +13,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const userRole = pgEnum("user_role", ["coach", "player", "parent", "supporter"]);
+export const userRole = pgEnum("user_role", ["coach", "player", "parent", "supporter", "admin"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
 export const matchStatus = pgEnum("match_status", ["scheduled", "live", "finished"]);
 export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"]);
@@ -29,6 +29,7 @@ export const playerPosition = pgEnum("player_position", ["gardien", "defenseur",
 export const teamEventType = pgEnum("team_event_type", ["entrainement", "tournoi", "reunion", "autre"]);
 export const eventRecurrence = pgEnum("event_recurrence", ["none", "weekly"]);
 export const joinRequestStatus = pgEnum("join_request_status", ["pending", "approved", "declined"]);
+export const resetRequestStatus = pgEnum("reset_request_status", ["pending", "handled"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -46,8 +47,36 @@ export const users = pgTable("users", {
   // Parent : infos conducteur, requises pour proposer un covoiturage
   licensePlate: text("license_plate"),
   driverLicenseNumber: text("driver_license_number"),
+  // Compte désactivé par l'admin : connexion et refresh refusés
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Une ligne par connexion réussie — alimente les stats admin (actifs, par jour/heure)
+export const loginEvents = pgTable("login_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: userRole("role").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Demande "mot de passe oublié" : visible par l'admin qui génère un mot de
+// passe temporaire (pas d'envoi d'email dans cette version).
+export const passwordResetRequests = pgTable(
+  "password_reset_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: resetRequestStatus("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    handledAt: timestamp("handled_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("reset_requests_pending_user_idx").on(t.userId).where(sql`status = 'pending'`)],
+);
 
 export const teams = pgTable("teams", {
   id: uuid("id").primaryKey().defaultRandom(),

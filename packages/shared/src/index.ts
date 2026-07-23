@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // ---------- Enums ----------
-export const ROLES = ["coach", "player", "parent", "supporter"] as const;
+export const ROLES = ["coach", "player", "parent", "supporter", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ANNOUNCEMENT_STATUSES = ["open", "matched", "cancelled"] as const;
@@ -126,6 +126,14 @@ export const resubmitJoinSchema = z.object({
   childUserId: z.string().uuid().optional(),
 });
 export type ResubmitJoinInput = z.infer<typeof resubmitJoinSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const updateAccountEmailSchema = z.object({
+  email: z.string().email(),
+});
 
 export const approveJoinRequestSchema = z.object({
   /** Le coach peut corriger l'enfant désigné par un parent avant d'accepter */
@@ -452,6 +460,36 @@ export interface EventAttendanceDto {
   lastName: string;
   jerseyNumber: number | null;
   status: AttendanceStatus | null;
+}
+
+// ---------- Espace admin ----------
+export interface AdminStatsDto {
+  totalAccounts: number;
+  byRole: Record<Role, number>;
+  /** Comptes distincts connectés au moins une fois sur la période */
+  active7d: number;
+  active30d: number;
+  teamsCount: number;
+  pendingResets: number;
+  /** 14 derniers jours, ordre chronologique */
+  loginsPerDay: { date: string; count: number }[];
+  /** 24 entrées (0h-23h) pour le jour demandé */
+  loginsPerHour: { hour: number; count: number }[];
+  /** Jour couvert par loginsPerHour (YYYY-MM-DD) */
+  hourlyDate: string;
+}
+
+export interface AdminAccountDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: Role;
+  teamName: string | null;
+  disabled: boolean;
+  hasPendingReset: boolean;
+  createdAt: string;
+  lastLoginAt: string | null;
 }
 
 export interface AuthResponseDto {

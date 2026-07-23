@@ -2,9 +2,16 @@ import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { driverInfoSchema, loginSchema, refreshSchema, type AuthResponseDto, type UserDto } from "@footcoach/shared";
+import {
+  driverInfoSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  refreshSchema,
+  type AuthResponseDto,
+  type UserDto,
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { joinRequests, refreshTokens, teams, users } from "../db/schema.js";
+import { joinRequests, loginEvents, passwordResetRequests, refreshTokens, teams, users } from "../db/schema.js";
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
@@ -87,6 +94,12 @@ export function authRoutes(app: FastifyInstance) {
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new HttpError(401, "Email ou mot de passe incorrect");
     }
+    // Après la vérification du mot de passe : ne révèle pas l'existence du compte
+    if (user.disabledAt) {
+      throw new HttpError(403, "Compte désactivé — contactez l'administrateur");
+    }
+    // Trace de connexion pour les statistiques admin
+    await db.insert(loginEvents).values({ userId: user.id, role: user.role });
     const authUser: AuthUser = { id: user.id, role: user.role, teamId: await resolveTeamId(user) };
     return {
       accessToken: signAccessToken(authUser),
@@ -108,6 +121,7 @@ export function authRoutes(app: FastifyInstance) {
     await db.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.id, stored.id));
     const [user] = await db.select().from(users).where(eq(users.id, stored.userId));
     if (!user) throw new HttpError(401, "Utilisateur introuvable");
+    if (user.disabledAt) throw new HttpError(403, "Compte désactivé — contactez l'administrateur");
     const authUser: AuthUser = { id: user.id, role: user.role, teamId: await resolveTeamId(user) };
     return {
       accessToken: signAccessToken(authUser),
@@ -123,6 +137,18 @@ export function authRoutes(app: FastifyInstance) {
         .update(refreshTokens)
         .set({ revokedAt: new Date() })
         .where(eq(refreshTokens.tokenHash, hashToken(body.data.refreshToken)));
+    }
+    return { ok: true };
+  });
+
+  // Mot de passe oublié : enregistre une demande visible par l'admin, qui
+  // génèrera un mot de passe temporaire. Réponse identique que le compte
+  // existe ou non (pas d'énumération d'emails).
+  app.post("/auth/forgot-password", async (request) => {
+    const { email } = forgotPasswordSchema.parse(request.body);
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    if (user && !user.disabledAt) {
+      await db.insert(passwordResetRequests).values({ userId: user.id }).onConflictDoNothing();
     }
     return { ok: true };
   });

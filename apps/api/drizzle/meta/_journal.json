@@ -78,6 +78,13 @@
       "when": 1784729200996,
       "tag": "0010_boring_ken_ellis",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784788648303,
+      "tag": "0011_wise_firelord",
+      "breakpoints": true
     }
   ]
 }
