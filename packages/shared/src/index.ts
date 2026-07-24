@@ -121,6 +121,22 @@ export const updateClubTeamSchema = z.object({
   city: z.string().min(1).max(60).optional(),
 });
 
+// Création d'un compte coach par le club (identifiants générés)
+export const createClubCoachSchema = z.object({
+  firstName: z.string().min(1).max(50),
+  lastName: z.string().min(1).max(50),
+  email: z.string().email(),
+});
+// Affectation d'un coach affilié à une équipe du club
+export const assignCoachSchema = z.object({
+  coachId: z.string().uuid(),
+  role: z.enum(TEAM_COACH_ROLES),
+});
+// Coach : demande d'affiliation à un club via son code
+export const affiliateClubSchema = z.object({
+  code: z.string().min(4).max(12),
+});
+
 export const JOIN_REQUEST_STATUSES = ["pending", "approved", "declined"] as const;
 export type JoinRequestStatus = (typeof JOIN_REQUEST_STATUSES)[number];
 
@@ -258,6 +274,10 @@ export interface UserDto {
   /** Joueur/parent sans équipe : état de sa dernière demande d'adhésion */
   joinRequestStatus?: JoinRequestStatus | null;
   pendingTeamName?: string | null;
+  /** Coach : club auquel il est affilié (null si aucun) */
+  clubName?: string | null;
+  /** Coach : club visé par une demande d'affiliation en attente (null sinon) */
+  pendingClubName?: string | null;
 }
 
 export interface TeamDto {
@@ -569,6 +589,22 @@ export interface ClubOverviewDto {
 export interface AdminCreateClubResultDto {
   club: ClubDto;
   ownerEmail: string;
+  tempPassword: string;
+}
+
+/** Demande d'affiliation d'un coach en attente de validation par le club */
+export interface ClubAffiliationRequestDto {
+  id: string;
+  coachId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  createdAt: string;
+}
+
+/** Création d'un compte coach par le club : identifiants affichés une seule fois */
+export interface CreateClubCoachResultDto {
+  coach: { id: string; firstName: string; lastName: string; email: string };
   tempPassword: string;
 }
 

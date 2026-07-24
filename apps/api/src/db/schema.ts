@@ -136,6 +136,26 @@ export const teamCoaches = pgTable(
   (t) => [uniqueIndex("team_coaches_team_coach_idx").on(t.teamId, t.coachId)],
 );
 
+// Demande d'affiliation d'un coach existant à un club, via le code d'affiliation.
+// Le coach initie (il connaît le code) ; le club valide. À l'acceptation :
+// users.clubId du coach = clubId.
+export const clubAffiliationRequests = pgTable(
+  "club_affiliation_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    coachId: uuid("coach_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clubId: uuid("club_id")
+      .notNull()
+      .references(() => clubs.id, { onDelete: "cascade" }),
+    status: joinRequestStatus("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("club_affiliation_pending_coach_idx").on(t.coachId).where(sql`status = 'pending'`)],
+);
+
 export const matchAnnouncements = pgTable("match_announcements", {
   id: uuid("id").primaryKey().defaultRandom(),
   teamId: uuid("team_id")

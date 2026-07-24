@@ -1,19 +1,25 @@
 import type { FastifyInstance } from "fastify";
+import bcrypt from "bcryptjs";
 import { and, asc, count, eq, inArray } from "drizzle-orm";
 import {
+  assignCoachSchema,
+  createClubCoachSchema,
   createClubTeamSchema,
   updateClubTeamSchema,
+  type ClubAffiliationRequestDto,
   type ClubCoachDto,
   type ClubDto,
   type ClubOverviewDto,
   type ClubTeamDto,
+  type CreateClubCoachResultDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { clubs, teamCoaches, teams, users } from "../db/schema.js";
+import { clubAffiliationRequests, clubs, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "./registration.js";
 import { cityCoords } from "../lib/cities.js";
+import { generateTempPassword } from "../lib/passwords.js";
 
 export function toClubDto(club: typeof clubs.$inferSelect): ClubDto {
   return { id: club.id, name: club.name, city: club.city, email: club.email, affiliationCode: club.affiliationCode };
@@ -194,5 +200,132 @@ export function clubRoutes(app: FastifyInstance) {
         .filter((a) => a.coachId === c.id)
         .map((a) => ({ id: a.teamId, name: a.teamName, role: a.role })),
     }));
+  });
+
+  // Coach affilié à ce club (sinon 404) — garde des affectations
+  async function affiliatedCoach(clubId: string, coachId: string) {
+    const [coach] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, coachId), eq(users.role, "coach"), eq(users.clubId, clubId)));
+    if (!coach) throw new HttpError(404, "Ce coach n'est pas affilié à votre club");
+    return coach;
+  }
+
+  // Création d'un compte coach par le club (affilié d'emblée). Mot de passe
+  // temporaire retourné une seule fois.
+  app.post("/club/coaches", async (request, reply): Promise<CreateClubCoachResultDto> => {
+    const club = await getClubByOwner(request.user.id);
+    const input = createClubCoachSchema.parse(request.body);
+    const email = input.email.toLowerCase();
+    const [existing] = await db.select().from(users).where(eq(users.email, email));
+    if (existing) throw new HttpError(400, "Un compte existe déjà avec cet email");
+
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const [coach] = await db
+      .insert(users)
+      .values({
+        email,
+        passwordHash,
+        role: "coach",
+        firstName: input.firstName,
+        lastName: input.lastName,
+        clubId: club.id,
+      })
+      .returning();
+
+    reply.code(201);
+    return {
+      coach: { id: coach.id, firstName: coach.firstName, lastName: coach.lastName, email: coach.email },
+      tempPassword,
+    };
+  });
+
+  app.get("/club/affiliation-requests", async (request): Promise<ClubAffiliationRequestDto[]> => {
+    const club = await getClubByOwner(request.user.id);
+    const rows = await db
+      .select({ request: clubAffiliationRequests, coach: users })
+      .from(clubAffiliationRequests)
+      .innerJoin(users, eq(clubAffiliationRequests.coachId, users.id))
+      .where(and(eq(clubAffiliationRequests.clubId, club.id), eq(clubAffiliationRequests.status, "pending")))
+      .orderBy(asc(clubAffiliationRequests.createdAt));
+    return rows.map(({ request: r, coach }) => ({
+      id: r.id,
+      coachId: coach.id,
+      firstName: coach.firstName,
+      lastName: coach.lastName,
+      email: coach.email,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  });
+
+  // Accepter : le coach rejoint le club (users.clubId posé)
+  app.post("/club/affiliation-requests/:id/approve", async (request) => {
+    const club = await getClubByOwner(request.user.id);
+    const { id } = request.params as { id: string };
+    await db.transaction(async (tx) => {
+      const [req] = await tx
+        .select()
+        .from(clubAffiliationRequests)
+        .where(
+          and(
+            eq(clubAffiliationRequests.id, id),
+            eq(clubAffiliationRequests.clubId, club.id),
+            eq(clubAffiliationRequests.status, "pending"),
+          ),
+        )
+        .for("update");
+      if (!req) throw new HttpError(404, "Demande introuvable ou déjà traitée");
+      await tx.update(users).set({ clubId: club.id }).where(eq(users.id, req.coachId));
+      await tx
+        .update(clubAffiliationRequests)
+        .set({ status: "approved", decidedAt: new Date() })
+        .where(eq(clubAffiliationRequests.id, id));
+    });
+    return { ok: true };
+  });
+
+  app.post("/club/affiliation-requests/:id/decline", async (request) => {
+    const club = await getClubByOwner(request.user.id);
+    const { id } = request.params as { id: string };
+    const [updated] = await db
+      .update(clubAffiliationRequests)
+      .set({ status: "declined", decidedAt: new Date() })
+      .where(
+        and(
+          eq(clubAffiliationRequests.id, id),
+          eq(clubAffiliationRequests.clubId, club.id),
+          eq(clubAffiliationRequests.status, "pending"),
+        ),
+      )
+      .returning();
+    if (!updated) throw new HttpError(404, "Demande introuvable ou déjà traitée");
+    return { ok: true };
+  });
+
+  // Affecter un coach affilié à une équipe du club (principal ou adjoint)
+  app.post("/club/teams/:id/coaches", async (request, reply) => {
+    const club = await getClubByOwner(request.user.id);
+    const { id } = request.params as { id: string };
+    await ownedTeam(club.id, id);
+    const input = assignCoachSchema.parse(request.body);
+    await affiliatedCoach(club.id, input.coachId);
+    await db
+      .insert(teamCoaches)
+      .values({ teamId: id, coachId: input.coachId, role: input.role })
+      .onConflictDoUpdate({ target: [teamCoaches.teamId, teamCoaches.coachId], set: { role: input.role } });
+    reply.code(201);
+    return { ok: true };
+  });
+
+  app.delete("/club/teams/:id/coaches/:coachId", async (request) => {
+    const club = await getClubByOwner(request.user.id);
+    const { id, coachId } = request.params as { id: string; coachId: string };
+    await ownedTeam(club.id, id);
+    await db
+      .delete(teamCoaches)
+      .where(and(eq(teamCoaches.teamId, id), eq(teamCoaches.coachId, coachId)));
+    return { ok: true };
   });
 }

@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import {
+  affiliateClubSchema,
   approveJoinRequestSchema,
   registerCoachSchema,
   registerJoinSchema,
@@ -16,6 +17,8 @@ import {
 import { db } from "../db/client.js";
 import {
   attendances,
+  clubAffiliationRequests,
+  clubs,
   joinRequests,
   matches,
   teamCoaches,
@@ -215,6 +218,28 @@ export function registrationRoutes(app: FastifyInstance) {
     coach.get("/team/join-code", async (request) => {
       const team = await getCoachTeam(request.user.teamId);
       return { code: team.joinCode };
+    });
+
+    // Demande d'affiliation à un club via son code (le club valide ensuite)
+    coach.post("/coach/affiliation", async (request, reply) => {
+      const input = affiliateClubSchema.parse(request.body);
+      const [club] = await db.select().from(clubs).where(eq(clubs.affiliationCode, input.code.toUpperCase().trim()));
+      if (!club) throw new HttpError(404, "Code d'affiliation invalide");
+
+      const [me] = await db.select().from(users).where(eq(users.id, request.user.id));
+      if (me?.clubId === club.id) throw new HttpError(400, "Vous êtes déjà affilié à ce club");
+
+      const [pending] = await db
+        .select()
+        .from(clubAffiliationRequests)
+        .where(
+          and(eq(clubAffiliationRequests.coachId, request.user.id), eq(clubAffiliationRequests.status, "pending")),
+        );
+      if (pending) throw new HttpError(400, "Vous avez déjà une demande d'affiliation en attente");
+
+      await db.insert(clubAffiliationRequests).values({ coachId: request.user.id, clubId: club.id });
+      reply.code(201);
+      return { ok: true, clubName: club.name };
     });
 
     // Régénérer le code (l'ancien cesse immédiatement de fonctionner)

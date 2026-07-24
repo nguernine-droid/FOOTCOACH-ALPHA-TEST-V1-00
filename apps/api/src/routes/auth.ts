@@ -13,6 +13,8 @@ import {
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
+  clubAffiliationRequests,
+  clubs,
   joinRequests,
   loginEvents,
   passwordResetRequests,
@@ -56,10 +58,26 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
   let teamId = user.teamId;
   let teamName: string | null = null;
   let coachTeams: CoachTeamDto[] | undefined;
+  let clubName: string | null | undefined;
+  let pendingClubName: string | null | undefined;
   if (user.role === "coach") {
     coachTeams = await getCoachTeams(user.id);
     teamId = coachTeams[0]?.id ?? null;
     teamName = coachTeams[0]?.name ?? null;
+    if (user.clubId) {
+      const [club] = await db.select().from(clubs).where(eq(clubs.id, user.clubId));
+      clubName = club?.name ?? null;
+    } else {
+      // Pas encore affilié : exposer une éventuelle demande en attente
+      const [pending] = await db
+        .select({ name: clubs.name })
+        .from(clubAffiliationRequests)
+        .innerJoin(clubs, eq(clubAffiliationRequests.clubId, clubs.id))
+        .where(and(eq(clubAffiliationRequests.coachId, user.id), eq(clubAffiliationRequests.status, "pending")))
+        .limit(1);
+      clubName = null;
+      pendingClubName = pending?.name ?? null;
+    }
   } else if (teamId) {
     const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
     teamName = team?.name ?? null;
@@ -92,6 +110,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     teamId,
     teamName,
     ...(coachTeams ? { teams: coachTeams } : {}),
+    ...(user.role === "coach" ? { clubName: clubName ?? null, pendingClubName: pendingClubName ?? null } : {}),
     hasDriverInfo: Boolean(user.licensePlate && user.driverLicenseNumber),
     parentId: user.parentId,
     position: user.position,

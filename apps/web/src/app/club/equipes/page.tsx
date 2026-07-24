@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Plus, ShieldCheck, Ticket, Trash2, Users, X } from "lucide-react";
-import type { ClubTeamDto } from "@footcoach/shared";
+import { Pencil, Plus, ShieldCheck, Ticket, Trash2, UserPlus, Users, X } from "lucide-react";
+import type { ClubCoachDto, ClubTeamDto, TeamCoachRole } from "@footcoach/shared";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
@@ -61,13 +61,27 @@ function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function TeamCard({ team, onChanged }: { team: ClubTeamDto; onChanged: () => void }) {
+function TeamCard({
+  team,
+  availableCoaches,
+  onChanged,
+}: {
+  team: ClubTeamDto;
+  availableCoaches: ClubCoachDto[];
+  onChanged: () => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(team.name);
   const [city, setCity] = useState(team.city);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [pickCoach, setPickCoach] = useState("");
+  const [pickRole, setPickRole] = useState<TeamCoachRole>("principal");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Coachs affiliés pas encore affectés à cette équipe
+  const assignable = availableCoaches.filter((c) => !team.coaches.some((tc) => tc.id === c.id));
 
   async function action(fn: () => Promise<void>) {
     setBusy(true);
@@ -106,6 +120,20 @@ function TeamCard({ team, onChanged }: { team: ClubTeamDto; onChanged: () => voi
             <span key={c.id} className="chip bg-pitch-soft text-pitch-deep">
               <ShieldCheck size={11} /> {c.firstName} {c.lastName}
               {c.role === "adjoint" ? " (adjoint)" : ""}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  action(async () => {
+                    await api(`/club/teams/${team.id}/coaches/${c.id}`, { method: "DELETE" });
+                    onChanged();
+                  })
+                }
+                className="ml-1 hover:text-coral transition"
+                aria-label={`Retirer ${c.firstName} ${c.lastName}`}
+              >
+                <X size={11} />
+              </button>
             </span>
           ))
         )}
@@ -113,6 +141,53 @@ function TeamCard({ team, onChanged }: { team: ClubTeamDto; onChanged: () => voi
           <Ticket size={11} /> {team.joinCode}
         </span>
       </div>
+
+      {assigning ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            action(async () => {
+              await api(`/club/teams/${team.id}/coaches`, {
+                method: "POST",
+                body: JSON.stringify({ coachId: pickCoach, role: pickRole }),
+              });
+              setAssigning(false);
+              setPickCoach("");
+              onChanged();
+            });
+          }}
+          className="bg-paper rounded-lg px-4 py-3 space-y-2.5"
+        >
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-ink-soft" htmlFor={`coach-${team.id}`}>Coach</label>
+            <select id={`coach-${team.id}`} required value={pickCoach} onChange={(e) => setPickCoach(e.target.value)} className="field">
+              <option value="">Choisir un coach…</option>
+              {assignable.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.firstName} {c.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-ink-soft" htmlFor={`role-${team.id}`}>Rôle</label>
+            <select id={`role-${team.id}`} value={pickRole} onChange={(e) => setPickRole(e.target.value as TeamCoachRole)} className="field">
+              <option value="principal">Coach principal</option>
+              <option value="adjoint">Coach adjoint</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setAssigning(false)}>Annuler</Button>
+            <Button type="submit" size="sm" disabled={busy || !pickCoach}>Affecter</Button>
+          </div>
+        </form>
+      ) : (
+        assignable.length > 0 && (
+          <Button size="sm" variant="soft" disabled={busy} onClick={() => setAssigning(true)}>
+            <UserPlus size={13} /> Affecter un coach
+          </Button>
+        )
+      )}
 
       {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
 
@@ -180,11 +255,17 @@ function TeamCard({ team, onChanged }: { team: ClubTeamDto; onChanged: () => voi
 
 export default function ClubTeamsPage() {
   const [teams, setTeams] = useState<ClubTeamDto[] | null>(null);
+  const [coaches, setCoaches] = useState<ClubCoachDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setTeams(await api<ClubTeamDto[]>("/club/teams"));
+      const [t, c] = await Promise.all([
+        api<ClubTeamDto[]>("/club/teams"),
+        api<ClubCoachDto[]>("/club/coaches"),
+      ]);
+      setTeams(t);
+      setCoaches(c);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }
@@ -216,7 +297,7 @@ export default function ClubTeamsPage() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2 items-start">
           {teams.map((team) => (
-            <TeamCard key={team.id} team={team} onChanged={load} />
+            <TeamCard key={team.id} team={team} availableCoaches={coaches} onChanged={load} />
           ))}
         </div>
       )}

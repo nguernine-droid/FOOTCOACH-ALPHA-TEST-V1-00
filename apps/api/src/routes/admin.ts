@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, count, desc, eq, gte, ilike, isNull, max, or } from "drizzle-orm";
@@ -18,17 +17,12 @@ import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "./registration.js";
 import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
+import { generateTempPassword } from "../lib/passwords.js";
 
 const DAY_MS = 24 * 3600 * 1000;
 
 function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-// Mot de passe temporaire lisible (à transmettre oralement/SMS par l'admin)
-function generateTempPassword(): string {
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  return Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join("");
 }
 
 async function revokeAllSessions(userId: string) {
