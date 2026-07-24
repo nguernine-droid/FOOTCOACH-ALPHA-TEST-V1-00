@@ -22,6 +22,7 @@ const ROLE_LABELS: Record<Role, string> = {
   parent: "Parent",
   supporter: "Supporter",
   admin: "Administrateur",
+  club: "Club",
 };
 
 const ROLE_SPACES: Record<Role, string> = {
@@ -30,6 +31,7 @@ const ROLE_SPACES: Record<Role, string> = {
   parent: "Espace parent",
   supporter: "Espace supporter",
   admin: "Administration",
+  club: "Espace club",
 };
 
 export function RoleGuard({

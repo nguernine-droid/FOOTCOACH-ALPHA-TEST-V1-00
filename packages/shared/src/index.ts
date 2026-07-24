@@ -1,8 +1,12 @@
 import { z } from "zod";
 
 // ---------- Enums ----------
-export const ROLES = ["coach", "player", "parent", "supporter", "admin"] as const;
+export const ROLES = ["coach", "player", "parent", "supporter", "admin", "club"] as const;
 export type Role = (typeof ROLES)[number];
+
+// Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs)
+export const TEAM_COACH_ROLES = ["principal", "adjoint"] as const;
+export type TeamCoachRole = (typeof TEAM_COACH_ROLES)[number];
 
 export const ANNOUNCEMENT_STATUSES = ["open", "matched", "cancelled"] as const;
 export type AnnouncementStatus = (typeof ANNOUNCEMENT_STATUSES)[number];

@@ -16,6 +16,7 @@ const ROLE_LABELS: Record<Role, string> = {
   parent: "Parents",
   supporter: "Supporters",
   admin: "Admins",
+  club: "Clubs",
 };
 
 const DAY_SHORT = ["D", "L", "M", "M", "J", "V", "S"];

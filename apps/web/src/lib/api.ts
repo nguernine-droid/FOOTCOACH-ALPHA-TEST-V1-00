@@ -5,6 +5,8 @@ import type { AuthResponseDto, Role, UserDto } from "@footcoach/shared";
 const ACCESS_KEY = "fc_access_token";
 const REFRESH_KEY = "fc_refresh_token";
 const USER_KEY = "fc_user";
+// Coach multi-équipes : équipe active envoyée en header X-Team-Id sur chaque appel
+const ACTIVE_TEAM_KEY = "fc_active_team";
 
 export function getStoredUser(): UserDto | null {
   if (typeof window === "undefined") return null;
@@ -12,24 +14,50 @@ export function getStoredUser(): UserDto | null {
   return raw ? (JSON.parse(raw) as UserDto) : null;
 }
 
+export function getActiveTeamId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ACTIVE_TEAM_KEY);
+}
+
+export function setActiveTeamId(teamId: string) {
+  localStorage.setItem(ACTIVE_TEAM_KEY, teamId);
+}
+
+// Aligne l'équipe active stockée sur les équipes réelles du coach : garde la
+// sélection si elle est encore valide, sinon retombe sur l'équipe principale.
+// Pour les autres rôles, aucune équipe active n'est nécessaire.
+function syncActiveTeam(user: UserDto) {
+  if (user.role !== "coach" || !user.teams?.length) {
+    localStorage.removeItem(ACTIVE_TEAM_KEY);
+    return;
+  }
+  const current = localStorage.getItem(ACTIVE_TEAM_KEY);
+  if (!current || !user.teams.some((t) => t.id === current)) {
+    localStorage.setItem(ACTIVE_TEAM_KEY, user.teams[0].id);
+  }
+}
+
 export function homeForRole(role: Role): string {
-  return { coach: "/coach", player: "/player", parent: "/parent", supporter: "/supporter", admin: "/admin" }[role];
+  return { coach: "/coach", player: "/player", parent: "/parent", supporter: "/supporter", admin: "/admin", club: "/club" }[role];
 }
 
 function storeSession(auth: AuthResponseDto) {
   localStorage.setItem(ACCESS_KEY, auth.accessToken);
   localStorage.setItem(REFRESH_KEY, auth.refreshToken);
   localStorage.setItem(USER_KEY, JSON.stringify(auth.user));
+  syncActiveTeam(auth.user);
 }
 
 export function updateStoredUser(user: UserDto) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+  syncActiveTeam(user);
 }
 
 export function clearSession() {
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
   localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(ACTIVE_TEAM_KEY);
 }
 
 export class ApiError extends Error {

@@ -13,7 +13,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const userRole = pgEnum("user_role", ["coach", "player", "parent", "supporter", "admin"]);
+export const userRole = pgEnum("user_role", ["coach", "player", "parent", "supporter", "admin", "club"]);
+// Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs).
+export const teamCoachRole = pgEnum("team_coach_role", ["principal", "adjoint"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
 export const matchStatus = pgEnum("match_status", ["scheduled", "live", "finished"]);
 export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"]);
@@ -39,6 +41,8 @@ export const users = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   teamId: uuid("team_id"),
+  // Coach : club auquel il est affilié (NULL = coach indépendant, sans club)
+  clubId: uuid("club_id").references((): any => clubs.id),
   // Joueur : compte parent assigné (valide ses réservations de covoiturage)
   parentId: uuid("parent_id"),
   // Joueur : fiche sportive renseignée par le coach
@@ -85,14 +89,52 @@ export const teams = pgTable("teams", {
   // Coordonnées approximatives de la ville (annuaire statique, pas d'API externe)
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
-  coachId: uuid("coach_id")
-    .notNull()
-    .unique()
-    .references(() => users.id),
+  // Club propriétaire de l'équipe (NULL = équipe d'un coach indépendant, sans club)
+  clubId: uuid("club_id").references(() => clubs.id),
+  // Affectation des coachs : voir table team_coaches (une équipe peut avoir
+  // plusieurs coachs, un coach plusieurs équipes). Colonne conservée en transition,
+  // désormais nullable et non-unique ; les lectures migrent vers team_coaches.
+  coachId: uuid("coach_id").references(() => users.id),
   // Code d'équipe unique partagé aux joueurs/parents pour rejoindre en autonomie
   joinCode: text("join_code").notNull().unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Un club = une entité propriétaire de plusieurs équipes, à laquelle des coachs
+// sont affiliés. Le compte de connexion du club est un users(role="club") pointé
+// par ownerId. affiliationCode permet à un coach existant de rejoindre le club.
+export const clubs = pgTable("clubs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  city: text("city").notNull(),
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  email: text("email"),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .unique()
+    .references(() => users.id),
+  affiliationCode: text("affiliation_code").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Affectation coach ↔ équipe (N:N). Une équipe peut avoir un coach "principal"
+// et des "adjoints" ; un coach peut être affecté à plusieurs équipes du club.
+export const teamCoaches = pgTable(
+  "team_coaches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    coachId: uuid("coach_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: teamCoachRole("role").notNull().default("principal"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("team_coaches_team_coach_idx").on(t.teamId, t.coachId)],
+);
 
 export const matchAnnouncements = pgTable("match_announcements", {
   id: uuid("id").primaryKey().defaultRandom(),

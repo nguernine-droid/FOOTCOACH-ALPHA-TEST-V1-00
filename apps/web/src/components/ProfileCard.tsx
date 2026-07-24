@@ -14,6 +14,7 @@ const ROLE_LABELS: Record<Role, string> = {
   parent: "Parent",
   supporter: "Supporter",
   admin: "Administrateur",
+  club: "Club",
 };
 
 const POSITION_LABELS: Record<PlayerPosition, string> = {

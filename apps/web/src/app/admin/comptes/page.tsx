@@ -15,6 +15,7 @@ const ROLE_META: Record<Role, { label: string; chip: string }> = {
   parent: { label: "Parent", chip: "bg-tangerine-soft text-tangerine" },
   supporter: { label: "Supporter", chip: "bg-sun-soft text-sun" },
   admin: { label: "Admin", chip: "bg-navy-700 text-white" },
+  club: { label: "Club", chip: "bg-navy-100 text-navy-700" },
 };
 
 // Modal affichant le mot de passe temporaire — visible UNE seule fois
