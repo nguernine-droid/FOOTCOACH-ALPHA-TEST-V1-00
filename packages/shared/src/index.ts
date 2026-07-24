@@ -101,6 +101,26 @@ export const registerCoachSchema = z.object({
 });
 export type RegisterCoachInput = z.infer<typeof registerCoachSchema>;
 
+// Création d'un compte club par l'admin : le club + son compte de connexion (contact)
+export const createClubSchema = z.object({
+  name: z.string().min(2).max(80),
+  city: z.string().min(1).max(60),
+  contactFirstName: z.string().min(1).max(50),
+  contactLastName: z.string().min(1).max(50),
+  email: z.string().email(),
+});
+export type CreateClubInput = z.infer<typeof createClubSchema>;
+
+// Gestion des équipes par le club
+export const createClubTeamSchema = z.object({
+  name: z.string().min(2).max(60),
+  city: z.string().min(1).max(60),
+});
+export const updateClubTeamSchema = z.object({
+  name: z.string().min(2).max(60).optional(),
+  city: z.string().min(1).max(60).optional(),
+});
+
 export const JOIN_REQUEST_STATUSES = ["pending", "approved", "declined"] as const;
 export type JoinRequestStatus = (typeof JOIN_REQUEST_STATUSES)[number];
 
@@ -505,6 +525,51 @@ export interface AdminAccountDto {
   hasPendingReset: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+}
+
+// ---------- Espace club ----------
+export interface ClubDto {
+  id: string;
+  name: string;
+  city: string;
+  email: string | null;
+  /** Code partagé aux coachs existants pour rejoindre le club (affiliation) */
+  affiliationCode: string;
+}
+
+/** Une équipe du club (vue club) : encadrants et effectif */
+export interface ClubTeamDto {
+  id: string;
+  name: string;
+  city: string;
+  joinCode: string;
+  playerCount: number;
+  coaches: { id: string; firstName: string; lastName: string; role: TeamCoachRole }[];
+}
+
+/** Un coach affilié au club, avec ses affectations d'équipes */
+export interface ClubCoachDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  teams: { id: string; name: string; role: TeamCoachRole }[];
+}
+
+/** Tableau de bord du club : totaux + détail des équipes */
+export interface ClubOverviewDto {
+  club: ClubDto;
+  teamsCount: number;
+  coachesCount: number;
+  playersCount: number;
+  teams: ClubTeamDto[];
+}
+
+/** Création d'un club par l'admin : identifiants affichés une seule fois */
+export interface AdminCreateClubResultDto {
+  club: ClubDto;
+  ownerEmail: string;
+  tempPassword: string;
 }
 
 export interface AuthResponseDto {

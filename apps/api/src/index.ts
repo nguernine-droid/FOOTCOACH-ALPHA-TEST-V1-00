@@ -12,6 +12,7 @@ import { lineupRoutes } from "./routes/lineups.js";
 import { activityRoutes } from "./routes/activity.js";
 import { eventRoutes } from "./routes/events.js";
 import { adminRoutes } from "./routes/admin.js";
+import { clubRoutes } from "./routes/club.js";
 
 const app = Fastify({ logger: true });
 
@@ -29,6 +30,7 @@ app.register((instance) => lineupRoutes(instance));
 app.register((instance) => activityRoutes(instance));
 app.register((instance) => eventRoutes(instance));
 app.register((instance) => adminRoutes(instance));
+app.register((instance) => clubRoutes(instance));
 
 try {
   await runMigrations();

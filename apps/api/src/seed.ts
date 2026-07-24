@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
-import { attendances, matchAnnouncements, matchEvents, matches, teamCoaches, teams, users } from "./db/schema.js";
+import { attendances, clubs, matchAnnouncements, matchEvents, matches, teamCoaches, teams, users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { cityCoords } from "./lib/cities.js";
 
@@ -60,6 +60,36 @@ async function main() {
   const parent = await upsertUser({ email: "parent@demo.fr", role: "parent", firstName: "Patricia", lastName: "Parent", teamId: teamA.id });
   await upsertUser({ email: "supporter@demo.fr", role: "supporter", firstName: "Sam", lastName: "Supporter", teamId: teamA.id });
   await upsertUser({ email: "admin@demo.fr", role: "admin", firstName: "Alice", lastName: "Admin" });
+
+  // Club de démo : compte role=club + une équipe qu'il possède (sans coach affecté
+  // pour l'instant — l'affiliation des coachs viendra avec l'espace club).
+  const clubOwner = await upsertUser({ email: "club@demo.fr", role: "club", firstName: "Camille", lastName: "Direction" });
+  const clubCoords = cityCoords("Lyon");
+  const [demoClub] = await db
+    .insert(clubs)
+    .values({
+      name: "Étoile Sportive Démo",
+      city: "Lyon",
+      email: "club@demo.fr",
+      ownerId: clubOwner.id,
+      affiliationCode: "CLUBAA",
+      lat: clubCoords?.lat ?? null,
+      lng: clubCoords?.lng ?? null,
+    })
+    .onConflictDoUpdate({ target: clubs.ownerId, set: { name: "Étoile Sportive Démo", city: "Lyon" } })
+    .returning();
+  const teamCoords = cityCoords("Lyon");
+  await db
+    .insert(teams)
+    .values({
+      name: "Étoile U11",
+      city: "Lyon",
+      clubId: demoClub.id,
+      joinCode: "DEMOC1",
+      lat: teamCoords?.lat ?? null,
+      lng: teamCoords?.lng ?? null,
+    })
+    .onConflictDoUpdate({ target: teams.joinCode, set: { clubId: demoClub.id, name: "Étoile U11" } });
 
   // Patricia est le parent assigné de Paul (elle valide ses covoiturages)
   // et a déjà renseigné ses infos conducteur pour la démo.

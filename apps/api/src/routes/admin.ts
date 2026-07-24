@@ -4,15 +4,20 @@ import bcrypt from "bcryptjs";
 import { and, count, desc, eq, gte, ilike, isNull, max, or } from "drizzle-orm";
 import {
   ROLES,
+  createClubSchema,
   updateAccountEmailSchema,
   type AdminAccountDto,
+  type AdminCreateClubResultDto,
   type AdminStatsDto,
   type Role,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { loginEvents, passwordResetRequests, refreshTokens, teams, users } from "../db/schema.js";
+import { clubs, loginEvents, passwordResetRequests, refreshTokens, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
+import { generateCode } from "./registration.js";
+import { toClubDto } from "./club.js";
+import { cityCoords } from "../lib/cities.js";
 
 const DAY_MS = 24 * 3600 * 1000;
 
@@ -107,6 +112,57 @@ export function adminRoutes(app: FastifyInstance) {
     };
   });
 
+  // Création d'un compte club : le club + son compte de connexion (role=club).
+  // Le mot de passe temporaire n'est retourné qu'ici, une seule fois.
+  app.post("/admin/clubs", async (request, reply): Promise<AdminCreateClubResultDto> => {
+    const input = createClubSchema.parse(request.body);
+    const email = input.email.toLowerCase();
+    const [existing] = await db.select().from(users).where(eq(users.email, email));
+    if (existing) throw new HttpError(400, "Un compte existe déjà avec cet email");
+
+    const tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const coords = cityCoords(input.city);
+
+    const club = await db.transaction(async (tx) => {
+      const [owner] = await tx
+        .insert(users)
+        .values({
+          email,
+          passwordHash,
+          role: "club",
+          firstName: input.contactFirstName,
+          lastName: input.contactLastName,
+        })
+        .returning();
+      // Code d'affiliation unique (retry en cas de collision)
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const [created] = await tx
+            .insert(clubs)
+            .values({
+              name: input.name,
+              city: input.city,
+              email,
+              ownerId: owner.id,
+              affiliationCode: generateCode(),
+              lat: coords?.lat ?? null,
+              lng: coords?.lng ?? null,
+            })
+            .returning();
+          return created;
+        } catch (err) {
+          if ((err as { code?: string }).code === "23505" && attempt < 3) continue;
+          throw err;
+        }
+      }
+      throw new HttpError(500, "Impossible de générer un code d'affiliation, réessayez");
+    });
+
+    reply.code(201);
+    return { club: toClubDto(club), ownerEmail: email, tempPassword };
+  });
+
   app.get("/admin/accounts", async (request): Promise<AdminAccountDto[]> => {
     const { q } = request.query as { q?: string };
 
@@ -136,18 +192,27 @@ export function adminRoutes(app: FastifyInstance) {
       .where(eq(passwordResetRequests.status, "pending"));
     const pendingUserIds = new Set(pending.map((p) => p.userId));
 
-    return rows.map(({ user, teamName, lastLoginAt }) => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      role: user.role,
-      teamName,
-      disabled: user.disabledAt != null,
-      hasPendingReset: pendingUserIds.has(user.id),
-      createdAt: user.createdAt.toISOString(),
-      lastLoginAt: lastLoginAt?.toISOString() ?? null,
-    }));
+    // Un coach multi-équipes est joint à plusieurs lignes (teams.coachId) : on
+    // dédoublonne par compte en gardant la première équipe rencontrée.
+    const seen = new Set<string>();
+    const accounts: AdminAccountDto[] = [];
+    for (const { user, teamName, lastLoginAt } of rows) {
+      if (seen.has(user.id)) continue;
+      seen.add(user.id);
+      accounts.push({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        teamName,
+        disabled: user.disabledAt != null,
+        hasPendingReset: pendingUserIds.has(user.id),
+        createdAt: user.createdAt.toISOString(),
+        lastLoginAt: lastLoginAt?.toISOString() ?? null,
+      });
+    }
+    return accounts;
   });
 
   // Réinitialisation manuelle : mot de passe temporaire retourné UNE seule fois
@@ -203,6 +268,9 @@ export function adminRoutes(app: FastifyInstance) {
     const account = await getManageableAccount(id, request.user.id);
     if (account.role === "coach") {
       throw new HttpError(400, "Un compte coach ne peut pas être supprimé (il porte son équipe)");
+    }
+    if (account.role === "club") {
+      throw new HttpError(400, "Un compte club ne peut pas être supprimé (il possède des équipes)");
     }
     try {
       await db.transaction(async (tx) => {
