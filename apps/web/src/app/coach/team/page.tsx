@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Check, Copy, Pencil, RefreshCw, Search, Ticket, UserCheck, Users, X } from "lucide-react";
 import type { JoinRequestDto, PlayerPosition, TeamMemberDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
+import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
@@ -286,6 +287,7 @@ function JoinRequestsCard({
 
 function TeamContent() {
   const params = useSearchParams();
+  const { activeTeam } = useActiveTeam();
   const welcome = params.get("bienvenue") === "1";
   const [members, setMembers] = useState<TeamMemberDto[] | null>(null);
   const [requests, setRequests] = useState<JoinRequestDto[]>([]);
@@ -337,7 +339,9 @@ function TeamContent() {
 
       {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
 
-      <h2 className="display text-lg px-1">Mon équipe ({members.length})</h2>
+      <h2 className="display text-lg px-1">
+        {activeTeam?.name ?? "Effectif"} ({members.length})
+      </h2>
 
       {members.length > 8 && (
         <div className="relative">

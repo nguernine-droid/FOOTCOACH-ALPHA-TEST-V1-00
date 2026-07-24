@@ -8,7 +8,7 @@ const TABS: AppTab[] = [
   { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true },
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
   { href: "/coach/agenda", label: "Agenda", icon: CalendarRange },
-  { href: "/coach/team", label: "Mon équipe", shortLabel: "Équipe", icon: Users },
+  { href: "/coach/team", label: "Mes équipes", shortLabel: "Équipes", icon: Users },
   { href: "/coach/carpool", label: "Covoiturage", shortLabel: "Covoit", icon: Car },
   { href: "/coach/radar", label: "Radar", icon: Radar },
 ];

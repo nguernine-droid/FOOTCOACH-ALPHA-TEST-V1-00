@@ -108,11 +108,14 @@ export async function refreshSession(): Promise<UserDto | null> {
 // Client API : Bearer automatique + refresh transparent sur 401
 export async function api<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
   const token = localStorage.getItem(ACCESS_KEY);
+  const activeTeam = localStorage.getItem(ACTIVE_TEAM_KEY);
   const res = await fetch(`/api${path}`, {
     ...options,
     headers: {
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      // Équipe active du coach (ignoré côté serveur pour les autres rôles)
+      ...(activeTeam ? { "X-Team-Id": activeTeam } : {}),
       ...options.headers,
     },
   });

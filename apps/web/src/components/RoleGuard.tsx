@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Car, ChevronDown, LogOut, Megaphone, UserCheck } from "lucide-react";
-import type { ActivityDto, Role, UserDto } from "@footcoach/shared";
-import { api, getStoredUser, homeForRole, logout } from "@/lib/api";
+import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
+import { api, getActiveTeamId, getStoredUser, homeForRole, logout, setActiveTeamId } from "@/lib/api";
+import { ActiveTeamContext } from "@/components/ActiveTeamContext";
+import { TeamSwitcher } from "@/components/TeamSwitcher";
 import { ClubCrest } from "@/components/ClubCrest";
 import { PendingScreen } from "@/components/PendingScreen";
 import { timeAgo } from "@/lib/time";
@@ -52,6 +54,9 @@ export function RoleGuard({
   const [activitySeen, setActivitySeen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  // Équipe active du coach : init synchrone depuis le localStorage (déjà posé à la
+  // connexion), pour que le premier fetch parte avec le bon X-Team-Id sans re-render.
+  const [activeTeamId, setActiveTeamIdState] = useState<string | null>(() => getActiveTeamId());
   // Le fil d'activité n'existe que pour coach/joueur/parent : pas de cloche sinon
   const hasNotifications = role === "coach" || role === "player" || role === "parent";
 
@@ -67,6 +72,23 @@ export function RoleGuard({
     }
     setUser(stored);
   }, [role, router]);
+
+  // Réconcilie l'équipe active avec les équipes réelles du coach (sélection
+  // périmée → équipe principale). Ne s'applique qu'au rôle coach.
+  const coachTeams: CoachTeamDto[] = user?.role === "coach" ? (user.teams ?? []) : [];
+  useEffect(() => {
+    if (user?.role !== "coach") return;
+    const teams = user.teams ?? [];
+    const valid = teams.find((t) => t.id === activeTeamId) ? activeTeamId : (teams[0]?.id ?? null);
+    if (valid !== activeTeamId) setActiveTeamIdState(valid);
+    if (valid) setActiveTeamId(valid);
+  }, [user, activeTeamId]);
+
+  const activeTeam = coachTeams.find((t) => t.id === activeTeamId) ?? null;
+  function changeActiveTeam(teamId: string) {
+    setActiveTeamId(teamId);
+    setActiveTeamIdState(teamId);
+  }
 
   // Joueur/parent sans équipe : demande d'adhésion pas encore acceptée par le coach
   const isPending = user != null && (user.role === "player" || user.role === "parent") && user.teamId === null;
@@ -107,10 +129,20 @@ export function RoleGuard({
                 <p className="display text-xl leading-none select-none">
                   FOOT<span className="text-gold">COACH</span>
                 </p>
-                <p className="text-[11px] text-white/60 font-semibold truncate">
-                  {user.teamName ? `${user.teamName} · ` : ""}
-                  {ROLE_SPACES[user.role]}
-                </p>
+                <div className="text-[11px] text-white/60 font-semibold flex items-center gap-1 min-w-0">
+                  {user.role === "coach" && coachTeams.length > 0 ? (
+                    <>
+                      <TeamSwitcher teams={coachTeams} activeTeam={activeTeam} onSelect={changeActiveTeam} />
+                      <span className="text-white/40">·</span>
+                      <span className="truncate">{ROLE_SPACES[user.role]}</span>
+                    </>
+                  ) : (
+                    <span className="truncate">
+                      {user.teamName ? `${user.teamName} · ` : ""}
+                      {ROLE_SPACES[user.role]}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -211,7 +243,8 @@ export function RoleGuard({
                       </p>
                       <p className="text-xs text-ink-soft truncate">
                         {ROLE_LABELS[user.role]}
-                        {user.teamName && ` · ${user.teamName}`}
+                        {(user.role === "coach" ? activeTeam?.name : user.teamName) &&
+                          ` · ${user.role === "coach" ? activeTeam?.name : user.teamName}`}
                       </p>
                     </div>
                     <button
@@ -241,7 +274,18 @@ export function RoleGuard({
           nav && !isPending ? "pb-28 min-[960px]:pb-12" : "pb-12",
         )}
       >
-        {isPending ? <PendingScreen user={user} onRefreshed={setUser} /> : children}
+        {isPending ? (
+          <PendingScreen user={user} onRefreshed={setUser} />
+        ) : role === "coach" ? (
+          <ActiveTeamContext.Provider
+            value={{ teams: coachTeams, activeTeamId, activeTeam, setActiveTeam: changeActiveTeam }}
+          >
+            {/* Remonte les pages coach au changement d'équipe → refetch avec le bon X-Team-Id */}
+            <div key={activeTeamId ?? "none"}>{children}</div>
+          </ActiveTeamContext.Provider>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
