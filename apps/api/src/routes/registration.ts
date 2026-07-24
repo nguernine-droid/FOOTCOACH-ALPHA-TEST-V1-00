@@ -14,7 +14,14 @@ import {
   type TeamMemberDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { attendances, joinRequests, matches, teams, users } from "../db/schema.js";
+import {
+  attendances,
+  joinRequests,
+  matches,
+  teamCoaches,
+  teams,
+  users,
+} from "../db/schema.js";
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
@@ -75,14 +82,19 @@ export function registrationRoutes(app: FastifyInstance) {
         })
         .returning();
       const coords = cityCoords(input.teamCity);
-      await tx.insert(teams).values({
-        name: input.teamName,
-        city: input.teamCity,
-        coachId: created.id,
-        joinCode: generateCode(),
-        lat: coords?.lat ?? null,
-        lng: coords?.lng ?? null,
-      });
+      const [team] = await tx
+        .insert(teams)
+        .values({
+          name: input.teamName,
+          city: input.teamCity,
+          coachId: created.id,
+          joinCode: generateCode(),
+          lat: coords?.lat ?? null,
+          lng: coords?.lng ?? null,
+        })
+        .returning();
+      // Affectation coach ↔ équipe (source de vérité multi-équipes)
+      await tx.insert(teamCoaches).values({ teamId: team.id, coachId: created.id, role: "principal" });
       return created;
     });
 

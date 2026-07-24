@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
-import { attendances, matchAnnouncements, matchEvents, matches, teams, users } from "./db/schema.js";
+import { attendances, matchAnnouncements, matchEvents, matches, teamCoaches, teams, users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { cityCoords } from "./lib/cities.js";
 
@@ -14,7 +14,7 @@ function plusDays(days: number): string {
 
 async function upsertUser(input: {
   email: string;
-  role: "coach" | "player" | "parent" | "supporter" | "admin";
+  role: "coach" | "player" | "parent" | "supporter" | "admin" | "club";
   firstName: string;
   lastName: string;
   teamId?: string | null;
@@ -36,8 +36,13 @@ async function upsertTeam(name: string, city: string, coachId: string, joinCode:
   const [team] = await db
     .insert(teams)
     .values({ name, city, coachId, joinCode, lat: coords?.lat ?? null, lng: coords?.lng ?? null })
-    .onConflictDoUpdate({ target: teams.coachId, set: { name, city, lat: coords?.lat ?? null, lng: coords?.lng ?? null } })
+    .onConflictDoUpdate({
+      target: teams.joinCode,
+      set: { name, city, coachId, lat: coords?.lat ?? null, lng: coords?.lng ?? null },
+    })
     .returning();
+  // Affectation coach principal (idempotent via l'index unique (team_id, coach_id))
+  await db.insert(teamCoaches).values({ teamId: team.id, coachId, role: "principal" }).onConflictDoNothing();
   return team;
 }
 
@@ -46,8 +51,10 @@ async function main() {
 
   const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", firstName: "Alexandre", lastName: "Martin" });
   const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", firstName: "Bruno", lastName: "Silva" });
-  const teamA = await upsertTeam("FC Nexus", "Lyon", coachA.id, "DEMOA1");
+  const teamA = await upsertTeam("FC Nexus U13", "Lyon", coachA.id, "DEMOA1");
   const teamB = await upsertTeam("AS Cyber", "Villeurbanne", coachB.id, "DEMOB2");
+  // Coach A encadre une seconde équipe (U15) : démo du multi-équipes "Mes équipes"
+  await upsertTeam("FC Nexus U15", "Lyon", coachA.id, "DEMOA3");
 
   const player = await upsertUser({ email: "player@demo.fr", role: "player", firstName: "Paul", lastName: "Joueur", teamId: teamA.id });
   const parent = await upsertUser({ email: "parent@demo.fr", role: "parent", firstName: "Patricia", lastName: "Parent", teamId: teamA.id });

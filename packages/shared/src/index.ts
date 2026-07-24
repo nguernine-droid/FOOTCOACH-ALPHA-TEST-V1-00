@@ -223,8 +223,11 @@ export interface UserDto {
   role: Role;
   firstName: string;
   lastName: string;
+  /** Équipe active/principale. Coach : première de `teams`. Autres rôles : leur équipe. */
   teamId: string | null;
   teamName: string | null;
+  /** Coach : toutes ses équipes (U10, U13…), principale en premier. Absent pour les autres rôles. */
+  teams?: CoachTeamDto[];
   /** Parent : infos conducteur renseignées (requises pour proposer un covoiturage) */
   hasDriverInfo: boolean;
   /** Joueur : id du compte parent assigné (ses réservations devront être validées) */
@@ -241,6 +244,14 @@ export interface TeamDto {
   id: string;
   name: string;
   city: string;
+}
+
+/** Une équipe encadrée par le coach connecté, avec son rôle dessus (sélecteur "Mes équipes") */
+export interface CoachTeamDto {
+  id: string;
+  name: string;
+  city: string;
+  role: TeamCoachRole;
 }
 
 /** Proposition d'un coach adverse sur une annonce (visible par l'émetteur) */

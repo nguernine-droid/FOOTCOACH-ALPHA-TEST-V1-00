@@ -1,17 +1,26 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   driverInfoSchema,
   forgotPasswordSchema,
   loginSchema,
   refreshSchema,
   type AuthResponseDto,
+  type CoachTeamDto,
   type UserDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { joinRequests, loginEvents, passwordResetRequests, refreshTokens, teams, users } from "../db/schema.js";
+import {
+  joinRequests,
+  loginEvents,
+  passwordResetRequests,
+  refreshTokens,
+  teamCoaches,
+  teams,
+  users,
+} from "../db/schema.js";
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
@@ -31,13 +40,26 @@ export async function issueRefreshToken(userId: string): Promise<string> {
   return token;
 }
 
+// Équipes encadrées par un coach (via team_coaches), coach principal en premier
+export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
+  const rows = await db
+    .select({ id: teams.id, name: teams.name, city: teams.city, role: teamCoaches.role })
+    .from(teamCoaches)
+    .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
+    .where(eq(teamCoaches.coachId, coachId))
+    .orderBy(asc(teamCoaches.createdAt));
+  // Tri stable : équipe(s) où il est "principal" avant celles où il est "adjoint"
+  return rows.sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1));
+}
+
 export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDto> {
   let teamId = user.teamId;
   let teamName: string | null = null;
+  let coachTeams: CoachTeamDto[] | undefined;
   if (user.role === "coach") {
-    const [team] = await db.select().from(teams).where(eq(teams.coachId, user.id));
-    teamId = team?.id ?? null;
-    teamName = team?.name ?? null;
+    coachTeams = await getCoachTeams(user.id);
+    teamId = coachTeams[0]?.id ?? null;
+    teamName = coachTeams[0]?.name ?? null;
   } else if (teamId) {
     const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
     teamName = team?.name ?? null;
@@ -69,6 +91,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     lastName: user.lastName,
     teamId,
     teamName,
+    ...(coachTeams ? { teams: coachTeams } : {}),
     hasDriverInfo: Boolean(user.licensePlate && user.driverLicenseNumber),
     parentId: user.parentId,
     position: user.position,
@@ -78,11 +101,13 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
   };
 }
 
-// Le teamId d'un coach est l'équipe qu'il dirige (users.team_id est null pour lui)
+// teamId "principal" d'un coach = son équipe par défaut (première de team_coaches).
+// Gravé dans le JWT ; le header X-Team-Id peut le remplacer par une autre de ses
+// équipes à chaque requête (voir requireAuth).
 export async function resolveTeamId(user: typeof users.$inferSelect): Promise<string | null> {
   if (user.role === "coach") {
-    const [team] = await db.select().from(teams).where(eq(teams.coachId, user.id));
-    return team?.id ?? null;
+    const coachTeams = await getCoachTeams(user.id);
+    return coachTeams[0]?.id ?? null;
   }
   return user.teamId;
 }
