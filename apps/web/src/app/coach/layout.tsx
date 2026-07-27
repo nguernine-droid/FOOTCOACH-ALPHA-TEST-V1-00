@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, LayoutDashboard, Megaphone, Users } from "lucide-react";
+import { CalendarDays, Contact, LayoutDashboard, Megaphone, Users } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
 import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
@@ -14,7 +14,12 @@ const TABS: AppTab[] = [
   { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true },
   { href: "/coach/announcements", label: "Annonces", icon: Megaphone },
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
-  { href: "/coach/team", label: "Mes équipes", shortLabel: "Équipes", icon: Users },
+];
+
+// Sections secondaires, derrière le « ⋯ » de la barre
+const MORE_TABS: AppTab[] = [
+  { href: "/coach/relations", label: "Relations", icon: Contact },
+  { href: "/coach/team", label: "Mes équipes", icon: Users },
 ];
 
 const PUBLISH: QuickAction = { kind: "link", href: "/coach/announcements/new", label: "Publier une annonce" };
@@ -35,7 +40,10 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
 
   return (
     <QuickActionProvider value={setOverride}>
-      <RoleGuard role="coach" nav={<AppTabs tabs={TABS} action={action} ariaLabel="Sections de l'espace coach" />}>
+      <RoleGuard
+        role="coach"
+        nav={<AppTabs tabs={TABS} moreTabs={MORE_TABS} action={action} ariaLabel="Sections de l'espace coach" />}
+      >
         {children}
       </RoleGuard>
     </QuickActionProvider>

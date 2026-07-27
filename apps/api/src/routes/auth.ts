@@ -5,6 +5,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   forgotPasswordSchema,
   isV1Role,
+  updateProfileSchema,
   loginSchema,
   refreshSchema,
   type AuthResponseDto,
@@ -25,6 +26,7 @@ import {
 } from "../db/schema.js";
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
+import { generateCode } from "../lib/codes.js";
 
 const REFRESH_TTL_MS = 7 * 24 * 3600 * 1000;
 
@@ -54,13 +56,44 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
   return rows.sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1));
 }
 
+/** URL publique d'une photo de profil (servie par l'API, proxifiée sous /api) */
+export function avatarUrlOf(avatarPath: string | null): string | null {
+  return avatarPath ? `/api/uploads/${avatarPath}` : null;
+}
+
+/**
+ * Code personnel du coach, généré une seule fois puis figé. La génération est
+ * paresseuse : les comptes créés avant les relations en héritent à leur
+ * prochaine lecture de profil, sans migration de données.
+ */
+export async function ensureCoachCode(user: typeof users.$inferSelect): Promise<string | null> {
+  if (user.role !== "coach") return null;
+  if (user.coachCode) return user.coachCode;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateCode();
+    try {
+      const [updated] = await db
+        .update(users)
+        .set({ coachCode: code })
+        .where(eq(users.id, user.id))
+        .returning({ coachCode: users.coachCode });
+      return updated?.coachCode ?? code;
+    } catch {
+      // Collision sur l'index unique (rarissime) : nouveau tirage
+    }
+  }
+  return null;
+}
+
 export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDto> {
   let teamId = user.teamId;
   let teamName: string | null = null;
   let coachTeams: CoachTeamDto[] | undefined;
   let clubName: string | null | undefined;
   let pendingClubName: string | null | undefined;
+  let coachCode: string | null | undefined;
   if (user.role === "coach") {
+    coachCode = await ensureCoachCode(user);
     coachTeams = await getCoachTeams(user.id);
     teamId = coachTeams[0]?.id ?? null;
     teamName = coachTeams[0]?.name ?? null;
@@ -91,8 +124,12 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     lastName: user.lastName,
     teamId,
     teamName,
+    phone: user.phone,
+    avatarUrl: avatarUrlOf(user.avatarPath),
     ...(coachTeams ? { teams: coachTeams } : {}),
-    ...(user.role === "coach" ? { clubName: clubName ?? null, pendingClubName: pendingClubName ?? null } : {}),
+    ...(user.role === "coach"
+      ? { coachCode: coachCode ?? null, clubName: clubName ?? null, pendingClubName: pendingClubName ?? null }
+      : {}),
   };
 }
 
@@ -187,5 +224,18 @@ export function authRoutes(app: FastifyInstance) {
     return toUserDto(user);
   });
 
-  // Infos conducteur (parent) — prérequis pour proposer un covoiturage
+  // Personnalisation du compte : identité et téléphone partagé aux relations
+  app.patch("/me/profile", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
+    const input = updateProfileSchema.parse(request.body);
+    const [updated] = await db
+      .update(users)
+      .set({
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
+      })
+      .where(eq(users.id, request.user.id))
+      .returning();
+    return toUserDto(updated);
+  });
 }

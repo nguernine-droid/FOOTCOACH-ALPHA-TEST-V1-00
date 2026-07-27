@@ -44,7 +44,7 @@ packages/
 legacy/   Ancienne application (archivée, non utilisée)
 ```
 
-Services Docker : `postgres` (16-alpine, volume persistant `pgdata`), `api` (scalable, aucun port hôte), `web` (port hôte **3002**).
+Services Docker : `postgres` (16-alpine, volume persistant `pgdata`), `api` (scalable, aucun port hôte, volume `uploads` pour les photos de profil), `web` (port hôte **3002**).
 
 ## Démarrage
 
@@ -92,11 +92,22 @@ npm run db:seed
 
 « Créer un compte coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
 
+## Relations entre coachs
+
+Les coachs se constituent un réseau pour garder le contact d'un amical à l'autre.
+
+- Chaque coach a un **code personnel** (ex. `3QYU25`) et le **QR code** correspondant, dans **Mon profil**.
+- On ajoute un confrère depuis **Relations** en saisissant son code, ou en **scannant son QR** (même scanner que la validation des scores, donc mêmes contraintes de caméra).
+- Le lien est **immédiat et réciproque** : détenir le code suppose d'avoir vu l'écran de l'autre ou reçu son code de sa part. Le retrait supprime le lien des deux côtés.
+- Une fiche de relation montre nom, prénom, **téléphone appelable**, club et équipes encadrées. Le téléphone n'est visible que des relations.
+
+Dans **Mon profil**, le coach personnalise son compte : photo, nom, prénom, téléphone. Les photos sont envoyées à l'API (JPEG, PNG ou WebP, 2 Mo maximum), stockées dans le volume Docker `uploads` et servies sous `/api/uploads/…` — **ce volume est à sauvegarder au même titre que la base**.
+
 ## Navigation de l'espace coach
 
-Onglets : **Tableau de bord · Annonces · (+) · Matchs · Mes équipes**.
+Onglets : **Tableau de bord · Annonces · (+) · Matchs · ⋯**, le menu **⋯** regroupant **Relations** et **Mes équipes**. « Mon profil » est dans le menu du compte, en haut à droite.
 
-- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets.
+- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets. Sur le formulaire d'annonce, il devient un **« ✓ »** qui publie — grisé tant que l'attestation FFF n'est pas cochée.
 - Le **radar** (les équipes autour de vous qui cherchent un adversaire, triées par proximité) vit dans le **tableau de bord** ; `/coach/radar` y redirige.
 - L'**agenda** est accessible par l'icône calendrier du header.
 - **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.

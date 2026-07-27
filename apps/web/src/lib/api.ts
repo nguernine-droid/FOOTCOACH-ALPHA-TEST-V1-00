@@ -112,7 +112,9 @@ export async function api<T>(path: string, options: RequestInit = {}, retried = 
   const res = await fetch(`/api${path}`, {
     ...options,
     headers: {
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      // Uniquement pour du JSON : un FormData doit garder le Content-Type
+      // que le navigateur génère (il porte la frontière multipart).
+      ...(typeof options.body === "string" ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       // Équipe active du coach (ignoré côté serveur pour les autres rôles)
       ...(activeTeam ? { "X-Team-Id": activeTeam } : {}),
@@ -129,7 +131,7 @@ export async function api<T>(path: string, options: RequestInit = {}, retried = 
   return (await res.json()) as T;
 }
 
-export async function register(path: "/auth/register-coach" | "/auth/register-join", payload: unknown): Promise<UserDto> {
+export async function register(path: "/auth/register-coach", payload: unknown): Promise<UserDto> {
   const auth = await api<AuthResponseDto>(path, { method: "POST", body: JSON.stringify(payload) });
   storeSession(auth);
   return auth.user;

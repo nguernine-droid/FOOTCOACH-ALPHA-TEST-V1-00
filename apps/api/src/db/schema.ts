@@ -43,6 +43,12 @@ export const users = pgTable("users", {
   teamId: uuid("team_id"),
   // Coach : club auquel il est affilié (NULL = coach indépendant, sans club)
   clubId: uuid("club_id").references((): any => clubs.id),
+  // Profil : partagés avec les coachs de son réseau de relations
+  phone: text("phone"),
+  // Code personnel du coach : à dicter ou à faire scanner pour créer une relation
+  coachCode: text("coach_code").unique(),
+  // Nom du fichier photo dans le volume d'uploads (NULL = initiales)
+  avatarPath: text("avatar_path"),
   // Joueur : compte parent assigné (valide ses réservations de covoiturage)
   parentId: uuid("parent_id"),
   // Joueur : fiche sportive renseignée par le coach
@@ -373,3 +379,21 @@ export const refreshTokens = pgTable("refresh_tokens", {
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Réseau de relations entre coachs. Le lien est réciproque : ajouter quelqu'un
+// insère les deux lignes, si bien que « mes relations » est une simple lecture
+// sur coach_id, sans OR ni normalisation d'ordre.
+export const coachRelations = pgTable(
+  "coach_relations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    coachId: uuid("coach_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    relatedCoachId: uuid("related_coach_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("coach_relations_pair_idx").on(t.coachId, t.relatedCoachId)],
+);

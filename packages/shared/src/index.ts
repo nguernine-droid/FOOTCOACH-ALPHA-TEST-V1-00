@@ -161,6 +161,44 @@ export const affiliateClubSchema = z.object({
 export const JOIN_REQUEST_STATUSES = ["pending", "approved", "declined"] as const;
 export type JoinRequestStatus = (typeof JOIN_REQUEST_STATUSES)[number];
 
+/** Profil du coach : ce qu'il peut personnaliser lui-même */
+export const updateProfileSchema = z.object({
+  firstName: z.string().min(1).max(50),
+  lastName: z.string().min(1).max(50),
+  // Partagé avec ses relations uniquement. Permissif : indicatifs, espaces, points.
+  phone: z
+    .string()
+    .max(20)
+    .regex(/^[+0-9][0-9 .\-()]*$/, "Numéro de téléphone invalide")
+    .nullable()
+    .optional(),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/** Ajout d'une relation par code coach (saisi ou lu dans un QR) */
+export const addRelationSchema = z.object({
+  code: z.string().min(4).max(12),
+});
+export type AddRelationInput = z.infer<typeof addRelationSchema>;
+
+/**
+ * Préfixe du QR code d'un coach : `FOOTCOACH:COACH:<code>`. Il permet au
+ * scanner de reconnaître un code FootCoach et d'écarter tout autre QR.
+ */
+export const COACH_QR_PREFIX = "FOOTCOACH:COACH:";
+
+export function coachQrPayload(code: string): string {
+  return `${COACH_QR_PREFIX}${code}`;
+}
+
+/** Extrait le code d'un QR scanné ; null si ce n'est pas un QR coach FootCoach */
+export function parseCoachQr(payload: string): string | null {
+  const trimmed = payload.trim();
+  if (!trimmed.startsWith(COACH_QR_PREFIX)) return null;
+  const code = trimmed.slice(COACH_QR_PREFIX.length).toUpperCase();
+  return /^[A-Z0-9]{4,12}$/.test(code) ? code : null;
+}
+
 export const forgotPasswordSchema = z.object({
   email: z.string().email(),
 });
@@ -204,6 +242,12 @@ export interface UserDto {
   teamName: string | null;
   /** Coach : toutes ses équipes (U10, U13…), principale en premier. Absent pour les autres rôles. */
   teams?: CoachTeamDto[];
+  /** Téléphone du profil — visible de ses relations uniquement */
+  phone: string | null;
+  /** Chemin de la photo de profil (null = initiales) */
+  avatarUrl: string | null;
+  /** Coach : son code personnel, à dicter ou faire scanner pour créer une relation */
+  coachCode?: string | null;
   /** Coach : club auquel il est affilié (null si aucun) */
   clubName?: string | null;
   /** Coach : club visé par une demande d'affiliation en attente (null sinon) */
@@ -405,6 +449,19 @@ export interface ClubAffiliationRequestDto {
 export interface CreateClubCoachResultDto {
   coach: { id: string; firstName: string; lastName: string; email: string };
   tempPassword: string;
+}
+
+/** Un coach du réseau de relations : contact + contexte sportif */
+export interface CoachRelationDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  /** null si le coach n'a pas renseigné son numéro */
+  phone: string | null;
+  avatarUrl: string | null;
+  clubName: string | null;
+  teams: TeamDto[];
+  createdAt: string;
 }
 
 export interface AuthResponseDto {

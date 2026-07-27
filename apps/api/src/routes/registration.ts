@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
@@ -9,13 +9,7 @@ import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
 import { cityCoords } from "../lib/cities.js";
-
-// Alphabet sans caractères ambigus (pas de O/0, I/1…) : codes faciles à dicter
-const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
-export function generateCode(): string {
-  return Array.from(crypto.randomBytes(6), (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join("");
-}
+import { generateCode } from "../lib/codes.js";
 
 async function assertEmailFree(email: string) {
   const [existing] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));

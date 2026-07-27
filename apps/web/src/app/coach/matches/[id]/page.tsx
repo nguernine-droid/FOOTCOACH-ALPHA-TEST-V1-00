@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
 import { QrScanner } from "@/components/matches/QrScanner";
-import { ScoreQrCode } from "@/components/matches/ScoreQrCode";
+import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -188,7 +188,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                 <span className="text-ink-faint mx-2">–</span>
                 {match.awayScore}
               </p>
-              <ScoreQrCode token={match.confirmationToken!} />
+              <QrCodeCanvas value={match.confirmationToken!} label="QR code de validation du score" />
               <p className="text-xs text-ink-soft text-center max-w-xs">
                 Montrez ce QR code au coach adverse : il le scanne depuis son compte pour valider le score.
               </p>

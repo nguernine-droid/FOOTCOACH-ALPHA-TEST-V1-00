@@ -14,7 +14,7 @@ import { db } from "../db/client.js";
 import { clubs, loginEvents, passwordResetRequests, refreshTokens, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
-import { generateCode } from "./registration.js";
+import { generateCode } from "../lib/codes.js";
 import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateTempPassword } from "../lib/passwords.js";

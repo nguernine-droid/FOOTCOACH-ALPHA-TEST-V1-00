@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, Plus, type LucideIcon } from "lucide-react";
+import { Check, MoreHorizontal, Plus, type LucideIcon } from "lucide-react";
 import type { QuickAction } from "@/components/QuickActionContext";
 import { cn } from "@/lib/utils";
 
@@ -27,18 +27,63 @@ export type AppTab = {
  *
  * `action` ajoute un bouton « + » doré — surélevé au centre sur mobile, à droite
  * des onglets sur desktop — dont la cible dépend de la page en cours.
+ * `moreTabs` regroupe les sections secondaires derrière un menu « ⋯ », qui
+ * occupe une place d'onglet à droite pour ne pas rompre la symétrie.
  */
 export function AppTabs({
   tabs,
   ariaLabel,
   action,
+  moreTabs = [],
 }: {
   tabs: AppTab[];
   ariaLabel: string;
   action?: QuickAction | null;
+  moreTabs?: AppTab[];
 }) {
   const pathname = usePathname();
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
+
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreActive = moreTabs.some(isActive);
+  // Les deux barres coexistent dans le DOM (masquées par CSS) : une ref chacune
+  const desktopMoreRef = useRef<HTMLDivElement>(null);
+  const mobileMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMoreOpen(false), [pathname]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      const inside =
+        desktopMoreRef.current?.contains(target) === true || mobileMoreRef.current?.contains(target) === true;
+      if (!inside) setMoreOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [moreOpen]);
+
+  const moreMenu = moreTabs.length > 0 && moreOpen && (
+    <div
+      role="menu"
+      aria-label="Autres sections"
+      className="absolute right-0 bottom-full mb-2 min-[960px]:bottom-auto min-[960px]:top-full min-[960px]:mb-0 min-[960px]:mt-2 w-56 card p-2 text-ink z-50 animate-rise-in"
+    >
+      {moreTabs.map((tab) => (
+        <Link
+          key={tab.href}
+          href={tab.href}
+          role="menuitem"
+          className={cn(
+            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition",
+            isActive(tab) ? "bg-blue-soft text-navy-700" : "text-ink-soft hover:bg-paper hover:text-ink",
+          )}
+        >
+          <tab.icon size={15} /> {tab.label}
+        </Link>
+      ))}
+    </div>
+  );
 
   // Même bouton dans les deux barres : lien de création, ou validation du
   // formulaire ouvert (associé par l'attribut `form`, donc à distance).
@@ -95,6 +140,24 @@ export function AppTabs({
             })}
           </div>
 
+          {moreTabs.length > 0 && (
+            <div className="relative shrink-0" ref={desktopMoreRef}>
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreOpen((o) => !o)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3.5 py-3 text-xs font-bold whitespace-nowrap border-b-2 -mb-px transition focus-visible:!outline-gold",
+                  moreActive ? "text-white border-gold" : "text-white/55 border-transparent hover:text-white",
+                )}
+              >
+                <MoreHorizontal size={14} /> Plus
+              </button>
+              {moreMenu}
+            </div>
+          )}
+
           <ActionButton className="ml-auto shrink-0 inline-flex items-center gap-1.5 my-1.5 px-4 py-2 rounded-lg bg-gold text-navy-900 text-xs font-bold transition hover:brightness-105 active:scale-[0.97] focus-visible:!outline-white">
             <ActionIcon size={15} /> {action?.label}
           </ActionButton>
@@ -134,6 +197,27 @@ export function AppTabs({
                     </Link>
                   );
                 })}
+
+                {/* Le « ⋯ » occupe une place d'onglet dans la moitié droite */}
+                {moreTabs.length > 0 && groupIndex === mobileGroups.length - 1 && (
+                  <div className="relative flex-1 min-w-0 flex" ref={mobileMoreRef}>
+                    <button
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={moreOpen}
+                      aria-label="Autres sections"
+                      onClick={() => setMoreOpen((o) => !o)}
+                      className={cn(
+                        "flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-0.5 py-1.5 transition focus-visible:!outline-gold",
+                        moreActive ? "text-gold" : "text-white/55 hover:text-white",
+                      )}
+                    >
+                      <MoreHorizontal size={20} aria-hidden />
+                      <span className="text-[10px] font-bold leading-none">Plus</span>
+                    </button>
+                    {moreMenu}
+                  </div>
+                )}
               </div>
 
               {/* Bouton de création, surélevé entre les deux moitiés d'onglets */}

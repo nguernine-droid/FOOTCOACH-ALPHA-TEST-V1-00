@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, CalendarRange, ChevronDown, LogOut, Megaphone, Trophy } from "lucide-react";
+import { Bell, CalendarRange, ChevronDown, CircleUserRound, LogOut, Megaphone, Trophy } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import { api, getActiveTeamId, getStoredUser, homeForRole, logout, setActiveTeamId } from "@/lib/api";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
+import { Avatar } from "@/components/Avatar";
 import { TeamSwitcher } from "@/components/TeamSwitcher";
 import { ClubCrest } from "@/components/ClubCrest";
 import { timeAgo } from "@/lib/time";
@@ -236,9 +237,19 @@ export function RoleGuard({
                   aria-expanded={menuOpen}
                   aria-label={`Menu de ${user.firstName}`}
                 >
-                  <span className="w-9 h-9 rounded-full bg-white/15 border border-white/20 flex items-center justify-center font-black text-xs">
-                    {initials}
-                  </span>
+                  {user.avatarUrl ? (
+                    <Avatar
+                      firstName={user.firstName}
+                      lastName={user.lastName}
+                      avatarUrl={user.avatarUrl}
+                      size={36}
+                      className="border border-white/20"
+                    />
+                  ) : (
+                    <span className="w-9 h-9 rounded-full bg-white/15 border border-white/20 flex items-center justify-center font-black text-xs">
+                      {initials}
+                    </span>
+                  )}
                   <span className="hidden sm:block text-left leading-tight">
                     <span className="block text-sm font-bold">Bonjour {user.firstName}</span>
                     <span className="block text-[11px] text-white/60 font-semibold">{ROLE_LABELS[user.role]}</span>
@@ -258,6 +269,15 @@ export function RoleGuard({
                           ` · ${user.role === "coach" ? activeTeam?.name : user.teamName}`}
                       </p>
                     </div>
+                    {role === "coach" && (
+                      <Link
+                        href="/coach/profile"
+                        role="menuitem"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-ink-soft hover:bg-paper hover:text-ink transition"
+                      >
+                        <CircleUserRound size={15} /> Mon profil
+                      </Link>
+                    )}
                     <button
                       role="menuitem"
                       onClick={async () => {

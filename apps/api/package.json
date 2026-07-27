@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "@fastify/multipart": "^10.1.0",
+    "@fastify/static": "^10.1.2",
     "@footcoach/shared": "*",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.38.3",

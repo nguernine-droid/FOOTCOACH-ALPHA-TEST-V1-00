@@ -36,6 +36,8 @@ services:
       - ./apps/api/src:/app/apps/api/src
       - ./apps/api/drizzle:/app/apps/api/drizzle
       - ./packages/shared/src:/app/packages/shared/src
+      # Photos de profil : persistées hors de l'image, à sauvegarder comme la base
+      - uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,6 +64,7 @@ services:
 
 volumes:
   pgdata:
+  uploads:
 
 networks:
   footcoach:
