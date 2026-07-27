@@ -2,8 +2,8 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ClipboardList, Ticket, UserRound, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, UserRound, Users } from "lucide-react";
 import type { PlayerPosition, TeamJoinInfoDto } from "@footcoach/shared";
 import { PLAYER_POSITIONS } from "@footcoach/shared";
 import { api, homeForRole, register } from "@/lib/api";
@@ -358,10 +358,10 @@ function JoinWizard({ initialCode, onBack }: { initialCode: string; onBack: () =
   );
 }
 
+// V1 réservée aux coachs : le parcours « j'ai un code d'équipe » (JoinWizard)
+// reste implémenté mais n'est plus proposé — /register mène droit au coach.
 function RegisterContent() {
-  const params = useSearchParams();
-  const codeFromUrl = params.get("code") ?? "";
-  const [path, setPath] = useState<"choice" | "coach" | "invite">(codeFromUrl ? "invite" : "choice");
+  const router = useRouter();
 
   return (
     <div className="min-h-dvh flex items-center justify-center px-4 py-8">
@@ -370,33 +370,10 @@ function RegisterContent() {
           <p className="display text-xl text-pitch-deep leading-none">
             FOOT<span className="text-pitch">COACH</span>
           </p>
-          <h1 className="text-2xl font-black">Créer un compte</h1>
+          <h1 className="text-2xl font-black">Créer un compte coach</h1>
         </div>
 
-        {path === "choice" && (
-          <div className="space-y-3 animate-rise-in">
-            <button onClick={() => setPath("coach")} className="card w-full p-5 flex items-center gap-4 text-left hover:border-pitch/50 transition">
-              <span className="w-12 h-12 rounded-lg bg-pitch-soft text-pitch flex items-center justify-center shrink-0">
-                <ClipboardList size={22} />
-              </span>
-              <span>
-                <span className="block font-bold">Je suis coach</span>
-                <span className="block text-xs text-ink-soft">Je crée mon équipe et je partage son code aux joueurs et parents.</span>
-              </span>
-            </button>
-            <button onClick={() => setPath("invite")} className="card w-full p-5 flex items-center gap-4 text-left hover:border-pitch/50 transition">
-              <span className="w-12 h-12 rounded-lg bg-tangerine-soft text-tangerine flex items-center justify-center shrink-0">
-                <Ticket size={22} />
-              </span>
-              <span>
-                <span className="block font-bold">J&apos;ai un code d&apos;équipe</span>
-                <span className="block text-xs text-ink-soft">Le coach m&apos;a transmis le code de l&apos;équipe : je fais ma demande pour la rejoindre.</span>
-              </span>
-            </button>
-          </div>
-        )}
-        {path === "coach" && <CoachWizard onBack={() => setPath("choice")} />}
-        {path === "invite" && <JoinWizard initialCode={codeFromUrl} onBack={() => setPath("choice")} />}
+        <CoachWizard onBack={() => router.push("/login")} />
 
         <p className="text-center text-xs text-ink-soft">
           Déjà un compte ?{" "}

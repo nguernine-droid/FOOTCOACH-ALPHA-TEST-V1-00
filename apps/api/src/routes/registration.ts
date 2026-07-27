@@ -66,6 +66,12 @@ async function assertChildInTeam(childUserId: string, teamId: string) {
   return child;
 }
 
+/**
+ * V1 recentrée sur les coachs : le parcours d'inscription joueur/parent reste
+ * implémenté mais fermé. Repasser à `true` pour le rouvrir.
+ */
+const JOIN_REGISTRATION_OPEN: boolean = false;
+
 export function registrationRoutes(app: FastifyInstance) {
   // Inscription coach : crée le compte ET son équipe (avec son code) en une fois
   app.post("/auth/register-coach", async (request, reply): Promise<AuthResponseDto> => {
@@ -126,6 +132,9 @@ export function registrationRoutes(app: FastifyInstance) {
   // Inscription en autonomie avec le code d'équipe : le compte est créé SANS équipe
   // (teamId null) + une demande d'adhésion que le coach devra accepter.
   app.post("/auth/register-join", async (request, reply): Promise<AuthResponseDto> => {
+    if (!JOIN_REGISTRATION_OPEN) {
+      throw new HttpError(403, "L'inscription joueur et parent n'est pas ouverte dans la version 1 de FootCoach.");
+    }
     const input = registerJoinSchema.parse(request.body);
     await assertEmailFree(input.email);
     const passwordHash = await bcrypt.hash(input.password, 10);

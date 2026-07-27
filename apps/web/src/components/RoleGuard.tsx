@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Bell, Car, ChevronDown, LogOut, Megaphone, UserCheck } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Bell, CalendarRange, Car, ChevronDown, LogOut, Megaphone, UserCheck } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import { api, getActiveTeamId, getStoredUser, homeForRole, logout, setActiveTeamId } from "@/lib/api";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
@@ -47,6 +48,7 @@ export function RoleGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<UserDto | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -147,6 +149,21 @@ export function RoleGuard({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Agenda : section secondaire en V1, accessible par cette icône plutôt qu'un onglet */}
+              {role === "coach" && (
+                <Link
+                  href="/coach/agenda"
+                  aria-label="Agenda"
+                  title="Agenda"
+                  className={cn(
+                    "p-2.5 rounded-lg transition hover:bg-white/10",
+                    pathname.startsWith("/coach/agenda") ? "text-gold" : "text-white/80",
+                  )}
+                >
+                  <CalendarRange size={18} />
+                </Link>
+              )}
+
               {hasNotifications && (
                 <div className="relative" ref={notifRef}>
                   <button

@@ -4,12 +4,38 @@ import { z } from "zod";
 export const ROLES = ["coach", "player", "parent", "supporter", "admin", "club"] as const;
 export type Role = (typeof ROLES)[number];
 
+/**
+ * V1 recentrée sur la gestion des matchs amicaux entre coachs : seuls le coach
+ * et l'administrateur ont accès à l'application. Les autres rôles restent en
+ * base et dans le code, mais ne peuvent ni s'inscrire ni se connecter.
+ */
+export const V1_ROLES = ["coach", "admin"] as const satisfies readonly Role[];
+export function isV1Role(role: Role): boolean {
+  return (V1_ROLES as readonly Role[]).includes(role);
+}
+
 // Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs)
 export const TEAM_COACH_ROLES = ["principal", "adjoint"] as const;
 export type TeamCoachRole = (typeof TEAM_COACH_ROLES)[number];
 
 export const ANNOUNCEMENT_STATUSES = ["open", "matched", "cancelled"] as const;
 export type AnnouncementStatus = (typeof ANNOUNCEMENT_STATUSES)[number];
+
+/**
+ * Délai réglementaire FFF : un match amical doit être déclaré à la fédération
+ * (district / ligue) au moins 10 jours avant sa date.
+ */
+export const FFF_NOTICE_DAYS = 10;
+
+/** Nombre de jours pleins entre deux dates ISO (yyyy-mm-dd), sans effet de fuseau */
+export function daysBetweenIso(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
+/** Le délai FFF est-il tenu pour un match le `matchDate` annoncé le `announcedOn` ? */
+export function respectsFffNotice(matchDate: string, announcedOn: string): boolean {
+  return daysBetweenIso(announcedOn, matchDate) >= FFF_NOTICE_DAYS;
+}
 
 export const MATCH_STATUSES = ["scheduled", "live", "finished"] as const;
 export type MatchStatus = (typeof MATCH_STATUSES)[number];
@@ -68,6 +94,11 @@ export const createAnnouncementSchema = z.object({
   level: z.enum(MATCH_LEVELS),
   format: z.enum(MATCH_FORMATS),
   comment: z.string().max(500).optional(),
+  // Attestation obligatoire : la déclaration du match amical à la fédération
+  // incombe au coach, l'application en garde la trace.
+  federationDeclared: z.boolean().refine((v) => v, {
+    message: "Vous devez attester avoir déclaré ce match amical à votre fédération",
+  }),
 });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 
@@ -316,6 +347,10 @@ export interface AnnouncementDto {
   status: AnnouncementStatus;
   isMine: boolean;
   createdAt: string;
+  /** Le coach a attesté avoir déclaré ce match amical à sa fédération */
+  federationDeclared: boolean;
+  /** Jours entre la publication de l'annonce et la date du match (délai FFF : 10 minimum) */
+  noticeDays: number;
   /** Renseignés quand l'annonce est matchée : le match créé et l'équipe qui a répondu */
   matchId: string | null;
   opponentTeam: TeamDto | null;

@@ -1,0 +1,1 @@
+ALTER TABLE "match_announcements" ADD COLUMN "federation_declared" boolean DEFAULT false NOT NULL;

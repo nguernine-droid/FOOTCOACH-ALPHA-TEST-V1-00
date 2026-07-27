@@ -17,8 +17,11 @@ import { EventForm } from "./EventForm";
 /**
  * Agenda commun coach/joueur/parent : liste (mobile) ou grille mois (desktop),
  * alimenté par GET /events (événements + matchs fusionnés).
+ *
+ * `requestCreate` ouvre directement le formulaire de création — utilisé par le
+ * bouton « + » de la barre d'onglets, qui navigue vers /coach/agenda?nouveau=1.
  */
-export function AgendaView({ role }: { role: Role }) {
+export function AgendaView({ role, requestCreate = false }: { role: Role; requestCreate?: boolean }) {
   const [items, setItems] = useState<AgendaItemDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -30,6 +33,12 @@ export function AgendaView({ role }: { role: Role }) {
   const [detail, setDetail] = useState<AgendaItemDto | null>(null);
   const [formInitial, setFormInitial] = useState<AgendaItemDto | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+
+  useEffect(() => {
+    if (!requestCreate || role !== "coach") return;
+    setFormInitial(null);
+    setFormOpen(true);
+  }, [requestCreate, role]);
 
   const load = useCallback(async () => {
     try {

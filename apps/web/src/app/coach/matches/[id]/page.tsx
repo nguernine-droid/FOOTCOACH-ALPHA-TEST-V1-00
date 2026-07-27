@@ -7,7 +7,6 @@ import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide, TeamPres
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
-import { CarpoolSection } from "@/components/CarpoolSection";
 import { LineupEditor } from "@/components/LineupEditor";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -389,7 +388,6 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
             {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage proposées ({transporters.map((t) => t.firstName).join(", ")})
           </p>
         )}
-        <CarpoolSection matchId={id} canBook={false} />
       </section>
 
       <section className="card p-5 space-y-3">

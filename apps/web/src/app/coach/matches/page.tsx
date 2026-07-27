@@ -33,10 +33,11 @@ export default function CoachMatchesPage() {
             <Radar size={20} />
           </span>
           <p className="text-sm text-ink-soft font-medium">
-            Aucun match pour l&apos;instant. Postez une annonce ou explorez le radar.
+            Aucun match pour l&apos;instant. Publiez une annonce, ou répondez à une équipe depuis le radar du
+            tableau de bord.
           </p>
-          <Link href="/coach/radar" className="inline-block">
-            <Button variant="soft" size="sm">Ouvrir le radar</Button>
+          <Link href="/coach/announcements/new" className="inline-block">
+            <Button variant="soft" size="sm">Publier une annonce</Button>
           </Link>
         </div>
       )}

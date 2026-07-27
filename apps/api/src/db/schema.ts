@@ -170,6 +170,8 @@ export const matchAnnouncements = pgTable("match_announcements", {
   format: matchFormat("format").notNull().default("11v11"),
   comment: text("comment"),
   status: announcementStatus("status").notNull().default("open"),
+  // Attestation du coach : le match amical a été déclaré à la fédération (délai FFF de 10 jours)
+  federationDeclared: boolean("federation_declared").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

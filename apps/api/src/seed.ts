@@ -104,7 +104,8 @@ async function main() {
     // Annonce ouverte du coach B — pour démontrer le flux "répondre"
     await db.insert(matchAnnouncements).values({
       teamId: teamB.id,
-      date: plusDays(7),
+      // J+14 : le délai FFF de déclaration (10 jours) est tenu
+      date: plusDays(14),
       time: "15:00",
       city: "Villeurbanne",
       stadium: "Stade des Iris",
@@ -112,6 +113,7 @@ async function main() {
       level: "loisir",
       format: "8v8",
       comment: "Match amical, terrain synthétique. Vestiaires disponibles.",
+      federationDeclared: true,
     });
 
     // Annonce du coach A déjà matchée → match à venir (J+3)
@@ -128,6 +130,7 @@ async function main() {
         format: "8v8",
         comment: "Amical de préparation.",
         status: "matched",
+        federationDeclared: true,
       })
       .returning();
     const [upcoming] = await db
@@ -155,6 +158,7 @@ async function main() {
         level: "loisir",
         format: "8v8",
         status: "matched",
+        federationDeclared: true,
       })
       .returning();
     const [finished] = await db

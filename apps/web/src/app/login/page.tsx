@@ -3,17 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ClipboardList, Hand, Heart, Volleyball } from "lucide-react";
+import { ClipboardList, ShieldHalf } from "lucide-react";
 import { homeForRole, login } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
+// V1 réservée aux coachs : seuls les comptes de démo accessibles sont proposés
 const DEMO_ACCOUNTS = [
   { label: "Coach A", sub: "FC Nexus", email: "coach.a@demo.fr", icon: ClipboardList, color: "text-pitch bg-pitch-soft" },
   { label: "Coach B", sub: "AS Cyber", email: "coach.b@demo.fr", icon: ClipboardList, color: "text-pitch bg-pitch-soft" },
-  { label: "Joueur", sub: "Paul", email: "player@demo.fr", icon: Volleyball, color: "text-sky bg-sky-soft" },
-  { label: "Parent", sub: "Patricia", email: "parent@demo.fr", icon: Hand, color: "text-tangerine bg-tangerine-soft" },
-  { label: "Supporter", sub: "Sam", email: "supporter@demo.fr", icon: Heart, color: "text-sun bg-sun-soft" },
+  { label: "Admin", sub: "Alice", email: "admin@demo.fr", icon: ShieldHalf, color: "text-navy-700 bg-blue-soft" },
 ];
 
 export default function LoginPage() {
@@ -87,9 +86,9 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-ink-soft">
-          Pas encore de compte ?{" "}
+          Vous êtes coach et n&apos;avez pas de compte ?{" "}
           <Link href="/register" className="font-bold text-pitch hover:underline">
-            Créer un compte
+            Créer un compte coach
           </Link>
         </p>
 

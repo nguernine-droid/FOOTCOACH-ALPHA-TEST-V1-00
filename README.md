@@ -1,13 +1,21 @@
 # FOOTCOACH v1 — Gestion de matchs amicaux
 
-Application de gestion de matchs amicaux avec 4 rôles :
+La **V1 est volontairement restreinte à la gestion des matchs amicaux entre coachs**. Seuls deux rôles accèdent à l'application :
 
 | Rôle | Ce qu'il peut faire |
 |---|---|
-| **Coach** | Poster des annonces de match amical, répondre aux annonces des autres coachs (→ crée un match confirmé), saisir le score et les temps forts, consulter les présences de **sa propre équipe** (joueurs et parents séparés — jamais celles de l'adversaire), composer son équipe sur un terrain façon FIFA (la compo adverse se dévoile 2h avant le coup d'envoi) |
-| **Joueur** | Indiquer sa présence (présent / absent), réserver une place dans un covoiturage (soumise à l'accord de son parent assigné) |
-| **Parent** | Indiquer sa présence + proposer un covoiturage (après avoir renseigné plaque d'immatriculation et n° de permis), autoriser/refuser les demandes de ses joueurs |
-| **Supporter** | Suivre le score et les temps forts en direct (rafraîchissement automatique) |
+| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé), saisir le score et les temps forts, consulter les présences de **sa propre équipe** (jamais celles de l'adversaire), composer son équipe sur un terrain façon FIFA (la compo adverse se dévoile 2h avant le coup d'envoi) |
+| **Admin** | Gérer les comptes coachs (réinitialisation de mot de passe, désactivation), consulter les statistiques |
+
+Les rôles **joueur, parent, supporter et club** restent implémentés (code, routes et espaces conservés) mais sont **masqués en V1** : leur connexion est refusée par l'API et l'inscription joueur/parent est fermée. Voir « Ce qui est masqué en V1 » plus bas.
+
+### Règle FFF des 10 jours
+
+Un match amical doit être déclaré à la fédération (district / ligue) **au moins 10 jours avant** la rencontre. À la publication d'une annonce :
+
+- une **case d'attestation est obligatoire** (« J'atteste avoir déclaré ce match amical à ma fédération ») — vérifiée côté API, pas seulement dans le formulaire ;
+- une date à moins de 10 jours **n'est pas bloquée** mais affiche un avertissement (les dérogations de district existent) ;
+- chaque annonce porte un badge « Délai FFF respecté » ou « Délai FFF non respecté (n j) », calculé entre la publication et la date du match.
 
 ## Architecture
 
@@ -42,9 +50,9 @@ Les migrations s'appliquent automatiquement au démarrage de l'API (verrou consu
 |---|---|---|
 | Coach A | `coach.a@demo.fr` | FC Nexus |
 | Coach B | `coach.b@demo.fr` | AS Cyber |
-| Joueur | `player@demo.fr` | FC Nexus |
-| Parent | `parent@demo.fr` | FC Nexus |
-| Supporter | `supporter@demo.fr` | FC Nexus |
+| Admin | `admin@demo.fr` | — |
+
+Le seed crée aussi des comptes joueur, parent, supporter et club, mais leur connexion est refusée en V1.
 
 ## Production & scalabilité
 
@@ -67,24 +75,32 @@ npm run dev:web    # Web sur :3000 (API_INTERNAL_URL=http://localhost:4000)
 npm run db:seed
 ```
 
-### Créer un compte (sans compte de démo)
+### Créer un compte coach (sans compte de démo)
 
-1. **Coach** : « Créer un compte » → « Je suis coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte.
-2. Dans l'onglet **Mon équipe**, le coach ajoute un joueur (prénom + nom) → un **code d'invitation** apparaît (ex. `3KYZE3`), à transmettre par SMS ou papier.
-3. Le **joueur** va sur « Créer un compte » → « J'ai un code d'invitation » (ou ouvre `/register?code=XXX`) : l'écran confirme « Vous rejoignez l'équipe … », il choisit email + mot de passe, c'est fini.
-4. Une fois le compte du joueur créé, le coach clique **« Inviter le parent »** sur sa fiche → nouveau code. Le **parent** s'inscrit avec ce code et devient automatiquement le parent assigné du joueur (il validera ses covoiturages).
+« Créer un compte coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte. En V1, `/register` mène directement à ce parcours : l'inscription joueur/parent par code d'équipe est fermée.
 
-### Covoiturage
+## Navigation de l'espace coach
 
-1. Le **parent** renseigne sa plaque et son n° de permis (carte « Mes infos conducteur ») — sans cela, impossible de proposer des places.
-2. Présent à un match, il indique le nombre de places dans sa voiture.
-3. Le **joueur** voit les voitures proposées (plaque, places restantes) et clique « Je monte dans cette voiture » → une place est décomptée.
-4. Si le joueur a un **parent assigné** (Paul → Patricia dans le seed), la réservation reste « en attente de l'accord parental » jusqu'à ce que ce parent l'autorise ou la refuse depuis sa page.
-5. Le parent conducteur ne peut pas réduire ses places en dessous du nombre déjà réservé.
+Onglets : **Tableau de bord · Annonces · (+) · Matchs · Mes équipes**.
+
+- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse ; sur desktop il est à droite des onglets.
+- Le **radar** (les équipes autour de vous qui cherchent un adversaire, triées par proximité) vit dans le **tableau de bord** ; `/coach/radar` y redirige.
+- L'**agenda** est accessible par l'icône calendrier du header.
+
+## Ce qui est masqué en V1
+
+Rien n'a été supprimé — tout est réactivable :
+
+| Élément | Comment le rouvrir |
+|---|---|
+| Connexion joueur / parent / supporter / club | `V1_ROLES` dans `packages/shared/src/index.ts` (gardé par `isV1Role` dans `routes/auth.ts`) |
+| Inscription joueur / parent par code d'équipe | `JOIN_REGISTRATION_OPEN` dans `apps/api/src/routes/registration.ts`, et réafficher `JoinWizard` dans `app/register/page.tsx` |
+| Covoiturage | Onglet retiré de `app/coach/layout.tsx` ; `CarpoolSection` retirée de la feuille de match coach (le composant et son API sont intacts) |
+| Espaces `/player`, `/parent`, `/supporter`, `/club` | Routes et pages conservées, simplement inatteignables tant que la connexion est bloquée |
 
 ## Scénario de démonstration
 
-1. **Coach A** crée une annonce (`Annonce`), **Coach B** (navigation privée) la voit dans `Radar` et y répond → match confirmé des deux côtés.
-2. **Joueur** se déclare présent ; **Parent** se déclare présent avec 3 places de transport → visibles sur le dashboard du coach.
-3. **Coach A** lance le coup d'envoi, saisit le score et les temps forts.
-4. **Supporter** ouvre la page du match : score et timeline se mettent à jour toutes les 5 s sans recharger.
+1. **Coach A** publie une annonce depuis le bouton « + » : il choisit une date à plus de 10 jours (badge « Délai FFF respecté ») et coche l'attestation de déclaration.
+2. **Coach B** (navigation privée) voit l'annonce dans le **radar de son tableau de bord**, triée par distance, et clique « Proposer de jouer ».
+3. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé et sa feuille de match s'ouvre.
+4. **Coach A** lance le coup d'envoi, saisit le score et les temps forts ; la compo adverse se dévoile 2 h avant le coup d'envoi.

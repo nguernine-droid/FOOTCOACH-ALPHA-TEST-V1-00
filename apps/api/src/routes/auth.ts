@@ -5,6 +5,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   driverInfoSchema,
   forgotPasswordSchema,
+  isV1Role,
   loginSchema,
   refreshSchema,
   type AuthResponseDto,
@@ -131,6 +132,10 @@ export async function resolveTeamId(user: typeof users.$inferSelect): Promise<st
   return user.teamId;
 }
 
+/** V1 : seuls coach et admin accèdent à l'application */
+const V1_ROLE_MESSAGE =
+  "Cet espace n'est pas disponible dans la version 1 de FootCoach, réservée aux coachs.";
+
 export function authRoutes(app: FastifyInstance) {
   app.post("/auth/login", async (request): Promise<AuthResponseDto> => {
     const { email, password } = loginSchema.parse(request.body);
@@ -141,6 +146,9 @@ export function authRoutes(app: FastifyInstance) {
     // Après la vérification du mot de passe : ne révèle pas l'existence du compte
     if (user.disabledAt) {
       throw new HttpError(403, "Compte désactivé — contactez l'administrateur");
+    }
+    if (!isV1Role(user.role)) {
+      throw new HttpError(403, V1_ROLE_MESSAGE);
     }
     // Trace de connexion pour les statistiques admin
     await db.insert(loginEvents).values({ userId: user.id, role: user.role });
@@ -166,6 +174,7 @@ export function authRoutes(app: FastifyInstance) {
     const [user] = await db.select().from(users).where(eq(users.id, stored.userId));
     if (!user) throw new HttpError(401, "Utilisateur introuvable");
     if (user.disabledAt) throw new HttpError(403, "Compte désactivé — contactez l'administrateur");
+    if (!isV1Role(user.role)) throw new HttpError(403, V1_ROLE_MESSAGE);
     const authUser: AuthUser = { id: user.id, role: user.role, teamId: await resolveTeamId(user) };
     return {
       accessToken: signAccessToken(authUser),

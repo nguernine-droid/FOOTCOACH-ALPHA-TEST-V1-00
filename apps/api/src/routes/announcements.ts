@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import {
   createAnnouncementSchema,
+  daysBetweenIso,
   type AnnouncementDto,
   type AnnouncementResponseDto,
   type TeamDto,
@@ -39,6 +40,8 @@ function toDto(
     status: announcement.status,
     isMine: team.id === myTeamId,
     createdAt: announcement.createdAt.toISOString(),
+    federationDeclared: announcement.federationDeclared,
+    noticeDays: daysBetweenIso(announcement.createdAt.toISOString().slice(0, 10), announcement.date),
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
     distanceKm,
@@ -133,6 +136,7 @@ export function announcementRoutes(app: FastifyInstance) {
         level: input.level,
         format: input.format,
         comment: input.comment ?? null,
+        federationDeclared: input.federationDeclared,
       })
       .returning();
     reply.code(201);

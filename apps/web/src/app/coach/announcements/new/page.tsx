@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Megaphone } from "lucide-react";
+import { AlertTriangle, Megaphone, ShieldCheck } from "lucide-react";
+import { FFF_NOTICE_DAYS, daysBetweenIso } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
@@ -28,12 +29,18 @@ export default function NewAnnouncementPage() {
     format: "8v8",
     comment: "",
   });
+  const [federationDeclared, setFederationDeclared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  // Délai FFF : la date choisie laisse-t-elle les 10 jours de déclaration ?
+  const today = new Date().toISOString().slice(0, 10);
+  const noticeDays = form.date ? daysBetweenIso(today, form.date) : null;
+  const noticeTooShort = noticeDays !== null && noticeDays < FFF_NOTICE_DAYS;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,9 +49,9 @@ export default function NewAnnouncementPage() {
     try {
       await api("/announcements", {
         method: "POST",
-        body: JSON.stringify({ ...form, comment: form.comment || undefined }),
+        body: JSON.stringify({ ...form, comment: form.comment || undefined, federationDeclared }),
       });
-      router.push("/coach");
+      router.push("/coach/announcements");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Création impossible");
       setLoading(false);
@@ -74,6 +81,30 @@ export default function NewAnnouncementPage() {
             <TimeField id="time" required value={form.time} onChange={(v) => set("time", v)} />
           </div>
         </div>
+
+        {/* Délai réglementaire FFF : information par défaut, alerte si la date est trop proche */}
+        {noticeTooShort ? (
+          <div className="rounded-lg bg-coral-soft border border-coral/25 px-4 py-3 flex gap-2.5" role="alert">
+            <AlertTriangle size={15} className="text-coral shrink-0 mt-0.5" aria-hidden />
+            <div className="text-xs space-y-0.5">
+              <p className="font-bold text-coral">
+                Délai FFF non respecté — {noticeDays === 0 ? "aujourd'hui" : `dans ${noticeDays} jour${noticeDays! > 1 ? "s" : ""}`}
+              </p>
+              <p className="text-ink-soft">
+                Un match amical doit être déclaré à votre district au moins {FFF_NOTICE_DAYS} jours avant la
+                rencontre. Vous pouvez publier quand même, mais la déclaration peut être refusée.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-blue-faint border border-line px-4 py-3 flex gap-2.5">
+            <ShieldCheck size={15} className="text-blue shrink-0 mt-0.5" aria-hidden />
+            <p className="text-xs text-ink-soft">
+              Rappel FFF : tout match amical doit être déclaré à votre district au moins{" "}
+              <span className="font-bold text-ink">{FFF_NOTICE_DAYS} jours</span> avant la rencontre.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <span className="text-xs font-bold text-ink-soft">Catégorie</span>
@@ -152,9 +183,33 @@ export default function NewAnnouncementPage() {
           <textarea id="comment" value={form.comment} onChange={(e) => set("comment", e.target.value)} className="field resize-none" rows={3} placeholder="Terrain synthétique, vestiaires dispo, ambiance conviviale…" />
         </div>
 
+        {/* Attestation obligatoire : la déclaration à la fédération reste à la charge du coach */}
+        <label
+          htmlFor="federationDeclared"
+          className={cn(
+            "flex gap-3 items-start rounded-lg border px-4 py-3 cursor-pointer transition",
+            federationDeclared ? "border-blue bg-blue-faint" : "border-line bg-paper hover:border-blue/40",
+          )}
+        >
+          <input
+            id="federationDeclared"
+            type="checkbox"
+            required
+            checked={federationDeclared}
+            onChange={(e) => setFederationDeclared(e.target.checked)}
+            className="mt-0.5 w-4 h-4 shrink-0 accent-blue"
+          />
+          <span className="text-xs text-ink-soft leading-relaxed">
+            <span className="font-bold text-ink">
+              J&apos;atteste avoir déclaré ce match amical à ma fédération (district / ligue).
+            </span>{" "}
+            La déclaration préalable relève de la responsabilité du club ; FootCoach en conserve seulement la trace.
+          </span>
+        </label>
+
         {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
-        <Button type="submit" size="lg" className="w-full" disabled={loading}>
-          {loading ? "Publication…" : "Publier l'annonce"}
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !federationDeclared}>
+          {loading ? "Publication…" : noticeTooShort ? "Publier quand même" : "Publier l'annonce"}
         </Button>
       </form>
     </div>

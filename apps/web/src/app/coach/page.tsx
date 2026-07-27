@@ -11,7 +11,6 @@ import {
   MapPin,
   Megaphone,
   Radar,
-  Trash2,
   UserCheck,
 } from "lucide-react";
 import type { ActivityDto, AnnouncementDto, LineupDto, LineupPlayerDto, MatchDto } from "@footcoach/shared";
@@ -19,6 +18,8 @@ import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, useNow } from "@/lib/time";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
+import { RadarFeed } from "@/components/announcements/RadarFeed";
 import { Pitch } from "@/components/Pitch";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -222,11 +223,12 @@ export default function CoachDashboard() {
               <Radar size={20} />
             </span>
             <p className="text-sm font-bold">Aucun match programmé</p>
-            <p className="text-xs text-ink-soft">Publiez une annonce ou répondez à une équipe sur le radar.</p>
-            <div className="flex justify-center gap-2">
-              <Link href="/coach/announcements/new"><Button size="sm">Publier une annonce</Button></Link>
-              <Link href="/coach/radar"><Button variant="soft" size="sm">Ouvrir le radar</Button></Link>
-            </div>
+            <p className="text-xs text-ink-soft">
+              Publiez une annonce, ou répondez à une équipe du radar ci-dessous.
+            </p>
+            <Link href="/coach/announcements/new" className="inline-block">
+              <Button size="sm">Publier une annonce</Button>
+            </Link>
           </section>
         )}
 
@@ -252,6 +254,9 @@ export default function CoachDashboard() {
             )}
           </section>
         )}
+
+        {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1 */}
+        <RadarFeed />
       </div>
 
       {/* ————— Colonne latérale ————— */}
@@ -324,74 +329,24 @@ export default function CoachDashboard() {
             </p>
           )}
 
-          {announcements.map((a) => {
-            const pending = a.responses.filter((r) => r.status === "pending");
-            const inner = (
-              <div
-                className={cn(
-                  "rounded-lg border border-line bg-white px-4 py-3 border-l-4 space-y-1 transition",
-                  a.status === "open" ? "border-l-gold" : "border-l-success hover:bg-blue-faint",
-                )}
-              >
-                <p className="text-sm font-bold capitalize">
-                  {a.category} · {a.format} · {formatDate(a.date)} à {a.time}
-                </p>
-                {a.status === "open" ? (
-                  <>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
-                        {pending.length === 0
-                          ? "En attente de proposition"
-                          : `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider`}
-                      </p>
-                      <button
-                        onClick={() => cancelAnnouncement(a.id)}
-                        className="p-1.5 rounded-lg text-ink-faint hover:text-coral hover:bg-coral-soft transition"
-                        aria-label="Annuler cette annonce"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                    {pending.map((r) => (
-                      <div key={r.id} className="flex items-center gap-2 bg-paper rounded-lg px-3 py-2 mt-1.5">
-                        <span
-                          className={cn(
-                            "w-7 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0",
-                            teamColor(r.team),
-                          )}
-                        >
-                          {teamInitials(r.team.name)}
-                        </span>
-                        <span className="flex-1 min-w-0 text-xs font-bold truncate">
-                          {r.team.name}
-                          <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
-                        </span>
-                        <Button size="sm" onClick={() => acceptResponse(a.id, r.id)}>
-                          Accepter
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => declineResponse(a.id, r.id)}>
-                          Décliner
-                        </Button>
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <p className="text-xs font-semibold text-success flex items-center gap-1.5">
-                    <CheckCircle2 size={12} className="shrink-0" />
-                    Match confirmé — {a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}
-                  </p>
-                )}
-              </div>
-            );
-            return a.status === "matched" && a.matchId ? (
-              <Link key={a.id} href={`/coach/matches/${a.matchId}`} className="block">
-                {inner}
-              </Link>
-            ) : (
-              <div key={a.id}>{inner}</div>
-            );
-          })}
+          {announcements.map((a) => (
+            <MyAnnouncementCard
+              key={a.id}
+              announcement={a}
+              onAccept={acceptResponse}
+              onDecline={declineResponse}
+              onCancel={cancelAnnouncement}
+            />
+          ))}
+
+          {announcements.length > 0 && (
+            <Link
+              href="/coach/announcements"
+              className="block text-center text-xs font-bold text-blue hover:text-blue-dark transition pt-1"
+            >
+              Voir toutes mes annonces
+            </Link>
+          )}
         </section>
 
         {/* Activités récentes */}
