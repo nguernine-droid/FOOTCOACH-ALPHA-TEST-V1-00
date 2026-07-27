@@ -89,7 +89,8 @@ export default function AnnouncementsPage() {
         <span className="w-12 h-12 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
           <Megaphone size={22} />
         </span>
-        <div className="min-w-0 flex-1">
+        {/* min-w assez large pour que le bouton passe à la ligne au lieu d'écraser le texte */}
+        <div className="min-w-[14rem] flex-1">
           <h2 className="display text-lg">Mes annonces</h2>
           <p className="text-xs text-white/80">
             {pendingTotal > 0
@@ -97,8 +98,8 @@ export default function AnnouncementsPage() {
               : "Publiez une recherche d'adversaire : elle apparaît sur le radar des autres coachs."}
           </p>
         </div>
-        <Link href="/coach/announcements/new" className="shrink-0">
-          <Button variant="accent" size="sm">
+        <Link href="/coach/announcements/new" className="shrink-0 w-full sm:w-auto">
+          <Button variant="accent" size="sm" className="w-full sm:w-auto">
             <Megaphone size={13} /> Publier une annonce
           </Button>
         </Link>

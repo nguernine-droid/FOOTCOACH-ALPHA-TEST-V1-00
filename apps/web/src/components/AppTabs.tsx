@@ -3,8 +3,11 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus, type LucideIcon } from "lucide-react";
+import { Check, Plus, type LucideIcon } from "lucide-react";
+import type { QuickAction } from "@/components/QuickActionContext";
 import { cn } from "@/lib/utils";
+
+export type { QuickAction };
 
 export type AppTab = {
   href: string;
@@ -14,13 +17,6 @@ export type AppTab = {
   icon: LucideIcon;
   /** Actif uniquement sur correspondance exacte (racines d'espace) */
   exact?: boolean;
-};
-
-/** Action de création du bouton « + », déterminée par la page active */
-export type QuickAction = {
-  href: string;
-  /** Ce que le bouton crée, ex. « Publier une annonce » */
-  label: string;
 };
 
 /**
@@ -43,6 +39,28 @@ export function AppTabs({
 }) {
   const pathname = usePathname();
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
+
+  // Même bouton dans les deux barres : lien de création, ou validation du
+  // formulaire ouvert (associé par l'attribut `form`, donc à distance).
+  const ActionButton = ({ className, children }: { className: string; children: React.ReactNode }) =>
+    !action ? null : action.kind === "link" ? (
+      <Link href={action.href} aria-label={action.label} title={action.label} className={className}>
+        {children}
+      </Link>
+    ) : (
+      <button
+        type="submit"
+        form={action.formId}
+        disabled={action.disabled}
+        aria-label={action.label}
+        title={action.label}
+        className={cn(className, "disabled:opacity-40 disabled:pointer-events-none")}
+      >
+        {children}
+      </button>
+    );
+
+  const ActionIcon = action?.kind === "submit" ? Check : Plus;
 
   // Mobile : le « + » s'intercale entre deux moitiés d'onglets de même largeur
   const split = Math.ceil(tabs.length / 2);
@@ -77,16 +95,9 @@ export function AppTabs({
             })}
           </div>
 
-          {action && (
-            <Link
-              href={action.href}
-              aria-label={action.label}
-              title={action.label}
-              className="ml-auto shrink-0 inline-flex items-center gap-1.5 my-1.5 px-4 py-2 rounded-lg bg-gold text-navy-900 text-xs font-bold transition hover:brightness-105 active:scale-[0.97] focus-visible:!outline-white"
-            >
-              <Plus size={15} /> {action.label}
-            </Link>
-          )}
+          <ActionButton className="ml-auto shrink-0 inline-flex items-center gap-1.5 my-1.5 px-4 py-2 rounded-lg bg-gold text-navy-900 text-xs font-bold transition hover:brightness-105 active:scale-[0.97] focus-visible:!outline-white">
+            <ActionIcon size={15} /> {action?.label}
+          </ActionButton>
         </nav>
       </div>
 
@@ -128,14 +139,9 @@ export function AppTabs({
               {/* Bouton de création, surélevé entre les deux moitiés d'onglets */}
               {action && groupIndex === 0 && (
                 <div className="shrink-0 w-16 flex justify-center">
-                  <Link
-                    href={action.href}
-                    aria-label={action.label}
-                    title={action.label}
-                    className="-mt-5 w-14 h-14 rounded-full bg-gold text-navy-900 flex items-center justify-center ring-4 ring-navy-800 shadow-pop transition active:scale-95 focus-visible:!outline-white"
-                  >
-                    <Plus size={26} aria-hidden />
-                  </Link>
+                  <ActionButton className="-mt-5 w-14 h-14 rounded-full bg-gold text-navy-900 flex items-center justify-center ring-4 ring-navy-800 shadow-pop transition active:scale-95 focus-visible:!outline-white">
+                    <ActionIcon size={26} aria-hidden />
+                  </ActionButton>
                 </div>
               )}
             </Fragment>

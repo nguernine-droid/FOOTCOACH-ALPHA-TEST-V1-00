@@ -5,10 +5,14 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Megaphone, ShieldCheck } from "lucide-react";
 import { FFF_NOTICE_DAYS, daysBetweenIso } from "@footcoach/shared";
 import { api } from "@/lib/api";
+import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { TimeField } from "@/components/ui/TimeField";
 import { cn } from "@/lib/utils";
+
+/** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
+const FORM_ID = "publier-annonce";
 
 const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
 const LEVELS = [
@@ -42,8 +46,17 @@ export default function NewAnnouncementPage() {
   const noticeDays = form.date ? daysBetweenIso(today, form.date) : null;
   const noticeTooShort = noticeDays !== null && noticeDays < FFF_NOTICE_DAYS;
 
+  // Le « + » de la barre d'onglets devient un « ✓ » qui publie cette annonce
+  useQuickActionOverride({
+    kind: "submit",
+    formId: FORM_ID,
+    label: "Publier l'annonce",
+    disabled: loading || !federationDeclared,
+  });
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError(null);
     try {
@@ -70,7 +83,7 @@ export default function NewAnnouncementPage() {
         </div>
       </div>
 
-      <form onSubmit={submit} className="card p-6 space-y-4 animate-rise-in">
+      <form id={FORM_ID} onSubmit={submit} className="card p-6 space-y-4 animate-rise-in">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label htmlFor="date" className="text-xs font-bold text-ink-soft">Date</label>
