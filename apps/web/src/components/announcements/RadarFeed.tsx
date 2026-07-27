@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Clock3, MapPin, Navigation, Radar, X, XCircle } from "lucide-react";
-import type { AnnouncementDto } from "@footcoach/shared";
-import { api } from "@/lib/api";
+import Link from "next/link";
+import { CalendarDays, Clock3, Crosshair, MapPin, Navigation, Radar, X, XCircle } from "lucide-react";
+import type { AnnouncementDto, UserDto } from "@footcoach/shared";
+import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { RADIUS_OPTIONS, RadarScope, toBlips } from "@/components/announcements/RadarScope";
@@ -15,7 +16,6 @@ const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
 /** Périmètre par défaut : la distance qu'un club accepte de faire pour un amical */
 const DEFAULT_RADIUS_KM = 50;
-const RADIUS_STORAGE_KEY = "fc_radar_radius";
 
 /** Tri par proximité (distances inconnues en dernier), puis par date */
 function byProximity(a: AnnouncementDto, b: AnnouncementDto): number {
@@ -38,21 +38,33 @@ export function RadarFeed() {
   const [responding, setResponding] = useState<string | null>(null);
   const [category, setCategory] = useState<string | null>(null);
   const [date, setDate] = useState("");
-  // `null` = sans limite. Le choix du coach est conservé d'une visite à l'autre.
-  const [radiusKm, setRadiusKm] = useState<number | null>(DEFAULT_RADIUS_KM);
+  // `null` = sans limite. Réglage conservé côté serveur : il sert aussi à
+  // décider quelles annonces déclenchent une notification push.
+  const stored = getStoredUser();
+  const [radiusKm, setRadiusKm] = useState<number | null>(
+    stored?.radarRadiusKm === undefined ? DEFAULT_RADIUS_KM : stored.radarRadiusKm,
+  );
+  const [origin, setOrigin] = useState(stored?.location ?? null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
 
+  // La session peut dater d'avant le réglage de position : on relit la fiche
   useEffect(() => {
-    const stored = localStorage.getItem(RADIUS_STORAGE_KEY);
-    if (stored === "none") setRadiusKm(null);
-    else if (stored && Number.isFinite(Number(stored))) setRadiusKm(Number(stored));
+    api<UserDto>("/me")
+      .then((fresh) => {
+        updateStoredUser(fresh);
+        setOrigin(fresh.location ?? null);
+        if (fresh.radarRadiusKm !== undefined) setRadiusKm(fresh.radarRadiusKm);
+      })
+      .catch(() => undefined);
   }, []);
 
   function changeRadius(value: number | null) {
     setRadiusKm(value);
     setSelectedId(null);
-    localStorage.setItem(RADIUS_STORAGE_KEY, value === null ? "none" : String(value));
+    api<UserDto>("/me/radar-radius", { method: "PUT", body: JSON.stringify({ radiusKm: value }) })
+      .then(updateStoredUser)
+      .catch(() => undefined);
   }
 
   const load = useCallback(async () => {
@@ -148,6 +160,25 @@ export function RadarFeed() {
         onSelect={focusCard}
         selectedId={selectedId}
       />
+
+      {/* D'où l'on balaie : le coach doit pouvoir le corriger d'un tap */}
+      <Link
+        href="/coach/profile"
+        className="flex items-center gap-2.5 min-h-12 rounded-lg bg-paper px-4 transition active:bg-blue-soft hover:bg-blue-faint"
+      >
+        <Crosshair size={15} className="text-blue shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 text-xs">
+          {origin ? (
+            <>
+              Centré sur <span className="font-bold">{origin.label}</span>
+              {origin.source === "team" && <span className="text-ink-soft"> · ville de votre équipe</span>}
+            </>
+          ) : (
+            <span className="font-bold text-coral">Aucune position — le radar reste vide</span>
+          )}
+        </span>
+        <span className="text-[11px] font-bold text-blue shrink-0">Modifier</span>
+      </Link>
 
       {/* Périmètre balayé */}
       <div className="space-y-1.5">

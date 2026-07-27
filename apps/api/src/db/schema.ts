@@ -32,6 +32,9 @@ export const teamEventType = pgEnum("team_event_type", ["entrainement", "tournoi
 export const eventRecurrence = pgEnum("event_recurrence", ["none", "weekly"]);
 export const joinRequestStatus = pgEnum("join_request_status", ["pending", "approved", "declined"]);
 export const resetRequestStatus = pgEnum("reset_request_status", ["pending", "handled"]);
+// D'où vient la position d'un coach : géolocalisation du navigateur, ou adresse
+// qu'il a saisie. NULL = aucune position propre, on retombe sur son équipe.
+export const locationSource = pgEnum("location_source", ["gps", "address"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -57,8 +60,43 @@ export const users = pgTable("users", {
   // Parent : infos conducteur, requises pour proposer un covoiturage
   licensePlate: text("license_plate"),
   driverLicenseNumber: text("driver_license_number"),
+  // ————— Position du coach —————
+  // Point de référence des distances et du radar. Prime sur la ville de son
+  // équipe, qui reste le repli quand rien n'est renseigné. Coordonnées
+  // arrondies au centième de degré (~1 km) : la précision utile pour un radar
+  // en kilomètres, sans conserver le domicile exact.
+  lat: doublePrecision("lat"),
+  lng: doublePrecision("lng"),
+  // Libellé lisible de la position (« Bron, Rhône »), affiché tel quel
+  locationLabel: text("location_label"),
+  locationSource: locationSource("location_source"),
+  // Rayon du radar, en km. NULL = sans limite. Sert aussi côté serveur à
+  // décider qui notifier d'une nouvelle annonce.
+  radarRadiusKm: integer("radar_radius_km").default(50),
+  // Quelles notifications ce coach accepte (l'abonnement push conditionne tout)
+  notifyNewAnnouncement: boolean("notify_new_announcement").notNull().default(true),
+  notifyAnnouncementResponse: boolean("notify_announcement_response").notNull().default(true),
+  notifyResponseDecision: boolean("notify_response_decision").notNull().default(true),
+  notifyScore: boolean("notify_score").notNull().default(true),
   // Compte désactivé par l'admin : connexion et refresh refusés
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Un abonnement Web Push par navigateur/appareil. L'endpoint identifie de façon
+ * unique le canal côté service de push : c'est lui la clé naturelle.
+ * Une ligne disparaît dès que le service répond 404/410 (abonnement révoqué).
+ */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

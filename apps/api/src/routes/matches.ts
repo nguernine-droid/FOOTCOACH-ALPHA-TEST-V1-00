@@ -12,6 +12,7 @@ import { db } from "../db/client.js";
 import { matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
+import { notifyScoreToConfirm } from "../lib/push.js";
 
 const homeTeam = alias(teams, "home_team");
 const awayTeam = alias(teams, "away_team");
@@ -122,6 +123,15 @@ export function matchRoutes(app: FastifyInstance) {
         confirmationToken: token,
       })
       .where(eq(matches.id, id));
+
+    // Le coach adverse doit scanner ce QR : on le prévient tout de suite
+    const opponentTeamId = match.homeTeamId === request.user.teamId ? match.awayTeamId : match.homeTeamId;
+    const [submitter] = await db.select().from(teams).where(eq(teams.id, request.user.teamId!));
+    notifyScoreToConfirm({
+      opponentTeamId,
+      submittedByTeamName: submitter?.name ?? "L'équipe adverse",
+      matchId: id,
+    });
     return { token };
   });
 

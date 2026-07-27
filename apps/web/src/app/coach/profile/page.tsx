@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Users } from "lucide-react";
 import { coachQrPayload, type UserDto } from "@footcoach/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
+import { LocationCard } from "@/components/coach/LocationCard";
+import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -25,6 +27,17 @@ export default function CoachProfilePage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // La session stockée peut dater d'avant l'ajout de la position ou des
+  // préférences de notification : on relit la fiche au montage.
+  useEffect(() => {
+    api<UserDto>("/me")
+      .then((fresh) => {
+        setUser(fresh);
+        updateStoredUser(fresh);
+      })
+      .catch(() => undefined);
+  }, []);
 
   if (!user) return <Skeleton className="h-96" />;
 
@@ -177,6 +190,10 @@ export default function CoachProfilePage() {
           </Button>
         </form>
       </section>
+
+      <LocationCard user={user} onChange={apply} />
+
+      <NotificationsCard user={user} onChange={apply} />
 
       {/* Code coach + QR à faire scanner */}
       <section className="card p-5 space-y-4">

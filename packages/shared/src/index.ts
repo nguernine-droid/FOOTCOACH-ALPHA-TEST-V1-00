@@ -252,6 +252,50 @@ export interface UserDto {
   clubName?: string | null;
   /** Coach : club visé par une demande d'affiliation en attente (null sinon) */
   pendingClubName?: string | null;
+  /** Coach : d'où il rayonne. `source: "team"` = repli sur la ville de son équipe. */
+  location?: CoachLocationDto | null;
+  /** Coach : rayon du radar en km (null = sans limite) */
+  radarRadiusKm?: number | null;
+  /** Coach : quelles notifications il accepte de recevoir */
+  notifications?: NotificationPrefsDto;
+}
+
+/** Point de référence d'un coach pour les distances, le radar et les alertes */
+export interface CoachLocationDto {
+  lat: number;
+  lng: number;
+  /** Libellé lisible (« Bron, Rhône » ou « Stade des Iris, Villeurbanne ») */
+  label: string;
+  /** `team` : aucune position propre, on utilise la ville de son équipe */
+  source: "gps" | "address" | "team";
+}
+
+export interface NotificationPrefsDto {
+  /** Une annonce est publiée dans mon périmètre */
+  newAnnouncement: boolean;
+  /** Une équipe propose de jouer une de mes annonces */
+  announcementResponse: boolean;
+  /** Ma proposition a été acceptée ou déclinée */
+  responseDecision: boolean;
+  /** Score final à saisir, ou saisi par l'adversaire et en attente de ma validation */
+  score: boolean;
+}
+
+/** Une suggestion d'adresse renvoyée par la recherche géographique */
+export interface GeoSuggestionDto {
+  label: string;
+  /** Commune seule, pour un libellé court */
+  city: string;
+  postcode: string | null;
+  lat: number;
+  lng: number;
+}
+
+/** Arrondi au centième de degré (~1 km) : la précision utile à un radar en km,
+ *  sans conserver le domicile exact d'un coach. Partagé client/serveur pour que
+ *  les deux côtés stockent et affichent exactement la même valeur. */
+export function coarseCoord(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 export interface TeamDto {

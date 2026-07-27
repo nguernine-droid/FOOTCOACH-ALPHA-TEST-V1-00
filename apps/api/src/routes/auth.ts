@@ -9,6 +9,7 @@ import {
   loginSchema,
   refreshSchema,
   type AuthResponseDto,
+  type CoachLocationDto,
   type CoachTeamDto,
   type UserDto,
 } from "@footcoach/shared";
@@ -27,6 +28,7 @@ import {
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
+import { originOf } from "../lib/coachOrigin.js";
 
 const REFRESH_TTL_MS = 7 * 24 * 3600 * 1000;
 
@@ -92,11 +94,17 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
   let clubName: string | null | undefined;
   let pendingClubName: string | null | undefined;
   let coachCode: string | null | undefined;
+  // Position effective du coach : la sienne, ou à défaut la ville de son équipe
+  let location: CoachLocationDto | null = null;
   if (user.role === "coach") {
     coachCode = await ensureCoachCode(user);
     coachTeams = await getCoachTeams(user.id);
     teamId = coachTeams[0]?.id ?? null;
     teamName = coachTeams[0]?.name ?? null;
+    // Une seule lecture de l'équipe, et seulement si le repli peut servir
+    const [primaryTeam] =
+      user.lat == null && teamId ? await db.select().from(teams).where(eq(teams.id, teamId)) : [];
+    location = originOf(user, primaryTeam ?? null);
     if (user.clubId) {
       const [club] = await db.select().from(clubs).where(eq(clubs.id, user.clubId));
       clubName = club?.name ?? null;
@@ -128,7 +136,19 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     avatarUrl: avatarUrlOf(user.avatarPath),
     ...(coachTeams ? { teams: coachTeams } : {}),
     ...(user.role === "coach"
-      ? { coachCode: coachCode ?? null, clubName: clubName ?? null, pendingClubName: pendingClubName ?? null }
+      ? {
+          coachCode: coachCode ?? null,
+          clubName: clubName ?? null,
+          pendingClubName: pendingClubName ?? null,
+          location,
+          radarRadiusKm: user.radarRadiusKm,
+          notifications: {
+            newAnnouncement: user.notifyNewAnnouncement,
+            announcementResponse: user.notifyAnnouncementResponse,
+            responseDecision: user.notifyResponseDecision,
+            score: user.notifyScore,
+          },
+        }
       : {}),
   };
 }

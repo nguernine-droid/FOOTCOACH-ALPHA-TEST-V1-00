@@ -120,6 +120,13 @@
       "when": 1785145046557,
       "tag": "0016_productive_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785160537347,
+      "tag": "0017_known_korvac",
+      "breakpoints": true
     }
   ]
 }

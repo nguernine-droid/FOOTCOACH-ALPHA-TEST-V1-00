@@ -12,6 +12,8 @@ import { announcementResponses, matchAnnouncements, matches, teams } from "../db
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
+import { loadOrigin } from "../lib/coachOrigin.js";
+import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -111,10 +113,8 @@ export function announcementRoutes(app: FastifyInstance) {
       rows.filter((r) => r.announcement.status === "matched").map((r) => r.announcement.id),
     );
     const responsesByAnn = await loadResponses(rows.map((r) => r.announcement.id));
-    const [myTeam] = request.user.teamId
-      ? await db.select().from(teams).where(eq(teams.id, request.user.teamId))
-      : [];
-    const myCoords = myTeam?.lat != null && myTeam?.lng != null ? { lat: myTeam.lat, lng: myTeam.lng } : null;
+    // Position réglée par le coach en priorité, ville de son équipe en repli
+    const myCoords = await loadOrigin(request.user.id, request.user.teamId);
     return rows.map((r) => {
       const all = responsesByAnn.get(r.announcement.id) ?? [];
       const isMine = r.announcement.teamId === request.user.teamId;
@@ -145,6 +145,15 @@ export function announcementRoutes(app: FastifyInstance) {
       .returning();
     reply.code(201);
     const [team] = await db.select().from(teams).where(eq(teams.id, request.user.teamId));
+    // Alerte les coachs dont le périmètre couvre le lieu du match (sans attendre)
+    notifyNewAnnouncement({
+      authorUserId: request.user.id,
+      teamName: team.name,
+      category: created.category,
+      format: created.format,
+      city: created.city,
+      venue: cityCoords(created.city),
+    });
     return toDto({ announcement: created, team }, request.user.teamId);
   });
 
@@ -181,6 +190,14 @@ export function announcementRoutes(app: FastifyInstance) {
       .insert(announcementResponses)
       .values({ announcementId: id, teamId: responderTeamId })
       .returning();
+
+    const [responderTeam] = await db.select().from(teams).where(eq(teams.id, responderTeamId));
+    notifyAnnouncementResponse({
+      ownerTeamId: announcement.teamId,
+      responderTeamName: responderTeam.name,
+      city: announcement.city,
+    });
+
     reply.code(201);
     return { responseId: created.id };
   });
@@ -241,6 +258,27 @@ export function announcementRoutes(app: FastifyInstance) {
         return created;
       });
 
+      // Prévient l'équipe retenue, et celles dont la proposition vient de tomber
+      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, match.homeTeamId));
+      const declined = await db
+        .select({ teamId: announcementResponses.teamId })
+        .from(announcementResponses)
+        .where(and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "declined")));
+      notifyResponseDecision({
+        responderTeamId: match.awayTeamId,
+        accepted: true,
+        opponentTeamName: ownTeam.name,
+        matchId: match.id,
+      });
+      for (const { teamId } of declined) {
+        notifyResponseDecision({
+          responderTeamId: teamId,
+          accepted: false,
+          opponentTeamName: ownTeam.name,
+          matchId: null,
+        });
+      }
+
       reply.code(201);
       return { matchId: match.id };
     },
@@ -268,6 +306,14 @@ export function announcementRoutes(app: FastifyInstance) {
         .update(announcementResponses)
         .set({ status: "declined" })
         .where(eq(announcementResponses.id, responseId));
+
+      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, announcement.teamId));
+      notifyResponseDecision({
+        responderTeamId: response.teamId,
+        accepted: false,
+        opponentTeamName: ownTeam.name,
+        matchId: null,
+      });
       return { ok: true };
     },
   );
