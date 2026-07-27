@@ -83,13 +83,16 @@ export function activityRoutes(app: FastifyInstance) {
       const opponent = opponentName.get(match.homeTeamId === teamId ? match.awayTeamId : match.homeTeamId) ?? "l'adversaire";
       const score = `${match.homeScore} – ${match.awayScore}`;
       const iSubmitted = match.scoreSubmittedByTeamId === teamId;
+      // L'acteur est déjà nommé en gras : ne pas le répéter dans le détail
       events.push({
         id: `score-${match.id}`,
         type: "score",
         actor: iSubmitted ? "Vous" : opponent,
         detail:
           match.status === "finished"
-            ? `score validé face à ${opponent} : ${score}`
+            ? iSubmitted
+              ? `avez saisi le score face à ${opponent}, validé : ${score}`
+              : `— score validé : ${score}`
             : iSubmitted
               ? `avez saisi ${score} face à ${opponent} — en attente de validation`
               : `a saisi ${score} — scannez son QR code pour valider`,
