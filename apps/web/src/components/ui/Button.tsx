@@ -17,17 +17,20 @@ const variants = {
   danger: "bg-coral-soft text-coral hover:bg-coral/15",
 };
 
+// Hauteurs minimales pensées pour le pouce (44/48/52 px) puis ramenées à la
+// densité d'origine au-delà de 960 px, où l'on vise à la souris.
 const sizes = {
-  sm: "px-4 py-2 text-xs",
-  md: "px-5 py-2.5 text-sm",
-  lg: "px-6 py-3.5 text-sm",
+  sm: "px-4 py-2 text-xs min-h-11 min-[960px]:min-h-0",
+  md: "px-5 py-2.5 text-sm min-h-12 min-[960px]:min-h-0",
+  lg: "px-6 py-3.5 text-sm min-h-13 min-[960px]:min-h-0",
 };
 
 export function Button({ variant = "primary", size = "md", children, className, ...props }: ButtonProps) {
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-bold rounded-lg transition-all active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none",
+        "inline-flex items-center justify-center gap-2 font-bold rounded-lg select-none transition-all",
+        "active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none",
         variants[variant],
         sizes[size],
         className,

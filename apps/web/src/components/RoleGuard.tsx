@@ -10,6 +10,7 @@ import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
 import { TeamSwitcher } from "@/components/TeamSwitcher";
 import { ClubCrest } from "@/components/ClubCrest";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -110,15 +111,38 @@ export function RoleGuard({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [menuOpen, notifOpen]);
 
+  // Silhouette du shell plutôt qu'un « Chargement… » plein écran : le header et
+  // la barre basse sont déjà à leur place définitive, donc zéro saut au montage.
   if (!user) {
-    return <div className="min-h-dvh flex items-center justify-center text-ink-soft animate-soft-pulse">Chargement…</div>;
+    return (
+      <div className="min-h-dvh" aria-busy aria-label="Chargement">
+        <header className="sticky top-0 z-40 shadow-pop text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700 pt-[env(safe-area-inset-top)]">
+          <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3">
+            <ClubCrest size={34} />
+            <p className="display text-xl leading-none select-none">
+              FOOT<span className="text-gold">COACH</span>
+            </p>
+          </div>
+        </header>
+        <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-28 space-y-4">
+          <Skeleton className="h-52" />
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+        </div>
+        {nav && (
+          <div className="min-[960px]:hidden fixed bottom-0 inset-x-0 h-14 bg-navy-800 border-t border-white/10 pb-[env(safe-area-inset-bottom)]" />
+        )}
+      </div>
+    );
   }
 
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
 
   return (
     <div className="min-h-dvh">
-      <div className="sticky top-0 z-40 shadow-pop">
+      {/* pt safe-area : en mode « ajouté à l'écran d'accueil », la page passe
+          sous la barre d'état — le dégradé navy la prolonge proprement. */}
+      <div className="sticky top-0 z-40 shadow-pop pt-[env(safe-area-inset-top)] bg-navy-900">
         <header className="text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700">
           <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">

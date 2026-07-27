@@ -75,7 +75,7 @@ export function AppTabs({
           href={tab.href}
           role="menuitem"
           className={cn(
-            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition",
+            "flex items-center gap-2.5 px-3 py-3 min-h-12 rounded-lg text-sm font-semibold transition active:bg-blue-soft",
             isActive(tab) ? "bg-blue-soft text-navy-700" : "text-ink-soft hover:bg-paper hover:text-ink",
           )}
         >
@@ -168,7 +168,8 @@ export function AppTabs({
       <nav
         role="tablist"
         aria-label={ariaLabel}
-        className="min-[960px]:hidden fixed bottom-0 inset-x-0 z-40 bg-navy-800 border-t border-white/10 shadow-pop pb-[env(safe-area-inset-bottom)]"
+        className="min-[960px]:hidden fixed bottom-0 inset-x-0 z-40 bg-navy-800 border-t border-white/10 shadow-pop
+          pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
       >
         {/* Les deux moitiés sont des frères flex-1 de part et d'autre du « + » :
             chaque onglet garde ainsi la même largeur des deux côtés. */}
@@ -186,7 +187,8 @@ export function AppTabs({
                       aria-selected={active}
                       aria-label={tab.label}
                       className={cn(
-                        "flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-0.5 py-1.5 transition focus-visible:!outline-gold",
+                        "flex-1 min-w-0 min-h-14 flex flex-col items-center justify-center gap-0.5 py-1.5 transition",
+                        "active:bg-white/10 focus-visible:!outline-gold",
                         active ? "text-gold" : "text-white/55 hover:text-white",
                       )}
                     >
@@ -208,7 +210,8 @@ export function AppTabs({
                       aria-label="Autres sections"
                       onClick={() => setMoreOpen((o) => !o)}
                       className={cn(
-                        "flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-0.5 py-1.5 transition focus-visible:!outline-gold",
+                        "flex-1 min-w-0 min-h-14 flex flex-col items-center justify-center gap-0.5 py-1.5 transition",
+                        "active:bg-white/10 focus-visible:!outline-gold",
                         moreActive ? "text-gold" : "text-white/55 hover:text-white",
                       )}
                     >

@@ -74,6 +74,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Pas de flash gris iOS : le retour au tap est géré par nos états `active:` */
+    -webkit-tap-highlight-color: transparent;
+    /* Le zoom système reste possible, mais plus de recadrage auto en paysage */
+    -webkit-text-size-adjust: 100%;
+  }
+  /* Supprime le délai de 300 ms et le double-tap-zoom sur les cibles tactiles */
+  a,
+  button,
+  label,
+  select,
+  summary,
+  [role="button"],
+  [role="tab"] {
+    touch-action: manipulation;
+  }
   /* Focus clavier visible et homogène sur tous les éléments interactifs */
   a:focus-visible,
   button:focus-visible,
@@ -89,6 +105,10 @@
     @apply bg-paper text-ink selection:bg-blue-soft selection:text-navy-700;
     font-family: var(--font-inter), "Segoe UI", system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    /* `viewport-fit=cover` étend la page sous l'encoche : on écarte le contenu
+       du flux normal des bords physiques (utile surtout en paysage). */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 
@@ -117,10 +137,37 @@
     @apply font-bold uppercase tracking-wide;
   }
 
-  /* Champ de formulaire */
+  /* Champ de formulaire.
+     16 px sur mobile : en dessous, iOS zoome sur le champ au focus et décale
+     tout l'écran. On revient à 14 px là où le pointeur est fin (desktop). */
   .field {
-    @apply w-full bg-paper border border-line rounded-lg px-4 py-3 text-sm text-ink outline-none transition
+    @apply w-full min-h-12 bg-paper border border-line rounded-lg px-4 py-3 text-base min-[960px]:text-sm
+      text-ink outline-none transition
       placeholder:text-ink-faint focus:border-blue focus:bg-white focus:ring-2 focus:ring-blue/15;
+  }
+
+  /* Bouton à icône seule : le dessin reste compact (44 px), mais la zone
+     touchée est portée à 48×48 par un pseudo-élément — l'icône garde sa
+     densité visuelle sans sacrifier la cible du pouce. */
+  .icon-btn {
+    @apply relative inline-flex items-center justify-center shrink-0 rounded-lg transition
+      active:scale-90 disabled:opacity-40 disabled:pointer-events-none;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+  .icon-btn::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 3rem;
+    height: 3rem;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Retour au tap pour les cibles qui ne sont pas des <Button> (cartes, lignes) */
+  .press {
+    @apply transition active:scale-[0.985];
   }
 
   /* Petite pastille de statut (seul élément full-round avec les avatars) */
