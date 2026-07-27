@@ -176,7 +176,7 @@ export default function CoachRelationsPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="stagger space-y-2">
           {relations.map((relation) => (
             <div key={relation.id} className="card p-4 space-y-3">
               <div className="flex items-center gap-3">

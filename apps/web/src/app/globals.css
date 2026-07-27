@@ -59,6 +59,23 @@
   --shadow-card: 0 1px 2px rgba(7, 27, 63, 0.06), 0 8px 24px rgba(7, 27, 63, 0.07);
   --shadow-pop: 0 10px 28px -14px rgba(7, 27, 63, 0.5);
 
+  /* ————— Mouvement —————
+     Une seule courbe pour toute l'app : décélération franche façon iOS, qui
+     démarre vite et se pose doucement. Trois durées seulement — au-delà, le
+     mouvement cesse d'être lu comme cohérent.
+       tap  : retour au doigt, doit paraître instantané
+       ui   : ouverture/fermeture d'un élément d'interface
+       page : entrée d'un écran ou d'une liste */
+  --ease-app: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-tap: 120ms;
+  --dur-ui: 180ms;
+  --dur-page: 320ms;
+
+  /* Tailwind applique ces deux valeurs à tous ses utilitaires `transition` :
+     plus besoin de préciser la durée ni la courbe au cas par cas. */
+  --default-transition-duration: var(--dur-ui);
+  --default-transition-timing-function: var(--ease-app);
+
   @keyframes soft-pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.55; }
@@ -70,6 +87,21 @@
   @keyframes fade-in {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+  /* Balayage clair traversant les silhouettes de chargement */
+  @keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+  /* Un chiffre qui change : il arrive du bas, comme sur un compteur */
+  @keyframes digit-roll {
+    from { opacity: 0; transform: translateY(0.35em); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  /* Message de confirmation ou d'erreur qui se pose sous son champ */
+  @keyframes message-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   /* Entrée d'une bottom sheet : elle monte depuis le bord bas de l'écran */
   @keyframes sheet-in {
@@ -148,9 +180,27 @@
 
 @layer utilities {
   .animate-soft-pulse { animation: soft-pulse 2s infinite ease-in-out; }
-  .animate-rise-in { animation: rise-in 0.35s ease-out both; }
-  .animate-fade-in { animation: fade-in 0.18s ease-out both; }
-  .animate-sheet-in { animation: sheet-in 0.24s cubic-bezier(0.32, 0.72, 0, 1) both; }
+  .animate-rise-in { animation: rise-in var(--dur-page) var(--ease-app) both; }
+  .animate-fade-in { animation: fade-in var(--dur-ui) var(--ease-app) both; }
+  .animate-sheet-in { animation: sheet-in var(--dur-page) var(--ease-app) both; }
+  .animate-digit { animation: digit-roll var(--dur-ui) var(--ease-app) both; }
+  /* Les animations d'ambiance qui bouclent gardent une courbe symétrique :
+     la décélération de `--ease-app` ne se lit que sur un mouvement qui finit. */
+  .animate-shimmer { animation: shimmer 1.5s ease-in-out infinite; }
+  .animate-message { animation: message-in var(--dur-ui) var(--ease-app) both; }
+
+  /* Entrée en cascade : les enfants directs arrivent l'un après l'autre.
+     Le décalage s'arrête au 8e — au-delà, une liste longue mettrait plus
+     d'une seconde à s'afficher entièrement, ce qui se lit comme de la lenteur
+     et non comme du soin. */
+  .stagger > * { animation: rise-in var(--dur-page) var(--ease-app) both; }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(n + 7) { animation-delay: 240ms; }
 }
 
 @layer components {
@@ -265,6 +315,9 @@
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    /* Sans ça, une entrée en cascade laisserait la dernière carte invisible
+       240 ms avant d'apparaître d'un coup — l'attente sans le mouvement. */
+    animation-delay: 0ms !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }

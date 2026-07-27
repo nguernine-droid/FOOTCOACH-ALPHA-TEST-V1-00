@@ -156,7 +156,7 @@ export default function AnnouncementsPage() {
           )}
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 items-start">
+        <div className="stagger grid gap-3 md:grid-cols-2 xl:grid-cols-3 items-start">
           {shown.map((a) => (
             <MyAnnouncementCard
               key={a.id}

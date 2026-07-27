@@ -67,7 +67,33 @@ export function AppTabs({
       </button>
     );
 
-  const ActionIcon = action?.kind === "submit" ? Check : Plus;
+  const isSubmit = action?.kind === "submit";
+
+  /**
+   * Le « + » devient un « ✓ » quand une page de création s'ouvre : les deux
+   * icônes sont superposées et pivotent l'une dans l'autre, pour que le
+   * changement se lise comme une transformation et non comme un remplacement.
+   */
+  const MorphIcon = ({ size }: { size: number }) => (
+    <span className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <Plus
+        size={size}
+        aria-hidden
+        className={cn(
+          "absolute transition-all",
+          isSubmit ? "opacity-0 rotate-90 scale-50" : "opacity-100 rotate-0 scale-100",
+        )}
+      />
+      <Check
+        size={size}
+        aria-hidden
+        className={cn(
+          "absolute transition-all",
+          isSubmit ? "opacity-100 rotate-0 scale-100" : "opacity-0 -rotate-90 scale-50",
+        )}
+      />
+    </span>
+  );
 
   // Mobile : le « + » s'intercale entre deux moitiés d'onglets de même largeur
   const split = Math.ceil(tabs.length / 2);
@@ -75,7 +101,7 @@ export function AppTabs({
 
   const tabClassName = (active: boolean) =>
     cn(
-      "flex-1 min-w-0 min-h-14 flex flex-col items-center justify-center gap-0.5 py-1.5 transition",
+      "relative flex-1 min-w-0 min-h-14 flex flex-col items-center justify-center gap-0.5 py-1.5 transition",
       "active:bg-white/10 focus-visible:!outline-gold",
       active ? "text-gold" : "text-white/55 hover:text-white",
     );
@@ -110,7 +136,7 @@ export function AppTabs({
           </div>
 
           <ActionButton className="ml-auto shrink-0 inline-flex items-center gap-1.5 my-1.5 px-4 py-2 rounded-lg bg-gold text-navy-900 text-xs font-bold transition hover:brightness-105 active:scale-[0.97] focus-visible:!outline-white">
-            <ActionIcon size={15} /> {action?.label}
+            <MorphIcon size={15} /> {action?.label}
           </ActionButton>
         </nav>
       </div>
@@ -148,7 +174,19 @@ export function AppTabs({
                       aria-label={tab.label}
                       className={tabClassName(active)}
                     >
-                      <tab.icon size={20} aria-hidden />
+                      {/* Barre dorée qui se déploie sous l'onglet retenu */}
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "absolute top-0 h-0.5 w-8 rounded-full bg-gold origin-center transition-transform",
+                          active ? "scale-x-100" : "scale-x-0",
+                        )}
+                      />
+                      <tab.icon
+                        size={20}
+                        aria-hidden
+                        className={cn("transition-transform", active && "-translate-y-px scale-110")}
+                      />
                       <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">
                         {tab.shortLabel ?? tab.label}
                       </span>
@@ -188,8 +226,8 @@ export function AppTabs({
               {/* Bouton de création, surélevé entre les deux moitiés d'onglets */}
               {action && groupIndex === 0 && (
                 <div className="shrink-0 w-16 flex justify-center">
-                  <ActionButton className="-mt-5 w-14 h-14 rounded-full bg-gold text-navy-900 flex items-center justify-center ring-4 ring-navy-800 shadow-pop transition active:scale-95 focus-visible:!outline-white">
-                    <ActionIcon size={26} aria-hidden />
+                  <ActionButton className="-mt-5 w-14 h-14 rounded-full bg-gold text-navy-900 flex items-center justify-center ring-4 ring-navy-800 shadow-pop transition active:scale-90 focus-visible:!outline-white">
+                    <MorphIcon size={26} />
                   </ActionButton>
                 </div>
               )}

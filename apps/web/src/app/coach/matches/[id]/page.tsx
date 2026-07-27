@@ -57,7 +57,13 @@ function FinalScoreForm({
         >
           −
         </button>
-        <span className="display text-6xl tabular-nums leading-none text-navy-700">{value}</span>
+        {/* Largeur figée : un passage de 9 à 10 ne doit pas déplacer les boutons.
+            La clé sur la valeur relance l'animation à chaque but. */}
+        <span className="display text-6xl tabular-nums leading-none text-navy-700 min-w-[2ch] text-center overflow-hidden">
+          <span key={value} className="animate-digit inline-block">
+            {value}
+          </span>
+        </span>
         <button
           type="button"
           onClick={() => set((v) => Math.min(99, v + 1))}

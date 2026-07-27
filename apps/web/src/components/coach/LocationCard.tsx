@@ -6,7 +6,6 @@ import type { GeoSuggestionDto, UserDto } from "@footcoach/shared";
 import { coarseCoord } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
 
 const SOURCE_LABELS = {
   gps: "Position de l'appareil",
@@ -242,9 +241,13 @@ export function LocationCard({ user, onChange }: { user: UserDto; onChange: (upd
         </Button>
       )}
 
-      {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
+      {error && (
+        <p className="animate-message text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>
+      )}
       {message && (
-        <p className={cn("text-xs font-semibold text-success bg-success-soft rounded-lg px-3 py-2")}>{message}</p>
+        <p className="animate-message text-xs font-semibold text-success bg-success-soft rounded-lg px-3 py-2">
+          {message}
+        </p>
       )}
 
       <p className="text-[11px] text-ink-soft">

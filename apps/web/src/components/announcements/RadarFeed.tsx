@@ -290,7 +290,7 @@ export function RadarFeed() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2 items-start">
+        <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
           {inRange.map((a) => (
             <div
               key={a.id}

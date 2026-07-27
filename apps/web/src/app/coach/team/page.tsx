@@ -133,7 +133,7 @@ export default function CoachTeamPage() {
 
       <ClubAffiliationCard />
 
-      <div className="space-y-2">
+      <div className="stagger space-y-2">
         {teams.map((team) => {
           const active = team.id === activeTeamId;
           return (

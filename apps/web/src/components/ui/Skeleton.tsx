@@ -1,8 +1,16 @@
 import { cn } from "@/lib/utils";
 
-/** Bloc de chargement animé — à composer en silhouettes d'écran. */
+/**
+ * Bloc de chargement — à composer en silhouettes d'écran.
+ * Un reflet le traverse plutôt qu'un clignotement d'opacité : le mouvement
+ * suggère un chargement en cours là où le clignotement suggère une panne.
+ */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-lg bg-line/70", className)} aria-hidden />;
+  return (
+    <div className={cn("relative overflow-hidden rounded-lg bg-line/60", className)} aria-hidden>
+      <span className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+    </div>
+  );
 }
 
 /** Silhouette de grille de cartes (listes de matchs, annonces, effectif…) */

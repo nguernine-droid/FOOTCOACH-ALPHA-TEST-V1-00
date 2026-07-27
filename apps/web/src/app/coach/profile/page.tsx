@@ -182,8 +182,16 @@ export default function CoachProfilePage() {
             </p>
           </div>
 
-          {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
-          {message && <p className="text-xs font-semibold text-success bg-success-soft rounded-lg px-3 py-2">{message}</p>}
+          {error && (
+            <p className="animate-message text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p className="animate-message text-xs font-semibold text-success bg-success-soft rounded-lg px-3 py-2">
+              {message}
+            </p>
+          )}
 
           <Button type="submit" className="w-full" disabled={saving}>
             {saving ? "Enregistrement…" : "Enregistrer"}
