@@ -10,6 +10,7 @@ import { AccountSheetContext } from "@/components/AccountSheetContext";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
 import { ClubCrest } from "@/components/ClubCrest";
+import { PageTransition } from "@/components/PageTransition";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 
@@ -189,16 +190,18 @@ export function RoleGuard({
         </div>
 
         <div className={cn(SHELL_WIDTH, "pt-6", nav ? "pb-28 min-[960px]:pb-12" : "pb-12")}>
-          {role === "coach" ? (
-            <ActiveTeamContext.Provider
-              value={{ teams: coachTeams, activeTeamId, activeTeam, setActiveTeam: changeActiveTeam }}
-            >
-              {/* Remonte les pages coach au changement d'équipe → refetch avec le bon X-Team-Id */}
-              <div key={activeTeamId ?? "none"}>{children}</div>
-            </ActiveTeamContext.Provider>
-          ) : (
-            children
-          )}
+          <PageTransition>
+            {role === "coach" ? (
+              <ActiveTeamContext.Provider
+                value={{ teams: coachTeams, activeTeamId, activeTeam, setActiveTeam: changeActiveTeam }}
+              >
+                {/* Remonte les pages coach au changement d'équipe → refetch avec le bon X-Team-Id */}
+                <div key={activeTeamId ?? "none"}>{children}</div>
+              </ActiveTeamContext.Provider>
+            ) : (
+              children
+            )}
+          </PageTransition>
         </div>
 
         {sheetOpen && (
