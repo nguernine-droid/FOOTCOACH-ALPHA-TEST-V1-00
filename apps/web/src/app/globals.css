@@ -76,6 +76,28 @@
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
   }
+
+  /* ————— Radar ————— */
+  /* Le faisceau part du nord et tourne dans le sens horaire */
+  @keyframes radar-sweep {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  /* Un point s'allume au passage du faisceau, puis retombe à sa veilleuse.
+     Chaque point cale sa phase sur son relèvement via un animation-delay
+     négatif — aucun minuteur JS n'est nécessaire. */
+  @keyframes radar-blip {
+    0% { opacity: 1; transform: scale(1.45); }
+    12% { opacity: 1; transform: scale(1); }
+    70% { opacity: 0.7; transform: scale(1); }
+    100% { opacity: 0.55; transform: scale(1); }
+  }
+  /* Onde qui s'échappe du point au moment où le faisceau le croise */
+  @keyframes radar-echo {
+    0% { opacity: 0.6; transform: scale(0.6); }
+    45% { opacity: 0; transform: scale(2.6); }
+    100% { opacity: 0; transform: scale(2.6); }
+  }
 }
 
 :root {
@@ -204,6 +226,36 @@
 
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Balayage du radar : un secteur clair qui s'estompe derrière le faisceau.
+     `--radar-period` cadence à la fois le balayage et l'allumage des points. */
+  .radar-sweep {
+    background: conic-gradient(
+      from 0deg,
+      rgba(245, 179, 1, 0.42) 0deg,
+      rgba(245, 179, 1, 0.14) 22deg,
+      rgba(245, 179, 1, 0) 62deg,
+      rgba(245, 179, 1, 0) 360deg
+    );
+    animation: radar-sweep var(--radar-period, 4s) linear infinite;
+  }
+  .radar-blip {
+    animation: radar-blip var(--radar-period, 4s) linear infinite both;
+  }
+  .radar-echo {
+    animation: radar-echo var(--radar-period, 4s) linear infinite both;
+  }
+
+  /* Mouvement réduit : le faisceau s'arrête, les points restent tous visibles.
+     La règle globale ci-dessous écrase la durée ; on neutralise en plus
+     l'opacité résiduelle des points pour qu'aucun ne disparaisse. */
+  @media (prefers-reduced-motion: reduce) {
+    .radar-sweep { display: none; }
+    .radar-blip,
+    .radar-echo { animation: none; }
+    .radar-blip { opacity: 1; }
+    .radar-echo { opacity: 0; }
+  }
 }
 
 /* Accessibilité — respect de la préférence "réduire les animations" */

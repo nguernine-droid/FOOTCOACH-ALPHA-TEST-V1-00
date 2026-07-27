@@ -60,6 +60,21 @@ export function cityCoords(name: string): { lat: number; lng: number } | null {
   return hit ? { lat: hit[0], lng: hit[1] } : null;
 }
 
+/**
+ * Relèvement initial de `a` vers `b`, en degrés entiers : 0 = nord, sens des
+ * aiguilles d'une montre. Sert à placer les points sur le radar dans leur
+ * vraie direction plutôt qu'au hasard.
+ */
+export function bearingDeg(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const dLng = rad(b.lng - a.lng);
+  const y = Math.sin(dLng) * Math.cos(rad(b.lat));
+  const x =
+    Math.cos(rad(a.lat)) * Math.sin(rad(b.lat)) - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(dLng);
+  // Le modulo final ramène un arrondi à 360 sur 0
+  return Math.round((((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360) % 360;
+}
+
 /** Distance à vol d'oiseau en km (haversine), arrondie à une décimale. */
 export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
   const rad = (deg: number) => (deg * Math.PI) / 180;

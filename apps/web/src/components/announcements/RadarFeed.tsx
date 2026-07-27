@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Clock3, MapPin, Navigation, Radar, X, XCircle } from "lucide-react";
 import type { AnnouncementDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { RADIUS_OPTIONS, RadarScope, toBlips } from "@/components/announcements/RadarScope";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
+/** Périmètre par défaut : la distance qu'un club accepte de faire pour un amical */
+const DEFAULT_RADIUS_KM = 50;
+const RADIUS_STORAGE_KEY = "fc_radar_radius";
 
 /** Tri par proximité (distances inconnues en dernier), puis par date */
 function byProximity(a: AnnouncementDto, b: AnnouncementDto): number {
@@ -24,7 +28,8 @@ function byProximity(a: AnnouncementDto, b: AnnouncementDto): number {
 }
 
 /**
- * Les équipes qui cherchent un adversaire, triées par proximité.
+ * Les équipes qui cherchent un adversaire : un écran de radar qui balaie le
+ * périmètre choisi, puis la liste détaillée des annonces qu'il a détectées.
  * Affiché dans le tableau de bord du coach — le cœur de la V1.
  */
 export function RadarFeed() {
@@ -33,6 +38,22 @@ export function RadarFeed() {
   const [responding, setResponding] = useState<string | null>(null);
   const [category, setCategory] = useState<string | null>(null);
   const [date, setDate] = useState("");
+  // `null` = sans limite. Le choix du coach est conservé d'une visite à l'autre.
+  const [radiusKm, setRadiusKm] = useState<number | null>(DEFAULT_RADIUS_KM);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const cardRefs = useRef(new Map<string, HTMLDivElement>());
+
+  useEffect(() => {
+    const stored = localStorage.getItem(RADIUS_STORAGE_KEY);
+    if (stored === "none") setRadiusKm(null);
+    else if (stored && Number.isFinite(Number(stored))) setRadiusKm(Number(stored));
+  }, []);
+
+  function changeRadius(value: number | null) {
+    setRadiusKm(value);
+    setSelectedId(null);
+    localStorage.setItem(RADIUS_STORAGE_KEY, value === null ? "none" : String(value));
+  }
 
   const load = useCallback(async () => {
     try {
@@ -61,6 +82,39 @@ export function RadarFeed() {
     }
   }
 
+  /** Un point du radar renvoie à sa fiche dans la liste */
+  function focusCard(id: string) {
+    setSelectedId(id);
+    cardRefs.current.get(id)?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  const matchesFilters = useMemo(
+    () =>
+      (announcements ?? [])
+        .filter((a) => (category ? a.category === category : true))
+        .filter((a) => (date ? a.date === date : true)),
+    [announcements, category, date],
+  );
+
+  // Le périmètre ne masque jamais une annonce dont la ville est inconnue : on
+  // ne peut pas affirmer qu'elle est hors rayon, seulement qu'on ne sait pas.
+  const inRange = useMemo(
+    () =>
+      matchesFilters
+        .filter((a) => radiusKm === null || a.distanceKm === null || a.distanceKm <= radiusKm)
+        .sort(byProximity),
+    [matchesFilters, radiusKm],
+  );
+  const outOfRange = matchesFilters.filter(
+    (a) => radiusKm !== null && a.distanceKm !== null && a.distanceKm > radiusKm,
+  );
+  const unknownCount = inRange.filter((a) => a.distanceKm === null).length;
+
+  // Sans limite, le cercle extérieur se cale sur l'annonce la plus lointaine
+  const farthest = Math.max(0, ...inRange.map((a) => a.distanceKm ?? 0));
+  const scaleKm = radiusKm ?? Math.max(10, Math.ceil(farthest / 10) * 10);
+  const blips = useMemo(() => toBlips(inRange, scaleKm), [inRange, scaleKm]);
+
   const header = (
     <div className="flex items-center gap-2.5">
       <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
@@ -77,19 +131,58 @@ export function RadarFeed() {
     return (
       <section className="card p-5 space-y-4" aria-label="Radar des matchs" aria-busy>
         {header}
+        <Skeleton className="h-[300px] max-w-[300px] mx-auto rounded-full" />
         <Skeleton className="h-40" />
       </section>
     );
   }
 
-  const filtered = announcements
-    .filter((a) => (category ? a.category === category : true))
-    .filter((a) => (date ? a.date === date : true))
-    .sort(byProximity);
-
   return (
     <section className="card p-5 space-y-4 animate-rise-in" aria-label="Radar des matchs">
       {header}
+
+      <RadarScope
+        blips={blips}
+        scaleKm={scaleKm}
+        unknownCount={unknownCount}
+        onSelect={focusCard}
+        selectedId={selectedId}
+      />
+
+      {/* Périmètre balayé */}
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Périmètre autour de moi</p>
+        <div className="grid grid-cols-4 gap-2" role="group" aria-label="Périmètre du radar">
+          {RADIUS_OPTIONS.map((option) => (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => changeRadius(option.value)}
+              aria-pressed={radiusKm === option.value}
+              className={cn(
+                // px resserré : quatre pastilles doivent tenir sur une rangée
+                "chip-choice !px-2",
+                radiusKm === option.value ? "chip-choice-on" : "chip-choice-off",
+              )}
+            >
+              <span className="truncate">{option.label}</span>
+            </button>
+          ))}
+        </div>
+        {outOfRange.length > 0 && (
+          <p className="text-[11px] text-ink-soft">
+            {outOfRange.length} annonce{outOfRange.length > 1 ? "s" : ""} au-delà de {radiusKm} km, hors du
+            périmètre.{" "}
+            <button
+              type="button"
+              onClick={() => changeRadius(null)}
+              className="font-bold text-blue hover:underline"
+            >
+              Balayer sans limite
+            </button>
+          </p>
+        )}
+      </div>
 
       {announcements.length > 0 && (
         <div className="space-y-2">
@@ -147,24 +240,38 @@ export function RadarFeed() {
             Publier une annonce
           </ButtonLink>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-2">
-          <p className="text-sm font-bold">Aucune annonce ne correspond aux filtres</p>
+      ) : inRange.length === 0 ? (
+        <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
+          <p className="text-sm font-bold">
+            {outOfRange.length > 0
+              ? `Aucune équipe dans un rayon de ${radiusKm} km`
+              : "Aucune annonce ne correspond aux filtres"}
+          </p>
           <Button
             variant="ghost"
-            size="sm"
             onClick={() => {
               setCategory(null);
               setDate("");
+              changeRadius(null);
             }}
           >
-            Réinitialiser les filtres
+            Élargir la recherche
           </Button>
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 items-start">
-          {filtered.map((a) => (
-            <div key={a.id} className="rounded-lg border border-line p-4 space-y-3">
+          {inRange.map((a) => (
+            <div
+              key={a.id}
+              ref={(node) => {
+                if (node) cardRefs.current.set(a.id, node);
+                else cardRefs.current.delete(a.id);
+              }}
+              className={cn(
+                "rounded-lg border p-4 space-y-3 transition",
+                selectedId === a.id ? "border-blue ring-2 ring-blue/15" : "border-line",
+              )}
+            >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <span

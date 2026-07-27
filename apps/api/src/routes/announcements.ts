@@ -11,7 +11,7 @@ import { db } from "../db/client.js";
 import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
-import { haversineKm } from "../lib/cities.js";
+import { bearingDeg, haversineKm } from "../lib/cities.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -22,10 +22,14 @@ function toDto(
   myResponseStatus?: AnnouncementResponseDto["status"] | null,
 ): AnnouncementDto {
   const { announcement, team } = row;
-  const distanceKm =
+  // Position relative de l'annonceur : distance ET direction, pour que le radar
+  // place ses points dans le vrai relèvement.
+  const otherCoords =
     myCoords && team.lat != null && team.lng != null && team.id !== myTeamId
-      ? haversineKm(myCoords, { lat: team.lat, lng: team.lng })
+      ? { lat: team.lat, lng: team.lng }
       : null;
+  const distanceKm = otherCoords ? haversineKm(myCoords!, otherCoords) : null;
+  const bearing = otherCoords ? bearingDeg(myCoords!, otherCoords) : null;
   return {
     id: announcement.id,
     team: { id: team.id, name: team.name, city: team.city },
@@ -45,6 +49,7 @@ function toDto(
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
     distanceKm,
+    bearingDeg: bearing,
     responses: responses ?? [],
     myResponseStatus: myResponseStatus ?? null,
   };

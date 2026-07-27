@@ -299,6 +299,8 @@ export interface AnnouncementDto {
   opponentTeam: TeamDto | null;
   /** Distance à vol d'oiseau entre ma ville et celle de l'annonceur (null si ville inconnue) */
   distanceKm: number | null;
+  /** Direction de l'annonceur vue de chez moi : 0 = nord, sens horaire (null si ville inconnue) */
+  bearingDeg: number | null;
   /** Émetteur uniquement : propositions reçues (vide sinon) */
   responses: AnnouncementResponseDto[];
   /** Coach visiteur : statut de ma proposition sur cette annonce (null si aucune) */
