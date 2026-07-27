@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, KeyRound, MailCheck } from "lucide-react";
 import { api } from "@/lib/api";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -46,9 +46,9 @@ export default function ForgotPasswordPage() {
                 de passe temporaire (via votre coach ou directement).
               </p>
             </div>
-            <Link href="/login" className="block">
-              <Button variant="soft" className="w-full">Retour à la connexion</Button>
-            </Link>
+            <ButtonLink href="/login" variant="soft" className="w-full">
+              Retour à la connexion
+            </ButtonLink>
           </div>
         ) : (
           <form onSubmit={submit} className="card p-6 space-y-4">
@@ -67,6 +67,12 @@ export default function ForgotPasswordPage() {
                 id="fpEmail"
                 type="email"
                 required
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="send"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="field"
@@ -76,8 +82,12 @@ export default function ForgotPasswordPage() {
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
               {loading ? "Envoi…" : "Demander la réinitialisation"}
             </Button>
-            <Link href="/login" className="text-xs font-bold text-ink-soft hover:text-ink inline-flex items-center gap-1">
-              <ArrowLeft size={13} /> Retour à la connexion
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1 min-h-11 -ml-2 px-2 rounded-lg text-xs font-bold
+                text-ink-soft transition hover:text-ink active:bg-paper"
+            >
+              <ArrowLeft size={16} /> Retour à la connexion
             </Link>
           </form>
         )}

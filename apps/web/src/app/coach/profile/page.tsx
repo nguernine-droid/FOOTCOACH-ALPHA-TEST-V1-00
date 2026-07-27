@@ -129,6 +129,9 @@ export default function CoachProfilePage() {
               <input
                 id="firstName"
                 required
+                autoComplete="given-name"
+                autoCapitalize="words"
+                enterKeyHint="next"
                 value={form.firstName}
                 onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
                 className="field"
@@ -139,6 +142,9 @@ export default function CoachProfilePage() {
               <input
                 id="lastName"
                 required
+                autoComplete="family-name"
+                autoCapitalize="words"
+                enterKeyHint="next"
                 value={form.lastName}
                 onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
                 className="field"
@@ -150,6 +156,9 @@ export default function CoachProfilePage() {
             <input
               id="phone"
               type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              enterKeyHint="done"
               value={form.phone}
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
               className="field"

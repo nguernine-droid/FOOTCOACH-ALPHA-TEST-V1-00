@@ -36,8 +36,13 @@ function StepCard({
     <div className="card p-6 space-y-5 animate-rise-in">
       <div className="space-y-1">
         {onBack && (
-          <button type="button" onClick={onBack} className="text-xs font-bold text-ink-soft hover:text-ink inline-flex items-center gap-1 mb-2">
-            <ArrowLeft size={13} /> Retour
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1 min-h-11 -ml-2 px-2 mb-1 rounded-lg text-xs font-bold
+              text-ink-soft transition hover:text-ink active:bg-paper"
+          >
+            <ArrowLeft size={16} /> Retour
           </button>
         )}
         <h2 className="text-lg font-black">{title}</h2>
@@ -48,19 +53,53 @@ function StepCard({
   );
 }
 
+/** Message d'erreur ancré sous son champ */
+function FieldError({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <p id={id} className="text-xs font-semibold text-coral">
+      {children}
+    </p>
+  );
+}
+
 function CoachWizard({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", teamName: "", teamCity: "" });
   const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Chaque étape se valide sous ses champs plutôt que par une bulle native,
+  // qui se place hors écran dès que le clavier est ouvert.
+  const emailError = !form.email.trim()
+    ? "Indiquez votre adresse email."
+    : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())
+      ? null
+      : "Cette adresse email semble incomplète.";
+  const passwordError =
+    form.password.length === 0
+      ? "Choisissez un mot de passe."
+      : form.password.length < 8
+        ? "8 caractères minimum."
+        : null;
+
+  /** Passe à l'étape suivante si les champs de l'étape courante tiennent */
+  function advance(to: number, blocked: boolean) {
+    setTouched(true);
+    if (blocked) return;
+    setTouched(false);
+    setStep(to);
+  }
+
   async function finish(e: React.FormEvent) {
     e.preventDefault();
+    setTouched(true);
+    if (!form.teamName.trim() || !form.teamCity.trim()) return;
     setLoading(true);
     setError(null);
     try {
@@ -78,19 +117,22 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       {step === 0 && (
         <StepCard title="Qui êtes-vous ?" subtitle="Commençons par votre nom." onBack={onBack}>
           <form
+            noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              setStep(1);
+              advance(1, !form.firstName.trim() || !form.lastName.trim());
             }}
             className="space-y-4"
           >
             <div className="space-y-1.5">
               <label htmlFor="firstName" className="text-xs font-bold text-ink-soft">Prénom</label>
-              <input id="firstName" required value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className="field" placeholder="Alexandre" />
+              <input id="firstName" autoComplete="given-name" autoCapitalize="words" enterKeyHint="next" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className="field" placeholder="Alexandre" />
+              {touched && !form.firstName.trim() && <FieldError id="firstName-error">Indiquez votre prénom.</FieldError>}
             </div>
             <div className="space-y-1.5">
               <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">Nom</label>
-              <input id="lastName" required value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className="field" placeholder="Martin" />
+              <input id="lastName" autoComplete="family-name" autoCapitalize="words" enterKeyHint="next" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className="field" placeholder="Martin" />
+              {touched && !form.lastName.trim() && <FieldError id="lastName-error">Indiquez votre nom.</FieldError>}
             </div>
             <Button type="submit" size="lg" className="w-full">Continuer</Button>
           </form>
@@ -99,19 +141,22 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       {step === 1 && (
         <StepCard title="Votre compte" subtitle="Vous les utiliserez pour vous connecter." onBack={() => setStep(0)}>
           <form
+            noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              setStep(2);
+              advance(2, Boolean(emailError || passwordError));
             }}
             className="space-y-4"
           >
             <div className="space-y-1.5">
               <label htmlFor="email" className="text-xs font-bold text-ink-soft">Email</label>
-              <input id="email" type="email" required value={form.email} onChange={(e) => set("email", e.target.value)} className="field" placeholder="vous@exemple.fr" />
+              <input id="email" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="next" aria-invalid={Boolean(touched && emailError) || undefined} value={form.email} onChange={(e) => set("email", e.target.value)} className="field" placeholder="vous@exemple.fr" />
+              {touched && emailError && <FieldError id="email-error">{emailError}</FieldError>}
             </div>
             <div className="space-y-1.5">
               <label htmlFor="password" className="text-xs font-bold text-ink-soft">Mot de passe (8 caractères minimum)</label>
-              <input id="password" type="password" required minLength={8} value={form.password} onChange={(e) => set("password", e.target.value)} className="field" />
+              <input id="password" type="password" autoComplete="new-password" enterKeyHint="next" aria-invalid={Boolean(touched && passwordError) || undefined} value={form.password} onChange={(e) => set("password", e.target.value)} className="field" />
+              {touched && passwordError && <FieldError id="password-error">{passwordError}</FieldError>}
             </div>
             <Button type="submit" size="lg" className="w-full">Continuer</Button>
           </form>
@@ -119,14 +164,16 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       )}
       {step === 2 && (
         <StepCard title="Votre équipe" subtitle="Dernière étape ! Elle sera créée avec vous." onBack={() => setStep(1)}>
-          <form onSubmit={finish} className="space-y-4">
+          <form onSubmit={finish} noValidate className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="teamName" className="text-xs font-bold text-ink-soft">Nom de l&apos;équipe</label>
-              <input id="teamName" required value={form.teamName} onChange={(e) => set("teamName", e.target.value)} className="field" placeholder="FC Exemple" />
+              <input id="teamName" autoComplete="organization" autoCapitalize="words" enterKeyHint="next" value={form.teamName} onChange={(e) => set("teamName", e.target.value)} className="field" placeholder="FC Exemple" />
+              {touched && !form.teamName.trim() && <FieldError id="teamName-error">Donnez un nom à votre équipe.</FieldError>}
             </div>
             <div className="space-y-1.5">
               <label htmlFor="teamCity" className="text-xs font-bold text-ink-soft">Ville</label>
-              <input id="teamCity" required value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
+              <input id="teamCity" autoComplete="address-level2" autoCapitalize="words" enterKeyHint="done" value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
+              {touched && !form.teamCity.trim() && <FieldError id="teamCity-error">Indiquez la ville de l&apos;équipe.</FieldError>}
             </div>
             {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
             <Button type="submit" size="lg" className="w-full" disabled={loading}>

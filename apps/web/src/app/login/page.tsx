@@ -15,15 +15,28 @@ const DEMO_ACCOUNTS = [
   { label: "Admin", sub: "Alice", email: "admin@demo.fr", icon: ShieldHalf, color: "text-navy-700 bg-blue-soft" },
 ];
 
+/** Contrôle volontairement large : on signale une faute de frappe, pas une RFC */
+function emailLooksWrong(value: string): string | null {
+  if (!value.trim()) return "Indiquez votre adresse email.";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim()) ? null : "Cette adresse email semble incomplète.";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const emailError = emailLooksWrong(email);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    // Validation en ligne, sous le champ : pas de bulle native qui masque le
+    // formulaire et disparaît au premier appui.
+    setTouched(true);
+    if (emailError || !password) return;
     setLoading(true);
     setError(null);
     try {
@@ -45,7 +58,7 @@ export default function LoginPage() {
           <p className="text-sm text-white/85 font-medium">Organisez vos matchs amicaux en deux touches de balle.</p>
         </div>
 
-        <form onSubmit={submit} className="card p-6 space-y-4">
+        <form onSubmit={submit} noValidate className="card p-6 space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="email" className="text-xs font-bold text-ink-soft">
               Email
@@ -54,11 +67,26 @@ export default function LoginPage() {
               id="email"
               type="email"
               required
+              // Le clavier email, le trousseau et l'absence de majuscule
+              // automatique évitent la moitié des échecs de connexion mobile.
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="next"
+              aria-invalid={Boolean(touched && emailError) || undefined}
+              aria-describedby={touched && emailError ? "email-error" : undefined}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="field"
               placeholder="coach.a@demo.fr"
             />
+            {touched && emailError && (
+              <p id="email-error" className="text-xs font-semibold text-coral">
+                {emailError}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label htmlFor="password" className="text-xs font-bold text-ink-soft">
@@ -68,21 +96,32 @@ export default function LoginPage() {
               id="password"
               type="password"
               required
+              autoComplete="current-password"
+              enterKeyHint="go"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              aria-invalid={Boolean(touched && !password) || undefined}
+              aria-describedby={touched && !password ? "password-error" : undefined}
               className="field"
               placeholder="Demo1234!"
             />
+            {touched && !password && (
+              <p id="password-error" className="text-xs font-semibold text-coral">
+                Saisissez votre mot de passe.
+              </p>
+            )}
           </div>
           {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
           <Button type="submit" size="lg" className="w-full" disabled={loading}>
             {loading ? "Connexion…" : "Se connecter"}
           </Button>
-          <p className="text-center">
-            <Link href="/forgot-password" className="text-xs font-bold text-ink-soft hover:text-ink hover:underline">
-              Mot de passe oublié ?
-            </Link>
-          </p>
+          <Link
+            href="/forgot-password"
+            className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-ink-soft
+              transition hover:text-ink active:bg-paper"
+          >
+            Mot de passe oublié ?
+          </Link>
         </form>
 
         <p className="text-center text-xs text-ink-soft">

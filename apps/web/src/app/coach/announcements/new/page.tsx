@@ -176,11 +176,11 @@ export default function NewAnnouncementPage() {
 
         <div className="space-y-1.5">
           <label htmlFor="stadium" className="text-xs font-bold text-ink-soft">Stade</label>
-          <input id="stadium" required value={form.stadium} onChange={(e) => set("stadium", e.target.value)} className="field" placeholder="Stade municipal" />
+          <input id="stadium" required autoComplete="off" autoCapitalize="words" enterKeyHint="next" value={form.stadium} onChange={(e) => set("stadium", e.target.value)} className="field" placeholder="Stade municipal" />
         </div>
         <div className="space-y-1.5">
           <label htmlFor="city" className="text-xs font-bold text-ink-soft">Ville</label>
-          <input id="city" required value={form.city} onChange={(e) => set("city", e.target.value)} className="field" placeholder="Lyon" />
+          <input id="city" required autoComplete="address-level2" autoCapitalize="words" enterKeyHint="next" value={form.city} onChange={(e) => set("city", e.target.value)} className="field" placeholder="Lyon" />
         </div>
         <div className="space-y-1.5">
           <label htmlFor="comment" className="text-xs font-bold text-ink-soft">Informations pratiques (optionnel)</label>

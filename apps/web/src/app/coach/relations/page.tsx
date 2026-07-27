@@ -130,6 +130,13 @@ export default function CoachRelationsPage() {
               id="coach-code"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
+              // Code alphanumérique dicté de vive voix : ni correction, ni
+              // suggestion, ni bascule de casse par le clavier.
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
               className="field font-mono tracking-widest"
               placeholder="AB2CD3"
               maxLength={12}

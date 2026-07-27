@@ -86,6 +86,11 @@ function ClubAffiliationCard() {
               required
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
+              autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="send"
               className="field font-mono tracking-widest"
               placeholder="CLUBAA"
             />
