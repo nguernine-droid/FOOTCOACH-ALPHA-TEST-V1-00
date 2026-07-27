@@ -153,7 +153,9 @@ export function DateField({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className={cn("field text-left flex items-center gap-2.5 capitalize", !value && "text-ink-faint")}
+        // `capitalize` sert à la date en français (« jeu. 30 juil. ») ; appliqué
+        // au placeholder il donnait « Choisir Une Date ».
+        className={cn("field text-left flex items-center gap-2.5", value ? "capitalize" : "text-ink-faint")}
       >
         <CalendarDays size={16} className="text-blue shrink-0" />
         <span className="truncate">{label ?? placeholder}</span>

@@ -90,45 +90,49 @@ export function QrScanner({ onResult, onClose }: { onResult: (text: string) => v
     };
   }, [onResult, stop]);
 
+  // Viseur plein écran, mais l'unique commande — annuler — est en bas :
+  // une croix en haut à droite est intenable quand on tient le téléphone
+  // d'une main et le QR code de l'autre.
   return (
-    <div className="fixed inset-0 z-50 bg-navy-900/90 flex items-center justify-center p-4" role="dialog" aria-modal>
-      <div className="w-full max-w-sm space-y-3">
-        <div className="flex items-center justify-between text-white">
-          <p className="display text-lg">Scanner le QR code</p>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fermer le scanner"
-            className="p-2 rounded-lg hover:bg-white/10 transition"
-          >
-            <X size={18} />
-          </button>
-        </div>
+    <div
+      className="fixed inset-0 z-50 bg-navy-900/95 flex flex-col p-4 pt-[max(1rem,env(safe-area-inset-top))]"
+      role="dialog"
+      aria-modal
+      aria-label="Scanner le QR code"
+    >
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3">
+        <div className="w-full max-w-sm space-y-3">
+          <p className="display text-lg text-white text-center">Scanner le QR code</p>
 
-        {error ? (
-          <div className="card p-6 text-center space-y-3">
-            <span className="w-12 h-12 rounded-lg bg-coral-soft text-coral flex items-center justify-center mx-auto">
-              <CameraOff size={22} />
-            </span>
-            <p className="text-sm font-bold">Caméra indisponible</p>
-            <p className="text-xs text-ink-soft">{error}</p>
-            <Button size="sm" variant="soft" onClick={onClose}>
-              Fermer
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="relative rounded-xl overflow-hidden bg-black aspect-square">
-              <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
-              <div className="absolute inset-8 border-2 border-gold rounded-lg pointer-events-none" aria-hidden />
+          {error ? (
+            <div className="card p-6 text-center space-y-3">
+              <span className="w-12 h-12 rounded-lg bg-coral-soft text-coral flex items-center justify-center mx-auto">
+                <CameraOff size={22} />
+              </span>
+              <p className="text-sm font-bold">Caméra indisponible</p>
+              <p className="text-xs text-ink-soft">{error}</p>
             </div>
-            <p className="text-xs text-white/80 text-center">
-              Visez le QR code affiché sur l&apos;écran du coach adverse.
-            </p>
-          </>
-        )}
-        <canvas ref={canvasRef} className="hidden" />
+          ) : (
+            <>
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-square">
+                <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
+                <div className="absolute inset-8 border-2 border-gold rounded-lg pointer-events-none" aria-hidden />
+              </div>
+              <p className="text-xs text-white/80 text-center">
+                Visez le QR code affiché sur l&apos;écran du coach adverse.
+              </p>
+            </>
+          )}
+        </div>
       </div>
+
+      <div className="shrink-0 w-full max-w-sm mx-auto pb-[env(safe-area-inset-bottom)]">
+        <Button variant="ghost" size="lg" onClick={onClose} className="w-full !text-white !border-white/25 hover:!bg-white/10">
+          <X size={16} /> {error ? "Fermer" : "Annuler le scan"}
+        </Button>
+      </div>
+
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

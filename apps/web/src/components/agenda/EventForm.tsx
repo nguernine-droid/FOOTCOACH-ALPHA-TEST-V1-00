@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
 import type { AgendaItemDto, TeamEventType } from "@footcoach/shared";
 import { TEAM_EVENT_TYPES } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { TimeField } from "@/components/ui/TimeField";
 import { EVENT_TYPE_META, addDaysIso } from "./eventTypes";
+
+/** Le CTA vit dans le pied de la feuille : il vise le formulaire à distance */
+const FORM_ID = "agenda-event-form";
 
 /** Création/édition d'un événement d'agenda (coach) */
 export function EventForm({
@@ -68,32 +71,26 @@ export function EventForm({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-navy-900/50 flex items-end min-[960px]:items-center justify-center p-0 min-[960px]:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-label={initial ? "Modifier l'événement" : "Créer un événement"}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <form
-        onSubmit={submit}
-        className="bg-white w-full min-[960px]:max-w-lg min-[960px]:rounded-2xl rounded-t-2xl shadow-pop max-h-[88dvh] overflow-y-auto p-5 space-y-4"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="display text-lg">{initial ? "Modifier l'événement" : "Créer un événement"}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg text-ink-soft hover:text-ink hover:bg-paper transition"
-            aria-label="Fermer"
-          >
-            <X size={16} />
-          </button>
+    <BottomSheet
+      label={initial ? "Modifier l'événement" : "Créer un événement"}
+      onClose={onClose}
+      // Actions collées sous la zone défilante : elles restent visibles même
+      // clavier ouvert, alors qu'elles étaient auparavant en fin de formulaire.
+      footer={
+        <div className="grid grid-cols-2 gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" form={FORM_ID} disabled={saving || !form.date || !form.startTime}>
+            {saving ? "Enregistrement…" : initial ? "Enregistrer" : "Créer"}
+          </Button>
         </div>
+      }
+    >
+      <form id={FORM_ID} onSubmit={submit} className="p-5 pt-2 space-y-4">
+        <h3 className="display text-lg">{initial ? "Modifier l'événement" : "Créer un événement"}</h3>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           {TEAM_EVENT_TYPES.map((t) => {
             const meta = EVENT_TYPE_META[t];
             return (
@@ -102,12 +99,10 @@ export function EventForm({
                 type="button"
                 onClick={() => setForm((f) => ({ ...f, type: t }))}
                 aria-pressed={form.type === t}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border transition",
-                  form.type === t ? "bg-navy-700 text-white border-navy-700" : "bg-white text-ink-soft border-line hover:border-blue/40",
-                )}
+                className={cn("chip-choice", form.type === t ? "chip-choice-on" : "chip-choice-off")}
               >
-                <span className={cn("w-2 h-2 rounded-full", meta.dot)} aria-hidden /> {meta.label}
+                <span className={cn("w-2 h-2 rounded-full shrink-0", meta.dot)} aria-hidden />
+                <span className="truncate">{meta.label}</span>
               </button>
             );
           })}
@@ -188,16 +183,7 @@ export function EventForm({
         )}
 
         {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-4 py-2.5">{error}</p>}
-
-        <div className="flex gap-2 justify-end border-t border-line pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button type="submit" disabled={saving || !form.date || !form.startTime}>
-            {saving ? "Enregistrement…" : initial ? "Enregistrer" : "Créer l'événement"}
-          </Button>
-        </div>
       </form>
-    </div>
+    </BottomSheet>
   );
 }

@@ -44,7 +44,7 @@ export function MonthGrid({
         <button
           type="button"
           onClick={() => onNavigate(-1)}
-          className="p-2 rounded-lg text-ink-soft hover:text-ink hover:bg-paper transition"
+          className="icon-btn text-ink-soft hover:text-ink hover:bg-paper"
           aria-label="Mois précédent"
         >
           <ChevronLeft size={16} />
@@ -53,7 +53,7 @@ export function MonthGrid({
         <button
           type="button"
           onClick={() => onNavigate(1)}
-          className="p-2 rounded-lg text-ink-soft hover:text-ink hover:bg-paper transition"
+          className="icon-btn text-ink-soft hover:text-ink hover:bg-paper"
           aria-label="Mois suivant"
         >
           <ChevronRight size={16} />
