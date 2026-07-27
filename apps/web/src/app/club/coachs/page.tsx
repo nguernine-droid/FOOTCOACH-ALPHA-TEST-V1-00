@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Copy, Plus, ShieldCheck, UserPlus, X } from "lucide-react";
 import type {
   ClubAffiliationRequestDto,
@@ -10,6 +11,7 @@ import type {
 } from "@footcoach/shared";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
@@ -47,6 +49,9 @@ function AffiliationCodeCard({ code }: { code: string }) {
   );
 }
 
+/** Le CTA vit dans le pied de la feuille : il vise le formulaire à distance */
+const COACH_FORM_ID = "club-new-coach";
+
 // Création d'un compte coach : formulaire puis identifiants (affichés une fois)
 function CreateCoachModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "" });
@@ -71,16 +76,27 @@ function CreateCoachModal({ onClose, onCreated }: { onClose: () => void; onCreat
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-navy-900/50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Nouveau coach"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <BottomSheet
+      label="Nouveau coach"
+      onClose={onClose}
+      footer={
+        result ? (
+          <Button className="w-full" onClick={onClose}>
+            Fermer
+          </Button>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button type="submit" form={COACH_FORM_ID} disabled={busy}>
+              Créer le coach
+            </Button>
+          </div>
+        )
+      }
     >
-      <div className="bg-white rounded-2xl shadow-pop max-w-md w-full p-6 space-y-4">
+      <div className="p-5 pt-2 space-y-4">
         {result ? (
           <>
             <div className="space-y-1">
@@ -102,7 +118,7 @@ function CreateCoachModal({ onClose, onCreated }: { onClose: () => void; onCreat
                 setTimeout(() => setCopied(false), 2000);
               }}
               className={cn(
-                "w-full flex items-center justify-center gap-2 font-mono font-black text-lg tracking-widest rounded-lg px-4 py-3 border transition",
+                "w-full flex items-center justify-center gap-2 min-h-14 font-mono font-black text-lg tracking-widest rounded-lg px-4 py-3 border transition active:scale-[0.98]",
                 copied ? "bg-success-soft text-success border-success/30" : "bg-paper border-line hover:border-blue/40",
               )}
               aria-label="Copier le mot de passe temporaire"
@@ -110,37 +126,32 @@ function CreateCoachModal({ onClose, onCreated }: { onClose: () => void; onCreat
               {result.tempPassword}
               {copied ? <Check size={16} /> : <Copy size={16} className="text-ink-soft" />}
             </button>
-            <Button className="w-full" onClick={onClose}>Fermer</Button>
           </>
         ) : (
-          <form onSubmit={submit} className="space-y-4">
+          <form id={COACH_FORM_ID} onSubmit={submit} className="space-y-4">
             <div className="flex items-center gap-2">
               <UserPlus size={18} className="text-blue" />
               <h3 className="text-base font-black">Nouveau coach</h3>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-ink-soft" htmlFor="coach-fn">Prénom</label>
-                <input id="coach-fn" required value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} className="field" placeholder="Bruno" />
+                <input id="coach-fn" required autoComplete="given-name" autoCapitalize="words" enterKeyHint="next" value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))} className="field" placeholder="Bruno" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-ink-soft" htmlFor="coach-ln">Nom</label>
-                <input id="coach-ln" required value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} className="field" placeholder="Silva" />
+                <input id="coach-ln" required autoComplete="family-name" autoCapitalize="words" enterKeyHint="next" value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))} className="field" placeholder="Silva" />
               </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-ink-soft" htmlFor="coach-email">Email de connexion</label>
-              <input id="coach-email" type="email" required value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="field" placeholder="coach@exemple.fr" />
+              <input id="coach-email" type="email" required inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="field" placeholder="coach@exemple.fr" />
             </div>
             {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={onClose}>Annuler</Button>
-              <Button type="submit" disabled={busy}>Créer le coach</Button>
-            </div>
           </form>
         )}
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -179,19 +190,23 @@ function AffiliationRequestsCard({
         </p>
       </div>
       {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
+      {/* Demandeur sur une ligne, décision sur la suivante : les deux boutons
+          se partageaient sinon la centaine de pixels restante. */}
       {requests.map((r) => (
-        <div key={r.id} className="bg-paper rounded-lg px-4 py-3 flex items-center gap-3">
-          <span className="w-9 h-9 rounded-full bg-navy-700 text-white flex items-center justify-center text-xs font-black shrink-0">
-            {r.firstName[0]}
-            {r.lastName[0] ?? ""}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold truncate">
-              {r.firstName} {r.lastName}
-            </p>
-            <p className="text-xs text-ink-soft truncate">{r.email}</p>
+        <div key={r.id} className="bg-paper rounded-lg px-4 py-3 space-y-2.5">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-full bg-navy-700 text-white flex items-center justify-center text-xs font-black shrink-0">
+              {r.firstName[0]}
+              {r.lastName[0] ?? ""}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold truncate">
+                {r.firstName} {r.lastName}
+              </p>
+              <p className="text-xs text-ink-soft truncate">{r.email}</p>
+            </div>
           </div>
-          <div className="flex gap-1.5 shrink-0">
+          <div className="grid grid-cols-2 gap-2">
             <Button size="sm" disabled={busy === r.id} onClick={() => decide(r.id, "approve")}>
               <Check size={14} /> Accepter
             </Button>
@@ -205,12 +220,24 @@ function AffiliationRequestsCard({
   );
 }
 
-export default function ClubCoachesPage() {
+/** ?nouveau=1 (bouton « + » de la barre basse) ouvre la création */
+function ClubCoaches() {
+  const router = useRouter();
+  const params = useSearchParams();
   const [overview, setOverview] = useState<ClubOverviewDto | null>(null);
   const [coaches, setCoaches] = useState<ClubCoachDto[] | null>(null);
   const [requests, setRequests] = useState<ClubAffiliationRequestDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
+  // Ouverture par effet, pas par état initial : depuis la page elle-même, le
+  // composant ne se remonte pas et l'état initial ne serait jamais relu.
+  const wantsNew = params.get("nouveau") === "1";
+  useEffect(() => {
+    if (!wantsNew) return;
+    setCreating(true);
+    router.replace("/club/coachs");
+  }, [wantsNew, router]);
 
   const load = useCallback(async () => {
     try {
@@ -242,7 +269,8 @@ export default function ClubCoachesPage() {
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="display text-lg px-1">Coachs ({coaches.length})</h2>
-        <Button size="sm" onClick={() => setCreating(true)}>
+        {/* Au pouce, la création passe par le « + » de la barre basse */}
+        <Button size="sm" className="hidden min-[960px]:inline-flex" onClick={() => setCreating(true)}>
           <Plus size={14} /> Nouveau coach
         </Button>
       </div>
@@ -258,6 +286,9 @@ export default function ClubCoachesPage() {
           <p className="text-xs text-ink-soft">
             Créez un compte coach, ou partagez le code d&apos;affiliation à un coach déjà inscrit.
           </p>
+          <Button className="w-full sm:w-auto" onClick={() => setCreating(true)}>
+            <Plus size={15} /> Nouveau coach
+          </Button>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 items-start">
@@ -292,5 +323,13 @@ export default function ClubCoachesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ClubCoachesPage() {
+  return (
+    <Suspense fallback={<CardGridSkeleton cards={2} />}>
+      <ClubCoaches />
+    </Suspense>
   );
 }

@@ -127,7 +127,16 @@ export function AppTabs({
         <div className="flex items-stretch">
           {mobileGroups.map((group, groupIndex) => (
             <Fragment key={groupIndex}>
-              <div className="flex flex-1 min-w-0">
+              <div
+                className="flex min-w-0"
+                // Chaque moitié grandit au prorata du nombre de cases qu'elle
+                // porte : sans ça, une moitié d'un seul onglet le rendait deux
+                // fois plus large que ses voisins.
+                style={{
+                  flexGrow: group.length + (account && groupIndex === mobileGroups.length - 1 ? 1 : 0),
+                  flexBasis: 0,
+                }}
+              >
                 {group.map((tab) => {
                   const active = isActive(tab);
                   return (

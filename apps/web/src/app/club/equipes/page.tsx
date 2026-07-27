@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
 import type { ClubCoachDto, ClubTeamDto, TeamCoachRole } from "@footcoach/shared";
 import { api, ApiError } from "@/lib/api";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
-function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false);
+/** Le CTA vit dans le pied de la feuille : il vise le formulaire à distance */
+const TEAM_FORM_ID = "club-new-team";
+
+function CreateTeamSheet({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [busy, setBusy] = useState(false);
@@ -20,10 +24,8 @@ function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
     setError(null);
     try {
       await api("/club/teams", { method: "POST", body: JSON.stringify({ name, city }) });
-      setName("");
-      setCity("");
-      setOpen(false);
       onCreated();
+      onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Création impossible");
     } finally {
@@ -31,33 +33,34 @@ function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
     }
   }
 
-  if (!open) {
-    return (
-      <Button onClick={() => setOpen(true)}>
-        <Plus size={15} /> Nouvelle équipe
-      </Button>
-    );
-  }
-
   return (
-    <form onSubmit={submit} className="card p-5 space-y-3">
-      <p className="text-sm font-bold">Nouvelle équipe</p>
-      <div className="grid gap-3 sm:grid-cols-2">
+    <BottomSheet
+      label="Nouvelle équipe"
+      onClose={onClose}
+      footer={
+        <div className="grid grid-cols-2 gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" form={TEAM_FORM_ID} disabled={busy}>
+            Créer l&apos;équipe
+          </Button>
+        </div>
+      }
+    >
+      <form id={TEAM_FORM_ID} onSubmit={submit} className="p-5 pt-2 space-y-4">
+        <p className="text-base font-black">Nouvelle équipe</p>
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-ink-soft" htmlFor="team-name">Nom de l&apos;équipe</label>
-          <input id="team-name" required minLength={2} value={name} onChange={(e) => setName(e.target.value)} className="field" placeholder="Étoile U13" />
+          <input id="team-name" required minLength={2} autoComplete="organization" autoCapitalize="words" enterKeyHint="next" value={name} onChange={(e) => setName(e.target.value)} className="field" placeholder="Étoile U13" />
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-ink-soft" htmlFor="team-city">Ville</label>
-          <input id="team-city" required value={city} onChange={(e) => setCity(e.target.value)} className="field" placeholder="Lyon" />
+          <input id="team-city" required autoComplete="address-level2" autoCapitalize="words" enterKeyHint="done" value={city} onChange={(e) => setCity(e.target.value)} className="field" placeholder="Lyon" />
         </div>
-      </div>
-      {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
-        <Button type="submit" disabled={busy}>Créer l&apos;équipe</Button>
-      </div>
-    </form>
+        {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
+      </form>
+    </BottomSheet>
   );
 }
 
@@ -107,16 +110,21 @@ function TeamCard({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {team.coaches.length === 0 ? (
-          <span className="chip bg-sun-soft text-sun">
-            <ShieldCheck size={11} /> Aucun coach affecté
-          </span>
-        ) : (
-          team.coaches.map((c) => (
-            <span key={c.id} className="chip bg-pitch-soft text-pitch-deep">
-              <ShieldCheck size={11} /> {c.firstName} {c.lastName}
-              {c.role === "adjoint" ? " (adjoint)" : ""}
+      {/* Une ligne par coach : la croix de retrait était un carré de 11 px
+          collé au libellé, à l'intérieur d'une pastille. */}
+      {team.coaches.length === 0 ? (
+        <span className="chip bg-sun-soft text-sun">
+          <ShieldCheck size={11} /> Aucun coach affecté
+        </span>
+      ) : (
+        <ul className="space-y-1.5">
+          {team.coaches.map((c) => (
+            <li key={c.id} className="flex items-center gap-2 bg-paper rounded-lg pl-3 pr-1 py-1">
+              <ShieldCheck size={14} className="text-pitch shrink-0" aria-hidden />
+              <span className="flex-1 min-w-0 text-xs font-bold truncate">
+                {c.firstName} {c.lastName}
+                {c.role === "adjoint" && <span className="text-ink-soft font-semibold"> · adjoint</span>}
+              </span>
               <button
                 type="button"
                 disabled={busy}
@@ -126,15 +134,15 @@ function TeamCard({
                     onChanged();
                   })
                 }
-                className="ml-1 hover:text-coral transition"
-                aria-label={`Retirer ${c.firstName} ${c.lastName}`}
+                className="icon-btn text-ink-faint hover:text-coral hover:bg-coral-soft"
+                aria-label={`Retirer ${c.firstName} ${c.lastName} de ${team.name}`}
               >
-                <X size={11} />
+                <X size={16} />
               </button>
-            </span>
-          ))
-        )}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {assigning ? (
         <form
@@ -170,7 +178,7 @@ function TeamCard({
               <option value="adjoint">Coach adjoint</option>
             </select>
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button type="button" size="sm" variant="ghost" onClick={() => setAssigning(false)}>Annuler</Button>
             <Button type="submit" size="sm" disabled={busy || !pickCoach}>Affecter</Button>
           </div>
@@ -205,7 +213,7 @@ function TeamCard({
             <label className="text-xs font-bold text-ink-soft" htmlFor={`city-${team.id}`}>Ville</label>
             <input id={`city-${team.id}`} required value={city} onChange={(e) => setCity(e.target.value)} className="field" />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>Annuler</Button>
             <Button type="submit" size="sm" disabled={busy}>Enregistrer</Button>
           </div>
@@ -213,7 +221,7 @@ function TeamCard({
       )}
 
       {!editing && (
-        <div className="flex flex-wrap gap-1.5 border-t border-line pt-3">
+        <div className="grid grid-cols-2 gap-2 border-t border-line pt-3">
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => setEditing(true)}>
             <Pencil size={13} /> Renommer
           </Button>
@@ -232,7 +240,7 @@ function TeamCard({
               >
                 <Trash2 size={13} /> Confirmer
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>
+              <Button size="sm" variant="ghost" className="col-span-2" onClick={() => setConfirmDelete(false)}>
                 <X size={13} /> Annuler
               </Button>
             </>
@@ -247,10 +255,23 @@ function TeamCard({
   );
 }
 
-export default function ClubTeamsPage() {
+/** ?nouveau=1 (bouton « + » de la barre basse) ouvre la création */
+function ClubTeams() {
+  const router = useRouter();
+  const params = useSearchParams();
   const [teams, setTeams] = useState<ClubTeamDto[] | null>(null);
   const [coaches, setCoaches] = useState<ClubCoachDto[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  // Ouverture par effet, pas par état initial : depuis la page elle-même, le
+  // composant ne se remonte pas et l'état initial ne serait jamais relu.
+  const wantsNew = params.get("nouveau") === "1";
+  useEffect(() => {
+    if (!wantsNew) return;
+    setCreating(true);
+    router.replace("/club/equipes");
+  }, [wantsNew, router]);
 
   const load = useCallback(async () => {
     try {
@@ -276,9 +297,13 @@ export default function ClubTeamsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="display text-lg px-1">Équipes ({teams.length})</h2>
+        {/* Au pouce, la création passe par le « + » de la barre basse */}
+        <Button size="sm" className="hidden min-[960px]:inline-flex" onClick={() => setCreating(true)}>
+          <Plus size={14} /> Nouvelle équipe
+        </Button>
       </div>
 
-      <CreateTeamForm onCreated={load} />
+      {creating && <CreateTeamSheet onClose={() => setCreating(false)} onCreated={load} />}
 
       {teams.length === 0 ? (
         <div className="card p-8 text-center space-y-2">
@@ -286,7 +311,10 @@ export default function ClubTeamsPage() {
             <Users size={22} />
           </span>
           <p className="text-sm text-ink-soft font-medium">Aucune équipe pour l&apos;instant.</p>
-          <p className="text-xs text-ink-soft">Créez votre première équipe ci-dessus.</p>
+          <p className="text-xs text-ink-soft">Créez votre première équipe (U11, U13, U15…).</p>
+          <Button className="w-full sm:w-auto" onClick={() => setCreating(true)}>
+            <Plus size={15} /> Nouvelle équipe
+          </Button>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 items-start">
@@ -296,5 +324,13 @@ export default function ClubTeamsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ClubTeamsPage() {
+  return (
+    <Suspense fallback={<CardGridSkeleton cards={2} />}>
+      <ClubTeams />
+    </Suspense>
   );
 }
