@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarRange, List, Plus } from "lucide-react";
-import type { AgendaItemDto, Role } from "@footcoach/shared";
+import type { AgendaItemDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -15,13 +15,13 @@ import { EventDetail } from "./EventDetail";
 import { EventForm } from "./EventForm";
 
 /**
- * Agenda commun coach/joueur/parent : liste (mobile) ou grille mois (desktop),
+ * Agenda de l'équipe (coach) : liste (mobile) ou grille mois (desktop),
  * alimenté par GET /events (événements + matchs fusionnés).
  *
  * `requestCreate` ouvre directement le formulaire de création — utilisé par le
  * bouton « + » de la barre d'onglets, qui navigue vers /coach/agenda?nouveau=1.
  */
-export function AgendaView({ role, requestCreate = false }: { role: Role; requestCreate?: boolean }) {
+export function AgendaView({ requestCreate = false }: { requestCreate?: boolean }) {
   const [items, setItems] = useState<AgendaItemDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -35,10 +35,10 @@ export function AgendaView({ role, requestCreate = false }: { role: Role; reques
   const [formOpen, setFormOpen] = useState(false);
 
   useEffect(() => {
-    if (!requestCreate || role !== "coach") return;
+    if (!requestCreate) return;
     setFormInitial(null);
     setFormOpen(true);
-  }, [requestCreate, role]);
+  }, [requestCreate]);
 
   const load = useCallback(async () => {
     try {
@@ -112,17 +112,15 @@ export function AgendaView({ role, requestCreate = false }: { role: Role; reques
               </button>
             ))}
           </div>
-          {role === "coach" && (
-            <Button
-              size="sm"
-              onClick={() => {
-                setFormInitial(null);
-                setFormOpen(true);
-              }}
-            >
-              <Plus size={14} /> Créer un événement
-            </Button>
-          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setFormInitial(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus size={14} /> Créer un événement
+          </Button>
         </div>
       </div>
 
@@ -141,19 +139,15 @@ export function AgendaView({ role, requestCreate = false }: { role: Role; reques
             <CalendarRange size={22} />
           </span>
           <p className="text-sm font-bold">Aucun événement planifié</p>
-          {role === "coach" ? (
-            <Button
-              size="sm"
-              onClick={() => {
-                setFormInitial(null);
-                setFormOpen(true);
-              }}
-            >
-              <Plus size={14} /> Créer un événement
-            </Button>
-          ) : (
-            <p className="text-xs text-ink-soft">Le coach n&apos;a encore rien planifié.</p>
-          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setFormInitial(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus size={14} /> Créer un événement
+          </Button>
         </div>
       ) : (
         <>
@@ -194,7 +188,6 @@ export function AgendaView({ role, requestCreate = false }: { role: Role; reques
       {detail && (
         <EventDetail
           item={detail}
-          role={role}
           onClose={() => setDetail(null)}
           onChanged={load}
           onEdit={(item) => {

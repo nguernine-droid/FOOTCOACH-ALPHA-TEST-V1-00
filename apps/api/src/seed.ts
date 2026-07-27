@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
-import { attendances, clubs, matchAnnouncements, matchEvents, matches, teamCoaches, teams, users } from "./db/schema.js";
+import { clubs, matchAnnouncements, matches, teamCoaches, teams, users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { cityCoords } from "./lib/cities.js";
 
@@ -56,9 +56,6 @@ async function main() {
   // Coach A encadre une seconde équipe (U15) : démo du multi-équipes "Mes équipes"
   await upsertTeam("FC Nexus U15", "Lyon", coachA.id, "DEMOA3");
 
-  const player = await upsertUser({ email: "player@demo.fr", role: "player", firstName: "Paul", lastName: "Joueur", teamId: teamA.id });
-  const parent = await upsertUser({ email: "parent@demo.fr", role: "parent", firstName: "Patricia", lastName: "Parent", teamId: teamA.id });
-  await upsertUser({ email: "supporter@demo.fr", role: "supporter", firstName: "Sam", lastName: "Supporter", teamId: teamA.id });
   await upsertUser({ email: "admin@demo.fr", role: "admin", firstName: "Alice", lastName: "Admin" });
 
   // Club de démo : compte role=club + une équipe qu'il possède (sans coach affecté
@@ -90,14 +87,6 @@ async function main() {
       lng: teamCoords?.lng ?? null,
     })
     .onConflictDoUpdate({ target: teams.joinCode, set: { clubId: demoClub.id, name: "Étoile U11" } });
-
-  // Patricia est le parent assigné de Paul (elle valide ses covoiturages)
-  // et a déjà renseigné ses infos conducteur pour la démo.
-  await db.update(users).set({ parentId: parent.id, position: "milieu", jerseyNumber: 10 }).where(eq(users.id, player.id));
-  await db
-    .update(users)
-    .set({ licensePlate: "AB-123-CD", driverLicenseNumber: "123456789012" })
-    .where(eq(users.id, parent.id));
 
   const existing = await db.select().from(matchAnnouncements);
   if (existing.length === 0) {
@@ -133,7 +122,7 @@ async function main() {
         federationDeclared: true,
       })
       .returning();
-    const [upcoming] = await db
+    await db
       .insert(matches)
       .values({
         announcementId: matchedAnn.id,
@@ -145,7 +134,7 @@ async function main() {
       })
       .returning();
 
-    // Match terminé (J-4) avec score, temps forts et présences
+    // Match terminé (J-4), score validé par les deux coachs
     const [pastAnn] = await db
       .insert(matchAnnouncements)
       .values({
@@ -161,7 +150,7 @@ async function main() {
         federationDeclared: true,
       })
       .returning();
-    const [finished] = await db
+    await db
       .insert(matches)
       .values({
         announcementId: pastAnn.id,
@@ -170,32 +159,14 @@ async function main() {
         date: pastAnn.date,
         time: pastAnn.time,
         location: "Stade des Iris, Villeurbanne",
+        // Score déjà saisi ET validé par le coach adverse
         status: "finished",
         homeScore: 1,
         awayScore: 3,
-      })
-      .returning();
-
-    await db.insert(matchEvents).values([
-      { matchId: finished.id, minute: 12, type: "goal", side: "away", description: "But de Paul sur corner", createdBy: coachA.id },
-      { matchId: finished.id, minute: 27, type: "goal", side: "home", description: "Égalisation sur penalty", createdBy: coachB.id },
-      { matchId: finished.id, minute: 44, type: "goal", side: "away", description: "Contre-attaque éclair, 2-1", createdBy: coachA.id },
-      { matchId: finished.id, minute: 58, type: "goal", side: "away", description: "But du break en solo", createdBy: coachA.id },
-    ]);
-
-    await db.insert(attendances).values([
-      { matchId: finished.id, userId: player.id, status: "present" },
-      { matchId: finished.id, userId: parent.id, status: "present", canTransport: true, transportSeats: 3 },
-      {
-        matchId: upcoming.id,
-        userId: parent.id,
-        status: "present",
-        canTransport: true,
-        transportSeats: 2,
-        departureTime: "09:15",
-        departureArea: "Croix-Rousse",
-      },
-    ]);
+        scoreSubmittedByTeamId: teamB.id,
+        scoreSubmittedAt: new Date(),
+        scoreConfirmedAt: new Date(),
+      });
   }
 
   const count = (await db.select().from(users)).length;

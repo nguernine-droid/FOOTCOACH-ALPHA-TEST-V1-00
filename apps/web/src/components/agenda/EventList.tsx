@@ -26,16 +26,6 @@ function ItemRow({ item, onOpen, showDate }: { item: AgendaItemDto; onOpen: (i: 
           {item.location && ` · ${item.location}`}
         </span>
       </span>
-      {item.myStatus && (
-        <span
-          className={cn(
-            "chip shrink-0",
-            item.myStatus === "present" ? "bg-success-soft text-success" : "bg-coral-soft text-coral",
-          )}
-        >
-          {item.myStatus === "present" ? "Présent" : "Absent"}
-        </span>
-      )}
       <ChevronRight size={14} className="text-ink-faint shrink-0" aria-hidden />
     </button>
   );

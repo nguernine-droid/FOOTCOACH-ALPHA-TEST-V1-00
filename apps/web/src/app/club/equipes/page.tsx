@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Plus, ShieldCheck, Ticket, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
 import type { ClubCoachDto, ClubTeamDto, TeamCoachRole } from "@footcoach/shared";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
@@ -105,9 +105,6 @@ function TeamCard({
           <p className="font-bold truncate">{team.name}</p>
           <p className="text-xs text-ink-soft truncate">{team.city}</p>
         </div>
-        <span className="chip bg-paper text-ink-soft shrink-0">
-          {team.playerCount} joueur{team.playerCount > 1 ? "s" : ""}
-        </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -137,9 +134,6 @@ function TeamCard({
             </span>
           ))
         )}
-        <span className="chip bg-paper text-ink-soft font-mono">
-          <Ticket size={11} /> {team.joinCode}
-        </span>
       </div>
 
       {assigning ? (

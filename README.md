@@ -4,10 +4,23 @@ La **V1 est volontairement restreinte à la gestion des matchs amicaux entre coa
 
 | Rôle | Ce qu'il peut faire |
 |---|---|
-| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé), saisir le score et les temps forts, consulter les présences de **sa propre équipe** (jamais celles de l'adversaire), composer son équipe sur un terrain façon FIFA (la compo adverse se dévoile 2h avant le coup d'envoi) |
+| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé), puis saisir le **score final** et le faire valider par le coach adverse |
 | **Admin** | Gérer les comptes coachs (réinitialisation de mot de passe, désactivation), consulter les statistiques |
 
-Les rôles **joueur, parent, supporter et club** restent implémentés (code, routes et espaces conservés) mais sont **masqués en V1** : leur connexion est refusée par l'API et l'inscription joueur/parent est fermée. Voir « Ce qui est masqué en V1 » plus bas.
+Il n'y a **pas de comptes joueur ni parent** : tout ce qui en dépendait (effectif, présences, composition d'équipe, covoiturage, temps forts) a été retiré. Les rôles **supporter et club** restent implémentés mais **masqués** : leur connexion est refusée par l'API. Voir « Ce qui est masqué en V1 » plus bas.
+
+### Score final validé par les deux coachs
+
+Un match ne se clôt pas sur la parole d'un seul coach :
+
+1. la rencontre passée, le match affiche **« Score final à saisir »** tant que rien n'est enregistré (bandeau sur le tableau de bord, la liste des matchs et la feuille de match) ;
+2. l'un des deux coachs saisit le score → le match passe en `awaiting_confirmation` et un **QR code** s'affiche sur son écran ;
+3. le coach adverse ouvre le même match et **scanne ce QR code depuis l'application** (sa caméra s'ouvre dans la page) ;
+4. le score est alors validé et le match passe en `finished`.
+
+Deux garde-fous cumulés : la validation n'est acceptée que du coach de l'**autre** équipe, et seulement avec le **jeton** contenu dans le QR — jeton qui n'est jamais renvoyé à l'adversaire par l'API, il ne peut l'obtenir qu'en voyant l'écran. Corriger le score régénère le jeton, ce qui invalide le QR précédent.
+
+> La caméra n'est accessible qu'en **contexte sécurisé** : HTTPS en production, ou `localhost` en développement. Sur une IP locale en HTTP, le navigateur refusera l'accès et le scanner affichera « Caméra indisponible ».
 
 ### Règle FFF des 10 jours
 
@@ -52,7 +65,7 @@ Les migrations s'appliquent automatiquement au démarrage de l'API (verrou consu
 | Coach B | `coach.b@demo.fr` | AS Cyber |
 | Admin | `admin@demo.fr` | — |
 
-Le seed crée aussi des comptes joueur, parent, supporter et club, mais leur connexion est refusée en V1.
+Le seed crée aussi un compte club (`club@demo.fr`), dont la connexion est refusée en V1. Il ne crée plus de comptes joueur, parent ni supporter.
 
 ## Production & scalabilité
 
@@ -77,30 +90,41 @@ npm run db:seed
 
 ### Créer un compte coach (sans compte de démo)
 
-« Créer un compte coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte. En V1, `/register` mène directement à ce parcours : l'inscription joueur/parent par code d'équipe est fermée.
+« Créer un compte coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
 
 ## Navigation de l'espace coach
 
 Onglets : **Tableau de bord · Annonces · (+) · Matchs · Mes équipes**.
 
-- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse ; sur desktop il est à droite des onglets.
+- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets.
 - Le **radar** (les équipes autour de vous qui cherchent un adversaire, triées par proximité) vit dans le **tableau de bord** ; `/coach/radar` y redirige.
 - L'**agenda** est accessible par l'icône calendrier du header.
+- **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.
 
-## Ce qui est masqué en V1
+## Ce qui a été retiré, et ce qui est seulement masqué
 
-Rien n'a été supprimé — tout est réactivable :
+**Retiré du code** (les tables restent en base, dormantes — aucune migration destructive) :
+
+- comptes joueur et parent, et leurs espaces `/player` et `/parent` ;
+- effectif d'équipe, codes d'invitation, demandes d'adhésion ;
+- présences aux matchs et aux événements ;
+- composition d'équipe (terrain, compo adverse verrouillée) ;
+- covoiturage ;
+- temps forts de match — seul le score final subsiste.
+
+Tables conservées mais plus lues : `attendances`, `lineups`, `match_events`, `carpool_bookings`, `join_requests`, `event_attendances`, et les colonnes `users.parent_id / position / jersey_number`.
+
+**Masqué mais intact** :
 
 | Élément | Comment le rouvrir |
 |---|---|
-| Connexion joueur / parent / supporter / club | `V1_ROLES` dans `packages/shared/src/index.ts` (gardé par `isV1Role` dans `routes/auth.ts`) |
-| Inscription joueur / parent par code d'équipe | `JOIN_REGISTRATION_OPEN` dans `apps/api/src/routes/registration.ts`, et réafficher `JoinWizard` dans `app/register/page.tsx` |
-| Covoiturage | Onglet retiré de `app/coach/layout.tsx` ; `CarpoolSection` retirée de la feuille de match coach (le composant et son API sont intacts) |
-| Espaces `/player`, `/parent`, `/supporter`, `/club` | Routes et pages conservées, simplement inatteignables tant que la connexion est bloquée |
+| Connexion supporter / club | `V1_ROLES` dans `packages/shared/src/index.ts` (gardé par `isV1Role` dans `routes/auth.ts`) |
+| Espaces `/supporter`, `/club` | Routes et pages conservées, inatteignables tant que la connexion est bloquée |
 
 ## Scénario de démonstration
 
 1. **Coach A** publie une annonce depuis le bouton « + » : il choisit une date à plus de 10 jours (badge « Délai FFF respecté ») et coche l'attestation de déclaration.
 2. **Coach B** (navigation privée) voit l'annonce dans le **radar de son tableau de bord**, triée par distance, et clique « Proposer de jouer ».
-3. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé et sa feuille de match s'ouvre.
-4. **Coach A** lance le coup d'envoi, saisit le score et les temps forts ; la compo adverse se dévoile 2 h avant le coup d'envoi.
+3. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé.
+4. Une fois la date passée, les deux coachs voient **« Score final à saisir »**. Coach A saisit le score : un **QR code** s'affiche.
+5. **Coach B** ouvre le même match, clique **« Scanner le QR code »** et vise l'écran de coach A → le score est validé et le match passe en « Terminé ».

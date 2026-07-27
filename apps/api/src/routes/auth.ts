@@ -3,7 +3,6 @@ import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
-  driverInfoSchema,
   forgotPasswordSchema,
   isV1Role,
   loginSchema,
@@ -84,24 +83,6 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     teamName = team?.name ?? null;
   }
 
-  // Joueur/parent sans équipe : exposer l'état de sa dernière demande d'adhésion
-  // (alimente l'écran "demande en attente de validation")
-  let joinRequestStatus: UserDto["joinRequestStatus"] = null;
-  let pendingTeamName: string | null = null;
-  if (!teamId && (user.role === "player" || user.role === "parent")) {
-    const [latest] = await db
-      .select({ request: joinRequests, team: teams })
-      .from(joinRequests)
-      .innerJoin(teams, eq(joinRequests.teamId, teams.id))
-      .where(eq(joinRequests.userId, user.id))
-      .orderBy(desc(joinRequests.createdAt))
-      .limit(1);
-    if (latest) {
-      joinRequestStatus = latest.request.status;
-      pendingTeamName = latest.team.name;
-    }
-  }
-
   return {
     id: user.id,
     email: user.email,
@@ -112,12 +93,6 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     teamName,
     ...(coachTeams ? { teams: coachTeams } : {}),
     ...(user.role === "coach" ? { clubName: clubName ?? null, pendingClubName: pendingClubName ?? null } : {}),
-    hasDriverInfo: Boolean(user.licensePlate && user.driverLicenseNumber),
-    parentId: user.parentId,
-    position: user.position,
-    jerseyNumber: user.jerseyNumber,
-    joinRequestStatus,
-    pendingTeamName,
   };
 }
 
@@ -213,17 +188,4 @@ export function authRoutes(app: FastifyInstance) {
   });
 
   // Infos conducteur (parent) — prérequis pour proposer un covoiturage
-  app.patch("/me/driver-info", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
-    if (request.user.role !== "parent") throw new HttpError(403, "Réservé aux comptes parents");
-    const input = driverInfoSchema.parse(request.body);
-    const [updated] = await db
-      .update(users)
-      .set({
-        licensePlate: input.licensePlate.toUpperCase().trim(),
-        driverLicenseNumber: input.driverLicenseNumber.toUpperCase().trim(),
-      })
-      .where(eq(users.id, request.user.id))
-      .returning();
-    return toUserDto(updated);
-  });
 }

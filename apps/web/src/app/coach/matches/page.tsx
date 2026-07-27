@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Car, ChevronRight, Radar } from "lucide-react";
+import { AlertTriangle, ChevronRight, Clock3, Radar } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { groupMatches } from "@/lib/utils";
@@ -48,11 +48,20 @@ export default function CoachMatchesPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
             {section.items.map((match) => (
               <MatchCard key={match.id} match={match}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-ink-soft font-semibold flex items-center gap-1.5">
-                    <Car size={13} className="text-tangerine" /> Covoiturage : {match.transportSeats} place
-                    {match.transportSeats > 1 ? "s" : ""}
-                  </span>
+                <div className="flex items-center justify-between gap-2">
+                  {match.finalScoreDue ? (
+                    <span className="text-xs font-bold text-coral flex items-center gap-1.5">
+                      <AlertTriangle size={13} className="shrink-0" /> Score final à saisir
+                    </span>
+                  ) : match.status === "awaiting_confirmation" ? (
+                    <span className="text-xs font-bold text-sun flex items-center gap-1.5">
+                      <Clock3 size={13} className="shrink-0" />
+                      {/* Le jeton n'est rendu qu'à celui qui a saisi : il attend, l'autre valide */}
+                      {match.confirmationToken ? "En attente de validation" : "À valider par vous"}
+                    </span>
+                  ) : (
+                    <span />
+                  )}
                   <Link href={`/coach/matches/${match.id}`}>
                     <Button size="sm">
                       Feuille de match <ChevronRight size={14} />

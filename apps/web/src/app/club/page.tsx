@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, Ticket, Users } from "lucide-react";
+import { ShieldCheck, Users } from "lucide-react";
 import type { ClubOverviewDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -53,10 +53,9 @@ export default function ClubDashboardPage() {
         <p className="text-sm text-white/80">{club.city}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <StatTile label="Équipes" value={overview.teamsCount} />
         <StatTile label="Coachs" value={overview.coachesCount} />
-        <StatTile label="Joueurs" value={overview.playersCount} />
       </div>
 
       <div className="flex items-center justify-between px-1">
@@ -88,9 +87,6 @@ export default function ClubDashboardPage() {
                   <p className="font-bold truncate">{team.name}</p>
                   <p className="text-xs text-ink-soft truncate">{team.city}</p>
                 </div>
-                <span className="chip bg-paper text-ink-soft shrink-0">
-                  {team.playerCount} joueur{team.playerCount > 1 ? "s" : ""}
-                </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
@@ -106,9 +102,6 @@ export default function ClubDashboardPage() {
                     </span>
                   ))
                 )}
-                <span className="chip bg-paper text-ink-soft font-mono">
-                  <Ticket size={11} /> {team.joinCode}
-                </span>
               </div>
             </div>
           ))}

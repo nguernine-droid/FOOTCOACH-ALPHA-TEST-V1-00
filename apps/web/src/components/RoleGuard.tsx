@@ -3,20 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, CalendarRange, Car, ChevronDown, LogOut, Megaphone, UserCheck } from "lucide-react";
+import { Bell, CalendarRange, ChevronDown, LogOut, Megaphone, Trophy } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import { api, getActiveTeamId, getStoredUser, homeForRole, logout, setActiveTeamId } from "@/lib/api";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { TeamSwitcher } from "@/components/TeamSwitcher";
 import { ClubCrest } from "@/components/ClubCrest";
-import { PendingScreen } from "@/components/PendingScreen";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const ACTIVITY_ICONS = {
-  attendance: UserCheck,
-  carpool: Car,
   announcement: Megaphone,
+  score: Trophy,
 } as const;
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -59,8 +57,8 @@ export function RoleGuard({
   // Équipe active du coach : init synchrone depuis le localStorage (déjà posé à la
   // connexion), pour que le premier fetch parte avec le bon X-Team-Id sans re-render.
   const [activeTeamId, setActiveTeamIdState] = useState<string | null>(() => getActiveTeamId());
-  // Le fil d'activité n'existe que pour coach/joueur/parent : pas de cloche sinon
-  const hasNotifications = role === "coach" || role === "player" || role === "parent";
+  // Le fil d'activité n'existe que pour le coach : pas de cloche sinon
+  const hasNotifications = role === "coach";
 
   useEffect(() => {
     const stored = getStoredUser();
@@ -92,17 +90,14 @@ export function RoleGuard({
     setActiveTeamIdState(teamId);
   }
 
-  // Joueur/parent sans équipe : demande d'adhésion pas encore acceptée par le coach
-  const isPending = user != null && (user.role === "player" || user.role === "parent") && user.teamId === null;
-
   // Point "non-lu" sur la cloche : dernière activité plus récente que la dernière consultation
   useEffect(() => {
-    if (!user || !hasNotifications || isPending) return;
+    if (!user || !hasNotifications) return;
     setActivitySeen(localStorage.getItem("fc_activity_seen"));
     api<ActivityDto[]>("/activity")
       .then(setActivities)
       .catch(() => setActivities([]));
-  }, [user, hasNotifications, isPending]);
+  }, [user, hasNotifications]);
 
   useEffect(() => {
     if (!menuOpen && !notifOpen) return;
@@ -210,9 +205,8 @@ export function RoleGuard({
                               <span
                                 className={cn(
                                   "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                                  ev.type === "attendance" && "bg-success-soft text-success",
-                                  ev.type === "carpool" && "bg-blue-soft text-blue",
                                   ev.type === "announcement" && "bg-sun-soft text-sun",
+                                  ev.type === "score" && "bg-success-soft text-success",
                                 )}
                               >
                                 <Icon size={13} />
@@ -281,19 +275,17 @@ export function RoleGuard({
           </div>
         </header>
 
-        {!isPending && nav}
+        {nav}
       </div>
 
       <div
         className={cn(
           "w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pt-6",
           // La barre de navigation mobile est fixée en bas : réserver la place du contenu
-          nav && !isPending ? "pb-28 min-[960px]:pb-12" : "pb-12",
+          nav ? "pb-28 min-[960px]:pb-12" : "pb-12",
         )}
       >
-        {isPending ? (
-          <PendingScreen user={user} onRefreshed={setUser} />
-        ) : role === "coach" ? (
+        {role === "coach" ? (
           <ActiveTeamContext.Provider
             value={{ teams: coachTeams, activeTeamId, activeTeam, setActiveTeam: changeActiveTeam }}
           >

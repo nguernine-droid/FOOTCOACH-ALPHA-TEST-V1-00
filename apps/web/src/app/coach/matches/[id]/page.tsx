@@ -2,52 +2,95 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowLeftRight, Car, Flag, Goal, Lock, Minus, Play, Plus, ShieldCheck, Sparkles, Square, Trash2, UserCheck, UserX } from "lucide-react";
-import type { AttendanceDto, MatchDetailDto, MatchEventType, MatchSide, TeamPresenceDto } from "@footcoach/shared";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, Play, QrCode, ScanLine } from "lucide-react";
+import type { MatchDetailDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
-import { LineupEditor } from "@/components/LineupEditor";
+import { QrScanner } from "@/components/matches/QrScanner";
+import { ScoreQrCode } from "@/components/matches/ScoreQrCode";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-const EVENT_TYPES: { value: MatchEventType; label: string; icon: React.ElementType }[] = [
-  { value: "goal", label: "But", icon: Goal },
-  { value: "card", label: "Carton", icon: Square },
-  { value: "substitution", label: "Remplacement", icon: ArrowLeftRight },
-  { value: "highlight", label: "Temps fort", icon: Sparkles },
-];
+/** Saisie du score final : deux compteurs, puis émission du QR de validation */
+function FinalScoreForm({
+  match,
+  onSubmitted,
+}: {
+  match: MatchDetailDto;
+  onSubmitted: (message: string | null) => void;
+}) {
+  const [home, setHome] = useState(match.homeScore);
+  const [away, setAway] = useState(match.awayScore);
+  const [busy, setBusy] = useState(false);
 
-const EVENT_ICONS: Record<MatchEventType, React.ElementType> = {
-  goal: Goal,
-  card: Square,
-  substitution: ArrowLeftRight,
-  highlight: Sparkles,
-};
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api(`/matches/${match.id}/final-score`, {
+        method: "POST",
+        body: JSON.stringify({ homeScore: home, awayScore: away }),
+      });
+      onSubmitted(null);
+    } catch (err) {
+      onSubmitted(err instanceof Error ? err.message : "Enregistrement impossible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const counter = (label: string, value: number, set: (n: number) => void) => (
+    <div className="flex-1 min-w-0 space-y-2 text-center">
+      <p className="text-xs font-bold text-ink-soft truncate">{label}</p>
+      <div className="flex items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => set(Math.max(0, value - 1))}
+          className="w-9 h-9 rounded-lg border border-line text-ink-soft hover:border-blue/40 transition"
+          aria-label={`Retirer un but à ${label}`}
+        >
+          −
+        </button>
+        <span className="display text-4xl tabular-nums w-12">{value}</span>
+        <button
+          type="button"
+          onClick={() => set(Math.min(99, value + 1))}
+          className="w-9 h-9 rounded-lg border border-line text-ink-soft hover:border-blue/40 transition"
+          aria-label={`Ajouter un but à ${label}`}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="flex items-start gap-3">
+        {counter(match.homeTeam.name, home, setHome)}
+        {counter(match.awayTeam.name, away, setAway)}
+      </div>
+      <Button type="submit" size="lg" className="w-full" disabled={busy}>
+        {busy ? "Enregistrement…" : "Valider le score et afficher le QR code"}
+      </Button>
+      <p className="text-xs text-ink-soft text-center">
+        Le coach adverse devra scanner le QR code pour confirmer ce score.
+      </p>
+    </form>
+  );
+}
 
 export default function CoachMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [match, setMatch] = useState<MatchDetailDto | null>(null);
-  const [attendances, setAttendances] = useState<AttendanceDto[]>([]);
-  const [presence, setPresence] = useState<TeamPresenceDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [eventForm, setEventForm] = useState<{ minute: string; type: MatchEventType; side: MatchSide; description: string }>({
-    minute: "",
-    type: "goal",
-    side: "home",
-    description: "",
-  });
+  const [scanning, setScanning] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [m, a, p] = await Promise.all([
-        api<MatchDetailDto>(`/matches/${id}`),
-        api<AttendanceDto[]>(`/matches/${id}/attendances`),
-        api<TeamPresenceDto[]>(`/matches/${id}/presence`),
-      ]);
-      setMatch(m);
-      setAttendances(a);
-      setPresence(p);
+      setMatch(await api<MatchDetailDto>(`/matches/${id}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }
@@ -57,348 +100,165 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
     load();
   }, [load]);
 
-  async function updateScore(homeDelta: number, awayDelta: number) {
-    if (!match) return;
-    await api(`/matches/${id}/score`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        homeScore: Math.max(0, match.homeScore + homeDelta),
-        awayScore: Math.max(0, match.awayScore + awayDelta),
-      }),
-    });
-    load();
+  // Le coach en attente de validation rafraîchit pour voir la confirmation arriver
+  useEffect(() => {
+    if (match?.status !== "awaiting_confirmation" || !match.confirmationToken) return;
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, [match?.status, match?.confirmationToken, load]);
+
+  async function kickoff() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/matches/${id}/kickoff`, { method: "POST" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de démarrer le match");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function setStatus(status: "live" | "finished") {
-    if (!match) return;
-    await api(`/matches/${id}/score`, {
-      method: "PATCH",
-      body: JSON.stringify({ homeScore: match.homeScore, awayScore: match.awayScore, status }),
-    });
-    load();
-  }
+  const confirmWithToken = useCallback(
+    async (token: string) => {
+      setScanning(false);
+      setBusy(true);
+      setError(null);
+      try {
+        await api(`/matches/${id}/confirm-score`, { method: "POST", body: JSON.stringify({ token }) });
+        await load();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Validation impossible");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [id, load],
+  );
 
-  async function addEvent(e: React.FormEvent) {
-    e.preventDefault();
-    await api(`/matches/${id}/events`, {
-      method: "POST",
-      body: JSON.stringify({ ...eventForm, minute: Number(eventForm.minute) }),
-    });
-    setEventForm((f) => ({ ...f, minute: "", description: "" }));
-    load();
+  if (error && !match) {
+    return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
   }
+  if (!match) return <Skeleton className="h-96" />;
 
-  async function deleteEvent(eventId: string) {
-    await api(`/matches/${id}/events/${eventId}`, { method: "DELETE" });
-    load();
-  }
-
-  // Correction manuelle de la réponse d'un joueur (missclick, désistement…)
-  async function setPlayerStatus(userId: string, status: "present" | "absent") {
-    await api(`/matches/${id}/attendance/${userId}`, { method: "PUT", body: JSON.stringify({ status }) });
-    load();
-  }
-
-  // Organisateur : autoriser/retirer l'édition au coach adverse
-  async function toggleEditAuthorization(allowed: boolean) {
-    await api(`/matches/${id}/edit-authorization`, {
-      method: "PATCH",
-      body: JSON.stringify({ awayCoachCanEdit: allowed }),
-    });
-    load();
-  }
-
-  if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
-  if (!match) {
-    return (
-      <div className="grid gap-4 lg:grid-cols-2 items-start" aria-busy aria-label="Chargement">
-        <div className="space-y-4">
-          <Skeleton className="h-48" />
-          <Skeleton className="h-40" />
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-56" />
-          <Skeleton className="h-40" />
-        </div>
-      </div>
-    );
-  }
-
-  const transporters = attendances.filter((a) => a.canTransport && a.transportSeats > 0);
-  // Seul le coach organisateur (équipe domicile, émetteur de l'annonce) édite le
-  // score et les temps forts — sauf s'il a autorisé le coach adverse.
-  const isOrganizer = match.mySide === "home";
-  const canEdit = isOrganizer || (match.mySide === "away" && match.awayCoachCanEdit);
+  const iSubmitted = match.confirmationToken != null;
+  const awaiting = match.status === "awaiting_confirmation";
 
   return (
-    <div className="space-y-4">
-      <Link href="/coach/matches" className="text-xs font-bold text-ink-soft hover:text-ink inline-flex items-center gap-1.5">
-        <ArrowLeft size={14} /> Matchs
+    <div className="max-w-[720px] mx-auto space-y-4">
+      <Link
+        href="/coach/matches"
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-soft hover:text-ink transition"
+      >
+        <ArrowLeft size={14} /> Retour aux matchs
       </Link>
 
-      <div className="grid gap-4 lg:grid-cols-2 items-start">
-      <div className="space-y-4">
       <MatchCard match={match} />
 
-      <section className="card p-5 space-y-4">
-        <h3 className="text-sm font-black">Score</h3>
-        {!canEdit && (
-          <p className="text-xs font-semibold text-ink-soft bg-paper rounded-lg px-4 py-3 flex items-center gap-2">
-            <Lock size={13} className="shrink-0" />
-            Seul le coach organisateur ({match.homeTeam.name}) peut modifier le score et les temps forts, sauf s&apos;il vous y autorise.
-          </p>
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          {([["home", match.homeTeam.name], ["away", match.awayTeam.name]] as const).map(([side, name]) => (
-            <div key={side} className="bg-paper rounded-lg p-4 space-y-3 text-center">
-              <p className="text-xs font-bold text-ink-soft truncate">{name}</p>
-              <div className="flex items-center justify-center gap-3">
-                {canEdit && (
-                  <button
-                    onClick={() => updateScore(side === "home" ? -1 : 0, side === "away" ? -1 : 0)}
-                    className="w-9 h-9 rounded-xl bg-white border border-line text-ink-soft hover:text-ink flex items-center justify-center transition active:scale-90"
-                    aria-label={`Retirer un but (${name})`}
-                  >
-                    <Minus size={15} />
-                  </button>
-                )}
-                <span className="display text-4xl tabular-nums w-10">
-                  {side === "home" ? match.homeScore : match.awayScore}
-                </span>
-                {canEdit && (
-                  <button
-                    onClick={() => updateScore(side === "home" ? 1 : 0, side === "away" ? 1 : 0)}
-                    className="w-9 h-9 rounded-xl bg-pitch text-white flex items-center justify-center transition active:scale-90 shadow-sm"
-                    aria-label={`Ajouter un but (${name})`}
-                  >
-                    <Plus size={15} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        {canEdit && match.status === "scheduled" && (
-          <Button className="w-full" onClick={() => setStatus("live")}>
-            <Play size={15} /> Coup d&apos;envoi
-          </Button>
-        )}
-        {canEdit && match.status === "live" && (
-          <Button variant="accent" className="w-full" onClick={() => setStatus("finished")}>
-            <Flag size={15} /> Coup de sifflet final
-          </Button>
-        )}
-        {isOrganizer && (
-          <label className="flex items-center gap-3 bg-paper rounded-lg px-4 py-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={match.awayCoachCanEdit}
-              onChange={(e) => toggleEditAuthorization(e.target.checked)}
-              className="accent-navy-700 w-4 h-4 shrink-0"
-            />
-            <span className="text-xs font-semibold text-ink-soft flex items-center gap-1.5">
-              <ShieldCheck size={13} className="text-navy-700 shrink-0" />
-              Autoriser le coach de {match.awayTeam.name} à modifier le score et les temps forts
-            </span>
-          </label>
-        )}
-      </section>
-      </div>
+      {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
-      <div className="space-y-4">
-      <section className="card p-5 space-y-3">
-        <h3 className="text-sm font-black">Temps forts</h3>
-        {match.events.length === 0 && <p className="text-xs text-ink-soft">Aucun temps fort pour l&apos;instant.</p>}
-        {match.events.map((ev) => (
-          <div key={ev.id} className="flex items-center gap-3 text-sm bg-paper rounded-lg px-4 py-3">
-            <span className="text-pitch-deep font-black tabular-nums text-xs bg-pitch-soft rounded-full px-2.5 py-1 shrink-0">
-              {ev.minute}&apos;
-            </span>
-            {(() => {
-              const Icon = EVENT_ICONS[ev.type];
-              return <Icon size={15} className="text-pitch shrink-0" aria-hidden />;
-            })()}
-            <span className="flex-1 min-w-0">
-              <span className="font-semibold">{ev.description}</span>
-              <span className="text-ink-soft text-xs"> · {ev.side === "home" ? match.homeTeam.name : match.awayTeam.name}</span>
-            </span>
-            {canEdit && (
-              <button onClick={() => deleteEvent(ev.id)} className="text-ink-soft/50 hover:text-coral transition shrink-0" aria-label="Supprimer">
-                <Trash2 size={14} />
-              </button>
+      {/* ————— Score final et sa validation ————— */}
+      <section className="card p-5 space-y-4" aria-label="Score final">
+        <h3 className="display text-lg">Score final</h3>
+
+        {match.status === "finished" ? (
+          <div className="rounded-lg bg-success-soft px-4 py-4 flex items-center gap-3">
+            <CheckCircle2 size={18} className="text-success shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-success">Score validé par les deux coachs</p>
+              <p className="text-xs text-ink-soft">
+                {match.homeTeam.name} {match.homeScore} – {match.awayScore} {match.awayTeam.name}
+              </p>
+            </div>
+          </div>
+        ) : awaiting && iSubmitted ? (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-sun-soft px-4 py-3 flex items-center gap-2.5">
+              <Clock3 size={16} className="text-sun shrink-0" />
+              <p className="text-xs font-bold text-sun">
+                En attente de validation par {match.mySide === "home" ? match.awayTeam.name : match.homeTeam.name}
+              </p>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="display text-5xl tabular-nums text-navy-700">
+                {match.homeScore}
+                <span className="text-ink-faint mx-2">–</span>
+                {match.awayScore}
+              </p>
+              <ScoreQrCode token={match.confirmationToken!} />
+              <p className="text-xs text-ink-soft text-center max-w-xs">
+                Montrez ce QR code au coach adverse : il le scanne depuis son compte pour valider le score.
+              </p>
+            </div>
+            <details className="text-xs text-ink-soft">
+              <summary className="cursor-pointer font-bold hover:text-ink">Corriger le score</summary>
+              <div className="pt-3">
+                <FinalScoreForm
+                  match={match}
+                  onSubmitted={(message) => {
+                    setError(message);
+                    load();
+                  }}
+                />
+                <p className="pt-2 text-[11px]">
+                  Une correction génère un nouveau QR code : l&apos;ancien cesse de fonctionner.
+                </p>
+              </div>
+            </details>
+          </div>
+        ) : awaiting ? (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-sun-soft px-4 py-3 flex items-start gap-2.5">
+              <QrCode size={16} className="text-sun shrink-0 mt-0.5" />
+              <p className="text-xs text-ink-soft">
+                <span className="font-bold text-sun">
+                  {match.mySide === "home" ? match.awayTeam.name : match.homeTeam.name} a saisi le score.
+                </span>{" "}
+                Scannez le QR code affiché sur son écran pour le valider.
+              </p>
+            </div>
+            <p className="display text-5xl tabular-nums text-navy-700 text-center">
+              {match.homeScore}
+              <span className="text-ink-faint mx-2">–</span>
+              {match.awayScore}
+            </p>
+            <Button size="lg" className="w-full" onClick={() => setScanning(true)} disabled={busy}>
+              <ScanLine size={16} /> Scanner le QR code
+            </Button>
+          </div>
+        ) : match.finalScoreDue ? (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-coral-soft px-4 py-3 flex items-start gap-2.5">
+              <AlertTriangle size={16} className="text-coral shrink-0 mt-0.5" />
+              <p className="text-xs text-ink-soft">
+                <span className="font-bold text-coral">Le match a eu lieu.</span> Saisissez le score final : il devra
+                être validé par le coach adverse.
+              </p>
+            </div>
+            <FinalScoreForm
+              match={match}
+              onSubmitted={(message) => {
+                setError(message);
+                load();
+              }}
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-ink-soft">
+              Le score final se saisit à la fin de la rencontre, puis se valide avec le coach adverse.
+            </p>
+            {match.status === "scheduled" && (
+              <Button variant="soft" size="sm" onClick={kickoff} disabled={busy}>
+                <Play size={14} /> Donner le coup d&apos;envoi
+              </Button>
             )}
           </div>
-        ))}
-
-        {!canEdit && (
-          <p className="text-[10px] text-ink-soft flex items-center gap-1">
-            <Lock size={10} className="shrink-0" /> Saisie réservée au coach organisateur.
-          </p>
-        )}
-        {canEdit && (
-        <form onSubmit={addEvent} className="space-y-3 border-t border-line pt-4">
-          <div className="flex flex-wrap gap-2">
-            {EVENT_TYPES.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => setEventForm((f) => ({ ...f, type: t.value }))}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border transition",
-                  eventForm.type === t.value
-                    ? "bg-pitch text-white border-pitch shadow-sm"
-                    : "bg-white text-ink-soft border-line hover:border-pitch/40",
-                )}
-              >
-                <t.icon size={13} /> {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <input
-              type="number"
-              min={0}
-              max={150}
-              required
-              placeholder="Minute"
-              value={eventForm.minute}
-              onChange={(e) => setEventForm((f) => ({ ...f, minute: e.target.value }))}
-              className="field"
-            />
-            <select
-              value={eventForm.side}
-              onChange={(e) => setEventForm((f) => ({ ...f, side: e.target.value as MatchSide }))}
-              className="field col-span-2"
-            >
-              <option value="home">{match.homeTeam.name}</option>
-              <option value="away">{match.awayTeam.name}</option>
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <input
-              required
-              placeholder="Ex : But de Paul sur corner"
-              value={eventForm.description}
-              onChange={(e) => setEventForm((f) => ({ ...f, description: e.target.value }))}
-              className="field flex-1"
-            />
-            <Button type="submit" size="md">Ajouter</Button>
-          </div>
-        </form>
         )}
       </section>
 
-      <section className="card p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black">Présences de mon équipe</h3>
-          <span className="chip bg-success-soft text-success">
-            {match.presentCount} ✓ · {match.absentCount} ✗
-          </span>
-        </div>
-        <p className="text-[10px] text-ink-soft -mt-2 flex items-center gap-1">
-          <Lock size={10} className="shrink-0" /> Visible uniquement par vous — le coach adverse ne voit pas ces informations.
-        </p>
-        {/* Joueurs : roster complet, réponse corrigeable par le coach */}
-        {presence.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-ink-soft">
-              Joueurs ({presence.filter((r) => r.status === "present").length} présent
-              {presence.filter((r) => r.status === "present").length > 1 ? "s" : ""} / {presence.length})
-            </p>
-            {presence.map((p) => (
-              <div key={p.userId} className="flex items-center gap-2.5 text-sm bg-paper rounded-lg px-4 py-2.5">
-                <span className="w-9 h-9 rounded-xl bg-sky flex items-center justify-center text-white text-xs font-black shrink-0">
-                  {p.firstName[0]}
-                  {p.lastName[0]}
-                </span>
-                <span className="flex-1 min-w-0 font-bold truncate">
-                  {p.firstName} {p.lastName}
-                  {p.status === null && <span className="block text-[10px] font-semibold text-ink-faint">Pas encore répondu</span>}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPlayerStatus(p.userId, "present")}
-                  aria-pressed={p.status === "present"}
-                  aria-label={`Marquer ${p.firstName} présent`}
-                  className={cn(
-                    "px-2.5 py-1.5 rounded-lg text-xs font-bold transition shrink-0 inline-flex items-center gap-1",
-                    p.status === "present"
-                      ? "bg-success text-white"
-                      : "bg-white border border-line text-ink-soft hover:text-success hover:border-success/40",
-                  )}
-                >
-                  <UserCheck size={12} /> Présent
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPlayerStatus(p.userId, "absent")}
-                  aria-pressed={p.status === "absent"}
-                  aria-label={`Marquer ${p.firstName} absent`}
-                  className={cn(
-                    "px-2.5 py-1.5 rounded-lg text-xs font-bold transition shrink-0 inline-flex items-center gap-1",
-                    p.status === "absent"
-                      ? "bg-coral text-white"
-                      : "bg-white border border-line text-ink-soft hover:text-coral hover:border-coral/40",
-                  )}
-                >
-                  <UserX size={12} /> Absent
-                </button>
-              </div>
-            ))}
-            <p className="text-[10px] text-ink-soft">
-              En cas de missclick ou de désistement, vous pouvez corriger la réponse d&apos;un joueur à tout moment.
-            </p>
-          </div>
-        )}
-
-        {/* Parents : réponses + covoiturage proposés */}
-        {attendances.filter((a) => a.role === "parent").length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-bold text-ink-soft">
-              Parents ({attendances.filter((a) => a.role === "parent" && a.status === "present").length} présent
-              {attendances.filter((a) => a.role === "parent" && a.status === "present").length > 1 ? "s" : ""} /{" "}
-              {attendances.filter((a) => a.role === "parent").length})
-            </p>
-            {attendances
-              .filter((a) => a.role === "parent")
-              .map((a) => (
-                <div key={a.userId} className="flex items-center gap-3 text-sm bg-paper rounded-lg px-4 py-3">
-                  <span className="w-9 h-9 rounded-xl bg-tangerine flex items-center justify-center text-white text-xs font-black shrink-0">
-                    {a.firstName[0]}
-                    {a.lastName[0]}
-                  </span>
-                  <span className="flex-1 min-w-0 font-bold truncate">
-                    {a.firstName} {a.lastName}
-                  </span>
-                  {a.canTransport && a.transportSeats > 0 && (
-                    <span className="chip bg-tangerine-soft text-tangerine shrink-0">
-                      <Car size={12} /> {a.transportSeats} pl.
-                    </span>
-                  )}
-                  <span className={cn("chip shrink-0", a.status === "present" ? "bg-success-soft text-success" : "bg-coral-soft text-coral")}>
-                    {a.status === "present" ? "Présent" : "Absent"}
-                  </span>
-                </div>
-              ))}
-          </div>
-        )}
-        {transporters.length > 0 && (
-          <p className="text-xs text-ink-soft font-semibold bg-tangerine-soft/50 rounded-lg px-4 py-3 flex items-center gap-2">
-            <Car size={14} className="text-tangerine shrink-0" />
-            {transporters.reduce((s, t) => s + t.transportSeats, 0)} places de covoiturage proposées ({transporters.map((t) => t.firstName).join(", ")})
-          </p>
-        )}
-      </section>
-
-      <section className="card p-5 space-y-3">
-        <h3 className="text-sm font-black">Composition</h3>
-        <LineupEditor
-          matchId={id}
-          presentPlayerIds={attendances.filter((a) => a.role === "player" && a.status === "present").map((a) => a.userId)}
-        />
-      </section>
-      </div>
-      </div>
+      {scanning && <QrScanner onResult={confirmWithToken} onClose={() => setScanning(false)} />}
     </div>
   );
 }

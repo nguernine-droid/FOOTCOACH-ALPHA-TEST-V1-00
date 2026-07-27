@@ -1,48 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Car,
-  CheckCircle2,
-  ChevronRight,
-  Lock,
-  MapPin,
-  Megaphone,
-  Radar,
-  UserCheck,
-} from "lucide-react";
-import type { ActivityDto, AnnouncementDto, LineupDto, LineupPlayerDto, MatchDto } from "@footcoach/shared";
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, Radar, Trophy } from "lucide-react";
+import type { ActivityDto, AnnouncementDto, MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, useNow } from "@/lib/time";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
 import { RadarFeed } from "@/components/announcements/RadarFeed";
-import { Pitch } from "@/components/Pitch";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
-
-// Emplacements du 4-3-3 par défaut (x/y en %, but adverse en haut)
-const FORMATION_433 = [
-  { x: 50, y: 91 },
-  { x: 15, y: 75 }, { x: 38, y: 77 }, { x: 62, y: 77 }, { x: 85, y: 75 },
-  { x: 25, y: 53 }, { x: 50, y: 56 }, { x: 75, y: 53 },
-  { x: 20, y: 29 }, { x: 50, y: 25 }, { x: 80, y: 29 },
-];
-
-function deriveFormation(players: LineupPlayerDto[]): string | null {
-  if (players.length < 5) return null;
-  const byDepth = [...players].sort((a, b) => b.y - a.y);
-  const goalkeeper = players.find((p) => p.position === "gardien") ?? byDepth[0];
-  const field = players.filter((p) => p.playerId !== goalkeeper.playerId);
-  const def = field.filter((p) => p.y >= 66).length;
-  const att = field.filter((p) => p.y < 44).length;
-  const mid = field.length - def - att;
-  return `${def}-${mid}-${att}`;
-}
-
 
 function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
   return (
@@ -61,9 +31,7 @@ export default function CoachDashboard() {
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
-  const [lineup, setLineup] = useState<LineupDto | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const revealAttempted = useRef(false);
 
   const loadAll = useCallback(() => {
     Promise.all([
@@ -109,30 +77,13 @@ export default function CoachDashboard() {
     loadAll();
   }
 
-  const live = matches?.filter((m) => m.status === "live") ?? [];
-  const upcoming = (matches?.filter((m) => m.status === "scheduled") ?? []).sort((a, b) =>
+  // Un match dont le score final reste à saisir ou à valider passe devant
+  const pending = matches?.filter((m) => m.finalScoreDue || m.status === "awaiting_confirmation") ?? [];
+  const live = matches?.filter((m) => m.status === "live" && !m.finalScoreDue) ?? [];
+  const upcoming = (matches?.filter((m) => m.status === "scheduled" && !m.finalScoreDue) ?? []).sort((a, b) =>
     `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`),
   );
-  const featured = live[0] ?? upcoming[0] ?? null;
-  const featuredId = featured?.id ?? null;
-
-  const loadLineup = useCallback(() => {
-    if (!featuredId) return;
-    api<LineupDto>(`/matches/${featuredId}/lineup`).then(setLineup).catch(() => setLineup(null));
-  }, [featuredId]);
-
-  useEffect(() => {
-    loadLineup();
-  }, [loadLineup]);
-
-  // Révélation automatique de la compo adverse quand le compte à rebours atteint zéro
-  useEffect(() => {
-    if (!lineup?.opponentLocked || revealAttempted.current) return;
-    if (new Date(lineup.opponentVisibleAt) <= now) {
-      revealAttempted.current = true;
-      loadLineup();
-    }
-  }, [now, lineup, loadLineup]);
+  const featured = pending[0] ?? live[0] ?? upcoming[0] ?? null;
 
   if (error) return <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>;
 
@@ -154,10 +105,6 @@ export default function CoachDashboard() {
 
   const kickoff = featured ? kickoffDate(featured.date, featured.time) : null;
   const countdown = kickoff ? formatCountdown(kickoff.getTime() - now.getTime()) : null;
-  const revealCountdown = lineup?.opponentLocked
-    ? formatCountdown(new Date(lineup.opponentVisibleAt).getTime() - now.getTime())
-    : null;
-  const formation = lineup ? deriveFormation(lineup.mine) : null;
 
   return (
     <div className="grid gap-4 min-[960px]:grid-cols-[1fr_360px] items-start">
@@ -167,7 +114,16 @@ export default function CoachDashboard() {
         {featured ? (
           <section className="card p-5 space-y-4 animate-rise-in" aria-label="Prochain match">
             <div className="flex items-center justify-between gap-2">
-              {featured.status === "live" ? (
+              {featured.finalScoreDue ? (
+                <span className="chip bg-coral-soft text-coral">
+                  <AlertTriangle size={12} /> Score final à saisir
+                </span>
+              ) : featured.status === "awaiting_confirmation" ? (
+                <span className="chip bg-sun-soft text-sun">
+                  <Clock3 size={12} />
+                  {featured.confirmationToken ? "En attente de validation" : "Score à valider"}
+                </span>
+              ) : featured.status === "live" ? (
                 <span className="chip bg-coral-soft text-coral animate-soft-pulse">● En direct</span>
               ) : (
                 <span className="chip bg-success-soft text-success">
@@ -182,7 +138,7 @@ export default function CoachDashboard() {
             <div className="flex items-center gap-4">
               <TeamSide team={featured.homeTeam} />
               <div className="shrink-0 text-center px-2">
-                {featured.status === "live" ? (
+                {featured.status === "live" || featured.status === "awaiting_confirmation" ? (
                   <p className="display text-6xl tabular-nums leading-none text-navy-700">
                     {featured.homeScore}
                     <span className="text-ink-faint mx-2">–</span>
@@ -201,7 +157,7 @@ export default function CoachDashboard() {
                 <span className="truncate">{featured.location}</span>
               </div>
               <div className="flex items-center gap-4">
-                {featured.status === "scheduled" && (
+                {featured.status === "scheduled" && !featured.finalScoreDue && (
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-ink-faint tracking-widest uppercase">Avant coup d&apos;envoi</p>
                     <p className="display text-3xl leading-none text-navy-700 tabular-nums">
@@ -210,8 +166,8 @@ export default function CoachDashboard() {
                   </div>
                 )}
                 <Link href={`/coach/matches/${featured.id}`}>
-                  <Button size="sm">
-                    Feuille de match <ChevronRight size={14} />
+                  <Button size="sm" variant={featured.finalScoreDue ? "accent" : "primary"}>
+                    {featured.finalScoreDue ? "Saisir le score" : "Feuille de match"} <ChevronRight size={14} />
                   </Button>
                 </Link>
               </div>
@@ -232,86 +188,12 @@ export default function CoachDashboard() {
           </section>
         )}
 
-        {/* Composition */}
-        {featured && (
-          <section className="card p-5 space-y-4 animate-rise-in" aria-label="Composition">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <h3 className="display text-lg">Composition</h3>
-                <span className="chip bg-blue-soft text-navy-700">{formation ?? "4-3-3"}</span>
-              </div>
-              <Link href={`/coach/matches/${featured.id}`}>
-                <Button variant="soft" size="sm">Ajuster ma compo</Button>
-              </Link>
-            </div>
-            <div className="max-w-md mx-auto w-full">
-              <Pitch players={lineup?.mine ?? []} ghosts={FORMATION_433} />
-            </div>
-            {(lineup?.mine.length ?? 0) === 0 && (
-              <p className="text-xs text-ink-soft text-center">
-                Aucun joueur placé — le 4-3-3 proposé s&apos;affiche en pointillés. Placez vos joueurs depuis la feuille de match.
-              </p>
-            )}
-          </section>
-        )}
-
         {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1 */}
         <RadarFeed />
       </div>
 
       {/* ————— Colonne latérale ————— */}
       <div className="space-y-4 min-w-0">
-        {/* Composition adverse */}
-        {featured && lineup && (
-          <section className="card p-5 space-y-4 animate-rise-in" aria-label="Composition adverse">
-            <h3 className="display text-lg">Composition adverse</h3>
-
-            {lineup.opponentLocked ? (
-              <div className="relative rounded-lg bg-paper p-4 overflow-hidden">
-                <div className="grid grid-cols-4 gap-2.5 blur-[3px] opacity-50 select-none" aria-hidden>
-                  {Array.from({ length: 11 }).map((_, i) => (
-                    <span key={i} className="w-9 h-9 rounded-full bg-ink-faint/50 mx-auto" />
-                  ))}
-                </div>
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-center px-4">
-                  <span className="w-9 h-9 rounded-full bg-navy-700 text-white flex items-center justify-center">
-                    <Lock size={15} />
-                  </span>
-                  <p className="text-xs font-bold text-navy-700">
-                    Se dévoile dans{" "}
-                    <span className="display text-base tabular-nums">{revealCountdown ?? "un instant"}</span>
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-lg bg-paper p-4 space-y-2">
-                <p className="text-xs font-semibold text-ink-soft">
-                  {lineup.opponent && lineup.opponent.length > 0
-                    ? `${lineup.opponent.length} joueur${lineup.opponent.length > 1 ? "s" : ""} placé${lineup.opponent.length > 1 ? "s" : ""} par le coach adverse.`
-                    : "Le coach adverse n'a pas encore placé de joueurs."}
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-2">
-              <Link href={`/coach/matches/${featured.id}`} className="w-full">
-                <Button size="sm" className="w-full">Ajuster ma compo</Button>
-              </Link>
-              {lineup.opponentLocked ? (
-                <span title="Visible 2 h avant le coup d'envoi" className="w-full">
-                  <Button size="sm" variant="ghost" className="w-full" disabled aria-disabled>
-                    <Lock size={13} /> Voir l&apos;adversaire
-                  </Button>
-                </span>
-              ) : (
-                <Link href={`/coach/matches/${featured.id}`} className="w-full">
-                  <Button size="sm" variant="ghost" className="w-full">Voir l&apos;adversaire</Button>
-                </Link>
-              )}
-            </div>
-          </section>
-        )}
-
         {/* Annonces actives */}
         <section className="card p-5 space-y-3 animate-rise-in" aria-label="Annonces actives">
           <div className="flex items-center justify-between">
@@ -361,14 +243,12 @@ export default function CoachDashboard() {
                 <span
                   className={cn(
                     "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                    ev.type === "attendance" && "bg-success-soft text-success",
-                    ev.type === "carpool" && "bg-blue-soft text-blue",
                     ev.type === "announcement" && "bg-sun-soft text-sun",
+                    ev.type === "score" && "bg-success-soft text-success",
                   )}
                 >
-                  {ev.type === "attendance" && <UserCheck size={13} />}
-                  {ev.type === "carpool" && <Car size={13} />}
                   {ev.type === "announcement" && <Megaphone size={13} />}
+                  {ev.type === "score" && <Trophy size={13} />}
                 </span>
                 <div className="min-w-0">
                   <p className="text-ink leading-snug">

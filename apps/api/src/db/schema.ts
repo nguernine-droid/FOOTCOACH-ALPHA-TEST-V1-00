@@ -17,7 +17,7 @@ export const userRole = pgEnum("user_role", ["coach", "player", "parent", "suppo
 // Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs).
 export const teamCoachRole = pgEnum("team_coach_role", ["principal", "adjoint"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
-export const matchStatus = pgEnum("match_status", ["scheduled", "live", "finished"]);
+export const matchStatus = pgEnum("match_status", ["scheduled", "live", "awaiting_confirmation", "finished"]);
 export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"]);
 export const matchEventType = pgEnum("match_event_type", ["goal", "card", "substitution", "highlight"]);
 export const matchSide = pgEnum("match_side", ["home", "away"]);
@@ -212,9 +212,15 @@ export const matches = pgTable("matches", {
   status: matchStatus("status").notNull().default("scheduled"),
   homeScore: integer("home_score").notNull().default(0),
   awayScore: integer("away_score").notNull().default(0),
-  // Le coach émetteur de l'annonce (équipe domicile) peut autoriser le coach
-  // adverse à éditer score et temps forts ; par défaut lui seul le peut.
+  // Conservée pour compatibilité : plus utilisée depuis que le score final
+  // est saisi par l'un des deux coachs puis validé par l'autre.
   awayCoachCanEdit: boolean("away_coach_can_edit").notNull().default(false),
+  // Validation du score final : un coach saisit, l'autre valide en scannant le
+  // QR code. Le jeton est régénéré à chaque saisie (invalide le QR précédent).
+  scoreSubmittedByTeamId: uuid("score_submitted_by_team_id").references(() => teams.id),
+  scoreSubmittedAt: timestamp("score_submitted_at", { withTimezone: true }),
+  scoreConfirmedAt: timestamp("score_confirmed_at", { withTimezone: true }),
+  confirmationToken: text("confirmation_token"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

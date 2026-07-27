@@ -1,12 +1,13 @@
 "use client";
 
-import { MapPin, Users } from "lucide-react";
+import { MapPin } from "lucide-react";
 import type { MatchDto, TeamDto } from "@footcoach/shared";
 import { cn, formatDate } from "@/lib/utils";
 
 const STATUS = {
   scheduled: { label: "À venir", className: "bg-sky-soft text-sky" },
   live: { label: "● En direct", className: "bg-coral-soft text-coral animate-soft-pulse" },
+  awaiting_confirmation: { label: "Score à valider", className: "bg-sun-soft text-sun" },
   finished: { label: "Terminé", className: "bg-paper text-ink-soft" },
 } as const;
 
@@ -72,12 +73,9 @@ export function MatchCard({ match, children }: { match: MatchDto; children?: Rea
         <TeamBadge team={match.awayTeam} />
       </div>
 
-      <div className="flex items-center justify-between text-xs text-ink-soft border-t border-line pt-3">
+      <div className="flex items-center text-xs text-ink-soft border-t border-line pt-3">
         <span className="flex items-center gap-1.5 truncate">
           <MapPin size={13} className="text-pitch shrink-0" /> {match.location}
-        </span>
-        <span className="flex items-center gap-1.5 shrink-0 font-semibold">
-          <Users size={13} className="text-pitch" /> {match.presentCount} présent{match.presentCount > 1 ? "s" : ""}
         </span>
       </div>
 

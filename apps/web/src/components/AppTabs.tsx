@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MoreHorizontal, Plus, type LucideIcon } from "lucide-react";
+import { Plus, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type AppTab = {
@@ -31,67 +31,22 @@ export type QuickAction = {
  *
  * `action` ajoute un bouton « + » doré — surélevé au centre sur mobile, à droite
  * des onglets sur desktop — dont la cible dépend de la page en cours.
- * `moreTabs` regroupe les sections secondaires derrière un menu « Plus ».
  */
 export function AppTabs({
   tabs,
   ariaLabel,
   action,
-  moreTabs = [],
 }: {
   tabs: AppTab[];
   ariaLabel: string;
   action?: QuickAction | null;
-  moreTabs?: AppTab[];
 }) {
   const pathname = usePathname();
-  const [moreOpen, setMoreOpen] = useState(false);
-  // Les deux barres coexistent dans le DOM (masquées par CSS) : une ref chacune
-  const desktopMoreRef = useRef<HTMLDivElement>(null);
-  const mobileMoreRef = useRef<HTMLDivElement>(null);
-
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
-  const moreActive = moreTabs.some(isActive);
 
-  // Le menu secondaire se referme à la navigation et au clic extérieur
-  useEffect(() => setMoreOpen(false), [pathname]);
-  useEffect(() => {
-    if (!moreOpen) return;
-    function onClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      const inside =
-        desktopMoreRef.current?.contains(target) === true || mobileMoreRef.current?.contains(target) === true;
-      if (!inside) setMoreOpen(false);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [moreOpen]);
-
-  // Mobile : le « + » s'intercale au milieu des onglets
+  // Mobile : le « + » s'intercale entre deux moitiés d'onglets de même largeur
   const split = Math.ceil(tabs.length / 2);
   const mobileGroups = action ? [tabs.slice(0, split), tabs.slice(split)] : [tabs];
-
-  const moreMenu = moreTabs.length > 0 && moreOpen && (
-    <div
-      role="menu"
-      aria-label="Autres sections"
-      className="absolute right-0 bottom-full mb-2 min-[960px]:bottom-auto min-[960px]:top-full min-[960px]:mb-0 min-[960px]:mt-2 w-56 card p-2 text-ink z-50 animate-rise-in"
-    >
-      {moreTabs.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          role="menuitem"
-          className={cn(
-            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold transition",
-            isActive(tab) ? "bg-blue-soft text-navy-700" : "text-ink-soft hover:bg-paper hover:text-ink",
-          )}
-        >
-          <tab.icon size={15} /> {tab.label}
-        </Link>
-      ))}
-    </div>
-  );
 
   return (
     <>
@@ -122,24 +77,6 @@ export function AppTabs({
             })}
           </div>
 
-          {moreTabs.length > 0 && (
-            <div className="relative shrink-0" ref={desktopMoreRef}>
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={moreOpen}
-                onClick={() => setMoreOpen((o) => !o)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3.5 py-3 text-xs font-bold whitespace-nowrap border-b-2 -mb-px transition focus-visible:!outline-gold",
-                  moreActive ? "text-white border-gold" : "text-white/55 border-transparent hover:text-white",
-                )}
-              >
-                <MoreHorizontal size={14} /> Plus
-              </button>
-              {moreMenu}
-            </div>
-          )}
-
           {action && (
             <Link
               href={action.href}
@@ -159,30 +96,34 @@ export function AppTabs({
         aria-label={ariaLabel}
         className="min-[960px]:hidden fixed bottom-0 inset-x-0 z-40 bg-navy-800 border-t border-white/10 shadow-pop pb-[env(safe-area-inset-bottom)]"
       >
+        {/* Les deux moitiés sont des frères flex-1 de part et d'autre du « + » :
+            chaque onglet garde ainsi la même largeur des deux côtés. */}
         <div className="flex items-stretch">
           {mobileGroups.map((group, groupIndex) => (
-            <div key={groupIndex} className="flex flex-1 min-w-0">
-              {group.map((tab) => {
-                const active = isActive(tab);
-                return (
-                  <Link
-                    key={tab.href}
-                    href={tab.href}
-                    role="tab"
-                    aria-selected={active}
-                    aria-label={tab.label}
-                    className={cn(
-                      "flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-0.5 py-1.5 transition focus-visible:!outline-gold",
-                      active ? "text-gold" : "text-white/55 hover:text-white",
-                    )}
-                  >
-                    <tab.icon size={20} aria-hidden />
-                    <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">
-                      {tab.shortLabel ?? tab.label}
-                    </span>
-                  </Link>
-                );
-              })}
+            <Fragment key={groupIndex}>
+              <div className="flex flex-1 min-w-0">
+                {group.map((tab) => {
+                  const active = isActive(tab);
+                  return (
+                    <Link
+                      key={tab.href}
+                      href={tab.href}
+                      role="tab"
+                      aria-selected={active}
+                      aria-label={tab.label}
+                      className={cn(
+                        "flex-1 min-w-0 min-h-[52px] flex flex-col items-center justify-center gap-0.5 py-1.5 transition focus-visible:!outline-gold",
+                        active ? "text-gold" : "text-white/55 hover:text-white",
+                      )}
+                    >
+                      <tab.icon size={20} aria-hidden />
+                      <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">
+                        {tab.shortLabel ?? tab.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
 
               {/* Bouton de création, surélevé entre les deux moitiés d'onglets */}
               {action && groupIndex === 0 && (
@@ -197,28 +138,8 @@ export function AppTabs({
                   </Link>
                 </div>
               )}
-            </div>
+            </Fragment>
           ))}
-
-          {moreTabs.length > 0 && (
-            <div className="relative shrink-0 flex" ref={mobileMoreRef}>
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={moreOpen}
-                aria-label="Autres sections"
-                onClick={() => setMoreOpen((o) => !o)}
-                className={cn(
-                  "w-16 min-h-[52px] flex flex-col items-center justify-center gap-0.5 py-1.5 transition focus-visible:!outline-gold",
-                  moreActive ? "text-gold" : "text-white/55 hover:text-white",
-                )}
-              >
-                <MoreHorizontal size={20} aria-hidden />
-                <span className="text-[10px] font-bold leading-none">Plus</span>
-              </button>
-              {moreMenu}
-            </div>
-          )}
         </div>
       </nav>
     </>

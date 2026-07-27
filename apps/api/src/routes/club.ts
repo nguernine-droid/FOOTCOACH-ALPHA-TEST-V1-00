@@ -67,19 +67,11 @@ export async function buildClubTeams(clubId: string): Promise<ClubTeamDto[]> {
     .innerJoin(users, eq(teamCoaches.coachId, users.id))
     .where(inArray(teamCoaches.teamId, teamIds));
 
-  const playerRows = await db
-    .select({ teamId: users.teamId, value: count() })
-    .from(users)
-    .where(and(inArray(users.teamId, teamIds), eq(users.role, "player")))
-    .groupBy(users.teamId);
-  const playersByTeam = new Map(playerRows.map((r) => [r.teamId, Number(r.value)]));
 
   return teamRows.map((t) => ({
     id: t.id,
     name: t.name,
     city: t.city,
-    joinCode: t.joinCode,
-    playerCount: playersByTeam.get(t.id) ?? 0,
     coaches: coachRows
       .filter((c) => c.teamId === t.id)
       .map((c) => ({ id: c.id, firstName: c.firstName, lastName: c.lastName, role: c.role })),
@@ -104,12 +96,10 @@ export function clubRoutes(app: FastifyInstance) {
       .select({ value: count() })
       .from(users)
       .where(and(eq(users.clubId, club.id), eq(users.role, "coach")));
-    const playersCount = clubTeams.reduce((sum, t) => sum + t.playerCount, 0);
     return {
       club: toClubDto(club),
       teamsCount: clubTeams.length,
       coachesCount: Number(coachesCount),
-      playersCount,
       teams: clubTeams,
     };
   });
@@ -132,7 +122,7 @@ export function clubRoutes(app: FastifyInstance) {
       lng: coords?.lng ?? null,
     });
     reply.code(201);
-    return { id: team.id, name: team.name, city: team.city, joinCode: team.joinCode, playerCount: 0, coaches: [] };
+    return { id: team.id, name: team.name, city: team.city, coaches: [] };
   });
 
   app.patch("/club/teams/:id", async (request) => {

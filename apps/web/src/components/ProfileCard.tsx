@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Mail, Shield, Users } from "lucide-react";
-import type { PlayerPosition, Role, UserDto } from "@footcoach/shared";
+import { LogOut, Mail, Users } from "lucide-react";
+import type { Role, UserDto } from "@footcoach/shared";
 import { api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -15,13 +15,6 @@ const ROLE_LABELS: Record<Role, string> = {
   supporter: "Supporter",
   admin: "Administrateur",
   club: "Club",
-};
-
-const POSITION_LABELS: Record<PlayerPosition, string> = {
-  gardien: "Gardien",
-  defenseur: "Défenseur",
-  milieu: "Milieu",
-  attaquant: "Attaquant",
 };
 
 /** Carte d'identité du compte, partagée par les onglets Profil de tous les rôles */
@@ -56,11 +49,6 @@ export function ProfileCard() {
           </p>
           <p className="text-xs text-ink-soft font-semibold">{ROLE_LABELS[user.role]}</p>
         </div>
-        {user.role === "player" && user.jerseyNumber != null && (
-          <span className="ml-auto display text-3xl text-navy-700 tabular-nums shrink-0" aria-label={`Numéro ${user.jerseyNumber}`}>
-            {user.jerseyNumber}
-          </span>
-        )}
       </div>
 
       <div className="space-y-2 text-sm">
@@ -72,12 +60,6 @@ export function ProfileCard() {
           <p className="flex items-center gap-2.5 bg-paper rounded-lg px-4 py-2.5">
             <Users size={14} className="text-blue shrink-0" />
             <span className="font-semibold truncate">{user.teamName}</span>
-          </p>
-        )}
-        {user.role === "player" && user.position && (
-          <p className="flex items-center gap-2.5 bg-paper rounded-lg px-4 py-2.5">
-            <Shield size={14} className="text-blue shrink-0" />
-            <span className="font-semibold">{POSITION_LABELS[user.position]}</span>
           </p>
         )}
       </div>

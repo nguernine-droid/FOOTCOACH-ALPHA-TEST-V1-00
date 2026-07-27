@@ -37,20 +37,16 @@ export function respectsFffNotice(matchDate: string, announcedOn: string): boole
   return daysBetweenIso(announcedOn, matchDate) >= FFF_NOTICE_DAYS;
 }
 
-export const MATCH_STATUSES = ["scheduled", "live", "finished"] as const;
+/**
+ * Cycle de vie d'un match : le coach saisit le score final à la fin de la
+ * rencontre (`awaiting_confirmation`), puis le coach adverse le valide en
+ * scannant le QR code affiché — c'est cette validation qui clôt le match.
+ */
+export const MATCH_STATUSES = ["scheduled", "live", "awaiting_confirmation", "finished"] as const;
 export type MatchStatus = (typeof MATCH_STATUSES)[number];
-
-export const ATTENDANCE_STATUSES = ["present", "absent"] as const;
-export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
-
-export const MATCH_EVENT_TYPES = ["goal", "card", "substitution", "highlight"] as const;
-export type MatchEventType = (typeof MATCH_EVENT_TYPES)[number];
 
 export const MATCH_SIDES = ["home", "away"] as const;
 export type MatchSide = (typeof MATCH_SIDES)[number];
-
-export const BOOKING_STATUSES = ["pending", "approved", "declined"] as const;
-export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
 export const RESPONSE_STATUSES = ["pending", "accepted", "declined"] as const;
 export type ResponseStatus = (typeof RESPONSE_STATUSES)[number];
@@ -60,9 +56,6 @@ export type MatchLevel = (typeof MATCH_LEVELS)[number];
 
 export const MATCH_FORMATS = ["5v5", "8v8", "11v11"] as const;
 export type MatchFormat = (typeof MATCH_FORMATS)[number];
-
-export const PLAYER_POSITIONS = ["gardien", "defenseur", "milieu", "attaquant"] as const;
-export type PlayerPosition = (typeof PLAYER_POSITIONS)[number];
 
 /** Types d'événements d'agenda. "match" est virtuel : projeté depuis les matchs. */
 export const EVENT_TYPES = ["match", "entrainement", "tournoi", "reunion", "autre"] as const;
@@ -102,25 +95,21 @@ export const createAnnouncementSchema = z.object({
 });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 
-export const updateScoreSchema = z.object({
+/** Coup d'envoi : passage de `scheduled` à `live` */
+export const kickoffSchema = z.object({});
+
+/** Saisie du score final par un des deux coachs — ouvre la validation par QR */
+export const finalScoreSchema = z.object({
   homeScore: z.number().int().min(0).max(99),
   awayScore: z.number().int().min(0).max(99),
-  status: z.enum(MATCH_STATUSES).optional(),
 });
-export type UpdateScoreInput = z.infer<typeof updateScoreSchema>;
+export type FinalScoreInput = z.infer<typeof finalScoreSchema>;
 
-export const updateEditAuthorizationSchema = z.object({
-  awayCoachCanEdit: z.boolean(),
+/** Validation du score par le coach adverse : le jeton vient du QR scanné */
+export const confirmScoreSchema = z.object({
+  token: z.string().min(10).max(100),
 });
-export type UpdateEditAuthorizationInput = z.infer<typeof updateEditAuthorizationSchema>;
-
-export const createMatchEventSchema = z.object({
-  minute: z.number().int().min(0).max(150),
-  type: z.enum(MATCH_EVENT_TYPES),
-  side: z.enum(MATCH_SIDES),
-  description: z.string().min(1).max(300),
-});
-export type CreateMatchEventInput = z.infer<typeof createMatchEventSchema>;
+export type ConfirmScoreInput = z.infer<typeof confirmScoreSchema>;
 
 export const registerCoachSchema = z.object({
   firstName: z.string().min(1).max(50),
@@ -168,35 +157,9 @@ export const affiliateClubSchema = z.object({
   code: z.string().min(4).max(12),
 });
 
+// Statuts conservés : le club s'en sert pour les demandes d'affiliation des coachs
 export const JOIN_REQUEST_STATUSES = ["pending", "approved", "declined"] as const;
 export type JoinRequestStatus = (typeof JOIN_REQUEST_STATUSES)[number];
-
-// Inscription en autonomie avec le code d'équipe unique (joueur ou parent)
-export const registerJoinSchema = z
-  .object({
-    code: z.string().min(4).max(12),
-    role: z.enum(["player", "parent"]),
-    firstName: z.string().min(1).max(50),
-    lastName: z.string().min(1).max(50),
-    email: z.string().email(),
-    password: z.string().min(8, "8 caractères minimum"),
-    // Joueur : fiche sportive optionnelle (le coach garde la main ensuite)
-    position: z.enum(PLAYER_POSITIONS).optional(),
-    jerseyNumber: z.number().int().min(1).max(99).optional(),
-    // Parent : joueur désigné comme son enfant
-    childUserId: z.string().uuid().optional(),
-  })
-  .refine((v) => v.role !== "parent" || !!v.childUserId, { message: "Choisissez votre enfant dans la liste" });
-export type RegisterJoinInput = z.infer<typeof registerJoinSchema>;
-
-// Nouvelle demande d'un compte existant (refusé ou sans équipe)
-export const resubmitJoinSchema = z.object({
-  code: z.string().min(4).max(12),
-  position: z.enum(PLAYER_POSITIONS).optional(),
-  jerseyNumber: z.number().int().min(1).max(99).optional(),
-  childUserId: z.string().uuid().optional(),
-});
-export type ResubmitJoinInput = z.infer<typeof resubmitJoinSchema>;
 
 export const forgotPasswordSchema = z.object({
   email: z.string().email(),
@@ -205,44 +168,6 @@ export const forgotPasswordSchema = z.object({
 export const updateAccountEmailSchema = z.object({
   email: z.string().email(),
 });
-
-export const approveJoinRequestSchema = z.object({
-  /** Le coach peut corriger l'enfant désigné par un parent avant d'accepter */
-  childUserId: z.string().uuid().optional(),
-});
-
-export const updatePlayerSchema = z.object({
-  position: z.enum(PLAYER_POSITIONS).nullable().optional(),
-  jerseyNumber: z.number().int().min(1).max(99).nullable().optional(),
-});
-export type UpdatePlayerInput = z.infer<typeof updatePlayerSchema>;
-
-export const driverInfoSchema = z.object({
-  licensePlate: z
-    .string()
-    .min(4)
-    .max(15)
-    .regex(/^[A-Za-z0-9 -]+$/, "Format de plaque invalide"),
-  driverLicenseNumber: z
-    .string()
-    .min(5)
-    .max(20)
-    .regex(/^[A-Za-z0-9]+$/, "Format de permis invalide"),
-});
-export type DriverInfoInput = z.infer<typeof driverInfoSchema>;
-
-export const saveLineupSchema = z.object({
-  players: z
-    .array(
-      z.object({
-        playerId: z.string().uuid(),
-        x: z.number().int().min(0).max(100),
-        y: z.number().int().min(0).max(100),
-      }),
-    )
-    .max(15),
-});
-export type SaveLineupInput = z.infer<typeof saveLineupSchema>;
 
 export const createEventSchema = z
   .object({
@@ -267,22 +192,6 @@ export const createEventSchema = z
   });
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
-export const setEventAttendanceSchema = z.object({
-  /** Occurrence visée (= date de l'événement, ou date + k semaines si récurrent) */
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  status: z.enum(ATTENDANCE_STATUSES),
-});
-export type SetEventAttendanceInput = z.infer<typeof setEventAttendanceSchema>;
-
-export const setAttendanceSchema = z.object({
-  status: z.enum(ATTENDANCE_STATUSES),
-  canTransport: z.boolean().optional(),
-  transportSeats: z.number().int().min(0).max(9).optional(),
-  departureTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
-  departureArea: z.string().max(80).nullable().optional(),
-});
-export type SetAttendanceInput = z.infer<typeof setAttendanceSchema>;
-
 // ---------- DTOs de réponses ----------
 export interface UserDto {
   id: string;
@@ -295,16 +204,6 @@ export interface UserDto {
   teamName: string | null;
   /** Coach : toutes ses équipes (U10, U13…), principale en premier. Absent pour les autres rôles. */
   teams?: CoachTeamDto[];
-  /** Parent : infos conducteur renseignées (requises pour proposer un covoiturage) */
-  hasDriverInfo: boolean;
-  /** Joueur : id du compte parent assigné (ses réservations devront être validées) */
-  parentId: string | null;
-  /** Joueur : fiche sportive (optionnels — absents des sessions stockées avant leur ajout) */
-  position?: PlayerPosition | null;
-  jerseyNumber?: number | null;
-  /** Joueur/parent sans équipe : état de sa dernière demande d'adhésion */
-  joinRequestStatus?: JoinRequestStatus | null;
-  pendingTeamName?: string | null;
   /** Coach : club auquel il est affilié (null si aucun) */
   clubName?: string | null;
   /** Coach : club visé par une demande d'affiliation en attente (null sinon) */
@@ -362,36 +261,6 @@ export interface AnnouncementDto {
   myResponseStatus: ResponseStatus | null;
 }
 
-export interface MatchEventDto {
-  id: string;
-  minute: number;
-  type: MatchEventType;
-  side: MatchSide;
-  description: string;
-  createdAt: string;
-}
-
-/** Présence d'un coéquipier vue par un membre de l'équipe (joueur/parent) */
-export interface TeamPresenceDto {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  jerseyNumber: number | null;
-  position: PlayerPosition | null;
-  /** null = pas encore répondu */
-  status: AttendanceStatus | null;
-}
-
-export interface AttendanceDto {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  role: Role;
-  status: AttendanceStatus;
-  canTransport: boolean;
-  transportSeats: number;
-}
-
 export interface MatchDto {
   id: string;
   homeTeam: TeamDto;
@@ -404,117 +273,30 @@ export interface MatchDto {
   awayScore: number;
   /** Côté de l'équipe du spectateur (null : non rattaché à une des deux équipes) */
   mySide: MatchSide | null;
-  /** true si le coach émetteur a autorisé le coach adverse à éditer score/temps forts */
-  awayCoachCanEdit: boolean;
-  presentCount: number;
-  absentCount: number;
-  transportSeats: number;
-  myAttendance: {
-    status: AttendanceStatus;
-    canTransport: boolean;
-    transportSeats: number;
-    departureTime: string | null;
-    departureArea: string | null;
-  } | null;
+  /** Équipe dont le coach a saisi le score final (null tant qu'aucune saisie) */
+  scoreSubmittedByTeamId: string | null;
+  /** Horodatage de la validation par le coach adverse (null tant qu'en attente) */
+  scoreConfirmedAt: string | null;
+  /**
+   * Jeton du QR code, exposé au seul coach ayant saisi le score pour qu'il
+   * l'affiche. Toujours null pour le coach adverse : c'est le scan qui le lui
+   * apporte, et c'est ce qui rend la validation infalsifiable à distance.
+   */
+  confirmationToken: string | null;
+  /** true si le coup d'envoi est passé et que le score final reste à saisir */
+  finalScoreDue: boolean;
 }
 
-export interface MatchDetailDto extends MatchDto {
-  events: MatchEventDto[];
-}
-
-export interface CarpoolBookingDto {
-  id: string;
-  playerId: string;
-  playerName: string;
-  status: BookingStatus;
-}
-
-export interface CarpoolDto {
-  driverId: string;
-  driverName: string;
-  licensePlate: string | null;
-  departureTime: string | null;
-  departureArea: string | null;
-  seatsTotal: number;
-  seatsRemaining: number;
-  bookings: CarpoolBookingDto[];
-  myBooking: { id: string; status: BookingStatus } | null;
-}
-
-export interface ApprovalDto {
-  id: string;
-  playerName: string;
-  driverName: string;
-  licensePlate: string | null;
-  matchLabel: string;
-  matchDate: string;
-  status: BookingStatus;
-}
-
-/** Aperçu public d'une équipe via son code (écran "vous allez rejoindre…") */
-export interface TeamJoinInfoDto {
-  teamName: string;
-  city: string;
-  /** Joueurs inscrits — pour qu'un parent désigne son enfant */
-  players: { id: string; firstName: string; lastName: string; hasParent: boolean }[];
-}
-
-/** Demande d'adhésion en attente, vue coach */
-export interface JoinRequestDto {
-  id: string;
-  role: Extract<Role, "player" | "parent">;
-  firstName: string;
-  lastName: string;
-  email: string;
-  position: PlayerPosition | null;
-  jerseyNumber: number | null;
-  childUserId: string | null;
-  childName: string | null;
-  createdAt: string;
-}
-
-/** Ligne de l'effectif côté coach */
-export interface TeamMemberDto {
-  id: string;
-  firstName: string;
-  lastName: string;
-  parentStatus: "linked" | "none";
-  parentName: string | null;
-  position: PlayerPosition | null;
-  jerseyNumber: number | null;
-  /** Réponse au prochain match programmé — null s'il n'y a pas de match à venir */
-  nextMatchStatus: AttendanceStatus | "pending" | null;
-  nextMatchDate: string | null;
-}
-
-export interface LineupPlayerDto {
-  playerId: string;
-  firstName: string;
-  lastName: string;
-  position: PlayerPosition | null;
-  jerseyNumber: number | null;
-  x: number;
-  y: number;
-}
+export type MatchDetailDto = MatchDto;
 
 /** Événement du fil d'activité (espace coach) */
 export interface ActivityDto {
   id: string;
-  type: "attendance" | "carpool" | "announcement";
+  type: "announcement" | "score";
   /** Nom mis en gras côté client */
   actor: string;
   detail: string;
   createdAt: string;
-}
-
-export interface LineupDto {
-  /** Ma composition (coach) */
-  mine: LineupPlayerDto[];
-  /** Compo adverse — null tant qu'elle est verrouillée (> 2h avant le match) */
-  opponent: LineupPlayerDto[] | null;
-  opponentLocked: boolean;
-  /** Date/heure ISO à partir de laquelle la compo adverse devient visible */
-  opponentVisibleAt: string;
 }
 
 /** Occurrence d'agenda : événement d'équipe OU match projeté */
@@ -533,25 +315,10 @@ export interface AgendaItemDto {
   description: string | null;
   recurrence: EventRecurrence;
   recurrenceUntil: string | null;
-  /** Compteurs filtrés sur l'équipe du demandeur */
-  presentCount: number;
-  absentCount: number;
-  /** Ma réponse à cette occurrence (null si pas répondu / non concerné) */
-  myStatus: AttendanceStatus | null;
   matchStatus: MatchStatus | null;
-  /** true si le début est à moins de 24h : réponses verrouillées */
-  locked: boolean;
 }
 
 /** Réponse d'un joueur à une occurrence d'événement (vue coach) */
-export interface EventAttendanceDto {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  jerseyNumber: number | null;
-  status: AttendanceStatus | null;
-}
-
 // ---------- Espace admin ----------
 export interface AdminStatsDto {
   totalAccounts: number;
@@ -597,8 +364,6 @@ export interface ClubTeamDto {
   id: string;
   name: string;
   city: string;
-  joinCode: string;
-  playerCount: number;
   coaches: { id: string; firstName: string; lastName: string; role: TeamCoachRole }[];
 }
 
@@ -616,7 +381,6 @@ export interface ClubOverviewDto {
   club: ClubDto;
   teamsCount: number;
   coachesCount: number;
-  playersCount: number;
   teams: ClubTeamDto[];
 }
 

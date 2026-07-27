@@ -14,7 +14,7 @@ function CoachAgenda() {
     if (requestCreate) router.replace("/coach/agenda");
   }, [requestCreate, router]);
 
-  return <AgendaView role="coach" requestCreate={requestCreate} />;
+  return <AgendaView requestCreate={requestCreate} />;
 }
 
 export default function CoachAgendaPage() {
