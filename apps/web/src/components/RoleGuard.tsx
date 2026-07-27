@@ -1,32 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Bell, CalendarRange, ChevronDown, CircleUserRound, LogOut, Megaphone, Trophy } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import { api, getActiveTeamId, getStoredUser, homeForRole, logout, setActiveTeamId } from "@/lib/api";
+import { AccountSheet } from "@/components/AccountSheet";
+import { AccountSheetContext } from "@/components/AccountSheetContext";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
-import { TeamSwitcher } from "@/components/TeamSwitcher";
 import { ClubCrest } from "@/components/ClubCrest";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";
-
-const ACTIVITY_ICONS = {
-  announcement: Megaphone,
-  score: Trophy,
-} as const;
-
-const ROLE_LABELS: Record<Role, string> = {
-  coach: "Coach",
-  player: "Joueur",
-  parent: "Parent",
-  supporter: "Supporter",
-  admin: "Administrateur",
-  club: "Club",
-};
 
 const ROLE_SPACES: Record<Role, string> = {
   coach: "Espace coach",
@@ -36,6 +21,8 @@ const ROLE_SPACES: Record<Role, string> = {
   admin: "Administration",
   club: "Espace club",
 };
+
+const SHELL_WIDTH = "w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6";
 
 export function RoleGuard({
   role,
@@ -48,18 +35,14 @@ export function RoleGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [user, setUser] = useState<UserDto | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
   const [activities, setActivities] = useState<ActivityDto[] | null>(null);
   const [activitySeen, setActivitySeen] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   // Équipe active du coach : init synchrone depuis le localStorage (déjà posé à la
   // connexion), pour que le premier fetch parte avec le bon X-Team-Id sans re-render.
   const [activeTeamId, setActiveTeamIdState] = useState<string | null>(() => getActiveTeamId());
-  // Le fil d'activité n'existe que pour le coach : pas de cloche sinon
+  // Le fil d'activité n'existe que pour le coach
   const hasNotifications = role === "coach";
 
   useEffect(() => {
@@ -87,12 +70,12 @@ export function RoleGuard({
   }, [user, activeTeamId]);
 
   const activeTeam = coachTeams.find((t) => t.id === activeTeamId) ?? null;
-  function changeActiveTeam(teamId: string) {
+  const changeActiveTeam = useCallback((teamId: string) => {
     setActiveTeamId(teamId);
     setActiveTeamIdState(teamId);
-  }
+  }, []);
 
-  // Point "non-lu" sur la cloche : dernière activité plus récente que la dernière consultation
+  // Pastille « non-lu » : dernière activité plus récente que la dernière consultation
   useEffect(() => {
     if (!user || !hasNotifications) return;
     setActivitySeen(localStorage.getItem("fc_activity_seen"));
@@ -101,15 +84,14 @@ export function RoleGuard({
       .catch(() => setActivities([]));
   }, [user, hasNotifications]);
 
-  useEffect(() => {
-    if (!menuOpen && !notifOpen) return;
-    function onClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [menuOpen, notifOpen]);
+  const teamLabel = activeTeam?.name ?? user?.teamName ?? null;
+  const unread = Boolean(activities?.[0] && (!activitySeen || activities[0].createdAt > activitySeen));
+  const markNotificationsSeen = useCallback(() => {
+    const latest = activities?.[0]?.createdAt;
+    if (!latest) return;
+    localStorage.setItem("fc_activity_seen", latest);
+    setActivitySeen(latest);
+  }, [activities]);
 
   // Silhouette du shell plutôt qu'un « Chargement… » plein écran : le header et
   // la barre basse sont déjà à leur place définitive, donc zéro saut au montage.
@@ -117,14 +99,14 @@ export function RoleGuard({
     return (
       <div className="min-h-dvh" aria-busy aria-label="Chargement">
         <header className="sticky top-0 z-40 shadow-pop text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700 pt-[env(safe-area-inset-top)]">
-          <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center gap-3">
+          <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
             <ClubCrest size={34} />
             <p className="display text-xl leading-none select-none">
               FOOT<span className="text-gold">COACH</span>
             </p>
           </div>
         </header>
-        <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-28 space-y-4">
+        <div className={cn(SHELL_WIDTH, "pt-6 pb-28 space-y-4")}>
           <Skeleton className="h-52" />
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
@@ -136,210 +118,106 @@ export function RoleGuard({
     );
   }
 
-  const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
-
   return (
-    <div className="min-h-dvh">
-      {/* pt safe-area : en mode « ajouté à l'écran d'accueil », la page passe
-          sous la barre d'état — le dégradé navy la prolonge proprement. */}
-      <div className="sticky top-0 z-40 shadow-pop pt-[env(safe-area-inset-top)] bg-navy-900">
-        <header className="text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700">
-          <div className="w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <ClubCrest size={34} />
-              <div className="min-w-0 leading-tight">
-                <p className="display text-xl leading-none select-none">
-                  FOOT<span className="text-gold">COACH</span>
-                </p>
-                <div className="text-[11px] text-white/60 font-semibold flex items-center gap-1 min-w-0">
-                  {user.role === "coach" && coachTeams.length > 0 ? (
-                    <>
-                      <TeamSwitcher teams={coachTeams} activeTeam={activeTeam} onSelect={changeActiveTeam} />
-                      <span className="text-white/40">·</span>
-                      <span className="truncate">{ROLE_SPACES[user.role]}</span>
-                    </>
-                  ) : (
-                    <span className="truncate">
-                      {user.teamName ? `${user.teamName} · ` : ""}
-                      {ROLE_SPACES[user.role]}
-                    </span>
-                  )}
+    <AccountSheetContext.Provider
+      value={{
+        open: () => setSheetOpen(true),
+        unread,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+      }}
+    >
+      <div className="min-h-dvh">
+        {/* pt safe-area : en mode « ajouté à l'écran d'accueil », la page passe
+            sous la barre d'état — le dégradé navy la prolonge proprement. */}
+        <div className="sticky top-0 z-40 shadow-pop pt-[env(safe-area-inset-top)] bg-navy-900">
+          {/* Le header ne porte plus aucune action : contexte et titre seulement.
+              Tout ce qui était dans le coin haut-droit vit maintenant dans la
+              feuille « Moi », ouverte depuis la barre basse (et depuis l'avatar
+              sur desktop, où la barre basse n'existe pas). */}
+          <header className="text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700">
+            <div className={cn(SHELL_WIDTH, "h-16 flex items-center justify-between gap-4")}>
+              <div className="flex items-center gap-3 min-w-0">
+                <ClubCrest size={34} />
+                <div className="min-w-0 leading-tight">
+                  <p className="display text-xl leading-none select-none">
+                    FOOT<span className="text-gold">COACH</span>
+                  </p>
+                  <p className="text-[11px] text-white/60 font-semibold truncate">
+                    {teamLabel ? `${teamLabel} · ` : ""}
+                    {ROLE_SPACES[user.role]}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Agenda : section secondaire en V1, accessible par cette icône plutôt qu'un onglet */}
-              {role === "coach" && (
-                <Link
-                  href="/coach/agenda"
-                  aria-label="Agenda"
-                  title="Agenda"
-                  className={cn(
-                    "p-2.5 rounded-lg transition hover:bg-white/10",
-                    pathname.startsWith("/coach/agenda") ? "text-gold" : "text-white/80",
-                  )}
-                >
-                  <CalendarRange size={18} />
-                </Link>
-              )}
-
-              {hasNotifications && (
-                <div className="relative" ref={notifRef}>
-                  <button
-                    className="relative p-2.5 rounded-lg hover:bg-white/10 transition"
-                    aria-label="Notifications"
-                    aria-haspopup="menu"
-                    aria-expanded={notifOpen}
-                    onClick={() => {
-                      const latest = activities?.[0]?.createdAt;
-                      setNotifOpen((o) => !o);
-                      if (latest) {
-                        localStorage.setItem("fc_activity_seen", latest);
-                        setActivitySeen(latest);
-                      }
-                    }}
-                  >
-                    <Bell size={18} className="text-white/80" />
-                    {activities?.[0] && (!activitySeen || activities[0].createdAt > activitySeen) && (
-                      <span
-                        className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gold ring-2 ring-navy-900"
-                        aria-label="Nouvelles activités"
-                      />
-                    )}
-                  </button>
-
-                  {notifOpen && (
-                    <div
-                      role="menu"
-                      aria-label="Notifications"
-                      className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] card p-2 text-ink z-50 animate-rise-in"
-                    >
-                      <p className="px-3 py-2 text-sm font-bold border-b border-line mb-1">Notifications</p>
-                      <div className="max-h-80 overflow-y-auto">
-                        {!activities && (
-                          <p className="px-3 py-4 text-xs text-ink-soft animate-soft-pulse">Chargement…</p>
-                        )}
-                        {activities && activities.length === 0 && (
-                          <p className="px-3 py-4 text-xs text-ink-soft">Aucune notification pour le moment.</p>
-                        )}
-                        {activities?.map((ev) => {
-                          const Icon = ACTIVITY_ICONS[ev.type];
-                          return (
-                            <div key={ev.id} className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-paper transition">
-                              <span
-                                className={cn(
-                                  "w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                                  ev.type === "announcement" && "bg-sun-soft text-sun",
-                                  ev.type === "score" && "bg-success-soft text-success",
-                                )}
-                              >
-                                <Icon size={13} />
-                              </span>
-                              <div className="min-w-0">
-                                <p className="text-xs text-ink leading-snug">
-                                  <span className="font-bold">{ev.actor}</span> {ev.detail}
-                                </p>
-                                <p className="text-[10px] text-ink-faint font-semibold">
-                                  {timeAgo(ev.createdAt, new Date())}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="relative" ref={menuRef}>
-                <button
-                  onClick={() => setMenuOpen((o) => !o)}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/10 transition"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  aria-label={`Menu de ${user.firstName}`}
-                >
-                  {user.avatarUrl ? (
-                    <Avatar
-                      firstName={user.firstName}
-                      lastName={user.lastName}
-                      avatarUrl={user.avatarUrl}
-                      size={36}
-                      className="border border-white/20"
+              {/* Desktop uniquement : la barre d'onglets y est en haut, il faut
+                  donc un accès au compte ailleurs que dans la barre basse. */}
+              <button
+                type="button"
+                onClick={() => setSheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={sheetOpen}
+                aria-label={`Menu de ${user.firstName}`}
+                className="hidden min-[960px]:flex items-center gap-2 rounded-lg px-2 py-1.5 shrink-0 hover:bg-white/10 transition"
+              >
+                <span className="relative">
+                  <Avatar
+                    firstName={user.firstName}
+                    lastName={user.lastName}
+                    avatarUrl={user.avatarUrl}
+                    size={36}
+                    className="border border-white/20"
+                  />
+                  {unread && (
+                    <span
+                      className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-gold ring-2 ring-navy-800"
+                      aria-label="Nouvelles activités"
                     />
-                  ) : (
-                    <span className="w-9 h-9 rounded-full bg-white/15 border border-white/20 flex items-center justify-center font-black text-xs">
-                      {initials}
-                    </span>
                   )}
-                  <span className="hidden sm:block text-left leading-tight">
-                    <span className="block text-sm font-bold">Bonjour {user.firstName}</span>
-                    <span className="block text-[11px] text-white/60 font-semibold">{ROLE_LABELS[user.role]}</span>
-                  </span>
-                  <ChevronDown size={14} className={cn("text-white/60 transition-transform", menuOpen && "rotate-180")} />
-                </button>
-
-                {menuOpen && (
-                  <div role="menu" className="absolute right-0 top-full mt-2 w-56 card p-2 text-ink z-50 animate-rise-in">
-                    <div className="px-3 py-2 border-b border-line mb-1">
-                      <p className="text-sm font-bold truncate">
-                        {user.firstName} {user.lastName}
-                      </p>
-                      <p className="text-xs text-ink-soft truncate">
-                        {ROLE_LABELS[user.role]}
-                        {(user.role === "coach" ? activeTeam?.name : user.teamName) &&
-                          ` · ${user.role === "coach" ? activeTeam?.name : user.teamName}`}
-                      </p>
-                    </div>
-                    {role === "coach" && (
-                      <Link
-                        href="/coach/profile"
-                        role="menuitem"
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-ink-soft hover:bg-paper hover:text-ink transition"
-                      >
-                        <CircleUserRound size={15} /> Mon profil
-                      </Link>
-                    )}
-                    <button
-                      role="menuitem"
-                      onClick={async () => {
-                        await logout();
-                        router.replace("/login");
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-ink-soft hover:text-coral hover:bg-coral-soft transition"
-                    >
-                      <LogOut size={15} /> Se déconnecter
-                    </button>
-                  </div>
-                )}
-              </div>
+                </span>
+                <span className="text-left leading-tight">
+                  <span className="block text-sm font-bold">Bonjour {user.firstName}</span>
+                  <span className="block text-[11px] text-white/60 font-semibold">{ROLE_SPACES[user.role]}</span>
+                </span>
+                <ChevronDown size={14} className="text-white/60" aria-hidden />
+              </button>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {nav}
-      </div>
+          {nav}
+        </div>
 
-      <div
-        className={cn(
-          "w-full max-w-lg md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto px-4 md:px-6 pt-6",
-          // La barre de navigation mobile est fixée en bas : réserver la place du contenu
-          nav ? "pb-28 min-[960px]:pb-12" : "pb-12",
-        )}
-      >
-        {role === "coach" ? (
-          <ActiveTeamContext.Provider
-            value={{ teams: coachTeams, activeTeamId, activeTeam, setActiveTeam: changeActiveTeam }}
-          >
-            {/* Remonte les pages coach au changement d'équipe → refetch avec le bon X-Team-Id */}
-            <div key={activeTeamId ?? "none"}>{children}</div>
-          </ActiveTeamContext.Provider>
-        ) : (
-          children
+        <div className={cn(SHELL_WIDTH, "pt-6", nav ? "pb-28 min-[960px]:pb-12" : "pb-12")}>
+          {role === "coach" ? (
+            <ActiveTeamContext.Provider
+              value={{ teams: coachTeams, activeTeamId, activeTeam, setActiveTeam: changeActiveTeam }}
+            >
+              {/* Remonte les pages coach au changement d'équipe → refetch avec le bon X-Team-Id */}
+              <div key={activeTeamId ?? "none"}>{children}</div>
+            </ActiveTeamContext.Provider>
+          ) : (
+            children
+          )}
+        </div>
+
+        {sheetOpen && (
+          <AccountSheet
+            user={user}
+            teams={coachTeams}
+            activeTeamId={activeTeamId}
+            onSelectTeam={changeActiveTeam}
+            activities={hasNotifications ? activities : []}
+            onSeenNotifications={markNotificationsSeen}
+            onClose={() => setSheetOpen(false)}
+            onLogout={async () => {
+              setSheetOpen(false);
+              await logout();
+              router.replace("/login");
+            }}
+          />
         )}
       </div>
-    </div>
+    </AccountSheetContext.Provider>
   );
 }

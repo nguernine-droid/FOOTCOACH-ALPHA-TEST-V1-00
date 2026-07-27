@@ -64,6 +64,15 @@
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  /* Entrée d'une bottom sheet : elle monte depuis le bord bas de l'écran */
+  @keyframes sheet-in {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
 }
 
 :root {
@@ -115,6 +124,8 @@
 @layer utilities {
   .animate-soft-pulse { animation: soft-pulse 2s infinite ease-in-out; }
   .animate-rise-in { animation: rise-in 0.35s ease-out both; }
+  .animate-fade-in { animation: fade-in 0.18s ease-out both; }
+  .animate-sheet-in { animation: sheet-in 0.24s cubic-bezier(0.32, 0.72, 0, 1) both; }
 }
 
 @layer components {

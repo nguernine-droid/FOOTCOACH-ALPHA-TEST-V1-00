@@ -1,10 +1,12 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, MoreHorizontal, Plus, type LucideIcon } from "lucide-react";
+import { Check, Plus, type LucideIcon } from "lucide-react";
 import type { QuickAction } from "@/components/QuickActionContext";
+import { useAccountEntry } from "@/components/AccountSheetContext";
+import { Avatar } from "@/components/Avatar";
 import { cn } from "@/lib/utils";
 
 export type { QuickAction };
@@ -27,63 +29,23 @@ export type AppTab = {
  *
  * `action` ajoute un bouton « + » doré — surélevé au centre sur mobile, à droite
  * des onglets sur desktop — dont la cible dépend de la page en cours.
- * `moreTabs` regroupe les sections secondaires derrière un menu « ⋯ », qui
- * occupe une place d'onglet à droite pour ne pas rompre la symétrie.
+ *
+ * Un dernier emplacement « Moi » ouvre la feuille de compte (profil, équipe
+ * active, agenda, notifications, déconnexion). Il n'existe qu'en mobile : sur
+ * desktop, cet accès est porté par l'avatar du header.
  */
 export function AppTabs({
   tabs,
   ariaLabel,
   action,
-  moreTabs = [],
 }: {
   tabs: AppTab[];
   ariaLabel: string;
   action?: QuickAction | null;
-  moreTabs?: AppTab[];
 }) {
   const pathname = usePathname();
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
-
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreActive = moreTabs.some(isActive);
-  // Les deux barres coexistent dans le DOM (masquées par CSS) : une ref chacune
-  const desktopMoreRef = useRef<HTMLDivElement>(null);
-  const mobileMoreRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => setMoreOpen(false), [pathname]);
-  useEffect(() => {
-    if (!moreOpen) return;
-    function onClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      const inside =
-        desktopMoreRef.current?.contains(target) === true || mobileMoreRef.current?.contains(target) === true;
-      if (!inside) setMoreOpen(false);
-    }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, [moreOpen]);
-
-  const moreMenu = moreTabs.length > 0 && moreOpen && (
-    <div
-      role="menu"
-      aria-label="Autres sections"
-      className="absolute right-0 bottom-full mb-2 min-[960px]:bottom-auto min-[960px]:top-full min-[960px]:mb-0 min-[960px]:mt-2 w-56 card p-2 text-ink z-50 animate-rise-in"
-    >
-      {moreTabs.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          role="menuitem"
-          className={cn(
-            "flex items-center gap-2.5 px-3 py-3 min-h-12 rounded-lg text-sm font-semibold transition active:bg-blue-soft",
-            isActive(tab) ? "bg-blue-soft text-navy-700" : "text-ink-soft hover:bg-paper hover:text-ink",
-          )}
-        >
-          <tab.icon size={15} /> {tab.label}
-        </Link>
-      ))}
-    </div>
-  );
+  const account = useAccountEntry();
 
   // Même bouton dans les deux barres : lien de création, ou validation du
   // formulaire ouvert (associé par l'attribut `form`, donc à distance).
@@ -110,6 +72,13 @@ export function AppTabs({
   // Mobile : le « + » s'intercale entre deux moitiés d'onglets de même largeur
   const split = Math.ceil(tabs.length / 2);
   const mobileGroups = action ? [tabs.slice(0, split), tabs.slice(split)] : [tabs];
+
+  const tabClassName = (active: boolean) =>
+    cn(
+      "flex-1 min-w-0 min-h-14 flex flex-col items-center justify-center gap-0.5 py-1.5 transition",
+      "active:bg-white/10 focus-visible:!outline-gold",
+      active ? "text-gold" : "text-white/55 hover:text-white",
+    );
 
   return (
     <>
@@ -140,24 +109,6 @@ export function AppTabs({
             })}
           </div>
 
-          {moreTabs.length > 0 && (
-            <div className="relative shrink-0" ref={desktopMoreRef}>
-              <button
-                type="button"
-                aria-haspopup="menu"
-                aria-expanded={moreOpen}
-                onClick={() => setMoreOpen((o) => !o)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 px-3.5 py-3 text-xs font-bold whitespace-nowrap border-b-2 -mb-px transition focus-visible:!outline-gold",
-                  moreActive ? "text-white border-gold" : "text-white/55 border-transparent hover:text-white",
-                )}
-              >
-                <MoreHorizontal size={14} /> Plus
-              </button>
-              {moreMenu}
-            </div>
-          )}
-
           <ActionButton className="ml-auto shrink-0 inline-flex items-center gap-1.5 my-1.5 px-4 py-2 rounded-lg bg-gold text-navy-900 text-xs font-bold transition hover:brightness-105 active:scale-[0.97] focus-visible:!outline-white">
             <ActionIcon size={15} /> {action?.label}
           </ActionButton>
@@ -186,11 +137,7 @@ export function AppTabs({
                       role="tab"
                       aria-selected={active}
                       aria-label={tab.label}
-                      className={cn(
-                        "flex-1 min-w-0 min-h-14 flex flex-col items-center justify-center gap-0.5 py-1.5 transition",
-                        "active:bg-white/10 focus-visible:!outline-gold",
-                        active ? "text-gold" : "text-white/55 hover:text-white",
-                      )}
+                      className={tabClassName(active)}
                     >
                       <tab.icon size={20} aria-hidden />
                       <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">
@@ -200,26 +147,32 @@ export function AppTabs({
                   );
                 })}
 
-                {/* Le « ⋯ » occupe une place d'onglet dans la moitié droite */}
-                {moreTabs.length > 0 && groupIndex === mobileGroups.length - 1 && (
-                  <div className="relative flex-1 min-w-0 flex" ref={mobileMoreRef}>
-                    <button
-                      type="button"
-                      aria-haspopup="menu"
-                      aria-expanded={moreOpen}
-                      aria-label="Autres sections"
-                      onClick={() => setMoreOpen((o) => !o)}
-                      className={cn(
-                        "flex-1 min-w-0 min-h-14 flex flex-col items-center justify-center gap-0.5 py-1.5 transition",
-                        "active:bg-white/10 focus-visible:!outline-gold",
-                        moreActive ? "text-gold" : "text-white/55 hover:text-white",
+                {/* Dernier emplacement de la moitié droite : la feuille « Moi » */}
+                {account && groupIndex === mobileGroups.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={account.open}
+                    aria-haspopup="dialog"
+                    aria-label="Mon compte"
+                    className={tabClassName(false)}
+                  >
+                    <span className="relative flex items-center justify-center">
+                      <Avatar
+                        firstName={account.firstName}
+                        lastName={account.lastName}
+                        avatarUrl={account.avatarUrl}
+                        size={22}
+                        className="border border-white/25"
+                      />
+                      {account.unread && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-gold ring-2 ring-navy-800"
+                          aria-label="Nouvelles activités"
+                        />
                       )}
-                    >
-                      <MoreHorizontal size={20} aria-hidden />
-                      <span className="text-[10px] font-bold leading-none">Plus</span>
-                    </button>
-                    {moreMenu}
-                  </div>
+                    </span>
+                    <span className="text-[10px] font-bold leading-none">Moi</span>
+                  </button>
                 )}
               </div>
 

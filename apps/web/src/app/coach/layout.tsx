@@ -2,24 +2,19 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Contact, LayoutDashboard, Megaphone, Users } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Megaphone } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
 import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
 
 // V1 recentrée sur la gestion des matchs amicaux entre coachs.
-// Le radar vit désormais dans le tableau de bord ; l'agenda est accessible
-// par l'icône du header ; le covoiturage est masqué.
+// Le radar vit désormais dans le tableau de bord ; les sections secondaires
+// (agenda, relations, mes équipes, profil) sont rassemblées dans la feuille
+// « Moi » de la barre basse ; le covoiturage est masqué.
 const TABS: AppTab[] = [
   { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true },
   { href: "/coach/announcements", label: "Annonces", icon: Megaphone },
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
-];
-
-// Sections secondaires, derrière le « ⋯ » de la barre
-const MORE_TABS: AppTab[] = [
-  { href: "/coach/relations", label: "Relations", icon: Contact },
-  { href: "/coach/team", label: "Mes équipes", icon: Users },
 ];
 
 const PUBLISH: QuickAction = { kind: "link", href: "/coach/announcements/new", label: "Publier une annonce" };
@@ -42,7 +37,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
     <QuickActionProvider value={setOverride}>
       <RoleGuard
         role="coach"
-        nav={<AppTabs tabs={TABS} moreTabs={MORE_TABS} action={action} ariaLabel="Sections de l'espace coach" />}
+        nav={<AppTabs tabs={TABS} action={action} ariaLabel="Sections de l'espace coach" />}
       >
         {children}
       </RoleGuard>
