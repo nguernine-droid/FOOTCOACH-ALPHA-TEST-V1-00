@@ -1,14 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Megaphone, Radar, ShieldCheck } from "lucide-react";
 import { FFF_NOTICE_DAYS, type AnnouncementDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
-import { Button } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 type Filter = "open" | "matched" | "cancelled";
@@ -98,11 +97,9 @@ export default function AnnouncementsPage() {
               : "Publiez une recherche d'adversaire : elle apparaît sur le radar des autres coachs."}
           </p>
         </div>
-        <Link href="/coach/announcements/new" className="shrink-0 w-full sm:w-auto">
-          <Button variant="accent" size="sm" className="w-full sm:w-auto">
-            <Megaphone size={13} /> Publier une annonce
-          </Button>
-        </Link>
+        <ButtonLink href="/coach/announcements/new" variant="accent" className="shrink-0 w-full sm:w-auto">
+          <Megaphone size={14} /> Publier une annonce
+        </ButtonLink>
       </div>
 
       <div className="rounded-lg bg-white border border-line px-4 py-3 flex gap-2.5">
@@ -114,7 +111,8 @@ export default function AnnouncementsPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filtrer mes annonces">
+      {/* Trois filtres qui se partagent la largeur : cible large, pas de repli */}
+      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Filtrer mes annonces">
         {FILTERS.map((f) => (
           <button
             key={f.key}
@@ -122,14 +120,9 @@ export default function AnnouncementsPage() {
             role="tab"
             aria-selected={filter === f.key}
             onClick={() => setFilter(f.key)}
-            className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-bold border transition",
-              filter === f.key
-                ? "bg-navy-700 text-white border-navy-700"
-                : "bg-white text-ink-soft border-line hover:border-blue/40",
-            )}
+            className={cn("chip-choice", filter === f.key ? "chip-choice-on" : "chip-choice-off")}
           >
-            {f.label} ({counts[f.key]})
+            <span className="truncate">{f.label}</span> ({counts[f.key]})
           </button>
         ))}
       </div>
@@ -153,15 +146,11 @@ export default function AnnouncementsPage() {
               <p className="text-xs text-ink-soft">
                 Publiez une annonce, ou répondez à une équipe depuis le radar du tableau de bord.
               </p>
-              <div className="flex justify-center gap-2">
-                <Link href="/coach/announcements/new">
-                  <Button size="sm">Publier une annonce</Button>
-                </Link>
-                <Link href="/coach">
-                  <Button variant="soft" size="sm">
-                    <Radar size={13} /> Ouvrir le radar
-                  </Button>
-                </Link>
+              <div className="grid gap-2 sm:flex sm:justify-center">
+                <ButtonLink href="/coach/announcements/new">Publier une annonce</ButtonLink>
+                <ButtonLink href="/coach" variant="soft">
+                  <Radar size={14} /> Ouvrir le radar
+                </ButtonLink>
               </div>
             </>
           )}

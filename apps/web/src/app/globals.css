@@ -186,6 +186,19 @@
     @apply inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1;
   }
 
+  /* Pastille *cliquable* : filtres, catégories, formats. Contrairement à `.chip`
+     qui n'est qu'un libellé, celle-ci est une cible tactile — 44 px de haut. */
+  .chip-choice {
+    @apply inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-lg
+      text-xs font-bold border transition select-none active:scale-[0.97];
+  }
+  .chip-choice-on {
+    @apply bg-navy-700 text-white border-navy-700;
+  }
+  .chip-choice-off {
+    @apply bg-white text-ink-soft border-line hover:border-blue/40;
+  }
+
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }

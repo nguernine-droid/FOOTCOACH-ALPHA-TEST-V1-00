@@ -11,7 +11,7 @@ import { formatCountdown, kickoffDate, timeAgo, useNow } from "@/lib/time";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
 import { RadarFeed } from "@/components/announcements/RadarFeed";
-import { Button } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
@@ -151,12 +151,14 @@ export default function CoachDashboard() {
               <TeamSide team={featured.awayTeam} />
             </div>
 
-            <div className="border-t border-line pt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-ink-soft font-semibold flex items-center gap-1.5 min-w-0">
-                <MapPin size={13} className="text-blue shrink-0" />
-                <span className="truncate">{featured.location}</span>
-              </div>
-              <div className="flex items-center gap-4">
+            {/* L'action primaire de la carte descend en pleine largeur sous le
+                contexte : au pouce, elle était trop haute et trop étroite. */}
+            <div className="border-t border-line pt-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-ink-soft font-semibold flex items-center gap-1.5 min-w-0">
+                  <MapPin size={13} className="text-blue shrink-0" />
+                  <span className="truncate">{featured.location}</span>
+                </div>
                 {featured.status === "scheduled" && !featured.finalScoreDue && (
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-ink-faint tracking-widest uppercase">Avant coup d&apos;envoi</p>
@@ -165,12 +167,15 @@ export default function CoachDashboard() {
                     </p>
                   </div>
                 )}
-                <Link href={`/coach/matches/${featured.id}`}>
-                  <Button size="sm" variant={featured.finalScoreDue ? "accent" : "primary"}>
-                    {featured.finalScoreDue ? "Saisir le score" : "Feuille de match"} <ChevronRight size={14} />
-                  </Button>
-                </Link>
               </div>
+              <ButtonLink
+                href={`/coach/matches/${featured.id}`}
+                size="lg"
+                variant={featured.finalScoreDue ? "accent" : "primary"}
+                className="w-full min-[960px]:w-auto min-[960px]:ml-auto min-[960px]:flex"
+              >
+                {featured.finalScoreDue ? "Saisir le score" : "Feuille de match"} <ChevronRight size={16} />
+              </ButtonLink>
             </div>
           </section>
         ) : (
@@ -182,9 +187,9 @@ export default function CoachDashboard() {
             <p className="text-xs text-ink-soft">
               Publiez une annonce, ou répondez à une équipe du radar ci-dessous.
             </p>
-            <Link href="/coach/announcements/new" className="inline-block">
-              <Button size="sm">Publier une annonce</Button>
-            </Link>
+            <ButtonLink href="/coach/announcements/new" className="w-full sm:w-auto">
+              Publier une annonce
+            </ButtonLink>
           </section>
         )}
 
@@ -198,11 +203,9 @@ export default function CoachDashboard() {
         <section className="card p-5 space-y-3 animate-rise-in" aria-label="Annonces actives">
           <div className="flex items-center justify-between">
             <h3 className="display text-lg">Mes annonces</h3>
-            <Link href="/coach/announcements/new">
-              <Button variant="soft" size="sm">
-                <Megaphone size={13} /> Publier
-              </Button>
-            </Link>
+            <ButtonLink href="/coach/announcements/new" variant="soft" size="sm">
+              <Megaphone size={14} /> Publier
+            </ButtonLink>
           </div>
 
           {announcements.length === 0 && (
@@ -224,7 +227,8 @@ export default function CoachDashboard() {
           {announcements.length > 0 && (
             <Link
               href="/coach/announcements"
-              className="block text-center text-xs font-bold text-blue hover:text-blue-dark transition pt-1"
+              className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-blue
+                transition hover:text-blue-dark active:bg-blue-soft"
             >
               Voir toutes mes annonces
             </Link>

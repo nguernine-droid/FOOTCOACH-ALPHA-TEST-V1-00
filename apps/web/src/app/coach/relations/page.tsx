@@ -195,18 +195,18 @@ export default function CoachRelationsPage() {
                   type="button"
                   onClick={() => setConfirmRemove(confirmRemove === relation.id ? null : relation.id)}
                   aria-label={`Retirer ${relation.firstName} ${relation.lastName} de mes relations`}
-                  className="p-2 rounded-lg text-ink-faint hover:text-coral hover:bg-coral-soft transition shrink-0"
+                  className="icon-btn -mr-2 text-ink-faint hover:text-coral hover:bg-coral-soft"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
               </div>
 
               {relation.phone ? (
                 <a
                   href={`tel:${relation.phone.replace(/[^+0-9]/g, "")}`}
-                  className="flex items-center gap-2.5 bg-paper rounded-lg px-4 py-2.5 text-sm hover:bg-blue-faint transition"
+                  className="flex items-center gap-2.5 min-h-12 bg-paper rounded-lg px-4 py-2.5 text-sm transition hover:bg-blue-faint active:bg-blue-soft"
                 >
-                  <Phone size={14} className="text-blue shrink-0" />
+                  <Phone size={16} className="text-blue shrink-0" />
                   <span className="font-bold flex-1 truncate">{relation.phone}</span>
                   <span className="text-xs text-ink-soft shrink-0">Appeler</span>
                 </a>
@@ -217,14 +217,16 @@ export default function CoachRelationsPage() {
               )}
 
               {confirmRemove === relation.id && (
-                <div className="flex items-center gap-2">
-                  <p className="text-xs text-ink-soft flex-1">Retirer cette relation des deux côtés ?</p>
-                  <Button size="sm" variant="danger" onClick={() => remove(relation.id)} disabled={busy}>
-                    Retirer
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(null)}>
-                    Annuler
-                  </Button>
+                <div className="space-y-2 border-t border-line pt-3">
+                  <p className="text-xs text-ink-soft">Retirer cette relation des deux côtés ?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="danger" onClick={() => remove(relation.id)} disabled={busy}>
+                      Retirer
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(null)}>
+                      Annuler
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

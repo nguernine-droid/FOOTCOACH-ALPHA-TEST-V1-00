@@ -79,32 +79,38 @@ export function MyAnnouncementCard({
             </p>
             <button
               onClick={() => onCancel(a.id)}
-              className="p-1.5 rounded-lg text-ink-faint hover:text-coral hover:bg-coral-soft transition"
+              className="icon-btn -mr-2 text-ink-faint hover:text-coral hover:bg-coral-soft"
               aria-label="Annuler cette annonce"
             >
-              <Trash2 size={13} />
+              <Trash2 size={16} />
             </button>
           </div>
+          {/* Adversaire sur une ligne, décision sur la suivante : les deux
+              boutons tenaient sinon dans une centaine de pixels. */}
           {pending.map((r) => (
-            <div key={r.id} className="flex items-center gap-2 bg-paper rounded-lg px-3 py-2 mt-1.5">
-              <span
-                className={cn(
-                  "w-7 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0",
-                  teamColor(r.team),
-                )}
-              >
-                {teamInitials(r.team.name)}
-              </span>
-              <span className="flex-1 min-w-0 text-xs font-bold truncate">
-                {r.team.name}
-                <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
-              </span>
-              <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
-                Accepter
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => onDecline(a.id, r.id)}>
-                Décliner
-              </Button>
+            <div key={r.id} className="bg-paper rounded-lg px-3 py-2.5 mt-1.5 space-y-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "w-7 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0",
+                    teamColor(r.team),
+                  )}
+                >
+                  {teamInitials(r.team.name)}
+                </span>
+                <span className="flex-1 min-w-0 text-xs font-bold truncate">
+                  {r.team.name}
+                  <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
+                  Accepter
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => onDecline(a.id, r.id)}>
+                  Décliner
+                </Button>
+              </div>
             </div>
           ))}
         </>

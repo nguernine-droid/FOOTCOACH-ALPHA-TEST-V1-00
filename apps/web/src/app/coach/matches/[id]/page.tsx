@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, Play, QrCode, ScanLine } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock3, Pencil, Play, QrCode, ScanLine } from "lucide-react";
 import type { MatchDetailDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -42,23 +42,27 @@ function FinalScoreForm({
 
   // Mise à jour fonctionnelle : deux appuis rapprochés sont groupés par React,
   // et une valeur capturée ferait perdre un but au passage.
+  // Saisie au bord du terrain, à une main : les deux boutons font 64 px et
+  // sont écartés du score pour ne pas être touchés par erreur.
   const counter = (label: string, value: number, set: React.Dispatch<React.SetStateAction<number>>) => (
-    <div className="flex-1 min-w-0 space-y-2 text-center">
-      <p className="text-xs font-bold text-ink-soft truncate">{label}</p>
-      <div className="flex items-center justify-center gap-2">
+    <div className="space-y-2">
+      <p className="text-sm font-bold text-ink-soft text-center truncate">{label}</p>
+      <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => set((v) => Math.max(0, v - 1))}
-          className="w-9 h-9 rounded-lg border border-line text-ink-soft hover:border-blue/40 transition"
+          className="w-16 h-16 shrink-0 rounded-xl border border-line bg-white text-2xl text-ink-soft
+            transition active:scale-90 active:bg-paper hover:border-blue/40"
           aria-label={`Retirer un but à ${label}`}
         >
           −
         </button>
-        <span className="display text-4xl tabular-nums w-12">{value}</span>
+        <span className="display text-6xl tabular-nums leading-none text-navy-700">{value}</span>
         <button
           type="button"
           onClick={() => set((v) => Math.min(99, v + 1))}
-          className="w-9 h-9 rounded-lg border border-line text-ink-soft hover:border-blue/40 transition"
+          className="w-16 h-16 shrink-0 rounded-xl border border-blue/30 bg-blue-soft text-2xl text-navy-700
+            transition active:scale-90 active:bg-blue/20 hover:border-blue/60"
           aria-label={`Ajouter un but à ${label}`}
         >
           +
@@ -69,7 +73,9 @@ function FinalScoreForm({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="flex items-start gap-3">
+      {/* Une équipe par ligne : deux compteurs côte à côte sur un téléphone
+          rendaient chaque bouton trop étroit et trop proche de son voisin. */}
+      <div className="grid gap-4 sm:grid-cols-2">
         {counter(match.homeTeam.name, home, setHome)}
         {counter(match.awayTeam.name, away, setAway)}
       </div>
@@ -88,6 +94,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
   const [match, setMatch] = useState<MatchDetailDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -151,9 +158,10 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
     <div className="max-w-[720px] mx-auto space-y-4">
       <Link
         href="/coach/matches"
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-soft hover:text-ink transition"
+        className="inline-flex items-center gap-1.5 min-h-11 -ml-2 px-2 rounded-lg text-xs font-bold text-ink-soft
+          transition hover:text-ink active:bg-white"
       >
-        <ArrowLeft size={14} /> Retour aux matchs
+        <ArrowLeft size={16} /> Retour aux matchs
       </Link>
 
       <MatchCard match={match} />
@@ -193,21 +201,30 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                 Montrez ce QR code au coach adverse : il le scanne depuis son compte pour valider le score.
               </p>
             </div>
-            <details className="text-xs text-ink-soft">
-              <summary className="cursor-pointer font-bold hover:text-ink">Corriger le score</summary>
-              <div className="pt-3">
+            {/* Un <details> laissait un « summary » de 16 px de haut comme seule
+                cible : remplacé par un bouton pleine largeur. */}
+            {correcting ? (
+              <div className="border-t border-line pt-4 space-y-2">
                 <FinalScoreForm
                   match={match}
                   onSubmitted={(message) => {
                     setError(message);
+                    setCorrecting(false);
                     load();
                   }}
                 />
-                <p className="pt-2 text-[11px]">
+                <p className="text-[11px] text-ink-soft text-center">
                   Une correction génère un nouveau QR code : l&apos;ancien cesse de fonctionner.
                 </p>
+                <Button variant="ghost" className="w-full" onClick={() => setCorrecting(false)}>
+                  Annuler la correction
+                </Button>
               </div>
-            </details>
+            ) : (
+              <Button variant="ghost" className="w-full" onClick={() => setCorrecting(true)}>
+                <Pencil size={14} /> Corriger le score
+              </Button>
+            )}
           </div>
         ) : awaiting ? (
           <div className="space-y-4">
@@ -252,8 +269,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
               Le score final se saisit à la fin de la rencontre, puis se valide avec le coach adverse.
             </p>
             {match.status === "scheduled" && (
-              <Button variant="soft" size="sm" onClick={kickoff} disabled={busy}>
-                <Play size={14} /> Donner le coup d&apos;envoi
+              <Button variant="soft" size="lg" className="w-full" onClick={kickoff} disabled={busy}>
+                <Play size={16} /> Donner le coup d&apos;envoi
               </Button>
             )}
           </div>

@@ -121,20 +121,18 @@ export default function NewAnnouncementPage() {
           </div>
         )}
 
+        {/* Grilles plutôt que rangées repliées : chaque choix garde une cible
+            pleine et régulière, même à 390 px de large. */}
         <div className="space-y-1.5">
           <span className="text-xs font-bold text-ink-soft">Catégorie</span>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
                 type="button"
+                aria-pressed={form.category === c}
                 onClick={() => set("category", c)}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-xs font-bold border transition",
-                  form.category === c
-                    ? "bg-pitch text-white border-pitch shadow-sm"
-                    : "bg-white text-ink-soft border-line hover:border-pitch/40",
-                )}
+                className={cn("chip-choice", form.category === c ? "chip-choice-on" : "chip-choice-off")}
               >
                 {c}
               </button>
@@ -142,46 +140,37 @@ export default function NewAnnouncementPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-ink-soft">Niveau</span>
-            <div className="flex gap-2">
-              {LEVELS.map((l) => (
-                <button
-                  key={l.value}
-                  type="button"
-                  onClick={() => set("level", l.value)}
-                  className={cn(
-                    "flex-1 px-3 py-2 rounded-lg text-xs font-bold border transition",
-                    form.level === l.value
-                      ? "bg-pitch text-white border-pitch shadow-sm"
-                      : "bg-white text-ink-soft border-line hover:border-pitch/40",
-                  )}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold text-ink-soft">Niveau</span>
+          <div className="grid grid-cols-2 gap-2">
+            {LEVELS.map((l) => (
+              <button
+                key={l.value}
+                type="button"
+                aria-pressed={form.level === l.value}
+                onClick={() => set("level", l.value)}
+                className={cn("chip-choice", form.level === l.value ? "chip-choice-on" : "chip-choice-off")}
+              >
+                {l.label}
+              </button>
+            ))}
           </div>
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-ink-soft">Format</span>
-            <div className="flex gap-2">
-              {FORMATS.map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => set("format", f)}
-                  className={cn(
-                    "flex-1 px-3 py-2 rounded-lg text-xs font-bold border transition",
-                    form.format === f
-                      ? "bg-pitch text-white border-pitch shadow-sm"
-                      : "bg-white text-ink-soft border-line hover:border-pitch/40",
-                  )}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold text-ink-soft">Format</span>
+          <div className="grid grid-cols-3 gap-2">
+            {FORMATS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                aria-pressed={form.format === f}
+                onClick={() => set("format", f)}
+                className={cn("chip-choice", form.format === f ? "chip-choice-on" : "chip-choice-off")}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -212,7 +201,7 @@ export default function NewAnnouncementPage() {
             required
             checked={federationDeclared}
             onChange={(e) => setFederationDeclared(e.target.checked)}
-            className="mt-0.5 w-4 h-4 shrink-0 accent-blue"
+            className="mt-0.5 w-5 h-5 shrink-0 accent-blue"
           />
           <span className="text-xs text-ink-soft leading-relaxed">
             <span className="font-bold text-ink">

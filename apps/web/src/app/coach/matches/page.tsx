@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { AlertTriangle, ChevronRight, Clock3, Radar } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { groupMatches } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";
-import { Button } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 export default function CoachMatchesPage() {
@@ -36,9 +35,9 @@ export default function CoachMatchesPage() {
             Aucun match pour l&apos;instant. Publiez une annonce, ou répondez à une équipe depuis le radar du
             tableau de bord.
           </p>
-          <Link href="/coach/announcements/new" className="inline-block">
-            <Button variant="soft" size="sm">Publier une annonce</Button>
-          </Link>
+          <ButtonLink href="/coach/announcements/new" variant="soft" className="w-full sm:w-auto">
+            Publier une annonce
+          </ButtonLink>
         </div>
       )}
 
@@ -62,11 +61,9 @@ export default function CoachMatchesPage() {
                   ) : (
                     <span />
                   )}
-                  <Link href={`/coach/matches/${match.id}`}>
-                    <Button size="sm">
-                      Feuille de match <ChevronRight size={14} />
-                    </Button>
-                  </Link>
+                  <ButtonLink href={`/coach/matches/${match.id}`} size="sm" className="shrink-0">
+                    Feuille de match <ChevronRight size={14} />
+                  </ButtonLink>
                 </div>
               </MatchCard>
             ))}

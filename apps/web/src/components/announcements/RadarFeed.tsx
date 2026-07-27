@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { CalendarDays, Clock3, MapPin, Navigation, Radar, X, XCircle } from "lucide-react";
 import type { AnnouncementDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -93,48 +92,43 @@ export function RadarFeed() {
       {header}
 
       {announcements.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCategory(null)}
-            aria-pressed={category === null}
-            className={cn(
-              "px-3.5 py-2 rounded-lg text-xs font-bold border transition",
-              category === null
-                ? "bg-navy-700 text-white border-navy-700"
-                : "bg-white text-ink-soft border-line hover:border-blue/40",
-            )}
-          >
-            Toutes
-          </button>
-          {CATEGORIES.map((c) => (
+        <div className="space-y-2">
+          {/* Rangée de catégories qui défile horizontalement plutôt que de se
+              replier : sept pastilles de 44 px ne tiennent pas sur deux lignes
+              sans manger l'écran. */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
             <button
-              key={c}
               type="button"
-              onClick={() => setCategory(category === c ? null : c)}
-              aria-pressed={category === c}
-              className={cn(
-                "px-3.5 py-2 rounded-lg text-xs font-bold border transition",
-                category === c
-                  ? "bg-navy-700 text-white border-navy-700"
-                  : "bg-white text-ink-soft border-line hover:border-blue/40",
-              )}
+              onClick={() => setCategory(null)}
+              aria-pressed={category === null}
+              className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
             >
-              {c}
+              Toutes
             </button>
-          ))}
-          <div className="flex items-center gap-1.5 ml-auto min-w-44">
-            <div className="flex-1">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(category === c ? null : c)}
+                aria-pressed={category === c}
+                className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 min-[960px]:max-w-64">
+            <div className="flex-1 min-w-0">
               <DateField value={date} onChange={setDate} placeholder="Toutes les dates" />
             </div>
             {date && (
               <button
                 type="button"
                 onClick={() => setDate("")}
-                className="p-2 rounded-lg text-ink-soft hover:text-coral hover:bg-coral-soft transition"
+                className="icon-btn text-ink-soft hover:text-coral hover:bg-coral-soft"
                 aria-label="Effacer le filtre de date"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             )}
           </div>
@@ -149,11 +143,9 @@ export function RadarFeed() {
           <p className="text-xs text-ink-soft">
             Publiez une annonce : elle apparaîtra sur le radar des autres coachs.
           </p>
-          <Link href="/coach/announcements/new" className="inline-block">
-            <Button variant="soft" size="sm">
-              Publier une annonce
-            </Button>
-          </Link>
+          <ButtonLink href="/coach/announcements/new" variant="soft" className="w-full sm:w-auto">
+            Publier une annonce
+          </ButtonLink>
         </div>
       ) : filtered.length === 0 ? (
         <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-2">

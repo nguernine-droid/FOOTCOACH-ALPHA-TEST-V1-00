@@ -198,9 +198,9 @@ export default function CoachProfilePage() {
                   );
                 }}
                 aria-label="Copier mon code coach"
-                className="p-2 rounded-lg text-ink-soft hover:text-blue hover:bg-blue-soft transition"
+                className="icon-btn text-ink-soft hover:text-blue hover:bg-blue-soft"
               >
-                <Copy size={15} />
+                <Copy size={18} />
               </button>
             </div>
             {copied && <p className="text-xs font-bold text-success">Code copié</p>}
