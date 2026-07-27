@@ -61,11 +61,11 @@ export function MatchCard({ match, children }: { match: MatchDto; children?: Rea
         <TeamBadge team={match.homeTeam} />
         <div className="shrink-0 text-center px-2">
           {match.status === "scheduled" ? (
-            <p className="text-xs font-black text-ink-soft/60 bg-paper rounded-full px-3 py-1.5">VS</p>
+            <p className="text-xs font-black text-ink-soft bg-paper rounded-full px-3 py-1.5">VS</p>
           ) : (
             <p className="display text-5xl tabular-nums leading-none text-pitch-deep">
               {match.homeScore}
-              <span className="text-ink-soft/30 mx-1.5">–</span>
+              <span className="text-ink-faint mx-1.5">–</span>
               {match.awayScore}
             </p>
           )}

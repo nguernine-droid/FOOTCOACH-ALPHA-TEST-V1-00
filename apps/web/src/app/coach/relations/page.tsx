@@ -147,13 +147,16 @@ export default function CoachRelationsPage() {
           </Button>
         </form>
 
-        <p className="text-[11px] text-ink-soft">
-          Votre propre code se trouve dans{" "}
-          <Link href="/coach/profile" className="font-bold text-blue hover:underline">
-            votre profil
+        <div className="space-y-0.5">
+          <p className="text-[11px] text-ink-soft">Votre propre code, avec le QR à faire scanner :</p>
+          <Link
+            href="/coach/profile"
+            className="inline-flex items-center justify-center min-h-11 -ml-2 px-2 rounded-lg text-xs font-bold
+              text-blue transition hover:underline active:bg-blue-soft"
+          >
+            Voir mon code dans mon profil
           </Link>
-          , avec le QR à faire scanner.
-        </p>
+        </div>
 
         {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
         {added && <p className="text-xs font-semibold text-success bg-success-soft rounded-lg px-3 py-2">{added}</p>}

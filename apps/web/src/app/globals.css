@@ -40,7 +40,10 @@
   --color-paper: #EDF1F8;
   --color-ink: #10203C;
   --color-ink-soft: #4A5A78;
-  --color-ink-faint: #8A97B0;
+  /* Ancien #8A97B0 : 2,9:1 sur blanc et 2,6:1 sur `paper`, sous le seuil AA
+     alors que ce ton porte des libellés de 10-11 px et les placeholders des
+     champs. Assombri à 5,4:1 sur blanc et 4,8:1 sur `paper`. */
+  --color-ink-faint: #5C6B85;
   --color-line: #DDE4F0;
 
   --color-border: #DDE4F0;

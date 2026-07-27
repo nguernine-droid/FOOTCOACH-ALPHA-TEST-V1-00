@@ -203,12 +203,16 @@ function RegisterContent() {
 
         <CoachWizard onBack={() => router.push("/login")} />
 
-        <p className="text-center text-xs text-ink-soft">
-          Déjà un compte ?{" "}
-          <Link href="/login" className="font-bold text-pitch hover:underline">
+        <div className="text-center">
+          <p className="text-xs text-ink-soft">Déjà un compte ?</p>
+          <Link
+            href="/login"
+            className="inline-flex items-center justify-center min-h-11 px-4 rounded-lg text-xs font-bold
+              text-pitch transition hover:underline active:bg-blue-soft"
+          >
             Se connecter
           </Link>
-        </p>
+        </div>
       </div>
     </div>
   );

@@ -124,12 +124,17 @@ export default function LoginPage() {
           </Link>
         </form>
 
-        <p className="text-center text-xs text-ink-soft">
-          Vous êtes coach et n&apos;avez pas de compte ?{" "}
-          <Link href="/register" className="font-bold text-pitch hover:underline">
+        {/* Le lien sort de la phrase pour devenir une vraie cible de 44 px */}
+        <div className="text-center">
+          <p className="text-xs text-ink-soft">Vous êtes coach et n&apos;avez pas de compte ?</p>
+          <Link
+            href="/register"
+            className="inline-flex items-center justify-center min-h-11 px-4 rounded-lg text-xs font-bold
+              text-pitch transition hover:underline active:bg-blue-soft"
+          >
             Créer un compte coach
           </Link>
-        </p>
+        </div>
 
         <div className="card p-4 space-y-3">
           <p className="text-xs font-bold text-ink-soft text-center">Essayez avec un compte de démo</p>

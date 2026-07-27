@@ -82,7 +82,7 @@ export function MonthGrid({
               aria-pressed={active}
               className={cn(
                 "aspect-square rounded-lg flex flex-col items-center justify-center gap-1 text-sm transition focus-visible:outline-gold",
-                inMonth ? "text-ink" : "text-ink-faint/60",
+                inMonth ? "text-ink" : "text-ink-faint",
                 active ? "bg-navy-700 text-white font-black" : "hover:bg-paper",
               )}
             >
