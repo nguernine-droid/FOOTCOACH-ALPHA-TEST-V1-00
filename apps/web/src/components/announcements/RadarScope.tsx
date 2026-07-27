@@ -155,7 +155,7 @@ export function RadarScope({
                 "radar-blip absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center",
                 "rounded-full focus-visible:!outline-gold",
               )}
-              aria-label={`${announcement.team.name}, ${announcement.team.city}, à ${announcement.distanceKm!.toLocaleString("fr-FR")} km`}
+              aria-label={`${announcement.team.name} — match à ${announcement.city}, à ${announcement.distanceKm!.toLocaleString("fr-FR")} km`}
             >
               <span
                 aria-hidden

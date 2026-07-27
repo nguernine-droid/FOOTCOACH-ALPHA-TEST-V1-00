@@ -297,9 +297,9 @@ export interface AnnouncementDto {
   /** Renseignés quand l'annonce est matchée : le match créé et l'équipe qui a répondu */
   matchId: string | null;
   opponentTeam: TeamDto | null;
-  /** Distance à vol d'oiseau entre ma ville et celle de l'annonceur (null si ville inconnue) */
+  /** Distance à vol d'oiseau entre ma ville et le LIEU DU MATCH (null si ville inconnue) */
   distanceKm: number | null;
-  /** Direction de l'annonceur vue de chez moi : 0 = nord, sens horaire (null si ville inconnue) */
+  /** Direction du lieu du match vue de chez moi : 0 = nord, sens horaire (null si ville inconnue) */
   bearingDeg: number | null;
   /** Émetteur uniquement : propositions reçues (vide sinon) */
   responses: AnnouncementResponseDto[];

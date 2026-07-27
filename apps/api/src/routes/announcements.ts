@@ -11,7 +11,7 @@ import { db } from "../db/client.js";
 import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
-import { bearingDeg, haversineKm } from "../lib/cities.js";
+import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -22,14 +22,13 @@ function toDto(
   myResponseStatus?: AnnouncementResponseDto["status"] | null,
 ): AnnouncementDto {
   const { announcement, team } = row;
-  // Position relative de l'annonceur : distance ET direction, pour que le radar
-  // place ses points dans le vrai relèvement.
-  const otherCoords =
-    myCoords && team.lat != null && team.lng != null && team.id !== myTeamId
-      ? { lat: team.lat, lng: team.lng }
-      : null;
-  const distanceKm = otherCoords ? haversineKm(myCoords!, otherCoords) : null;
-  const bearing = otherCoords ? bearingDeg(myCoords!, otherCoords) : null;
+  // Position relative du LIEU DU MATCH, pas du siège du club : une annonce
+  // peut se jouer loin de la ville de l'équipe qui la publie, et c'est le
+  // déplacement réel qui intéresse le coach. `null` si la ville du match est
+  // absente de l'annuaire — mieux vaut ne rien annoncer qu'une fausse distance.
+  const venueCoords = team.id !== myTeamId ? cityCoords(announcement.city) : null;
+  const distanceKm = myCoords && venueCoords ? haversineKm(myCoords, venueCoords) : null;
+  const bearing = myCoords && venueCoords ? bearingDeg(myCoords, venueCoords) : null;
   return {
     id: announcement.id,
     team: { id: team.id, name: team.name, city: team.city },
