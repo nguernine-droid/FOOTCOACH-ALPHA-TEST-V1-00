@@ -84,7 +84,9 @@ export default function NewAnnouncementPage() {
       </div>
 
       <form id={FORM_ID} onSubmit={submit} className="card p-6 space-y-4 animate-rise-in">
-        <div className="grid grid-cols-2 gap-3">
+        {/* Une colonne au pouce : les libellés de date complets ne tiennent pas
+            dans une demi-largeur de téléphone, et le champ y perd sa cible. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label htmlFor="date" className="text-xs font-bold text-ink-soft">Date</label>
             <DateField id="date" required min={new Date().toISOString().slice(0, 10)} value={form.date} onChange={(v) => set("date", v)} />

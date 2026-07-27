@@ -126,8 +126,8 @@ export function EventForm({
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <div className="space-y-1.5 col-span-3 sm:col-span-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="space-y-1.5">
             <p className="text-xs font-bold text-ink-soft">Date</p>
             <DateField value={form.date} onChange={(v) => setForm((f) => ({ ...f, date: v }))} />
           </div>
