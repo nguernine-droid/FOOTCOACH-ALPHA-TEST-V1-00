@@ -40,13 +40,15 @@ function FinalScoreForm({
     }
   }
 
-  const counter = (label: string, value: number, set: (n: number) => void) => (
+  // Mise à jour fonctionnelle : deux appuis rapprochés sont groupés par React,
+  // et une valeur capturée ferait perdre un but au passage.
+  const counter = (label: string, value: number, set: React.Dispatch<React.SetStateAction<number>>) => (
     <div className="flex-1 min-w-0 space-y-2 text-center">
       <p className="text-xs font-bold text-ink-soft truncate">{label}</p>
       <div className="flex items-center justify-center gap-2">
         <button
           type="button"
-          onClick={() => set(Math.max(0, value - 1))}
+          onClick={() => set((v) => Math.max(0, v - 1))}
           className="w-9 h-9 rounded-lg border border-line text-ink-soft hover:border-blue/40 transition"
           aria-label={`Retirer un but à ${label}`}
         >
@@ -55,7 +57,7 @@ function FinalScoreForm({
         <span className="display text-4xl tabular-nums w-12">{value}</span>
         <button
           type="button"
-          onClick={() => set(Math.min(99, value + 1))}
+          onClick={() => set((v) => Math.min(99, v + 1))}
           className="w-9 h-9 rounded-lg border border-line text-ink-soft hover:border-blue/40 transition"
           aria-label={`Ajouter un but à ${label}`}
         >
