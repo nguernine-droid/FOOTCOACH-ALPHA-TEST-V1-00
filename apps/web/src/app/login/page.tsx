@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClipboardList, ShieldHalf } from "lucide-react";
 import { homeForRole, login } from "@/lib/api";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,7 @@ export default function LoginPage() {
     <div className="min-h-dvh flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm space-y-4 animate-rise-in">
         <div className="hero-pitch p-7 text-center space-y-2">
+          <Logo size={64} className="mx-auto mb-4" />
           <h1 className="display text-4xl leading-none">
             FOOT<span className="text-pitch-soft/80">COACH</span>
           </h1>

@@ -9,7 +9,7 @@ import { AccountSheet } from "@/components/AccountSheet";
 import { AccountSheetContext } from "@/components/AccountSheetContext";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
-import { ClubCrest } from "@/components/ClubCrest";
+import { Logo } from "@/components/Logo";
 import { PageTransition } from "@/components/PageTransition";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
@@ -101,7 +101,7 @@ export function RoleGuard({
       <div className="min-h-dvh" aria-busy aria-label="Chargement">
         <header className="sticky top-0 z-40 shadow-pop text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700 pt-[env(safe-area-inset-top)]">
           <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
-            <ClubCrest size={34} />
+            <Logo size={34} />
             <p className="display text-xl leading-none select-none">
               FOOT<span className="text-gold">COACH</span>
             </p>
@@ -140,7 +140,7 @@ export function RoleGuard({
           <header className="text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700">
             <div className={cn(SHELL_WIDTH, "h-16 flex items-center justify-between gap-4")}>
               <div className="flex items-center gap-3 min-w-0">
-                <ClubCrest size={34} />
+                <Logo size={34} />
                 <div className="min-w-0 leading-tight">
                   <p className="display text-xl leading-none select-none">
                     FOOT<span className="text-gold">COACH</span>

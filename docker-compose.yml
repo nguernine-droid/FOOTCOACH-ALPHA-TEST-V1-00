@@ -30,12 +30,13 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-not-for-prod}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-not-for-prod}
       API_PORT: 4000
-      # Web Push — paire de DÉVELOPPEMENT, à remplacer en production par une
-      # paire générée avec `npx web-push generate-vapid-keys` et posée en .env.
-      # Sans ces variables l'API démarre et le réglage des notifications reste
-      # simplement masqué dans l'app.
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-BNclD2ZlvwljiXBgKrS6aRMNb6EVR-D-m56uMx1gksmlbpmmmrjjj6c5O7jbfLJLt8mjP1G1L7qxA_AZWEQL2O0}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-eYrZ0DE2ou2RAz6Wh4GcR85KMdXK51r5OQhz8s53WFw}
+      # Web Push — aucune valeur par défaut : une clé privée n'a rien à faire
+      # dans un fichier versionné. La paire vit dans .env (ignoré par git),
+      # à générer avec `npx web-push generate-vapid-keys`.
+      # Sans ces variables l'API démarre normalement et le réglage des
+      # notifications explique de lui-même pourquoi il est indisponible.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:contact@footcoach.local}
     # Pas de port hôte : l'API n'est accessible que via le proxy Next (service web).
     # Cela permet `docker compose up --scale api=3` sans conflit de ports.

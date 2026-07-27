@@ -21,8 +21,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "FootCoach";
   const options = {
     body: payload.body || "",
-    icon: "/icon.svg",
-    badge: "/icon.svg",
+    icon: "/icon.png",
+    badge: "/icon.png",
     // Deux notifications du même sujet se remplacent au lieu de s'empiler
     tag: payload.tag || "footcoach",
     renotify: Boolean(payload.tag),

@@ -18,9 +18,11 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#EDF1F8",
     theme_color: "#071B3F",
     icons: [
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
-      { src: "/apple-icon", sizes: "180x180", type: "image/png" },
+      { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      // Fond blanc et marque à 72 % : le masque circulaire ou en squircle du
+      // système ne rogne jamais le logo.
+      { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
   };
 }
