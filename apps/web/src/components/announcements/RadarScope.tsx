@@ -16,27 +16,40 @@ export const RADIUS_OPTIONS: { value: number | null; label: string }[] = [
 ];
 
 export type Blip = {
-  announcement: AnnouncementDto;
+  /**
+   * Annonces qui tombent exactement au même endroit — même ville, donc même
+   * distance et même relèvement. Un seul disque les porte, avec leur nombre.
+   */
+  announcements: AnnouncementDto[];
   /** 0 au centre, 1 sur le cercle extérieur */
   radius: number;
   bearing: number;
 };
 
 /**
- * Place une annonce sur le disque à partir de sa distance et de son relèvement.
- * Les annonces sans coordonnées (ville absente de l'annuaire) sont écartées :
- * mieux vaut ne pas les afficher que les afficher au mauvais endroit.
+ * Place les annonces sur le disque à partir de leur distance et de leur
+ * relèvement. Les annonces sans coordonnées (ville absente de l'annuaire) sont
+ * écartées : mieux vaut ne pas les afficher que les afficher au mauvais endroit.
+ *
+ * Les clubs d'une même ville partagent des coordonnées à la virgule près : les
+ * placer un par un les empilait au pixel près, et le radar d'un secteur dense
+ * n'affichait qu'un point là où il y avait huit équipes. On les réunit sous un
+ * point compté plutôt que de les disperser — un point déplacé mentirait sur la
+ * direction, ce que cet écran ne fait jamais.
  */
 export function toBlips(announcements: AnnouncementDto[], scaleKm: number): Blip[] {
-  return announcements
-    .filter((a) => a.distanceKm !== null && a.bearingDeg !== null)
-    .map((a) => ({
-      announcement: a,
-      // Plancher à 8 % : deux clubs de la même ville se superposeraient sinon
-      // exactement sur le point « moi ».
-      radius: Math.min(1, Math.max(0.08, a.distanceKm! / scaleKm)),
-      bearing: a.bearingDeg!,
-    }));
+  const groups = new Map<string, Blip>();
+  for (const a of announcements) {
+    if (a.distanceKm === null || a.bearingDeg === null) continue;
+    // Plancher à 8 % : les annonces de ma propre ville se poseraient sinon
+    // exactement sur le point « moi ».
+    const radius = Math.min(1, Math.max(0.08, a.distanceKm / scaleKm));
+    const key = `${radius.toFixed(4)}|${a.bearingDeg.toFixed(1)}`;
+    const group = groups.get(key);
+    if (group) group.announcements.push(a);
+    else groups.set(key, { announcements: [a], radius, bearing: a.bearingDeg });
+  }
+  return [...groups.values()];
 }
 
 /** Coordonnées en pourcentage du conteneur, nord en haut, sens horaire */
@@ -72,10 +85,13 @@ export function RadarScope({
   onSelect: (announcementId: string) => void;
   selectedId: string | null;
 }) {
+  // Le résumé compte les annonces, pas les points : plusieurs équipes peuvent
+  // se partager un même point.
+  const detected = blips.reduce((n, b) => n + b.announcements.length, 0);
   const summary =
-    blips.length === 0
+    detected === 0
       ? `Aucune équipe détectée dans un rayon de ${scaleKm} km`
-      : `${blips.length} équipe${blips.length > 1 ? "s" : ""} détectée${blips.length > 1 ? "s" : ""} dans un rayon de ${scaleKm} km`;
+      : `${detected} équipe${detected > 1 ? "s" : ""} détectée${detected > 1 ? "s" : ""} dans un rayon de ${scaleKm} km`;
 
   return (
     <div className="space-y-2">
@@ -138,16 +154,22 @@ export function RadarScope({
             bg-gold ring-4 ring-gold/20"
         />
 
-        {/* Une équipe détectée */}
-        {blips.map(({ announcement, radius, bearing }) => {
+        {/* Une équipe détectée, ou plusieurs au même endroit */}
+        {blips.map(({ announcements, radius, bearing }) => {
           // Phase négative : le point est à son maximum quand le faisceau le croise
           const delay = `${-(bearing / 360) * PERIOD_S}s`;
-          const selected = selectedId === announcement.id;
+          const first = announcements[0];
+          const count = announcements.length;
+          const km = first.distanceKm!.toLocaleString("fr-FR");
+          // Un point groupé fait défiler ses annonces : chaque appui met la
+          // suivante en avant dans la liste, et revient à la première au bout.
+          const current = announcements.findIndex((a) => a.id === selectedId);
+          const target = announcements[(current + 1) % count];
           return (
             <button
-              key={announcement.id}
+              key={`${radius}-${bearing}`}
               type="button"
-              onClick={() => onSelect(announcement.id)}
+              onClick={() => onSelect(target.id)}
               style={{ ...position(bearing, radius), animationDelay: delay }}
               // Cible de 44 px centrée sur un point de 12 px : le disque reste
               // lisible sans devenir un bouton géant.
@@ -155,20 +177,37 @@ export function RadarScope({
                 "radar-blip absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center",
                 "rounded-full focus-visible:!outline-gold",
               )}
-              aria-label={`${announcement.team.name} — match à ${announcement.city}, à ${announcement.distanceKm!.toLocaleString("fr-FR")} km`}
+              aria-label={
+                count === 1
+                  ? `${first.team.name} — match à ${first.city}, à ${km} km`
+                  : `${count} annonces à ${first.city}, à ${km} km — appuyer pour les parcourir`
+              }
             >
               <span
                 aria-hidden
                 style={{ animationDelay: delay }}
-                className="radar-echo absolute w-4 h-4 rounded-full bg-white/70"
+                className={cn("radar-echo absolute rounded-full bg-white/70", count > 1 ? "w-6 h-6" : "w-4 h-4")}
               />
-              <span
-                aria-hidden
-                className={cn(
-                  "relative w-3 h-3 rounded-full transition",
-                  selected ? "bg-white ring-4 ring-white/40" : "bg-white ring-2 ring-white/30",
-                )}
-              />
+              {count === 1 ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "relative w-3 h-3 rounded-full transition",
+                    current === 0 ? "bg-white ring-4 ring-white/40" : "bg-white ring-2 ring-white/30",
+                  )}
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "relative w-[18px] h-[18px] rounded-full bg-white text-navy-900 transition",
+                    "flex items-center justify-center text-[10px] font-black tabular-nums leading-none",
+                    current >= 0 ? "ring-4 ring-white/40" : "ring-2 ring-white/30",
+                  )}
+                >
+                  {count}
+                </span>
+              )}
             </button>
           );
         })}

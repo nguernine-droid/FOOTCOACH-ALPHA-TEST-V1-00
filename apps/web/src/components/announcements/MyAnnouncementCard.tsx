@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, MapPin, ShieldCheck, Trash2, UserMinus } from "lucide-react";
+import { AlertTriangle, CalendarX, CheckCircle2, MapPin, ShieldCheck, Trash2, UserMinus } from "lucide-react";
 import { FFF_NOTICE_DAYS, WITHDRAWAL_REASON_LABELS, type AnnouncementDto } from "@footcoach/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
@@ -27,6 +27,9 @@ export function MyAnnouncementCard({
 }) {
   const pending = a.responses.filter((r) => r.status === "pending");
   const noticeShort = a.noticeDays < FFF_NOTICE_DAYS;
+  // La date est passée : le serveur a retiré l'annonce du radar et refuse les
+  // propositions. Le délai FFF n'a plus de sens (il serait négatif).
+  const past = a.date < new Date().toISOString().slice(0, 10);
 
   const body = (
     <div
@@ -68,7 +71,11 @@ export function MyAnnouncementCard({
           Une annonce repartie en SOS n'est pas réévaluée : la déclaration au
           district porte sur la tenue du match, pas sur l'identité de l'adversaire. */}
       <div className="flex flex-wrap gap-1.5">
-        {a.isSos ? (
+        {past && a.status === "open" ? (
+          <span className="chip bg-paper text-ink-soft">
+            <CalendarX size={11} /> Date passée
+          </span>
+        ) : a.isSos ? (
           <span className="chip bg-success-soft text-success">
             <ShieldCheck size={11} /> Match déjà déclaré — délai sans objet
           </span>
@@ -91,12 +98,21 @@ export function MyAnnouncementCard({
       {a.status === "open" && (
         <>
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
-              {pending.length === 0
-                ? "En attente de proposition"
-                : `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider`}
-            </p>
+            {past ? (
+              // Sans cette ligne, l'annonce restait « en attente de proposition »
+              // pour toujours, sans dire qu'elle ne cherchait plus personne.
+              <p className="text-xs font-semibold text-ink-soft flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-ink-faint shrink-0" aria-hidden />
+                Retirée du radar — la date est passée
+              </p>
+            ) : (
+              <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
+                {pending.length === 0
+                  ? "En attente de proposition"
+                  : `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider`}
+              </p>
+            )}
             <button
               onClick={() => onCancel(a.id)}
               className="icon-btn -mr-2 text-ink-faint hover:text-coral hover:bg-coral-soft"
@@ -107,32 +123,33 @@ export function MyAnnouncementCard({
           </div>
           {/* Adversaire sur une ligne, décision sur la suivante : les deux
               boutons tenaient sinon dans une centaine de pixels. */}
-          {pending.map((r) => (
-            <div key={r.id} className="bg-paper rounded-lg px-3 py-2.5 mt-1.5 space-y-2">
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "w-7 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0",
-                    teamColor(r.team),
-                  )}
-                >
-                  {teamInitials(r.team.name)}
-                </span>
-                <span className="flex-1 min-w-0 text-xs font-bold truncate">
-                  {r.team.name}
-                  <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
-                </span>
+          {!past &&
+            pending.map((r) => (
+              <div key={r.id} className="bg-paper rounded-lg px-3 py-2.5 mt-1.5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "w-7 h-7 rounded-full text-white flex items-center justify-center text-[10px] font-black shrink-0",
+                      teamColor(r.team),
+                    )}
+                  >
+                    {teamInitials(r.team.name)}
+                  </span>
+                  <span className="flex-1 min-w-0 text-xs font-bold truncate">
+                    {r.team.name}
+                    <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
+                    Accepter
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onDecline(a.id, r.id)}>
+                    Décliner
+                  </Button>
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
-                  Accepter
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => onDecline(a.id, r.id)}>
-                  Décliner
-                </Button>
-              </div>
-            </div>
-          ))}
+            ))}
         </>
       )}
 

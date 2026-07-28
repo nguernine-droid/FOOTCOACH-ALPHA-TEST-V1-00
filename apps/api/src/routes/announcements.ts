@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import {
   createAnnouncementSchema,
   daysBetweenIso,
@@ -105,6 +105,16 @@ async function loadResponses(announcementIds: string[]) {
   return byAnnouncement;
 }
 
+/**
+ * Date du jour au format ISO. Une annonce dont la date est dépassée ne cherche
+ * plus personne : le match n'aura pas lieu. Elle disparaît du radar et n'accepte
+ * plus de proposition, sans changer de statut — son émetteur la retrouve dans
+ * « Mes annonces », qui reste l'historique complet.
+ */
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function announcementRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
@@ -114,7 +124,12 @@ export function announcementRoutes(app: FastifyInstance) {
       .select({ announcement: matchAnnouncements, team: teams })
       .from(matchAnnouncements)
       .innerJoin(teams, eq(matchAnnouncements.teamId, teams.id))
-      .where(status === "open" ? eq(matchAnnouncements.status, "open") : undefined)
+      // `status=open` sert le radar : on n'y montre que ce qui peut encore être joué
+      .where(
+        status === "open"
+          ? and(eq(matchAnnouncements.status, "open"), gte(matchAnnouncements.date, today()))
+          : undefined,
+      )
       .orderBy(desc(matchAnnouncements.createdAt));
     const links = await loadMatchLinks(
       rows.filter((r) => r.announcement.status === "matched").map((r) => r.announcement.id),
@@ -189,6 +204,7 @@ export function announcementRoutes(app: FastifyInstance) {
     if (announcement.teamId === responderTeamId)
       throw new HttpError(400, "Vous ne pouvez pas répondre à votre propre annonce");
     if (announcement.status !== "open") throw new HttpError(400, "Cette annonce n'est plus disponible");
+    if (announcement.date < today()) throw new HttpError(400, "La date de ce match est passée");
 
     const [existing] = await db
       .select()
@@ -253,6 +269,8 @@ export function announcementRoutes(app: FastifyInstance) {
         if (announcement.teamId !== request.user.teamId)
           throw new HttpError(403, "Cette annonce ne vous appartient pas");
         if (announcement.status !== "open") throw new HttpError(400, "Cette annonce n'est plus ouverte");
+        if (announcement.date < today())
+          throw new HttpError(400, "La date de ce match est passée : l'annonce ne peut plus être confirmée");
 
         const [response] = await tx
           .select()
