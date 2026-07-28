@@ -184,6 +184,13 @@ npm run dev:web    # Web sur :3000 (API_INTERNAL_URL=http://localhost:4000)
 npm run db:seed
 ```
 
+## Simulation d'usage
+
+`npm run simulate` joue cent coachs sur une semaine contre la vraie API : elle
+cherche les erreurs qui n'apparaissent qu'en volume et mesure ce que l'interface
+reçoit à densité réelle. Elle **écrit dans la base** et se nettoie ensuite —
+mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
+
 ### Créer un compte coach (sans compte de démo)
 
 « Créer un compte coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
