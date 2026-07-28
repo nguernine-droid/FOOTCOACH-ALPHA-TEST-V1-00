@@ -33,6 +33,8 @@ export const bookingStatus = pgEnum("booking_status", ["pending", "approved", "d
 export const responseStatus = pgEnum("response_status", ["pending", "accepted", "declined"]);
 export const matchLevel = pgEnum("match_level", ["loisir", "competition"]);
 export const matchFormat = pgEnum("match_format", ["5v5", "8v8", "11v11"]);
+// Genre de l'équipe, à côté de la catégorie d'âge (et non fondu dedans)
+export const matchGender = pgEnum("match_gender", ["masculin", "feminin", "mixte"]);
 export const playerPosition = pgEnum("player_position", ["gardien", "defenseur", "milieu", "attaquant"]);
 // Types d'événements d'agenda créables — les matchs ne sont PAS stockés ici,
 // ils sont projetés dans l'agenda à la lecture (zéro double saisie).
@@ -218,6 +220,9 @@ export const matchAnnouncements = pgTable("match_announcements", {
   city: text("city").notNull(),
   stadium: text("stadium").notNull(),
   category: text("category").notNull(),
+  // NULL pour les annonces publiées avant l'ajout du genre : on ne devine pas
+  // rétroactivement le genre d'une équipe.
+  gender: matchGender("gender"),
   level: matchLevel("level").notNull().default("loisir"),
   format: matchFormat("format").notNull().default("11v11"),
   comment: text("comment"),

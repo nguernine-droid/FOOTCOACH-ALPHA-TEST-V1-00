@@ -30,8 +30,7 @@ export default function AnnouncementsPage() {
 
   const load = useCallback(async () => {
     try {
-      const all = await api<AnnouncementDto[]>("/announcements");
-      setAnnouncements(all.filter((a) => a.isMine));
+      setAnnouncements(await api<AnnouncementDto[]>("/announcements/mine"));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");

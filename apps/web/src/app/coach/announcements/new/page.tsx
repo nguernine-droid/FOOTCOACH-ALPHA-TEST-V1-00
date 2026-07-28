@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Megaphone, ShieldCheck } from "lucide-react";
-import { FFF_NOTICE_DAYS, daysBetweenIso } from "@footcoach/shared";
+import {
+  categoryLabel,
+  FFF_NOTICE_DAYS,
+  MATCH_CATEGORIES,
+  MATCH_GENDERS,
+  MATCH_GENDER_LABELS,
+  daysBetweenIso,
+  type MatchGender,
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { Button } from "@/components/ui/Button";
@@ -14,7 +22,6 @@ import { cn } from "@/lib/utils";
 /** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
 const FORM_ID = "publier-annonce";
 
-const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
 const LEVELS = [
   { value: "loisir", label: "Loisir" },
   { value: "competition", label: "Compétition" },
@@ -33,6 +40,9 @@ export default function NewAnnouncementPage() {
     format: "8v8",
     comment: "",
   });
+  // Aucun genre présélectionné : le supposer reviendrait à publier une annonce
+  // masculine par défaut pour une équipe qui ne l'est pas.
+  const [gender, setGender] = useState<MatchGender | null>(null);
   const [federationDeclared, setFederationDeclared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,7 +61,7 @@ export default function NewAnnouncementPage() {
     kind: "submit",
     formId: FORM_ID,
     label: "Publier l'annonce",
-    disabled: loading || !federationDeclared,
+    disabled: loading || !federationDeclared || !gender,
   });
 
   async function submit(e: React.FormEvent) {
@@ -62,7 +72,7 @@ export default function NewAnnouncementPage() {
     try {
       await api("/announcements", {
         method: "POST",
-        body: JSON.stringify({ ...form, comment: form.comment || undefined, federationDeclared }),
+        body: JSON.stringify({ ...form, gender, comment: form.comment || undefined, federationDeclared }),
       });
       router.push("/coach/announcements");
     } catch (err) {
@@ -123,21 +133,48 @@ export default function NewAnnouncementPage() {
 
         {/* Grilles plutôt que rangées repliées : chaque choix garde une cible
             pleine et régulière, même à 390 px de large. */}
+        {/* Dix-sept catégories : quatre par rangée au pouce, px resserré pour
+            que « Vétérans » tienne sans être tronqué. */}
         <div className="space-y-1.5">
           <span className="text-xs font-bold text-ink-soft">Catégorie</span>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {CATEGORIES.map((c) => (
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            {MATCH_CATEGORIES.map((c) => (
               <button
                 key={c}
                 type="button"
                 aria-pressed={form.category === c}
                 onClick={() => set("category", c)}
-                className={cn("chip-choice", form.category === c ? "chip-choice-on" : "chip-choice-off")}
+                className={cn(
+                  "chip-choice !px-2",
+                  form.category === c ? "chip-choice-on" : "chip-choice-off",
+                )}
               >
-                {c}
+                <span className="truncate">{categoryLabel(c)}</span>
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold text-ink-soft">Genre</span>
+          <div className="grid grid-cols-3 gap-2">
+            {MATCH_GENDERS.map((g) => (
+              <button
+                key={g}
+                type="button"
+                aria-pressed={gender === g}
+                onClick={() => setGender(g)}
+                className={cn("chip-choice", gender === g ? "chip-choice-on" : "chip-choice-off")}
+              >
+                {MATCH_GENDER_LABELS[g]}
+              </button>
+            ))}
+          </div>
+          {!gender && (
+            <p className="text-[11px] text-ink-soft">
+              À préciser : une équipe féminine ne se déplace pas pour affronter une équipe masculine.
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
@@ -212,7 +249,7 @@ export default function NewAnnouncementPage() {
         </label>
 
         {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
-        <Button type="submit" size="lg" className="w-full" disabled={loading || !federationDeclared}>
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !federationDeclared || !gender}>
           {loading ? "Publication…" : noticeTooShort ? "Publier quand même" : "Publier l'annonce"}
         </Button>
       </form>

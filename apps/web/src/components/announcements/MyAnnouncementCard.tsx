@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { AlertTriangle, CalendarX, CheckCircle2, MapPin, ShieldCheck, Trash2, UserMinus } from "lucide-react";
-import { FFF_NOTICE_DAYS, WITHDRAWAL_REASON_LABELS, type AnnouncementDto } from "@footcoach/shared";
+import {
+  categoryLabel,
+  FFF_NOTICE_DAYS,
+  MATCH_GENDER_LABELS,
+  WITHDRAWAL_REASON_LABELS,
+  type AnnouncementDto,
+} from "@footcoach/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
@@ -41,7 +47,8 @@ export function MyAnnouncementCard({
       )}
     >
       <p className="text-sm font-bold capitalize">
-        {a.category} · {a.format} · {formatDate(a.date)} à {a.time}
+        {categoryLabel(a.category)}
+        {a.gender && ` ${MATCH_GENDER_LABELS[a.gender]}`} · {a.format} · {formatDate(a.date)} à {a.time}
       </p>
 
       {showLocation && (

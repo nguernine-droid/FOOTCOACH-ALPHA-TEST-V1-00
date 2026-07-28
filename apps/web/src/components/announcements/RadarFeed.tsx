@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Clock3, Crosshair, MapPin, Navigation, Radar, UserMinus, X, XCircle } from "lucide-react";
-import { WITHDRAWAL_REASON_LABELS, type AnnouncementDto, type UserDto } from "@footcoach/shared";
+import {
+  categoryLabel,
+  MATCH_CATEGORIES,
+  MATCH_GENDERS,
+  MATCH_GENDER_LABELS,
+  WITHDRAWAL_REASON_LABELS,
+  type AnnouncementDto,
+  type MatchGender,
+  type RadarDto,
+  type UserDto,
+} from "@footcoach/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
@@ -13,7 +23,6 @@ import { DateField } from "@/components/ui/DateField";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
-const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
 /** Périmètre par défaut : la distance qu'un club accepte de faire pour un amical */
 const DEFAULT_RADIUS_KM = 50;
 
@@ -40,9 +49,12 @@ function bySosThenProximity(a: AnnouncementDto, b: AnnouncementDto): number {
  */
 export function RadarFeed() {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
+  /** Annonces écartées par le périmètre : comptées par le serveur, jamais téléchargées */
+  const [beyondRadius, setBeyondRadius] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
   const [category, setCategory] = useState<string | null>(null);
+  const [gender, setGender] = useState<MatchGender | null>(null);
   const [date, setDate] = useState("");
   // `null` = sans limite. Réglage conservé côté serveur : il sert aussi à
   // décider quelles annonces déclenchent une notification push.
@@ -65,18 +77,24 @@ export function RadarFeed() {
       .catch(() => undefined);
   }, []);
 
+  // Le périmètre est appliqué par le serveur : le changer impose de rebalayer.
   function changeRadius(value: number | null) {
     setRadiusKm(value);
     setSelectedId(null);
+    setAnnouncements(null);
     api<UserDto>("/me/radar-radius", { method: "PUT", body: JSON.stringify({ radiusKm: value }) })
       .then(updateStoredUser)
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(load);
   }
 
+  // Le serveur applique déjà le périmètre enregistré et écarte mes propres
+  // annonces : ce qui arrive ici est exactement ce que le radar affiche.
   const load = useCallback(async () => {
     try {
-      const all = await api<AnnouncementDto[]>("/announcements?status=open");
-      setAnnouncements(all.filter((a) => !a.isMine));
+      const radar = await api<RadarDto>("/announcements/radar");
+      setAnnouncements(radar.items);
+      setBeyondRadius(radar.beyondRadius);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }
@@ -125,22 +143,18 @@ export function RadarFeed() {
     () =>
       (announcements ?? [])
         .filter((a) => (category ? a.category === category : true))
+        // Le genre non renseigné (annonces d'avant le champ) ne disparaît pas
+        // sur un filtre : on ne sait pas, ce n'est pas une exclusion.
+        .filter((a) => (gender ? a.gender === gender || a.gender === null : true))
         .filter((a) => (date ? a.date === date : true)),
-    [announcements, category, date],
+    [announcements, category, gender, date],
   );
 
-  // Le périmètre ne masque jamais une annonce dont la ville est inconnue : on
-  // ne peut pas affirmer qu'elle est hors rayon, seulement qu'on ne sait pas.
-  const inRange = useMemo(
-    () =>
-      matchesFilters
-        .filter((a) => radiusKm === null || a.distanceKm === null || a.distanceKm <= radiusKm)
-        .sort(bySosThenProximity),
-    [matchesFilters, radiusKm],
-  );
-  const outOfRange = matchesFilters.filter(
-    (a) => radiusKm !== null && a.distanceKm !== null && a.distanceKm > radiusKm,
-  );
+  // Le périmètre est appliqué par le serveur (celles hors rayon ne descendent
+  // même pas jusqu'ici) ; il ne masque jamais une annonce dont la ville est
+  // inconnue : on ne peut pas affirmer qu'elle est hors rayon, seulement qu'on
+  // ne sait pas. Restent les filtres de la page : catégorie et date.
+  const inRange = useMemo(() => [...matchesFilters].sort(bySosThenProximity), [matchesFilters]);
   const unknownCount = inRange.filter((a) => a.distanceKm === null).length;
 
   // Sans limite, le cercle extérieur se cale sur l'annonce la plus lointaine
@@ -221,10 +235,9 @@ export function RadarFeed() {
             </button>
           ))}
         </div>
-        {outOfRange.length > 0 && (
+        {beyondRadius > 0 && (
           <p className="text-[11px] text-ink-soft">
-            {outOfRange.length} annonce{outOfRange.length > 1 ? "s" : ""} au-delà de {radiusKm} km, hors du
-            périmètre.{" "}
+            {beyondRadius} annonce{beyondRadius > 1 ? "s" : ""} au-delà de {radiusKm} km, hors du périmètre.{" "}
             <button
               type="button"
               onClick={() => changeRadius(null)}
@@ -239,8 +252,8 @@ export function RadarFeed() {
       {announcements.length > 0 && (
         <div className="space-y-2">
           {/* Rangée de catégories qui défile horizontalement plutôt que de se
-              replier : sept pastilles de 44 px ne tiennent pas sur deux lignes
-              sans manger l'écran. */}
+              replier : dix-huit pastilles de 44 px ne tiennent sur aucun écran
+              de téléphone sans le manger entièrement. */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
             <button
               type="button"
@@ -250,7 +263,7 @@ export function RadarFeed() {
             >
               Toutes
             </button>
-            {CATEGORIES.map((c) => (
+            {MATCH_CATEGORIES.map((c) => (
               <button
                 key={c}
                 type="button"
@@ -258,7 +271,30 @@ export function RadarFeed() {
                 aria-pressed={category === c}
                 className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
               >
-                {c}
+                {categoryLabel(c)}
+              </button>
+            ))}
+          </div>
+
+          {/* Genre : quatre choix seulement, donc une grille pleine largeur */}
+          <div className="grid grid-cols-4 gap-2" role="group" aria-label="Filtrer par genre">
+            <button
+              type="button"
+              onClick={() => setGender(null)}
+              aria-pressed={gender === null}
+              className={cn("chip-choice !px-2", gender === null ? "chip-choice-on" : "chip-choice-off")}
+            >
+              <span className="truncate">Tous</span>
+            </button>
+            {MATCH_GENDERS.map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setGender(gender === g ? null : g)}
+                aria-pressed={gender === g}
+                className={cn("chip-choice !px-2", gender === g ? "chip-choice-on" : "chip-choice-off")}
+              >
+                <span className="truncate">{MATCH_GENDER_LABELS[g]}</span>
               </button>
             ))}
           </div>
@@ -282,7 +318,9 @@ export function RadarFeed() {
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
-      {announcements.length === 0 ? (
+      {/* Vraiment rien à jouer, périmètre compris : inviter à publier. S'il y a
+          des annonces plus loin, c'est l'écran suivant — élargir, pas publier. */}
+      {announcements.length === 0 && beyondRadius === 0 ? (
         <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
           <p className="text-sm font-bold">Aucun match autour de vous</p>
           <p className="text-xs text-ink-soft">
@@ -295,7 +333,7 @@ export function RadarFeed() {
       ) : inRange.length === 0 ? (
         <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
           <p className="text-sm font-bold">
-            {outOfRange.length > 0
+            {beyondRadius > 0
               ? `Aucune équipe dans un rayon de ${radiusKm} km`
               : "Aucune annonce ne correspond aux filtres"}
           </p>
@@ -364,7 +402,10 @@ export function RadarFeed() {
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                <span className="chip bg-pitch-soft text-pitch-deep">{a.category}</span>
+                <span className="chip bg-pitch-soft text-pitch-deep">{categoryLabel(a.category)}</span>
+                {a.gender && (
+                  <span className="chip bg-pitch-soft text-pitch-deep">{MATCH_GENDER_LABELS[a.gender]}</span>
+                )}
                 <span className="chip bg-pitch-soft text-pitch-deep">{a.format}</span>
                 <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[a.level]}</span>
               </div>

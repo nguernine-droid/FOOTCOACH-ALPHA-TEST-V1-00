@@ -36,12 +36,12 @@ export default function CoachDashboard() {
   const loadAll = useCallback(() => {
     Promise.all([
       api<MatchDto[]>("/matches"),
-      api<AnnouncementDto[]>("/announcements"),
+      api<AnnouncementDto[]>("/announcements/mine"),
       api<ActivityDto[]>("/activity"),
     ])
       .then(([m, a, act]) => {
         setMatches(m);
-        setAnnouncements(a.filter((x) => x.isMine && x.status !== "cancelled"));
+        setAnnouncements(a.filter((x) => x.status !== "cancelled"));
         setActivity(act);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));

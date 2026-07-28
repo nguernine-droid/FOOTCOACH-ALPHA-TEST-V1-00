@@ -71,6 +71,43 @@ export type MatchLevel = (typeof MATCH_LEVELS)[number];
 export const MATCH_FORMATS = ["5v5", "8v8", "11v11"] as const;
 export type MatchFormat = (typeof MATCH_FORMATS)[number];
 
+/**
+ * Catégories d'âge de la FFF, de l'école de foot aux vétérans. Les équipes sont
+ * engagées en compétition sur les catégories impaires (des U12 jouent en U13),
+ * mais un amical peut se caler sur n'importe laquelle — d'où la liste complète.
+ *
+ * Source unique : le formulaire de publication et le filtre du radar la
+ * partagent, ils divergeaient tant qu'elle était recopiée dans chacun.
+ */
+export const MATCH_CATEGORIES = [
+  "U6", "U7", "U8", "U9", "U10", "U11", "U12", "U13", "U14", "U15", "U16", "U17", "U18", "U19", "U20",
+  "Seniors", "Veterans",
+] as const;
+export type MatchCategory = (typeof MATCH_CATEGORIES)[number];
+
+/**
+ * Libellé affiché. Les valeurs restent sans accent, comme tous les identifiants
+ * du projet : elles voyagent en JSON, en base et un jour en paramètre d'URL, où
+ * un « é » ne survit pas toujours au transport.
+ */
+export function categoryLabel(category: string): string {
+  return category === "Veterans" ? "Vétérans" : category;
+}
+
+/**
+ * Genre de l'équipe, distinct de la catégorie : dédoubler les catégories
+ * (U15, U15F…) rendrait « U15 » ambigu et doublerait la liste. « Mixte » n'est
+ * pas un fourre-tout — jusqu'aux U11, les équipes le sont réellement.
+ */
+export const MATCH_GENDERS = ["masculin", "feminin", "mixte"] as const;
+export type MatchGender = (typeof MATCH_GENDERS)[number];
+
+export const MATCH_GENDER_LABELS: Record<MatchGender, string> = {
+  masculin: "Masculin",
+  feminin: "Féminin",
+  mixte: "Mixte",
+};
+
 /** Types d'événements d'agenda. "match" est virtuel : projeté depuis les matchs. */
 export const EVENT_TYPES = ["match", "entrainement", "tournoi", "reunion", "autre"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -97,7 +134,10 @@ export const createAnnouncementSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/),
   city: z.string().min(1).max(100),
   stadium: z.string().min(1).max(150),
-  category: z.string().min(1).max(50),
+  category: z.enum(MATCH_CATEGORIES),
+  // Demandé à la publication : deviner le genre d'une équipe serait présumer,
+  // et une annonce féminine tombée face à une équipe masculine ne se joue pas.
+  gender: z.enum(MATCH_GENDERS),
   level: z.enum(MATCH_LEVELS),
   format: z.enum(MATCH_FORMATS),
   comment: z.string().max(500).optional(),
@@ -363,6 +403,8 @@ export interface AnnouncementDto {
   city: string;
   stadium: string;
   category: string;
+  /** null pour les annonces publiées avant l'ajout du genre */
+  gender: MatchGender | null;
   level: MatchLevel;
   format: MatchFormat;
   comment: string | null;
@@ -392,6 +434,17 @@ export interface AnnouncementDto {
   isSos: boolean;
   sosReason: WithdrawalReason | null;
   sosDetails: string | null;
+}
+
+/**
+ * Réponse du radar. Le périmètre est appliqué côté serveur — inutile d'envoyer
+ * au téléphone des annonces qu'il ne montrera pas. `beyondRadius` compte celles
+ * que le périmètre a écartées, pour proposer de balayer plus large sans avoir à
+ * les télécharger.
+ */
+export interface RadarDto {
+  items: AnnouncementDto[];
+  beyondRadius: number;
 }
 
 export interface MatchDto {

@@ -3,12 +3,14 @@ import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
 import {
   createAnnouncementSchema,
   daysBetweenIso,
+  MATCH_GENDER_LABELS,
   type AnnouncementDto,
   type AnnouncementResponseDto,
+  type RadarDto,
   type TeamDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
+import { announcementResponses, matchAnnouncements, matches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
@@ -39,6 +41,7 @@ function toDto(
     city: announcement.city,
     stadium: announcement.stadium,
     category: announcement.category,
+    gender: announcement.gender,
     level: announcement.level,
     format: announcement.format,
     comment: announcement.comment,
@@ -118,33 +121,83 @@ function today(): string {
 export function announcementRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
-  app.get("/announcements", { preHandler: requireRole("coach") }, async (request) => {
-    const { status } = request.query as { status?: string };
+  /**
+   * Mes annonces, tous statuts confondus : l'écran « Annonces » et le tableau
+   * de bord. Avec les propositions reçues, que seul l'émetteur voit.
+   */
+  app.get("/announcements/mine", { preHandler: requireRole("coach") }, async (request): Promise<AnnouncementDto[]> => {
+    const myTeamId = request.user.teamId;
+    if (!myTeamId) return [];
     const rows = await db
       .select({ announcement: matchAnnouncements, team: teams })
       .from(matchAnnouncements)
       .innerJoin(teams, eq(matchAnnouncements.teamId, teams.id))
-      // `status=open` sert le radar : on n'y montre que ce qui peut encore être joué
-      .where(
-        status === "open"
-          ? and(eq(matchAnnouncements.status, "open"), gte(matchAnnouncements.date, today()))
-          : undefined,
-      )
+      .where(eq(matchAnnouncements.teamId, myTeamId))
       .orderBy(desc(matchAnnouncements.createdAt));
+
     const links = await loadMatchLinks(
       rows.filter((r) => r.announcement.status === "matched").map((r) => r.announcement.id),
     );
     const responsesByAnn = await loadResponses(rows.map((r) => r.announcement.id));
-    // Position réglée par le coach en priorité, ville de son équipe en repli
-    const myCoords = await loadOrigin(request.user.id, request.user.teamId);
     return rows.map((r) => {
-      const all = responsesByAnn.get(r.announcement.id) ?? [];
-      const isMine = r.announcement.teamId === request.user.teamId;
-      // L'émetteur voit les propositions reçues ; un visiteur ne voit que la sienne.
-      const responses = isMine ? all.map(({ teamId: _teamId, ...dto }) => dto) : [];
-      const myResponseStatus = isMine ? null : (all.find((x) => x.teamId === request.user.teamId)?.status ?? null);
-      return toDto(r, request.user.teamId, links.get(r.announcement.id), myCoords, responses, myResponseStatus);
+      const responses = (responsesByAnn.get(r.announcement.id) ?? []).map(({ teamId: _teamId, ...dto }) => dto);
+      return toDto(r, myTeamId, links.get(r.announcement.id), null, responses, null);
     });
+  });
+
+  /**
+   * Le radar : les annonces des AUTRES équipes, encore jouables et dans le
+   * périmètre du coach.
+   *
+   * Le filtrage se fait ici et non chez le client. Servir toutes les annonces
+   * de la plateforme pour n'en afficher qu'une poignée faisait grossir la
+   * réponse sans limite — l'historique d'une saison entière téléchargé à chaque
+   * ouverture du tableau de bord.
+   *
+   * Une annonce dont la ville est absente de l'annuaire n'est jamais écartée :
+   * on ne peut pas affirmer qu'elle est hors périmètre, seulement qu'on ne sait
+   * pas. `beyondRadius` compte celles que le périmètre a mises de côté, pour
+   * que le client puisse proposer de balayer sans limite sans mentir sur le
+   * nombre.
+   */
+  app.get("/announcements/radar", { preHandler: requireRole("coach") }, async (request): Promise<RadarDto> => {
+    const myTeamId = request.user.teamId;
+    const rows = await db
+      .select({ announcement: matchAnnouncements, team: teams })
+      .from(matchAnnouncements)
+      .innerJoin(teams, eq(matchAnnouncements.teamId, teams.id))
+      .where(
+        and(
+          eq(matchAnnouncements.status, "open"),
+          gte(matchAnnouncements.date, today()),
+          myTeamId ? ne(matchAnnouncements.teamId, myTeamId) : undefined,
+        ),
+      )
+      .orderBy(desc(matchAnnouncements.createdAt));
+
+    // Position réglée par le coach en priorité, ville de son équipe en repli
+    const myCoords = await loadOrigin(request.user.id, myTeamId);
+    const [me] = await db.select({ radiusKm: users.radarRadiusKm }).from(users).where(eq(users.id, request.user.id));
+    const radiusKm = me?.radiusKm ?? null;
+
+    // Seules mes propositions me concernent ici : celles des autres équipes
+    // n'ont pas à quitter le serveur.
+    const myResponses = myTeamId
+      ? await db
+          .select({ announcementId: announcementResponses.announcementId, status: announcementResponses.status })
+          .from(announcementResponses)
+          .where(eq(announcementResponses.teamId, myTeamId))
+      : [];
+    const myStatusByAnn = new Map(myResponses.map((r) => [r.announcementId, r.status]));
+
+    const items: AnnouncementDto[] = [];
+    let beyondRadius = 0;
+    for (const row of rows) {
+      const dto = toDto(row, myTeamId, undefined, myCoords, [], myStatusByAnn.get(row.announcement.id) ?? null);
+      if (radiusKm !== null && dto.distanceKm !== null && dto.distanceKm > radiusKm) beyondRadius++;
+      else items.push(dto);
+    }
+    return { items, beyondRadius };
   });
 
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {
@@ -159,6 +212,7 @@ export function announcementRoutes(app: FastifyInstance) {
         city: input.city,
         stadium: input.stadium,
         category: input.category,
+        gender: input.gender,
         level: input.level,
         format: input.format,
         comment: input.comment ?? null,
@@ -171,7 +225,9 @@ export function announcementRoutes(app: FastifyInstance) {
     notifyNewAnnouncement({
       authorUserId: request.user.id,
       teamName: team.name,
-      category: created.category,
+      // Le genre suit la catégorie : un coach d'équipe féminine doit voir en
+      // un coup d'œil si l'annonce le concerne.
+      category: created.gender ? `${created.category} ${MATCH_GENDER_LABELS[created.gender]}` : created.category,
       format: created.format,
       city: created.city,
       venue: cityCoords(created.city),
