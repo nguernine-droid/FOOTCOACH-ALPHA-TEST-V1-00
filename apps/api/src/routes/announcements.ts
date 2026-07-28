@@ -53,10 +53,17 @@ function toDto(
     bearingDeg: bearing,
     responses: responses ?? [],
     myResponseStatus: myResponseStatus ?? null,
+    isSos: announcement.isSos,
+    sosReason: announcement.sosReason,
+    sosDetails: announcement.sosDetails,
   };
 }
 
-/** Pour les annonces matchées : match créé + équipe qui a répondu, indexés par annonce */
+/**
+ * Pour les annonces matchées : match créé + équipe qui a répondu, indexés par
+ * annonce. Les matchs annulés sont écartés — une annonce peut en compter un
+ * après un désistement, mais c'est le match en cours qui la décrit.
+ */
 async function loadMatchLinks(announcementIds: string[]) {
   const links = new Map<string, { matchId: string; opponentTeam: TeamDto }>();
   if (announcementIds.length === 0) return links;
@@ -64,7 +71,7 @@ async function loadMatchLinks(announcementIds: string[]) {
     .select({ match: matches, opponent: teams })
     .from(matches)
     .innerJoin(teams, eq(matches.awayTeamId, teams.id))
-    .where(inArray(matches.announcementId, announcementIds));
+    .where(and(inArray(matches.announcementId, announcementIds), ne(matches.status, "cancelled")));
   for (const { match, opponent } of rows) {
     links.set(match.announcementId, {
       matchId: match.id,
@@ -163,7 +170,10 @@ export function announcementRoutes(app: FastifyInstance) {
     if (!announcement) throw new HttpError(404, "Annonce introuvable");
     if (announcement.teamId !== request.user.teamId) throw new HttpError(403, "Cette annonce ne vous appartient pas");
     if (announcement.status !== "open") throw new HttpError(400, "Seule une annonce ouverte peut être annulée");
-    await db.update(matchAnnouncements).set({ status: "cancelled" }).where(eq(matchAnnouncements.id, id));
+    await db
+      .update(matchAnnouncements)
+      .set({ status: "cancelled", isSos: false, sosReason: null, sosDetails: null })
+      .where(eq(matchAnnouncements.id, id));
     return { ok: true };
   });
 
@@ -200,6 +210,29 @@ export function announcementRoutes(app: FastifyInstance) {
 
     reply.code(201);
     return { responseId: created.id };
+  });
+
+  /**
+   * Se désister avant acceptation : le coach retire la proposition qu'il a
+   * envoyée. La ligne est supprimée plutôt que marquée — l'annonce reste
+   * ouverte, et rien n'interdit de reproposer plus tard.
+   */
+  app.delete("/announcements/:id/respond", { preHandler: requireRole("coach") }, async (request) => {
+    const { id } = request.params as { id: string };
+    if (!request.user.teamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
+
+    const [response] = await db
+      .select()
+      .from(announcementResponses)
+      .where(
+        and(eq(announcementResponses.announcementId, id), eq(announcementResponses.teamId, request.user.teamId)),
+      );
+    if (!response) throw new HttpError(404, "Vous n'avez pas de proposition sur cette annonce");
+    if (response.status !== "pending")
+      throw new HttpError(400, "Cette proposition a déjà été traitée par le coach");
+
+    await db.delete(announcementResponses).where(eq(announcementResponses.id, response.id));
+    return { ok: true };
   });
 
   // Le coach émetteur accepte une proposition : l'annonce passe en "matched",

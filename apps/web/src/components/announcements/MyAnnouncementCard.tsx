@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, MapPin, ShieldCheck, Trash2 } from "lucide-react";
-import { FFF_NOTICE_DAYS, type AnnouncementDto } from "@footcoach/shared";
+import { AlertTriangle, CheckCircle2, MapPin, ShieldCheck, Trash2, UserMinus } from "lucide-react";
+import { FFF_NOTICE_DAYS, WITHDRAWAL_REASON_LABELS, type AnnouncementDto } from "@footcoach/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
@@ -32,7 +32,7 @@ export function MyAnnouncementCard({
     <div
       className={cn(
         "rounded-lg border border-line bg-white px-4 py-3 border-l-4 space-y-1.5 transition",
-        a.status === "open" && "border-l-gold",
+        a.status === "open" && (a.isSos ? "border-l-coral" : "border-l-gold"),
         a.status === "matched" && "border-l-success hover:bg-blue-faint",
         a.status === "cancelled" && "border-l-ink-faint opacity-70",
       )}
@@ -50,9 +50,29 @@ export function MyAnnouncementCard({
         </p>
       )}
 
-      {/* Conformité FFF : délai de déclaration et attestation du coach */}
+      {/* Adversaire désisté : l'annonce est repartie en tête du radar */}
+      {a.status === "open" && a.isSos && (
+        <p className="rounded-lg bg-coral-soft px-3 py-2 text-xs font-bold text-coral flex items-start gap-2">
+          <UserMinus size={13} className="shrink-0 mt-px" aria-hidden />
+          <span>
+            SOS — adversaire désisté
+            {a.sosReason && ` (${WITHDRAWAL_REASON_LABELS[a.sosReason].toLowerCase()})`}
+            <span className="block font-semibold text-ink-soft">
+              Remise en tête du radar, les coachs du secteur ont été alertés.
+            </span>
+          </span>
+        </p>
+      )}
+
+      {/* Conformité FFF : délai de déclaration et attestation du coach.
+          Une annonce repartie en SOS n'est pas réévaluée : la déclaration au
+          district porte sur la tenue du match, pas sur l'identité de l'adversaire. */}
       <div className="flex flex-wrap gap-1.5">
-        {noticeShort ? (
+        {a.isSos ? (
+          <span className="chip bg-success-soft text-success">
+            <ShieldCheck size={11} /> Match déjà déclaré — délai sans objet
+          </span>
+        ) : noticeShort ? (
           <span className="chip bg-coral-soft text-coral">
             <AlertTriangle size={11} /> Délai FFF non respecté ({a.noticeDays} j)
           </span>

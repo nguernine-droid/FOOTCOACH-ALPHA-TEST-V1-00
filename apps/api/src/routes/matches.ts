@@ -5,14 +5,16 @@ import { desc, eq, or } from "drizzle-orm";
 import {
   confirmScoreSchema,
   finalScoreSchema,
+  withdrawMatchSchema,
   type MatchDetailDto,
   type MatchDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { matches, teams } from "../db/schema.js";
+import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
-import { notifyScoreToConfirm } from "../lib/push.js";
+import { cityCoords } from "../lib/cities.js";
+import { notifyScoreToConfirm, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
 
 const homeTeam = alias(teams, "home_team");
 const awayTeam = alias(teams, "away_team");
@@ -54,6 +56,9 @@ function toDto({ match, home, away }: MatchRow, viewerTeamId: string | null): Ma
     scoreConfirmedAt: match.scoreConfirmedAt?.toISOString() ?? null,
     confirmationToken: isSubmitter ? match.confirmationToken : null,
     finalScoreDue: kickoffPassed(match) && (match.status === "scheduled" || match.status === "live"),
+    withdrawnByTeamId: match.withdrawnByTeamId,
+    withdrawalReason: match.withdrawalReason,
+    withdrawalDetails: match.withdrawalDetails,
   };
 }
 
@@ -87,11 +92,101 @@ export function matchRoutes(app: FastifyInstance) {
     return toDto(row, request.user.teamId);
   });
 
+  /**
+   * Désistement d'un des deux coachs avant le coup d'envoi.
+   *
+   * Le match est conservé mais annulé — il garde la trace de qui a renoncé et
+   * pourquoi. Ce qu'il advient de l'annonce dépend du coach qui se désiste :
+   *
+   * - l'équipe INVITÉE renonce : l'hôte garde son terrain et son créneau, son
+   *   annonce repart donc en recherche et en SOS (tête du radar, alerte aux
+   *   coachs du périmètre). Les propositions du premier tour sont effacées pour
+   *   que chacun, y compris les coachs déclinés, puisse reproposer ;
+   * - l'équipe HÔTE renonce : il n'y a plus de match à offrir, l'annonce est
+   *   annulée et l'invité prévenu.
+   *
+   * Le délai FFF de 10 jours n'est pas réévalué : la déclaration au district
+   * porte sur la tenue du match, pas sur l'identité de l'adversaire.
+   */
+  app.post("/matches/:id/withdraw", { preHandler: requireRole("coach") }, async (request) => {
+    const { id } = request.params as { id: string };
+    const input = withdrawMatchSchema.parse(request.body);
+    const myTeamId = request.user.teamId;
+    const { match } = await getMatchOr404(id);
+    assertCoachOfMatch(match, myTeamId);
+    if (match.status === "cancelled") throw new HttpError(400, "Ce match est déjà annulé");
+    if (match.status !== "scheduled")
+      throw new HttpError(400, "Le match a commencé : il ne peut plus faire l'objet d'un désistement");
+
+    const iAmHome = myTeamId === match.homeTeamId;
+    const details = input.details?.length ? input.details : null;
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(matches)
+        .set({
+          status: "cancelled",
+          withdrawnByTeamId: myTeamId,
+          withdrawalReason: input.reason,
+          withdrawalDetails: details,
+          cancelledAt: new Date(),
+        })
+        .where(eq(matches.id, id));
+
+      if (iAmHome) {
+        // Le SOS d'un cycle précédent n'a plus d'objet : l'annonce est éteinte.
+        await tx
+          .update(matchAnnouncements)
+          .set({ status: "cancelled", isSos: false, sosReason: null, sosDetails: null })
+          .where(eq(matchAnnouncements.id, match.announcementId));
+      } else {
+        await tx
+          .update(matchAnnouncements)
+          .set({ status: "open", isSos: true, sosReason: input.reason, sosDetails: details })
+          .where(eq(matchAnnouncements.id, match.announcementId));
+        await tx
+          .delete(announcementResponses)
+          .where(eq(announcementResponses.announcementId, match.announcementId));
+      }
+    });
+
+    const opponentTeamId = iAmHome ? match.awayTeamId : match.homeTeamId;
+    const [myTeam] = await db.select().from(teams).where(eq(teams.id, myTeamId!));
+    notifyWithdrawal({
+      opponentTeamId,
+      withdrawnTeamName: myTeam?.name ?? "L'équipe adverse",
+      reason: input.reason,
+      reopened: !iAmHome,
+    });
+
+    // L'annonce repartie en SOS mérite une alerte immédiate : le match est
+    // souvent proche, et c'est le seul moyen de retrouver un adversaire à temps.
+    if (!iAmHome) {
+      const [announcement] = await db
+        .select()
+        .from(matchAnnouncements)
+        .where(eq(matchAnnouncements.id, match.announcementId));
+      const [homeTeam] = await db.select().from(teams).where(eq(teams.id, match.homeTeamId));
+      notifySosAnnouncement({
+        teamName: homeTeam?.name ?? "Une équipe",
+        category: announcement.category,
+        format: announcement.format,
+        city: announcement.city,
+        date: announcement.date,
+        venue: cityCoords(announcement.city),
+        excludeTeamIds: [match.homeTeamId, match.awayTeamId],
+      });
+    }
+
+    return { ok: true, announcementReopened: !iAmHome };
+  });
+
   // Coup d'envoi : l'un ou l'autre coach passe le match en direct
   app.post("/matches/:id/kickoff", { preHandler: requireRole("coach") }, async (request) => {
     const { id } = request.params as { id: string };
     const { match } = await getMatchOr404(id);
     assertCoachOfMatch(match, request.user.teamId);
+    if (match.status === "cancelled") throw new HttpError(400, "Ce match a été annulé");
     if (match.status !== "scheduled") throw new HttpError(400, "Le coup d'envoi a déjà été donné");
     await db.update(matches).set({ status: "live" }).where(eq(matches.id, id));
     return { ok: true };
@@ -108,6 +203,7 @@ export function matchRoutes(app: FastifyInstance) {
     const input = finalScoreSchema.parse(request.body);
     const { match } = await getMatchOr404(id);
     assertCoachOfMatch(match, request.user.teamId);
+    if (match.status === "cancelled") throw new HttpError(400, "Ce match a été annulé");
     if (match.status === "finished") throw new HttpError(400, "Le score de ce match a déjà été validé");
     if (!kickoffPassed(match)) throw new HttpError(400, "Le match n'a pas encore eu lieu");
 

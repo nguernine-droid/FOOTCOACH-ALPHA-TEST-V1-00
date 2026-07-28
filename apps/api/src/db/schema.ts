@@ -17,7 +17,15 @@ export const userRole = pgEnum("user_role", ["coach", "player", "parent", "suppo
 // Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs).
 export const teamCoachRole = pgEnum("team_coach_role", ["principal", "adjoint"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
-export const matchStatus = pgEnum("match_status", ["scheduled", "live", "awaiting_confirmation", "finished"]);
+export const matchStatus = pgEnum("match_status", [
+  "scheduled",
+  "live",
+  "awaiting_confirmation",
+  "finished",
+  "cancelled",
+]);
+// Motif du désistement d'un coach sur un match confirmé
+export const withdrawalReason = pgEnum("withdrawal_reason", ["blessure", "meteo", "terrain", "personnel"]);
 export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"]);
 export const matchEventType = pgEnum("match_event_type", ["goal", "card", "substitution", "highlight"]);
 export const matchSide = pgEnum("match_side", ["home", "away"]);
@@ -216,6 +224,11 @@ export const matchAnnouncements = pgTable("match_announcements", {
   status: announcementStatus("status").notNull().default("open"),
   // Attestation du coach : le match amical a été déclaré à la fédération (délai FFF de 10 jours)
   federationDeclared: boolean("federation_declared").notNull().default(false),
+  // SOS : l'annonce est repartie en recherche parce que l'adversaire s'est
+  // désisté. Elle passe en tête du radar, motif affiché aux autres coachs.
+  isSos: boolean("is_sos").notNull().default(false),
+  sosReason: withdrawalReason("sos_reason"),
+  sosDetails: text("sos_details"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -240,9 +253,10 @@ export const announcementResponses = pgTable(
 
 export const matches = pgTable("matches", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // Pas d'unicité : après un désistement l'annonce repart en SOS et peut donner
+  // un second match. Seul le match non annulé fait foi (voir loadMatchLinks).
   announcementId: uuid("announcement_id")
     .notNull()
-    .unique()
     .references(() => matchAnnouncements.id),
   homeTeamId: uuid("home_team_id")
     .notNull()
@@ -265,6 +279,11 @@ export const matches = pgTable("matches", {
   scoreSubmittedAt: timestamp("score_submitted_at", { withTimezone: true }),
   scoreConfirmedAt: timestamp("score_confirmed_at", { withTimezone: true }),
   confirmationToken: text("confirmation_token"),
+  // Désistement avant le coup d'envoi : qui a renoncé, pourquoi, et quand.
+  withdrawnByTeamId: uuid("withdrawn_by_team_id").references(() => teams.id),
+  withdrawalReason: withdrawalReason("withdrawal_reason"),
+  withdrawalDetails: text("withdrawal_details"),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, inArray, isNotNull, or } from "drizzle-orm";
-import type { ActivityDto } from "@footcoach/shared";
+import { and, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
+import { WITHDRAWAL_REASON_LABELS, type ActivityDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
@@ -42,13 +42,13 @@ export function activityRoutes(app: FastifyInstance) {
       });
     }
 
-    // 2. Matchs confirmés à partir de mes annonces
+    // 2. Matchs confirmés à partir de mes annonces (les annulés sont repris plus bas)
     const answered = await db
       .select({ match: matches, opponent: teams, announcement: matchAnnouncements })
       .from(matches)
       .innerJoin(matchAnnouncements, eq(matches.announcementId, matchAnnouncements.id))
       .innerJoin(teams, eq(matches.awayTeamId, teams.id))
-      .where(eq(matchAnnouncements.teamId, teamId))
+      .where(and(eq(matchAnnouncements.teamId, teamId), ne(matches.status, "cancelled")))
       .orderBy(desc(matches.createdAt))
       .limit(FEED_LIMIT);
     for (const { match, opponent, announcement } of answered) {
@@ -61,7 +61,43 @@ export function activityRoutes(app: FastifyInstance) {
       });
     }
 
-    // 3. Scores saisis sur mes matchs : validés, ou en attente d'une des deux parties
+    // 3. Désistements sur mes matchs, dans un sens comme dans l'autre
+    const cancelled = await db
+      .select({ match: matches, announcement: matchAnnouncements })
+      .from(matches)
+      .innerJoin(matchAnnouncements, eq(matches.announcementId, matchAnnouncements.id))
+      .where(
+        and(
+          or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)),
+          eq(matches.status, "cancelled"),
+        ),
+      )
+      .orderBy(desc(matches.cancelledAt))
+      .limit(FEED_LIMIT);
+    const withdrawnTeamIds = cancelled.map((c) => c.match.withdrawnByTeamId).filter((v): v is string => v !== null);
+    const withdrawnNames = withdrawnTeamIds.length
+      ? new Map(
+          (await db.select().from(teams).where(inArray(teams.id, withdrawnTeamIds))).map((t) => [t.id, t.name]),
+        )
+      : new Map<string, string>();
+
+    for (const { match, announcement } of cancelled) {
+      const iWithdrew = match.withdrawnByTeamId === teamId;
+      const motif = match.withdrawalReason ? WITHDRAWAL_REASON_LABELS[match.withdrawalReason].toLowerCase() : null;
+      // L'annonce repart en SOS quand c'est l'équipe visiteuse qui a renoncé
+      const reopened = match.withdrawnByTeamId === match.awayTeamId && announcement.isSos;
+      events.push({
+        id: `cancel-${match.id}`,
+        type: "announcement",
+        actor: iWithdrew ? "Vous" : (withdrawnNames.get(match.withdrawnByTeamId ?? "") ?? "L'adversaire"),
+        detail: `${iWithdrew ? "vous êtes désisté" : "s'est désisté"} du match du ${dayMonth(match.date)}${
+          motif ? ` — ${motif}` : ""
+        }${reopened ? ", l'annonce est repartie en SOS" : ""}`,
+        createdAt: (match.cancelledAt ?? match.createdAt).toISOString(),
+      });
+    }
+
+    // 4. Scores saisis sur mes matchs : validés, ou en attente d'une des deux parties
     const scored = await db
       .select()
       .from(matches)

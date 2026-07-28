@@ -127,6 +127,13 @@
       "when": 1785160537347,
       "tag": "0017_known_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785222219843,
+      "tag": "0018_common_absorbing_man",
+      "breakpoints": true
     }
   ]
 }

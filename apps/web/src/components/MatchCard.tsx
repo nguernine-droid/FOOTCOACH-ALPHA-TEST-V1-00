@@ -9,6 +9,7 @@ const STATUS = {
   live: { label: "● En direct", className: "bg-coral-soft text-coral animate-soft-pulse" },
   awaiting_confirmation: { label: "Score à valider", className: "bg-sun-soft text-sun" },
   finished: { label: "Terminé", className: "bg-paper text-ink-soft" },
+  cancelled: { label: "Annulé — désistement", className: "bg-coral-soft text-coral" },
 } as const;
 
 // Couleur d'identité stable par équipe (dérivée de l'id) : une équipe garde
@@ -60,7 +61,7 @@ export function MatchCard({ match, children }: { match: MatchDto; children?: Rea
       <div className="flex items-center gap-3">
         <TeamBadge team={match.homeTeam} />
         <div className="shrink-0 text-center px-2">
-          {match.status === "scheduled" ? (
+          {match.status === "scheduled" || match.status === "cancelled" ? (
             <p className="text-xs font-black text-ink-soft bg-paper rounded-full px-3 py-1.5">VS</p>
           ) : (
             <p className="display text-5xl tabular-nums leading-none text-pitch-deep">

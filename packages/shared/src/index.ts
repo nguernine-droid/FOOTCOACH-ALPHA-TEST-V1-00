@@ -41,9 +41,23 @@ export function respectsFffNotice(matchDate: string, announcedOn: string): boole
  * Cycle de vie d'un match : le coach saisit le score final à la fin de la
  * rencontre (`awaiting_confirmation`), puis le coach adverse le valide en
  * scannant le QR code affiché — c'est cette validation qui clôt le match.
+ *
+ * `cancelled` : l'un des deux coachs s'est désisté avant le coup d'envoi. Le
+ * match est conservé (trace du désistement), il ne compte plus nulle part.
  */
-export const MATCH_STATUSES = ["scheduled", "live", "awaiting_confirmation", "finished"] as const;
+export const MATCH_STATUSES = ["scheduled", "live", "awaiting_confirmation", "finished", "cancelled"] as const;
 export type MatchStatus = (typeof MATCH_STATUSES)[number];
+
+/** Motifs de désistement, imposés pour rester exploitables (relances, statistiques) */
+export const WITHDRAWAL_REASONS = ["blessure", "meteo", "terrain", "personnel"] as const;
+export type WithdrawalReason = (typeof WITHDRAWAL_REASONS)[number];
+
+export const WITHDRAWAL_REASON_LABELS: Record<WithdrawalReason, string> = {
+  blessure: "Blessure / effectif insuffisant",
+  meteo: "Conditions météo",
+  terrain: "Terrain indisponible",
+  personnel: "Raison personnelle",
+};
 
 export const MATCH_SIDES = ["home", "away"] as const;
 export type MatchSide = (typeof MATCH_SIDES)[number];
@@ -110,6 +124,17 @@ export const confirmScoreSchema = z.object({
   token: z.string().min(10).max(100),
 });
 export type ConfirmScoreInput = z.infer<typeof confirmScoreSchema>;
+
+/**
+ * Désistement d'un des deux coachs avant le coup d'envoi. Le motif est imposé,
+ * la précision libre s'affiche telle quelle aux coachs qui verront l'annonce
+ * repartir en SOS — d'où la longueur volontairement courte.
+ */
+export const withdrawMatchSchema = z.object({
+  reason: z.enum(WITHDRAWAL_REASONS),
+  details: z.string().trim().max(140).optional(),
+});
+export type WithdrawMatchInput = z.infer<typeof withdrawMatchSchema>;
 
 export const registerCoachSchema = z.object({
   firstName: z.string().min(1).max(50),
@@ -349,6 +374,14 @@ export interface AnnouncementDto {
   responses: AnnouncementResponseDto[];
   /** Coach visiteur : statut de ma proposition sur cette annonce (null si aucune) */
   myResponseStatus: ResponseStatus | null;
+  /**
+   * L'adversaire s'est désisté et l'annonce est repartie en recherche : elle
+   * remonte en tête du radar. Le délai FFF ne s'applique plus — la déclaration
+   * porte sur le match, pas sur l'identité de l'adversaire.
+   */
+  isSos: boolean;
+  sosReason: WithdrawalReason | null;
+  sosDetails: string | null;
 }
 
 export interface MatchDto {
@@ -375,6 +408,10 @@ export interface MatchDto {
   confirmationToken: string | null;
   /** true si le coup d'envoi est passé et que le score final reste à saisir */
   finalScoreDue: boolean;
+  /** Désistement : équipe qui a renoncé, et son motif (null si le match tient toujours) */
+  withdrawnByTeamId: string | null;
+  withdrawalReason: WithdrawalReason | null;
+  withdrawalDetails: string | null;
 }
 
 export type MatchDetailDto = MatchDto;

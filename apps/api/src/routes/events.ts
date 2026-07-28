@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { alias } from "drizzle-orm/pg-core";
-import { and, eq, gte, lte, or } from "drizzle-orm";
+import { and, eq, gte, lte, ne, or } from "drizzle-orm";
 import { createEventSchema, type AgendaItemDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matches, teamEvents, teams } from "../db/schema.js";
@@ -66,7 +66,8 @@ export function eventRoutes(app: FastifyInstance) {
       .from(teamEvents)
       .where(and(eq(teamEvents.teamId, teamId), lte(teamEvents.date, to)));
 
-    // 2. Matchs de l'équipe dans la fenêtre, projetés en items "match"
+    // 2. Matchs de l'équipe dans la fenêtre, projetés en items "match".
+    // Un match dont un coach s'est désisté n'occupe plus la date : il sort de l'agenda.
     const matchRows = await db
       .select({ match: matches, home: homeTeam, away: awayTeam })
       .from(matches)
@@ -77,6 +78,7 @@ export function eventRoutes(app: FastifyInstance) {
           or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)),
           gte(matches.date, from),
           lte(matches.date, to),
+          ne(matches.status, "cancelled"),
         ),
       );
 

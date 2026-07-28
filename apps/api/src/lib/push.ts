@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { WITHDRAWAL_REASON_LABELS, type WithdrawalReason } from "@footcoach/shared";
 import { env } from "../env.js";
 import { db } from "../db/client.js";
 import { pushSubscriptions, teamCoaches, teams, users } from "../db/schema.js";
@@ -187,6 +188,83 @@ export function notifyResponseDecision(input: {
           : `${input.opponentTeamName} a décliné votre proposition.`,
         url: input.accepted && input.matchId ? `/coach/matches/${input.matchId}` : "/coach/announcements",
         tag: "decision",
+      });
+    })(),
+  );
+}
+
+/** Comptes coachs rattachés à ces équipes — pour les exclure d'une diffusion. */
+async function coachIdsOfTeams(teamIds: string[]): Promise<Set<string>> {
+  if (teamIds.length === 0) return new Set();
+  const rows = await db
+    .select({ id: teamCoaches.coachId })
+    .from(teamCoaches)
+    .where(inArray(teamCoaches.teamId, teamIds));
+  return new Set(rows.map((r) => r.id));
+}
+
+/** L'adversaire s'est désisté : le match est annulé. */
+export function notifyWithdrawal(input: {
+  opponentTeamId: string;
+  withdrawnTeamName: string;
+  reason: WithdrawalReason;
+  /** true si l'annonce de l'hôte repart en recherche (désistement de l'invité) */
+  reopened: boolean;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      await sendToUsers(await teamCoachesToNotify(input.opponentTeamId, "notifyResponseDecision"), {
+        title: "Désistement",
+        body: `${input.withdrawnTeamName} renonce au match — ${WITHDRAWAL_REASON_LABELS[input.reason]}. ${
+          input.reopened
+            ? "Votre annonce est repartie en SOS sur le radar."
+            : "Le match est annulé."
+        }`,
+        url: input.reopened ? "/coach/announcements" : "/coach/matches",
+        tag: "desistement",
+      });
+    })(),
+  );
+}
+
+/**
+ * Une annonce repart en SOS après un désistement : même ciblage qu'une annonce
+ * neuve (coachs dont le périmètre couvre le lieu), mais le message dit
+ * l'urgence — ces matchs sont souvent à quelques jours.
+ */
+export function notifySosAnnouncement(input: {
+  teamName: string;
+  category: string;
+  format: string;
+  city: string;
+  date: string;
+  venue: { lat: number; lng: number } | null;
+  /** Les deux équipes du match annulé : leurs coachs savent déjà */
+  excludeTeamIds: string[];
+}): void {
+  if (!pushEnabled() || !input.venue) return;
+  fireAndForget(
+    (async () => {
+      const excluded = await coachIdsOfTeams(input.excludeTeamIds);
+      const targets: string[] = [];
+      for (const { user, team } of await candidates("notifyNewAnnouncement")) {
+        if (excluded.has(user.id)) continue;
+        const origin = originOf(user, team);
+        if (!origin) continue;
+        const km = haversineKm(origin, input.venue!);
+        if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
+        targets.push(user.id);
+      }
+      const day = new Date(`${input.date}T00:00:00`).toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+      });
+      await sendToUsers(targets, {
+        title: `SOS — ${input.teamName} cherche un adversaire`,
+        body: `Match du ${day} à ${input.city} · ${input.category} · ${input.format} — l'adversaire s'est désisté.`,
+        url: "/coach",
+        tag: "sos",
       });
     })(),
   );

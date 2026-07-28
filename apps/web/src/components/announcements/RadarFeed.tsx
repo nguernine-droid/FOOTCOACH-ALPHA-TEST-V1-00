@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Clock3, Crosshair, MapPin, Navigation, Radar, X, XCircle } from "lucide-react";
-import type { AnnouncementDto, UserDto } from "@footcoach/shared";
+import { CalendarDays, Clock3, Crosshair, MapPin, Navigation, Radar, UserMinus, X, XCircle } from "lucide-react";
+import { WITHDRAWAL_REASON_LABELS, type AnnouncementDto, type UserDto } from "@footcoach/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
@@ -17,8 +17,14 @@ const CATEGORIES = ["U9", "U11", "U13", "U15", "U17", "Seniors"];
 /** Périmètre par défaut : la distance qu'un club accepte de faire pour un amical */
 const DEFAULT_RADIUS_KM = 50;
 
-/** Tri par proximité (distances inconnues en dernier), puis par date */
-function byProximity(a: AnnouncementDto, b: AnnouncementDto): number {
+/**
+ * Les annonces en SOS passent devant, quelle que soit la distance : un coach
+ * dont l'adversaire s'est désisté joue souvent dans les jours qui viennent, et
+ * c'est le seul créneau où quelques kilomètres de plus ne pèsent rien.
+ * Ensuite : proximité (distances inconnues en dernier), puis date.
+ */
+function bySosThenProximity(a: AnnouncementDto, b: AnnouncementDto): number {
+  if (a.isSos !== b.isSos) return a.isSos ? -1 : 1;
   if (a.distanceKm !== null && b.distanceKm !== null && a.distanceKm !== b.distanceKm) {
     return a.distanceKm - b.distanceKm;
   }
@@ -94,6 +100,21 @@ export function RadarFeed() {
     }
   }
 
+  /** Se désister avant que le coach n'ait tranché : la proposition disparaît */
+  async function withdrawResponse(id: string) {
+    setResponding(id);
+    setError(null);
+    try {
+      await api(`/announcements/${id}/respond`, { method: "DELETE" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de retirer la proposition");
+      load();
+    } finally {
+      setResponding(null);
+    }
+  }
+
   /** Un point du radar renvoie à sa fiche dans la liste */
   function focusCard(id: string) {
     setSelectedId(id);
@@ -114,7 +135,7 @@ export function RadarFeed() {
     () =>
       matchesFilters
         .filter((a) => radiusKm === null || a.distanceKm === null || a.distanceKm <= radiusKm)
-        .sort(byProximity),
+        .sort(bySosThenProximity),
     [matchesFilters, radiusKm],
   );
   const outOfRange = matchesFilters.filter(
@@ -300,9 +321,26 @@ export function RadarFeed() {
               }}
               className={cn(
                 "rounded-lg border p-4 space-y-3 transition",
-                selectedId === a.id ? "border-blue ring-2 ring-blue/15" : "border-line",
+                selectedId === a.id
+                  ? "border-blue ring-2 ring-blue/15"
+                  : a.isSos
+                    ? "border-coral"
+                    : "border-line",
               )}
             >
+              {/* Un match qui existe déjà et qu'il faut sauver : l'annonce le dit
+                  d'entrée, avec le motif — le coach juge s'il peut dépanner. */}
+              {a.isSos && (
+                <p className="-m-4 mb-0 rounded-t-lg bg-coral-soft px-4 py-2.5 text-xs font-bold text-coral flex items-start gap-2">
+                  <UserMinus size={14} className="shrink-0 mt-px" aria-hidden />
+                  <span>
+                    SOS — l&apos;adversaire s&apos;est désisté
+                    {a.sosReason && ` (${WITHDRAWAL_REASON_LABELS[a.sosReason].toLowerCase()})`}
+                    {a.sosDetails && <span className="block font-semibold text-ink-soft">{a.sosDetails}</span>}
+                  </span>
+                </p>
+              )}
+
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
                   <span
@@ -348,10 +386,20 @@ export function RadarFeed() {
               )}
 
               {a.myResponseStatus === "pending" ? (
-                <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
-                  <Clock3 size={14} className="shrink-0" />
-                  Proposition envoyée — en attente de validation du coach
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
+                    <Clock3 size={14} className="shrink-0" />
+                    Proposition envoyée — en attente de validation du coach
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => withdrawResponse(a.id)}
+                    disabled={responding === a.id}
+                  >
+                    {responding === a.id ? "Retrait…" : "Retirer ma proposition"}
+                  </Button>
+                </div>
               ) : a.myResponseStatus === "declined" ? (
                 <p className="text-xs font-bold text-coral bg-coral-soft rounded-lg px-4 py-3 flex items-center gap-2">
                   <XCircle size={14} className="shrink-0" />
