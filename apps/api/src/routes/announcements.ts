@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, gte, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, notInArray } from "drizzle-orm";
 import {
   createAnnouncementSchema,
   daysBetweenIso,
@@ -10,7 +10,7 @@ import {
   type TeamDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, matches, teams, users } from "../db/schema.js";
+import { announcementResponses, matchAnnouncements, matches, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
@@ -109,6 +109,32 @@ async function loadResponses(announcementIds: string[]) {
 }
 
 /**
+ * Les équipes qui partagent au moins un encadrant avec celle-ci, elle comprise.
+ *
+ * Un coach en encadre parfois deux, et un adjoint peut l'être ailleurs : ces
+ * équipes-là ne peuvent pas se rencontrer, faute de quoi le même homme se
+ * retrouverait sur les deux bancs. La règle porte sur les ÉQUIPES et non sur
+ * celui qui agit — sinon un second coach de l'équipe suffirait à la contourner.
+ */
+async function teamsSharingCoachWith(teamId: string): Promise<string[]> {
+  const staff = await db
+    .select({ coachId: teamCoaches.coachId })
+    .from(teamCoaches)
+    .where(eq(teamCoaches.teamId, teamId));
+  if (staff.length === 0) return [teamId];
+  const rows = await db
+    .select({ teamId: teamCoaches.teamId })
+    .from(teamCoaches)
+    .where(
+      inArray(
+        teamCoaches.coachId,
+        staff.map((s) => s.coachId),
+      ),
+    );
+  return [...new Set([teamId, ...rows.map((r) => r.teamId)])];
+}
+
+/**
  * Date du jour au format ISO. Une annonce dont la date est dépassée ne cherche
  * plus personne : le match n'aura pas lieu. Elle disparaît du radar et n'accepte
  * plus de proposition, sans changer de statut — son émetteur la retrouve dans
@@ -162,6 +188,10 @@ export function announcementRoutes(app: FastifyInstance) {
    */
   app.get("/announcements/radar", { preHandler: requireRole("coach") }, async (request): Promise<RadarDto> => {
     const myTeamId = request.user.teamId;
+    // Écarte mes annonces, mais aussi celles de mes autres équipes et de celles
+    // qui partagent un encadrant avec la mienne : un match qu'on ne peut pas
+    // jouer n'a rien à faire sur le radar.
+    const unplayable = myTeamId ? await teamsSharingCoachWith(myTeamId) : [];
     const rows = await db
       .select({ announcement: matchAnnouncements, team: teams })
       .from(matchAnnouncements)
@@ -170,7 +200,7 @@ export function announcementRoutes(app: FastifyInstance) {
         and(
           eq(matchAnnouncements.status, "open"),
           gte(matchAnnouncements.date, today()),
-          myTeamId ? ne(matchAnnouncements.teamId, myTeamId) : undefined,
+          unplayable.length > 0 ? notInArray(matchAnnouncements.teamId, unplayable) : undefined,
         ),
       )
       .orderBy(desc(matchAnnouncements.createdAt));
@@ -259,6 +289,11 @@ export function announcementRoutes(app: FastifyInstance) {
     if (!announcement) throw new HttpError(404, "Annonce introuvable");
     if (announcement.teamId === responderTeamId)
       throw new HttpError(400, "Vous ne pouvez pas répondre à votre propre annonce");
+    // Le radar masque déjà ces annonces ; ce refus vaut pour tout le reste —
+    // une proposition envoyée avant un changement d'équipe, un appel direct.
+    if ((await teamsSharingCoachWith(responderTeamId)).includes(announcement.teamId)) {
+      throw new HttpError(400, "Vous encadrez l'équipe qui publie cette annonce");
+    }
     if (announcement.status !== "open") throw new HttpError(400, "Cette annonce n'est plus disponible");
     if (announcement.date < today()) throw new HttpError(400, "La date de ce match est passée");
 
@@ -334,6 +369,12 @@ export function announcementRoutes(app: FastifyInstance) {
           .where(and(eq(announcementResponses.id, responseId), eq(announcementResponses.announcementId, id)));
         if (!response) throw new HttpError(404, "Proposition introuvable");
         if (response.status !== "pending") throw new HttpError(400, "Cette proposition n'est plus en attente");
+        // Dernier verrou avant que le match n'existe : une proposition reçue
+        // avant que les deux équipes ne partagent un encadrant serait acceptable
+        // ici alors qu'elle ne l'est plus.
+        if ((await teamsSharingCoachWith(announcement.teamId)).includes(response.teamId)) {
+          throw new HttpError(400, "Vous encadrez aussi l'équipe qui a proposé : ce match ne peut pas se jouer");
+        }
 
         await tx.update(matchAnnouncements).set({ status: "matched" }).where(eq(matchAnnouncements.id, id));
         await tx
