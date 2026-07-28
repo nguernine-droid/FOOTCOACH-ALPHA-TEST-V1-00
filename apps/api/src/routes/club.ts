@@ -33,7 +33,7 @@ export async function getClubByOwner(ownerId: string): Promise<typeof clubs.$inf
 }
 
 // Insère une équipe avec un code d'adhésion unique (retry en cas de collision)
-async function insertTeamWithCode(values: Omit<typeof teams.$inferInsert, "joinCode">) {
+export async function insertTeamWithCode(values: Omit<typeof teams.$inferInsert, "joinCode">) {
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const [team] = await db

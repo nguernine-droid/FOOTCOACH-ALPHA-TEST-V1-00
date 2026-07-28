@@ -9,6 +9,12 @@ export interface ActiveTeamValue {
   activeTeamId: string | null;
   activeTeam: CoachTeamDto | null;
   setActiveTeam: (teamId: string) => void;
+  /**
+   * Relit la session pour reprendre la liste des équipes. La liste vient du
+   * jeton et du compte stocké, tous deux figés au montage : après la création
+   * d'une équipe, seul ce rechargement la fait apparaître.
+   */
+  reloadTeams: () => Promise<void>;
 }
 
 export const ActiveTeamContext = createContext<ActiveTeamValue | null>(null);

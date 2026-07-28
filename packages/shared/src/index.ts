@@ -136,6 +136,16 @@ export const withdrawMatchSchema = z.object({
 });
 export type WithdrawMatchInput = z.infer<typeof withdrawMatchSchema>;
 
+/**
+ * Création d'une équipe supplémentaire par un coach déjà inscrit. Mêmes bornes
+ * que l'équipe créée à l'inscription : c'est la même chose, créée plus tard.
+ */
+export const createTeamSchema = z.object({
+  name: z.string().trim().min(2).max(60),
+  city: z.string().trim().min(1).max(60),
+});
+export type CreateTeamInput = z.infer<typeof createTeamSchema>;
+
 export const registerCoachSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),

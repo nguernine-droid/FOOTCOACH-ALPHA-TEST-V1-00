@@ -4,7 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
-import { api, getActiveTeamId, getStoredUser, homeForRole, logout, setActiveTeamId } from "@/lib/api";
+import {
+  api,
+  getActiveTeamId,
+  getStoredUser,
+  homeForRole,
+  logout,
+  refreshSession,
+  setActiveTeamId,
+} from "@/lib/api";
 import { AccountSheet } from "@/components/AccountSheet";
 import { AccountSheetContext } from "@/components/AccountSheetContext";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
@@ -74,6 +82,13 @@ export function RoleGuard({
   const changeActiveTeam = useCallback((teamId: string) => {
     setActiveTeamId(teamId);
     setActiveTeamIdState(teamId);
+  }, []);
+
+  // Après la création d'une équipe : le refresh re-signe le jeton et réécrit
+  // le compte stocké, d'où la liste à jour sans repasser par la connexion.
+  const reloadTeams = useCallback(async () => {
+    const fresh = await refreshSession();
+    if (fresh) setUser(fresh);
   }, []);
 
   // Pastille « non-lu » : dernière activité plus récente que la dernière consultation
@@ -193,7 +208,13 @@ export function RoleGuard({
           <PageTransition>
             {role === "coach" ? (
               <ActiveTeamContext.Provider
-                value={{ teams: coachTeams, activeTeamId, activeTeam, setActiveTeam: changeActiveTeam }}
+                value={{
+                  teams: coachTeams,
+                  activeTeamId,
+                  activeTeam,
+                  setActiveTeam: changeActiveTeam,
+                  reloadTeams,
+                }}
               >
                 {/* Remonte les pages coach au changement d'équipe → refetch avec le bon X-Team-Id */}
                 <div key={activeTeamId ?? "none"}>{children}</div>

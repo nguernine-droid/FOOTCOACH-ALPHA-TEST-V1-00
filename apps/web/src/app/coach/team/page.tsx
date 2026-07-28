@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Clock, ShieldCheck, Users } from "lucide-react";
+import { Building2, Clock, Plus, ShieldCheck, Users } from "lucide-react";
 import type { UserDto } from "@footcoach/shared";
 import { api, ApiError, getStoredUser, refreshSession } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 // Affiliation du coach à un club (via le code d'affiliation communiqué par le club)
@@ -169,6 +169,11 @@ export default function CoachTeamPage() {
           );
         })}
       </div>
+
+      {/* Le « + » de la barre mène ici aussi : tout le monde ne le trouve pas. */}
+      <ButtonLink href="/coach/team/new" variant="soft" className="w-full">
+        <Plus size={15} /> Créer une équipe
+      </ButtonLink>
     </div>
   );
 }

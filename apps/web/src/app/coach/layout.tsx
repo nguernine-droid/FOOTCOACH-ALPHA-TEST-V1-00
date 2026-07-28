@@ -24,6 +24,11 @@ function defaultAction(pathname: string): QuickAction | null {
   if (pathname.startsWith("/coach/agenda")) {
     return { kind: "link", href: "/coach/agenda?nouveau=1", label: "Créer un événement" };
   }
+  // Sur « Mes équipes », le « + » crée une équipe : y publier une annonce
+  // n'avait rien à voir avec ce que le coach a sous les yeux.
+  if (pathname.startsWith("/coach/team")) {
+    return { kind: "link", href: "/coach/team/new", label: "Créer une équipe" };
+  }
   return PUBLISH;
 }
 

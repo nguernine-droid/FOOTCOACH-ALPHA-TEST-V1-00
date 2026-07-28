@@ -2,12 +2,19 @@
 import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
-import { affiliateClubSchema, registerCoachSchema, type AuthResponseDto } from "@footcoach/shared";
+import {
+  affiliateClubSchema,
+  createTeamSchema,
+  registerCoachSchema,
+  type AuthResponseDto,
+  type CoachTeamDto,
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { clubAffiliationRequests, clubs, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
+import { insertTeamWithCode } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateCode } from "../lib/codes.js";
 
@@ -89,6 +96,40 @@ export function registrationRoutes(app: FastifyInstance) {
       await db.insert(clubAffiliationRequests).values({ coachId: request.user.id, clubId: club.id });
       reply.code(201);
       return { ok: true, clubName: club.name };
+    });
+
+    /**
+     * Créer une équipe de plus. Un coach en encadre souvent deux (les U13 et
+     * les U15) et n'en déclarait qu'une à l'inscription : il n'avait ensuite
+     * aucun moyen d'ajouter la seconde sans passer par un club.
+     *
+     * L'équipe rejoint le club du coach s'il est affilié — c'est le club qui
+     * possède les équipes — sinon elle reste la sienne, comme à l'inscription.
+     */
+    coach.post("/coach/teams", async (request, reply): Promise<CoachTeamDto> => {
+      const input = createTeamSchema.parse(request.body);
+      const [me] = await db.select().from(users).where(eq(users.id, request.user.id));
+
+      const duplicate = await db
+        .select({ id: teams.id })
+        .from(teams)
+        .innerJoin(teamCoaches, eq(teamCoaches.teamId, teams.id))
+        .where(and(eq(teamCoaches.coachId, request.user.id), eq(teams.name, input.name)));
+      if (duplicate.length > 0) throw new HttpError(400, "Vous encadrez déjà une équipe de ce nom");
+
+      const coords = cityCoords(input.city);
+      const team = await insertTeamWithCode({
+        name: input.name,
+        city: input.city,
+        clubId: me?.clubId ?? null,
+        coachId: request.user.id,
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+      });
+      await db.insert(teamCoaches).values({ teamId: team.id, coachId: request.user.id, role: "principal" });
+
+      reply.code(201);
+      return { id: team.id, name: team.name, city: team.city, role: "principal" };
     });
   });
 }
