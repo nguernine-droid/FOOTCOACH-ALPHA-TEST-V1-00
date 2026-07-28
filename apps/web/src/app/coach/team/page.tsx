@@ -1,116 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Building2, Clock, Plus, ShieldCheck, Users } from "lucide-react";
-import type { UserDto } from "@footcoach/shared";
-import { api, ApiError, getStoredUser, refreshSession } from "@/lib/api";
+import { Plus, ShieldCheck, Users } from "lucide-react";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
-// Affiliation du coach à un club (via le code d'affiliation communiqué par le club)
-function ClubAffiliationCard() {
-  const [user, setUser] = useState<UserDto | null>(() => getStoredUser());
-  const [code, setCode] = useState("");
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!user) return null;
-
-  if (user.clubName) {
-    return (
-      <div className="card px-4 py-3 flex items-center gap-2.5">
-        <Building2 size={15} className="text-blue shrink-0" />
-        <p className="text-sm">
-          Club : <span className="font-bold">{user.clubName}</span>
-        </p>
-      </div>
-    );
-  }
-
-  if (user.pendingClubName) {
-    return (
-      <div className="card px-4 py-3 flex items-center gap-2.5 border-l-4 border-l-gold">
-        <Clock size={15} className="text-sun shrink-0" />
-        <p className="text-sm">
-          Demande d&apos;affiliation en attente auprès de <span className="font-bold">{user.pendingClubName}</span>.
-        </p>
-      </div>
-    );
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      await api("/coach/affiliation", { method: "POST", body: JSON.stringify({ code }) });
-      const refreshed = await refreshSession();
-      setUser(refreshed ?? getStoredUser());
-      setCode("");
-      setOpen(false);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Demande impossible");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="card p-5 space-y-3">
-      <div className="flex items-center gap-3">
-        <span className="w-10 h-10 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
-          <Building2 size={18} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">Rejoindre un club</p>
-          <p className="text-xs text-ink-soft">
-            Votre club vous a communiqué un code d&apos;affiliation ? Saisissez-le pour lui envoyer une demande.
-          </p>
-        </div>
-        {!open && (
-          <Button size="sm" variant="soft" onClick={() => setOpen(true)}>
-            Saisir un code
-          </Button>
-        )}
-      </div>
-      {open && (
-        <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
-          <div className="space-y-1.5 flex-1 min-w-[10rem]">
-            <label className="text-xs font-bold text-ink-soft" htmlFor="affiliation-code">
-              Code d&apos;affiliation
-            </label>
-            <input
-              id="affiliation-code"
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              autoComplete="off"
-              autoCapitalize="characters"
-              autoCorrect="off"
-              spellCheck={false}
-              enterKeyHint="send"
-              className="field font-mono tracking-widest"
-              placeholder="CLUBAA"
-            />
-          </div>
-          <Button type="submit" disabled={busy || code.length < 4}>
-            Envoyer
-          </Button>
-          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-            Annuler
-          </Button>
-        </form>
-      )}
-      {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
-    </div>
-  );
-}
-
 /**
- * Mes équipes : identité des équipes encadrées et rattachement au club.
- * La V1 ne gère pas d'effectif — les matchs amicaux se jouent entre coachs.
+ * Mes équipes : les équipes encadrées, et celle au nom de laquelle on publie.
+ * La V1 ne gère ni effectif ni club — l'application ne connaît que des coachs,
+ * qui se rencontrent en match amical.
  */
 export default function CoachTeamPage() {
   const { teams, activeTeamId, setActiveTeam } = useActiveTeam();
@@ -130,8 +28,6 @@ export default function CoachTeamPage() {
           </p>
         </div>
       </div>
-
-      <ClubAffiliationCard />
 
       <div className="stagger space-y-2">
         {teams.map((team) => {

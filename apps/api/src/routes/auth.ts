@@ -15,8 +15,6 @@ import {
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
-  clubAffiliationRequests,
-  clubs,
   joinRequests,
   loginEvents,
   passwordResetRequests,
@@ -105,20 +103,12 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     const [primaryTeam] =
       user.lat == null && teamId ? await db.select().from(teams).where(eq(teams.id, teamId)) : [];
     location = originOf(user, primaryTeam ?? null);
-    if (user.clubId) {
-      const [club] = await db.select().from(clubs).where(eq(clubs.id, user.clubId));
-      clubName = club?.name ?? null;
-    } else {
-      // Pas encore affilié : exposer une éventuelle demande en attente
-      const [pending] = await db
-        .select({ name: clubs.name })
-        .from(clubAffiliationRequests)
-        .innerJoin(clubs, eq(clubAffiliationRequests.clubId, clubs.id))
-        .where(and(eq(clubAffiliationRequests.coachId, user.id), eq(clubAffiliationRequests.status, "pending")))
-        .limit(1);
-      clubName = null;
-      pendingClubName = pending?.name ?? null;
-    }
+    // V1 : l'application ne connaît que des coachs. Plus aucune affiliation
+    // n'est possible et le club ne s'affiche nulle part — inutile d'aller le
+    // chercher à chaque lecture du compte. Le club reste en base et dans le
+    // code : rétablir ces deux lectures suffit à le faire revenir.
+    clubName = null;
+    pendingClubName = null;
   } else if (teamId) {
     const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
     teamName = team?.name ?? null;

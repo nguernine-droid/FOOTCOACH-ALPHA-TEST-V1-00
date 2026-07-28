@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Building2, Contact, Phone, QrCode, ScanLine, Trash2, UserPlus } from "lucide-react";
+import { Contact, Phone, QrCode, ScanLine, Trash2, UserPlus } from "lucide-react";
 import { parseCoachQr, type CoachRelationDto } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
@@ -193,11 +193,6 @@ export default function CoachRelationsPage() {
                   {relation.teams.length > 0 && (
                     <p className="text-xs text-ink-soft truncate">
                       {relation.teams.map((t) => t.name).join(" · ")} — {relation.teams[0].city}
-                    </p>
-                  )}
-                  {relation.clubName && (
-                    <p className="text-xs text-ink-soft truncate flex items-center gap-1.5">
-                      <Building2 size={11} className="shrink-0" /> {relation.clubName}
                     </p>
                   )}
                 </div>

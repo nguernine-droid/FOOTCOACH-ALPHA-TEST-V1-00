@@ -256,10 +256,7 @@ export default function CoachProfilePage() {
         {user.teamName && (
           <p className="flex items-center gap-2.5 bg-paper rounded-lg px-4 py-2.5 text-sm">
             <Users size={14} className="text-blue shrink-0" />
-            <span className="font-semibold truncate">
-              {user.teamName}
-              {user.clubName ? ` · ${user.clubName}` : ""}
-            </span>
+            <span className="font-semibold truncate">{user.teamName}</span>
           </p>
         )}
         <Button

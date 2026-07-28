@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Info, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import type { CoachTeamDto } from "@footcoach/shared";
-import { api, getStoredUser } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { Button } from "@/components/ui/Button";
@@ -26,7 +26,6 @@ export default function NewTeamPage() {
   const [city, setCity] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const clubName = getStoredUser()?.clubName ?? null;
 
   const incomplete = name.trim().length < 2 || city.trim().length < 1;
   useQuickActionOverride({
@@ -111,16 +110,6 @@ export default function NewTeamPage() {
             Elle sert de point de départ au radar quand vous n&apos;avez pas réglé de position.
           </p>
         </div>
-
-        {clubName && (
-          <div className="rounded-lg bg-blue-faint border border-line px-4 py-3 flex gap-2.5">
-            <Info size={15} className="text-blue shrink-0 mt-0.5" aria-hidden />
-            <p className="text-xs text-ink-soft">
-              Vous êtes affilié à <span className="font-bold text-ink">{clubName}</span> : cette équipe sera
-              rattachée à ce club.
-            </p>
-          </div>
-        )}
 
         {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
 

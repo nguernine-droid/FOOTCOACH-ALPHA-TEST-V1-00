@@ -3,14 +3,13 @@ import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import {
-  affiliateClubSchema,
   createTeamSchema,
   registerCoachSchema,
   type AuthResponseDto,
   type CoachTeamDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { clubAffiliationRequests, clubs, teamCoaches, teams, users } from "../db/schema.js";
+import { teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
@@ -71,44 +70,25 @@ export function registrationRoutes(app: FastifyInstance) {
     return buildAuthResponse(user);
   });
 
-  // --- Espace coach : affiliation à un club ---
+  // --- Espace coach ---
+  //
+  // V1 : l'application ne connaît que des coachs. La demande d'affiliation à un
+  // club (POST /coach/affiliation) n'est plus exposée — l'espace club, ses
+  // routes et ses tables restent en place, simplement hors d'atteinte. Voir
+  // l'historique git pour la remettre en service.
   app.register((coach) => {
     coach.addHook("preHandler", requireAuth);
     coach.addHook("preHandler", requireRole("coach"));
 
-    // Demande d'affiliation à un club via son code (le club valide ensuite)
-    coach.post("/coach/affiliation", async (request, reply) => {
-      const input = affiliateClubSchema.parse(request.body);
-      const [club] = await db.select().from(clubs).where(eq(clubs.affiliationCode, input.code.toUpperCase().trim()));
-      if (!club) throw new HttpError(404, "Code d'affiliation invalide");
-
-      const [me] = await db.select().from(users).where(eq(users.id, request.user.id));
-      if (me?.clubId === club.id) throw new HttpError(400, "Vous êtes déjà affilié à ce club");
-
-      const [pending] = await db
-        .select()
-        .from(clubAffiliationRequests)
-        .where(
-          and(eq(clubAffiliationRequests.coachId, request.user.id), eq(clubAffiliationRequests.status, "pending")),
-        );
-      if (pending) throw new HttpError(400, "Vous avez déjà une demande d'affiliation en attente");
-
-      await db.insert(clubAffiliationRequests).values({ coachId: request.user.id, clubId: club.id });
-      reply.code(201);
-      return { ok: true, clubName: club.name };
-    });
-
     /**
      * Créer une équipe de plus. Un coach en encadre souvent deux (les U13 et
-     * les U15) et n'en déclarait qu'une à l'inscription : il n'avait ensuite
-     * aucun moyen d'ajouter la seconde sans passer par un club.
+     * les U15) et n'en déclarait qu'une à l'inscription.
      *
-     * L'équipe rejoint le club du coach s'il est affilié — c'est le club qui
-     * possède les équipes — sinon elle reste la sienne, comme à l'inscription.
+     * L'équipe est la sienne, comme à l'inscription : en V1 aucune équipe
+     * n'appartient à un club.
      */
     coach.post("/coach/teams", async (request, reply): Promise<CoachTeamDto> => {
       const input = createTeamSchema.parse(request.body);
-      const [me] = await db.select().from(users).where(eq(users.id, request.user.id));
 
       const duplicate = await db
         .select({ id: teams.id })
@@ -121,7 +101,6 @@ export function registrationRoutes(app: FastifyInstance) {
       const team = await insertTeamWithCode({
         name: input.name,
         city: input.city,
-        clubId: me?.clubId ?? null,
         coachId: request.user.id,
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
