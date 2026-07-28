@@ -27,6 +27,7 @@ import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js"
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
 import { originOf } from "../lib/coachOrigin.js";
+import { authRateLimit } from "../lib/rateLimits.js";
 
 const REFRESH_TTL_MS = 7 * 24 * 3600 * 1000;
 
@@ -158,11 +159,20 @@ export async function resolveTeamId(user: typeof users.$inferSelect): Promise<st
 const V1_ROLE_MESSAGE =
   "Cet espace n'est pas disponible dans la version 1 de FootCoach, réservée aux coachs.";
 
+
+/**
+ * Empreinte bcrypt d'un mot de passe qui n'existe pas. Sert à comparer même
+ * quand le compte est inconnu : sans cela, la réponse revient bien plus vite
+ * pour un email non inscrit, ce qui suffit à dresser la liste des comptes.
+ */
+const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+
 export function authRoutes(app: FastifyInstance) {
-  app.post("/auth/login", async (request): Promise<AuthResponseDto> => {
+  app.post("/auth/login", authRateLimit, async (request): Promise<AuthResponseDto> => {
     const { email, password } = loginSchema.parse(request.body);
     const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    const passwordOk = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+    if (!user || !passwordOk) {
       throw new HttpError(401, "Email ou mot de passe incorrect");
     }
     // Après la vérification du mot de passe : ne révèle pas l'existence du compte
@@ -182,7 +192,7 @@ export function authRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/auth/refresh", async (request): Promise<AuthResponseDto> => {
+  app.post("/auth/refresh", authRateLimit, async (request): Promise<AuthResponseDto> => {
     const { refreshToken } = refreshSchema.parse(request.body);
     const [stored] = await db
       .select()
@@ -219,7 +229,7 @@ export function authRoutes(app: FastifyInstance) {
   // Mot de passe oublié : enregistre une demande visible par l'admin, qui
   // génèrera un mot de passe temporaire. Réponse identique que le compte
   // existe ou non (pas d'énumération d'emails).
-  app.post("/auth/forgot-password", async (request) => {
+  app.post("/auth/forgot-password", authRateLimit, async (request) => {
     const { email } = forgotPasswordSchema.parse(request.body);
     const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
     if (user && !user.disabledAt) {

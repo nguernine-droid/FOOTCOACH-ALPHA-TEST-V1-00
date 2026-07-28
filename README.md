@@ -173,6 +173,47 @@ L'API est stateless (JWT, aucune session en mémoire) : les réplicas se partage
 
 > **HTTPS n'est pas optionnel en production** : le scanner de QR (caméra), le service worker et les notifications push en dépendent tous les trois.
 
+## Sécurité
+
+Ce qui est en place dans le code, et ce qui reste à la charge du déploiement.
+
+**Refus de démarrer plutôt que de mal démarrer.** En production, l'API vérifie sa
+configuration avant d'écouter : secrets JWT distincts, d'au moins 32 caractères,
+et différents de ceux du fichier de développement. Un déploiement qui oublie de
+les définir s'arrête avec un message explicite au lieu de signer ses jetons avec
+une clé publiquement connue. `docker-compose.prod.yml` applique la même exigence
+au mot de passe PostgreSQL.
+
+**Authentification.** Mots de passe hachés en bcrypt. Jeton d'accès de 15
+minutes, jeton de rafraîchissement de 7 jours stocké haché, révoqué et remplacé
+à chaque usage. La comparaison de mot de passe s'exécute même pour un compte
+inconnu : sans cela, l'écart de temps de réponse suffit à dresser la liste des
+comptes. « Mot de passe oublié » répond la même chose dans tous les cas.
+
+**Limitation de débit.** 10 tentatives par minute sur la connexion, le
+rafraîchissement et le mot de passe oublié ; 5 inscriptions par tranche de 10
+minutes ; 300 requêtes par minute au global. Comptées par compte une fois
+authentifié — sinon les coachs d'un même club, derrière la même adresse, se
+partageraient un seul quota.
+
+**En-têtes.** Politique de contenu, `nosniff`, `frame-ancestors: none`,
+`Referrer-Policy: no-referrer` et HSTS sur les deux services. Les photos de
+profil sont servies avec une politique qui n'autorise l'exécution de rien.
+
+**Ce qui reste à faire au déploiement :**
+
+1. Générer les secrets : `openssl rand -base64 48`, deux fois, valeurs distinctes.
+2. Placer un reverse proxy TLS en façade (nginx, traefik, Caddy) — l'application
+   ne termine pas le TLS elle-même.
+3. Ne pas exposer le port PostgreSQL (déjà retiré par `docker-compose.prod.yml`).
+4. Sauvegarder la base **et** le volume `uploads` (photos de profil).
+5. Surveiller `npm audit` : les avis de sécurité sortent après les déploiements.
+
+**Limites connues, assumées à ce stade :** pas de second facteur sur le compte
+administrateur, pas de détection de rejeu d'un jeton de rafraîchissement révoqué,
+et le jeton d'accès reste valable jusqu'à 15 minutes après une désactivation de
+compte.
+
 ## Développement hors Docker
 
 ```bash

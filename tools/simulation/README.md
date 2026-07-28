@@ -12,9 +12,17 @@ réponse de 156 Ko servie pour afficher une poignée de cartes.
 ## Lancer
 
 ```bash
-docker compose up -d          # la pile doit tourner
+RATE_LIMIT_DISABLED=true docker compose up -d api   # voir ci-dessous
 node tools/simulation/simulate.mjs
+docker compose up -d api                            # rétablit la protection
 ```
+
+La simulation joue cent coachs depuis **une seule adresse**, ce que la
+limitation de débit prend — à raison — pour une attaque : sans la soupape, les
+inscriptions s'arrêtent à la cinquième. `RATE_LIMIT_DISABLED` n'existe que pour
+ce cas ; l'API refuse de démarrer avec ce réglage si `NODE_ENV=production`.
+Pensez à relancer le service sans la variable après coup — la commande
+ci-dessus le fait.
 
 Environ deux minutes. Réglages par variables d'environnement :
 

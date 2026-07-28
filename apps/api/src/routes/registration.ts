@@ -14,6 +14,7 @@ import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { issueRefreshToken, toUserDto } from "./auth.js";
 import { insertTeamWithCode } from "./club.js";
+import { registerRateLimit } from "../lib/rateLimits.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateCode } from "../lib/codes.js";
 
@@ -32,8 +33,9 @@ async function buildAuthResponse(user: typeof users.$inferSelect): Promise<AuthR
 }
 
 export function registrationRoutes(app: FastifyInstance) {
-  // Inscription coach : crée le compte ET son équipe en une fois
-  app.post("/auth/register-coach", async (request, reply): Promise<AuthResponseDto> => {
+  // Inscription coach : crée le compte ET son équipe en une fois. Plafonnée par
+  // adresse — sans cela la table des comptes se remplit sans effort.
+  app.post("/auth/register-coach", registerRateLimit, async (request, reply): Promise<AuthResponseDto> => {
     const input = registerCoachSchema.parse(request.body);
     await assertEmailFree(input.email);
     const passwordHash = await bcrypt.hash(input.password, 10);

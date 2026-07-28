@@ -38,6 +38,9 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:contact@footcoach.local}
+      # Lève les plafonds de débit pour la simulation de charge, qui joue cent
+      # coachs depuis une seule adresse. Refusé si NODE_ENV=production.
+      RATE_LIMIT_DISABLED: ${RATE_LIMIT_DISABLED:-}
     # Pas de port hôte : l'API n'est accessible que via le proxy Next (service web).
     # Cela permet `docker compose up --scale api=3` sans conflit de ports.
     volumes:

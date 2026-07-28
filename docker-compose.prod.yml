@@ -6,6 +6,11 @@ services:
   postgres:
     restart: unless-stopped
     ports: []
+    # `?` : compose refuse de démarrer si la variable est absente ou vide.
+    # Le mot de passe par défaut du fichier de développement n'a rien à faire
+    # sur une base exposée.
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définissez POSTGRES_PASSWORD dans .env}
 
   api:
     build:
@@ -13,6 +18,15 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      # Secrets obligatoires : sans eux la pile ne démarre pas. Les générer une
+      # fois avec `openssl rand -base64 48`, distincts l'un de l'autre.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?générez un secret dédié (openssl rand -base64 48)}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?générez un secret dédié, distinct du précédent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définissez POSTGRES_PASSWORD dans .env}
+      DATABASE_URL: postgres://${POSTGRES_USER:-footcoach}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-footcoach}
+      # Origines autorisées à appeler l'API depuis un navigateur. Vide = aucune,
+      # ce qui suffit puisque le navigateur passe par le proxy du service web.
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     volumes: []
 
   web:
