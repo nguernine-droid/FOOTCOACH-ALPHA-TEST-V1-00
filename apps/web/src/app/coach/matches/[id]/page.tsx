@@ -366,6 +366,27 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         </section>
       ) : (
         <>
+          {/* Se désister : rattaché à la feuille de match, juste sous elle, et
+              non relégué sous la carte du score — c'est là qu'on le cherche.
+              Une ligne discrète : l'action reste rare et lourde de conséquences. */}
+          {match.status === "scheduled" && (
+            <div className="card px-5 py-4 flex flex-wrap items-center gap-3" aria-label="Désistement">
+              <p className="text-xs text-ink-soft min-w-[13rem] flex-1">
+                <span className="font-bold text-ink">Un empêchement ?</span>{" "}
+                {match.mySide === "away"
+                  ? "L'annonce repartira en SOS sur le radar : le coach pourra retrouver une équipe à temps."
+                  : "Le match sera annulé et votre adversaire prévenu."}
+              </p>
+              <Button
+                variant="danger"
+                onClick={() => setWithdrawing(true)}
+                className="w-full sm:w-auto shrink-0"
+              >
+                <UserMinus size={15} /> Se désister
+              </Button>
+            </div>
+          )}
+
         {/* ————— Score final et sa validation ————— */}
         <section className="card p-5 space-y-4" aria-label="Score final">
           <h3 className="display text-lg">Score final</h3>
@@ -475,23 +496,6 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
           )}
         </section>
 
-          {/* Se désister : une sortie de parcours, tenue à distance des actions
-              du match et jamais présentée comme un bouton anodin. */}
-          {match.status === "scheduled" && (
-            <section className="card p-5 space-y-3" aria-label="Désistement">
-              <div>
-                <h3 className="display text-lg leading-none">Un empêchement ?</h3>
-                <p className="text-xs text-ink-soft mt-1.5">
-                  {match.mySide === "away"
-                    ? "Prévenez tout de suite : l'annonce repartira en SOS sur le radar et le coach pourra retrouver une équipe à temps."
-                    : "Prévenez tout de suite : le match sera annulé et votre adversaire alerté."}
-                </p>
-              </div>
-              <Button variant="danger" size="lg" className="w-full" onClick={() => setWithdrawing(true)}>
-                <UserMinus size={16} /> Se désister du match
-              </Button>
-            </section>
-          )}
         </>
       )}
 
