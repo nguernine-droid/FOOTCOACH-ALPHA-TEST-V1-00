@@ -146,18 +146,12 @@
   --spotlight-ink: #0A1330;
   --spotlight-muted: #4A5578;
 
-  /* — Fond de carte des matchs : tuiles « jour », gris désaturé — */
+  /* — Carte des matchs : fond uni, plus clair que le blanc des cartes — */
   --map-bg: #E8EDF5;
-  --map-block: rgba(10, 19, 48, 0.035);
-  --map-road: rgba(10, 19, 48, 0.07);
-  --map-road-major: rgba(10, 19, 48, 0.11);
-  --map-park: rgba(33, 122, 66, 0.1);
-  --map-water: rgba(56, 121, 209, 0.12);
   --map-vignette: rgba(10, 19, 48, 0.1);
   /* Le cône de balayage écraserait un fond clair : il y est plus discret */
   --map-sweep-opacity: 0.18;
   --map-ring: var(--accent);
-  --map-rail-track: rgba(10, 19, 48, 0.16);
   /* Marqueurs : le contour doit tenir sur le fond de carte du thème */
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
@@ -301,16 +295,11 @@
   --spotlight-ink: #FFFFFF; /* 15,0:1 sur spotlight-from */
   --spotlight-muted: #A9B4D0; /* 7,4:1 */
 
+  /* — Carte des matchs : fond uni, plus profond que la surface des cartes — */
   --map-bg: #0A1330;
-  --map-block: rgba(255, 255, 255, 0.022);
-  --map-road: rgba(255, 255, 255, 0.055);
-  --map-road-major: rgba(255, 255, 255, 0.085);
-  --map-park: rgba(63, 164, 92, 0.06);
-  --map-water: rgba(120, 170, 255, 0.07);
   --map-vignette: rgba(10, 19, 48, 0.78);
   --map-sweep-opacity: 0.3;
   --map-ring: var(--accent);
-  --map-rail-track: rgba(255, 255, 255, 0.18);
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
   --pin-stroke: #0A1330;

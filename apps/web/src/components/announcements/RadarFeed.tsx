@@ -213,8 +213,6 @@ export function RadarFeed() {
         unknownCount={unknownCount}
         onSelect={openDetail}
         selectedId={selectedId}
-        radiusKm={radiusKm}
-        onRadiusChange={changeRadius}
       />
 
       {/* D'où l'on balaie : le coach doit pouvoir le corriger d'un tap */}

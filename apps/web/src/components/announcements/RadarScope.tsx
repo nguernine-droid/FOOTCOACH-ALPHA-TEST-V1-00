@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import type { AnnouncementDto } from "@footcoach/shared";
-import { JerseyPin, StreetMap } from "@/components/announcements/mapArt";
+import { JerseyPin } from "@/components/announcements/mapArt";
 import { cn } from "@/lib/utils";
 
 /** Rayons proposés, en km. `null` = aucune limite.
@@ -60,9 +59,6 @@ function position(bearing: number, radius: number) {
   };
 }
 
-/** Niveaux de zoom d'affichage. 1 = tout le périmètre tient dans le cadre. */
-const ZOOM_STEPS = [1, 1.4, 1.9, 2.6, 3.4];
-
 /** Repères cardinaux, posés sur le pourtour du cadre */
 const CARDINALS = [
   { label: "N", cls: "left-1/2 top-0 -translate-x-1/2 -translate-y-1/2" },
@@ -72,59 +68,16 @@ const CARDINALS = [
 ] as const;
 
 /**
- * Glissière verticale en forme de pill, posée sur un bord de la carte.
+ * Carte des matchs proches : les cercles de portée, un cône qui balaie la
+ * zone, et un maillot par équipe qui cherche un adversaire — placé à sa vraie
+ * distance et dans sa vraie direction.
  *
- * Un `input[type=range]` pivoté d'un quart de tour plutôt qu'un composant
- * maison : on hérite du clavier (flèches, Début/Fin), du rôle ARIA et du
- * comportement tactile natif, ce qu'aucune reconstitution ne rend gratuitement.
- */
-function Rail({
-  side,
-  label,
-  valueText,
-  index,
-  max,
-  onChange,
-}: {
-  side: "left" | "right";
-  label: string;
-  valueText: string;
-  index: number;
-  max: number;
-  onChange: (index: number) => void;
-}) {
-  const fill = max === 0 ? 0 : (index / max) * 100;
-  return (
-    <div
-      className={cn(
-        "map-rail absolute top-1/2 -translate-y-1/2 z-20",
-        side === "left" ? "left-1.5" : "right-1.5",
-      )}
-      style={{ ["--rail-length" as string]: "9rem", ["--rail-fill" as string]: `${fill}%` }}
-    >
-      <input
-        type="range"
-        min={0}
-        max={max}
-        step={1}
-        value={index}
-        onChange={(e) => onChange(Number(e.target.value))}
-        aria-label={label}
-        aria-valuetext={valueText}
-      />
-    </div>
-  );
-}
-
-/**
- * Carte des matchs proches : un fond de plan nocturne, les cercles de portée,
- * un cône qui balaie la zone, et un maillot par équipe qui cherche un
- * adversaire — placé à sa vraie distance et dans sa vraie direction.
+ * Le fond est uni. Un plan de rues stylisé y avait sa place tant qu'il portait
+ * une information ; ce n'était pas le cas — il ne montrait aucune rue réelle,
+ * et il concurrençait les maillots, seule chose exacte de cet écran.
  *
- * Deux glissières bordent la carte : à gauche le périmètre réellement balayé
- * (réglage enregistré côté serveur, il décide aussi des annonces qui
- * déclenchent une notification), à droite le zoom d'affichage, qui ne change
- * rien à la recherche — il rapproche seulement le regard du centre.
+ * Le périmètre se règle par les pastilles sous la carte : c'est un choix parmi
+ * quatre valeurs, une liste le dit mieux qu'une glissière.
  *
  * La carte ne fait que représenter la liste qui la suit : elle porte un
  * `role="img"` et son résumé, et laisse à la liste toute l'information.
@@ -135,34 +88,15 @@ export function RadarScope({
   unknownCount,
   onSelect,
   selectedId,
-  radiusKm,
-  onRadiusChange,
 }: {
   blips: Blip[];
-  /** Distance représentée par le bord du cadre au zoom 1 */
+  /** Distance représentée par le cercle extérieur */
   scaleKm: number;
   /** Annonces non plaçables (ville inconnue), signalées sous la carte */
   unknownCount: number;
   onSelect: (announcementId: string) => void;
   selectedId: string | null;
-  /** Périmètre balayé, tel qu'enregistré. `null` = sans limite. */
-  radiusKm?: number | null;
-  /** Absent : la glissière de périmètre n'est pas rendue */
-  onRadiusChange?: (value: number | null) => void;
 }) {
-  const [zoomStep, setZoomStep] = useState(0);
-  const zoom = ZOOM_STEPS[zoomStep];
-
-  // Le zoom rapproche le regard du centre : les équipes qui sortent du cadre ne
-  // sont pas écrasées sur le bord (ce serait mentir sur leur distance), elles
-  // sortent — et la légende sous la carte le dit.
-  const placed = useMemo(
-    () => blips.map((b) => ({ ...b, view: b.radius * zoom })).filter((b) => b.view <= 1),
-    [blips, zoom],
-  );
-  const offscreen = blips.reduce((n, b) => n + b.announcements.length, 0)
-    - placed.reduce((n, b) => n + b.announcements.length, 0);
-
   // Le résumé compte les annonces, pas les marqueurs : plusieurs équipes
   // peuvent se partager un même maillot.
   const detected = blips.reduce((n, b) => n + b.announcements.length, 0);
@@ -170,14 +104,6 @@ export function RadarScope({
     detected === 0
       ? `Aucune équipe détectée dans un rayon de ${scaleKm} km`
       : `${detected} équipe${detected > 1 ? "s" : ""} détectée${detected > 1 ? "s" : ""} dans un rayon de ${scaleKm} km`;
-
-  // Distance représentée par le bord du cadre au zoom courant
-  const viewKm = Math.max(1, Math.round(scaleKm / zoom));
-
-  const radiusIndex = Math.max(
-    0,
-    RADIUS_OPTIONS.findIndex((o) => o.value === (radiusKm ?? null)),
-  );
 
   return (
     <div className="space-y-2">
@@ -190,19 +116,24 @@ export function RadarScope({
           border border-defined"
         style={{ backgroundColor: "var(--map-bg)" }}
       >
-        {/* Fond de plan */}
-        <StreetMap className="absolute inset-0 w-full h-full" />
-        {/* Vignetage : le regard tombe au centre, là où se trouve mon équipe */}
+        {/* Vignetage : le regard tombe au centre, là où se trouve mon équipe.
+            C'est la seule chose posée sur le fond uni — une profondeur, pas un
+            motif : rien ne doit disputer l'attention aux maillots. */}
         <span
           aria-hidden
           className="absolute inset-0"
           style={{
-            background: "radial-gradient(circle at center, transparent 35%, var(--map-vignette) 100%)",
+            background: "radial-gradient(circle at center, transparent 45%, var(--map-vignette) 100%)",
           }}
         />
 
         {/* Cadre carré inscrit : c'est lui qui porte l'échelle, les cercles et
-            les maillots. Il laisse libres les bords, où vivent les glissières. */}
+            les maillots.
+
+            La marge n'est pas décorative : un maillot est ancré par sa pointe
+            basse et monte de 40 px au-dessus d'elle. Celui qui tombe sur le
+            cercle extérieur — l'équipe la plus lointaine — a besoin de cette
+            place, sans quoi il est rogné par le bord de la carte. */}
         <div className="absolute inset-[13%]">
           {/* Cercles de portée, or d'opacité décroissante vers l'extérieur */}
           {[
@@ -256,7 +187,7 @@ export function RadarScope({
           ))}
 
           {/* Une équipe détectée, ou plusieurs au même endroit */}
-          {placed.map(({ announcements, view, bearing }) => {
+          {blips.map(({ announcements, radius, bearing }) => {
             const first = announcements[0];
             const count = announcements.length;
             const km = first.distanceKm!.toLocaleString("fr-FR");
@@ -267,10 +198,10 @@ export function RadarScope({
             const seeking = announcements.some((a) => a.isSos);
             return (
               <button
-                key={`${view}-${bearing}`}
+                key={`${radius}-${bearing}`}
                 type="button"
                 onClick={() => onSelect(target.id)}
-                style={position(bearing, view)}
+                style={position(bearing, radius)}
                 // Cible de 44 px sous un maillot de 32 : le dessin reste fin
                 // sans que le pouce ait à viser.
                 //
@@ -297,46 +228,18 @@ export function RadarScope({
           })}
         </div>
 
-        {/* Périmètre balayé : la glissière de gauche */}
-        {onRadiusChange && (
-          <Rail
-            side="left"
-            label="Périmètre de recherche"
-            valueText={RADIUS_OPTIONS[radiusIndex].label}
-            index={radiusIndex}
-            max={RADIUS_OPTIONS.length - 1}
-            onChange={(i) => onRadiusChange(RADIUS_OPTIONS[i].value)}
-          />
-        )}
-
-        {/* Zoom d'affichage : la glissière de droite */}
-        <Rail
-          side="right"
-          label="Zoom de la carte"
-          valueText={`Bord du cadre à ${viewKm} km`}
-          index={zoomStep}
-          max={ZOOM_STEPS.length - 1}
-          onChange={setZoomStep}
-        />
-
-        {/* Échelle affichée, en bas au centre */}
+        {/* Distance représentée par le cercle extérieur */}
         <span
           aria-hidden
           className="absolute left-1/2 bottom-3 -translate-x-1/2 z-10 rounded-pill px-3 py-1
             text-[11px] font-bold tabular-nums text-accent-on bg-accent-solid"
         >
-          {viewKm} km
+          {scaleKm} km
         </span>
       </div>
 
       <p className="text-[11px] text-ink-soft text-center">
         {summary}.
-        {offscreen > 0 && (
-          <>
-            {" "}
-            {offscreen} hors du cadre à ce niveau de zoom.
-          </>
-        )}
         {unknownCount > 0 && (
           <>
             {" "}
