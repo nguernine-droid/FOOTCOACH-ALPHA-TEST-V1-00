@@ -273,8 +273,14 @@ export function RadarScope({
                 style={position(bearing, view)}
                 // Cible de 44 px sous un maillot de 32 : le dessin reste fin
                 // sans que le pouce ait à viser.
-                className="map-pin absolute -translate-x-1/2 -translate-y-full w-11 flex justify-center
-                  rounded-lg focus-visible:!outline-accent"
+                //
+                // Le recentrage est porté par `.map-pin` en CSS, PAS par les
+                // utilitaires `-translate-*` : en Tailwind v4 ceux-ci écrivent
+                // la propriété `translate`, qui se COMPOSE avec le `transform`
+                // de l'animation au lieu de le remplacer. Les deux ensemble
+                // décalaient chaque maillot de deux fois sa hauteur vers le
+                // haut, et ceux du cercle extérieur sortaient de la carte.
+                className="map-pin absolute w-11 flex justify-center rounded-lg focus-visible:!outline-accent"
                 aria-label={
                   count === 1
                     ? `${first.team.name} — match à ${first.city}, à ${km} km`
