@@ -66,8 +66,7 @@ Le bloc de commentaire en tête de `index.html` le rappelle.
 
 Le contenu, lui, suit le périmètre décrit dans le `README.md` de la racine
 (radar, délai FFF de 10 jours, score validé par QR, notifications, relations
-entre coachs, ce qui est volontairement absent). Toute évolution du périmètre
-V1 doit se relire ici.
+entre coachs). Toute évolution du périmètre V1 doit se relire ici.
 
 Les fontes Inter et Barlow Condensed sont distribuées sous **SIL Open Font
 License 1.1**, qui autorise cet auto-hébergement.

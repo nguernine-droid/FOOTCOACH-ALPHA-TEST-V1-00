@@ -958,21 +958,11 @@ section { position: relative; z-index: 1; }
 .after-install h3 { font-size: 1.2rem; margin-bottom: 0.35rem; }
 .after-install p { color: var(--text-secondary); font-size: 0.9375rem; }
 
-/* ─────────────────────────────  LIMITES / FAQ  ─────────────────────────── */
+/* ───────────────────────────────  FAQ  ─────────────────────────────────── */
 
-.two-col { display: grid; gap: clamp(2rem, 5vw, 3.5rem); }
-@media (min-width: 940px) { .two-col { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); } }
-
-.limits { display: grid; gap: 0.85rem; }
-.limits li {
-  list-style: none;
-  display: flex;
-  gap: 0.7rem;
-  align-items: flex-start;
-  color: var(--text-secondary);
-  font-size: 0.9688rem;
-}
-.limits svg { flex-shrink: 0; color: var(--text-muted); margin-top: 0.2rem; }
+/* La colonne reste étroite au milieu de la page : une question dépliée sur
+   1140 px donnerait des lignes de 140 caractères, illisibles. */
+.faq-col { width: min(820px, 100%); margin-inline: auto; }
 
 .faq { display: grid; gap: 0.75rem; }
 .faq details {
@@ -1474,44 +1464,14 @@ footer p { color: rgba(255, 255, 255, 0.6); font-size: 0.875rem; }
     </div>
   </section>
 
-  <!-- ────────────────────  LIMITES ASSUMÉES + FAQ  ───────────────────── -->
+  <!-- ────────────────────────────  QUESTIONS  ────────────────────────── -->
   <section class="wrap section-pad" id="questions">
-    <div class="two-col">
-      <div>
-        <div class="section-head" style="margin-bottom: 1.5rem;">
-          <p class="eyebrow">Le périmètre, dit franchement</p>
-          <h2>Ce que FootCoach ne fait pas</h2>
-        </div>
-        <ul class="limits">
-          <li>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
-            Pas de comptes joueurs ni parents : l'application ne réunit que des coachs.
-          </li>
-          <li>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
-            Pas de feuille de match, d'effectif, de convocations ni de composition d'équipe.
-          </li>
-          <li>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
-            Pas de covoiturage, pas de statistiques de joueurs, pas de temps forts : seul le score final est conservé.
-          </li>
-          <li>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
-            Pas de mode hors ligne : afficher une annonce périmée serait pire que de ne rien afficher.
-          </li>
-          <li>
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
-            Aucune déclaration envoyée à votre district à votre place : c'est votre attestation, pas la nôtre.
-          </li>
-        </ul>
+    <div class="faq-col">
+      <div class="section-head" style="margin-bottom: 1.5rem;">
+        <p class="eyebrow">Questions fréquentes</p>
+        <h2>Ce qu'on nous demande</h2>
       </div>
-
-      <div>
-        <div class="section-head" style="margin-bottom: 1.5rem;">
-          <p class="eyebrow">Questions fréquentes</p>
-          <h2>Ce qu'on nous demande</h2>
-        </div>
-        <div class="faq">
+      <div class="faq">
           <details>
             <summary>Mon adversaire doit-il aussi avoir l'application ?</summary>
             <p>Oui. C'est ce qui permet à un match d'exister des deux côtés, et surtout au score d'être validé par les deux bancs plutôt que déclaré par un seul. Un confrère s'inscrit en trois écrans, son équipe est créée avec son compte.</p>
@@ -1536,7 +1496,6 @@ footer p { color: rgba(255, 255, 255, 0.6); font-size: 0.875rem; }
             <summary>Que devient une annonce si l'adversaire se désiste ?</summary>
             <p>S'il s'agit de l'équipe invitée, vous gardez terrain et créneau : l'annonce repart en <b>SOS</b>, en tête du radar des autres coachs, sans repasser par le délai des dix jours — la déclaration porte sur la tenue du match, pas sur l'identité de l'adversaire. Si l'hôte se désiste, il n'a plus rien à offrir : le match est annulé.</p>
           </details>
-        </div>
       </div>
     </div>
   </section>
