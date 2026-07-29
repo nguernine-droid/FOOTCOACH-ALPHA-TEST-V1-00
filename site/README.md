@@ -7,7 +7,13 @@ est le choix de thème du visiteur, en `localStorage`).
 
 ```
 site/
-  index.html                 la page entière (styles et scripts en ligne)
+  index.html                 la page de présentation
+  mentions-legales.html      \
+  confidentialite.html        > pages légales (voir plus bas)
+  cgu.html                   /
+  styles.css                 jetons, composants — partagé par les quatre pages
+  legal.css                  mise en page propre aux pages légales
+  theme.js                   thème clair/sombre (anti-flash + bascule)
   logo.png                   copie de apps/web/public/logo.png
   fonts/                     sous-ensemble latin, extrait du build Next
     inter-variable.woff2     Inter 400-700 (variable)
@@ -42,6 +48,33 @@ sed -i 's|https://app\.footcoach\.fr|https://VOTRE-APP|g; s|app\.footcoach\.fr|V
 
 Il n'y a **pas** d'image de partage (`og:image`) : en ajouter une demande une
 capture réelle de l'application, à produire au moment de la mise en ligne.
+
+## Pages légales
+
+Trois pages, dans la même charte que le site :
+
+| Page | Statut |
+|---|---|
+| `mentions-legales.html` | **Obligatoire** — LCEN art. 6 III : identification de l'éditeur et de l'hébergeur. |
+| `confidentialite.html` | **Obligatoire** — RGPD : l'application traite email, nom, téléphone, photo, position, abonnements push. Le contenu factuel (catégories, bases légales, sécurité, destinataires) est aligné sur le code : `apps/api/src/db/schema.ts` et les routes. |
+| `cgu.html` | Non obligatoire, mais c'est là que se dit l'essentiel : FootCoach met en relation, **ne déclare rien au district**, ne vérifie ni licences ni assurances ni terrain, et un score validé n'a pas de valeur fédérale. |
+
+**Rien n'est publiable en l'état.** Chaque information manquante est marquée
+dans le texte par un encadré rouge `[À COMPLÉTER]`, impossible à rater à
+l'écran. Pour les lister :
+
+```bash
+grep -o "\[À COMPLÉTER[^]]*\]" *.html | sort -u
+```
+
+Il y en a de trois sortes : l'**identité de l'éditeur** et son adresse de
+contact, l'**hébergeur** et le pays d'hébergement, et deux **durées de
+conservation** à arrêter (historique des annonces et matchs, journal des
+connexions — que le code ne purge aujourd'hui jamais).
+
+> Ces textes ont été rédigés à partir du fonctionnement réel du code, pas
+> recopiés d'un modèle. Ils n'ont pas valeur de conseil juridique : une
+> relecture par un professionnel reste recommandée avant la mise en ligne.
 
 ## Déploiement
 

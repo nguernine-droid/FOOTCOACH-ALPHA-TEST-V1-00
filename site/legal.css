@@ -1,0 +1,193 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGES LÉGALES
+
+   Chargée APRÈS `styles.css`, dont elle reprend tous les jetons : ces pages
+   n'introduisent aucune couleur. Elles se lisent, elles ne se parcourent pas —
+   d'où une colonne de texte étroite, un sommaire collant sur grand écran, et
+   aucune animation.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* La page courante se signale dans la barre : sur trois pages qui se
+   ressemblent, c'est le seul repère de position. */
+.topnav a[aria-current="page"] { color: var(--accent-solid); }
+
+/* ── En-tête de page ─────────────────────────────────────────────────────── */
+
+.legal-head {
+  padding-block: clamp(2.5rem, 6vw, 4rem) clamp(1.75rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--border-subtle);
+  display: grid;
+  gap: 0.9rem;
+}
+.legal-head h1 {
+  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  text-transform: uppercase;
+}
+.legal-head .lede { max-width: 68ch; }
+.legal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.legal-meta b { color: var(--text-secondary); font-weight: 600; }
+
+/* ── Colonne de lecture et sommaire ──────────────────────────────────────── */
+
+.legal-layout { display: grid; gap: clamp(2rem, 4vw, 3rem); padding-block: clamp(2rem, 5vw, 3.5rem); }
+@media (min-width: 1000px) {
+  .legal-layout { grid-template-columns: 15rem minmax(0, 1fr); align-items: start; }
+}
+
+.legal-toc { display: grid; gap: 0.75rem; }
+@media (min-width: 1000px) {
+  .legal-toc { position: sticky; top: 5.5rem; }
+}
+.legal-toc h2 {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.legal-toc ol { display: grid; gap: 0.15rem; counter-reset: toc; }
+.legal-toc li { list-style: none; counter-increment: toc; }
+.legal-toc a {
+  display: block;
+  padding: 0.35rem 0.6rem 0.35rem 2rem;
+  border-radius: var(--radius-s);
+  border-left: 2px solid var(--border-subtle);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  position: relative;
+  transition: color var(--dur-ui) var(--ease-app), border-color var(--dur-ui) var(--ease-app);
+}
+.legal-toc a::before {
+  content: counter(toc);
+  position: absolute;
+  left: 0.7rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+}
+.legal-toc a:hover { color: var(--text-primary); border-left-color: var(--accent); }
+
+/* ── Prose ───────────────────────────────────────────────────────────────── */
+
+.prose { max-width: 68ch; }
+.prose > * + * { margin-top: 1.05rem; }
+
+.prose h2 {
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
+  margin-top: 2.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  scroll-margin-top: 5.5rem; /* la barre collante ne doit pas manger le titre */
+}
+.prose > h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.prose h3 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  margin-top: 1.75rem;
+  color: var(--text-primary);
+}
+.prose p, .prose li { color: var(--text-secondary); }
+.prose b, .prose strong { color: var(--text-primary); font-weight: 600; }
+.prose a { color: var(--cta); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+.prose ul, .prose ol { display: grid; gap: 0.5rem; padding-left: 1.35rem; }
+.prose ul { list-style: none; padding-left: 1.15rem; }
+.prose ul li { position: relative; }
+.prose ul li::before {
+  content: "";
+  position: absolute;
+  left: -1.15rem;
+  top: 0.7em;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.prose ol li::marker { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* ── Tableaux (catégories de données, durées) ────────────────────────────── */
+
+.prose .table-scroll { overflow-x: auto; margin-top: 1.35rem; }
+.prose table {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  text-align: left;
+}
+.prose th, .prose td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+  color: var(--text-secondary);
+}
+.prose th {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom-color: var(--border-defined);
+  white-space: nowrap;
+}
+.prose tbody tr:last-child td { border-bottom: 0; }
+.prose td:first-child { color: var(--text-primary); font-weight: 600; }
+
+/* ── Encadré de résumé ───────────────────────────────────────────────────── */
+
+.summary-box {
+  background: var(--accent-surface);
+  border: 1px solid var(--spotlight-border, var(--border-defined));
+  border-radius: var(--radius-l);
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  display: grid;
+  gap: 0.85rem;
+}
+.summary-box h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 1.35rem;
+}
+.summary-box ul { margin: 0; }
+.summary-box li { color: var(--text-primary); }
+
+/* ── Champ à compléter avant mise en ligne ───────────────────────────────── */
+
+/* Volontairement voyant : ce qui reste à remplir ne doit pas pouvoir passer
+   inaperçu le jour de la mise en ligne. */
+.todo {
+  display: inline-block;
+  padding: 0.05em 0.45em;
+  border-radius: 5px;
+  border: 1px dashed var(--danger);
+  background: var(--danger-surface);
+  color: var(--danger);
+  font-size: 0.9375em;
+  font-weight: 600;
+}
+
+/* ── Pied de section : contact ───────────────────────────────────────────── */
+
+.contact-card {
+  margin-top: 2.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--elevation-1);
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  display: grid;
+  gap: 0.6rem;
+}
+.contact-card h2 { margin: 0; padding: 0; border: 0; font-size: 1.5rem; }
