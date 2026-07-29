@@ -81,7 +81,7 @@ export function MonthGrid({
               aria-label={`${d.getDate()} ${monthLabel}${dayItems.length ? ` — ${dayItems.length} événement${dayItems.length > 1 ? "s" : ""}` : ""}`}
               aria-pressed={active}
               className={cn(
-                "aspect-square rounded-lg flex flex-col items-center justify-center gap-1 text-sm transition focus-visible:outline-gold",
+                "aspect-square rounded-lg flex flex-col items-center justify-center gap-1 text-sm transition focus-visible:outline-accent",
                 inMonth ? "text-ink" : "text-ink-faint",
                 active ? "bg-navy-700 text-white font-black" : "hover:bg-paper",
               )}
@@ -89,7 +89,7 @@ export function MonthGrid({
               <span
                 className={cn(
                   "w-7 h-7 flex items-center justify-center rounded-full tabular-nums font-bold",
-                  isToday && !active && "ring-2 ring-gold",
+                  isToday && !active && "ring-2 ring-accent",
                   active && "text-white",
                 )}
               >

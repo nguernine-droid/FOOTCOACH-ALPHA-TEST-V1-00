@@ -12,13 +12,13 @@ import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 const ROLE_META: Record<Role, { label: string; chip: string }> = {
-  coach: { label: "Coach", chip: "bg-pitch-soft text-pitch-deep" },
+  coach: { label: "Coach", chip: "bg-pitch-soft text-primary" },
   player: { label: "Joueur", chip: "bg-sky-soft text-sky" },
   parent: { label: "Parent", chip: "bg-tangerine-soft text-tangerine" },
   supporter: { label: "Supporter", chip: "bg-sun-soft text-sun" },
   admin: { label: "Admin", chip: "bg-navy-700 text-white" },
   // `navy-100` n'existe pas dans le thème : la pastille s'affichait sans fond
-  club: { label: "Club", chip: "bg-blue-soft text-navy-700" },
+  club: { label: "Club", chip: "bg-blue-soft text-primary" },
 };
 
 // Mot de passe temporaire — visible UNE seule fois

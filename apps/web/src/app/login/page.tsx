@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 const DEMO_ACCOUNTS = [
   { label: "Coach A", sub: "FC Nexus", email: "coach.a@demo.fr", icon: ClipboardList, color: "text-pitch bg-pitch-soft" },
   { label: "Coach B", sub: "AS Cyber", email: "coach.b@demo.fr", icon: ClipboardList, color: "text-pitch bg-pitch-soft" },
-  { label: "Admin", sub: "Alice", email: "admin@demo.fr", icon: ShieldHalf, color: "text-navy-700 bg-blue-soft" },
+  { label: "Admin", sub: "Alice", email: "admin@demo.fr", icon: ShieldHalf, color: "text-primary bg-blue-soft" },
 ];
 
 /** Contrôle volontairement large : on signale une faute de frappe, pas une RFC */

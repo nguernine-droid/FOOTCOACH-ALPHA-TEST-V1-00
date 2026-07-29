@@ -33,8 +33,8 @@ export function WeekStrip({
             aria-selected={active}
             onClick={() => onSelect(active ? null : date)}
             className={cn(
-              "flex flex-col items-center gap-1 min-w-[52px] px-2 py-2.5 rounded-lg border transition focus-visible:outline-gold",
-              active ? "bg-navy-700 text-white border-navy-700" : "bg-white text-ink border-line hover:border-blue/40",
+              "flex flex-col items-center gap-1 min-w-[52px] px-2 py-2.5 rounded-lg border transition focus-visible:outline-accent",
+              active ? "bg-navy-700 text-white border-navy-700" : "surface text-ink border-line hover:border-blue/40",
             )}
           >
             <span className={cn("text-[10px] font-bold uppercase", active ? "text-white/70" : "text-ink-soft")}>

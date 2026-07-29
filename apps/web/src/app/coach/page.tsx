@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, Radar, Trophy } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, Trophy } from "lucide-react";
 import type { ActivityDto, AnnouncementDto, MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { formatCountdown, kickoffDate, timeAgo, useNow } from "@/lib/time";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
 import { RadarFeed } from "@/components/announcements/RadarFeed";
+import { NoMatchCard } from "@/components/coach/NoMatchCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -139,7 +140,7 @@ export default function CoachDashboard() {
               <TeamSide team={featured.homeTeam} />
               <div className="shrink-0 text-center px-2">
                 {featured.status === "live" || featured.status === "awaiting_confirmation" ? (
-                  <p className="display text-6xl tabular-nums leading-none text-navy-700">
+                  <p className="display text-6xl tabular-nums leading-none text-primary">
                     {featured.homeScore}
                     <span className="text-ink-faint mx-2">–</span>
                     {featured.awayScore}
@@ -162,7 +163,7 @@ export default function CoachDashboard() {
                 {featured.status === "scheduled" && !featured.finalScoreDue && (
                   <div className="text-right">
                     <p className="text-[10px] font-bold text-ink-faint tracking-widest uppercase">Avant coup d&apos;envoi</p>
-                    <p className="display text-3xl leading-none text-navy-700 tabular-nums">
+                    <p className="display text-3xl leading-none text-primary tabular-nums">
                       {countdown ?? "Imminent"}
                     </p>
                   </div>
@@ -179,18 +180,7 @@ export default function CoachDashboard() {
             </div>
           </section>
         ) : (
-          <section className="card p-8 text-center space-y-3 animate-rise-in">
-            <span className="w-12 h-12 rounded-lg bg-blue-soft text-blue flex items-center justify-center mx-auto">
-              <Radar size={20} />
-            </span>
-            <p className="text-sm font-bold">Aucun match programmé</p>
-            <p className="text-xs text-ink-soft">
-              Publiez une annonce, ou répondez à une équipe du radar ci-dessous.
-            </p>
-            <ButtonLink href="/coach/announcements/new" className="w-full sm:w-auto">
-              Publier une annonce
-            </ButtonLink>
-          </section>
+          <NoMatchCard />
         )}
 
         {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1 */}

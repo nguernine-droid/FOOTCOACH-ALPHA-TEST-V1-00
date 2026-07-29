@@ -10,7 +10,9 @@ import { createContext, useContext } from "react";
  */
 export type AccountEntry = {
   open: () => void;
-  /** Activités non lues : pastille sur l'onglet */
+  /** Feuille ouverte : l'emplacement « Moi » se marque comme actif */
+  isOpen: boolean;
+  /** Activités non lues : pastille sur l'onglet qui les affiche */
   unread: boolean;
   firstName: string;
   lastName: string;

@@ -25,7 +25,7 @@ function StatTile({ label, value, hint }: { label: string; value: number; hint?:
   return (
     <div className="card p-4">
       <p className="text-[10px] font-bold text-ink-faint tracking-widest uppercase">{label}</p>
-      <p className="display text-3xl text-navy-700 tabular-nums leading-tight">{value}</p>
+      <p className="display text-3xl text-primary tabular-nums leading-tight">{value}</p>
       {hint && <p className="text-[11px] text-ink-soft font-semibold">{hint}</p>}
     </div>
   );
@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
           <p className="text-[10px] font-bold text-ink-faint tracking-widest uppercase flex items-center gap-1">
             <KeyRound size={11} /> Resets demandés
           </p>
-          <p className="display text-3xl text-navy-700 tabular-nums leading-tight">{stats.pendingResets}</p>
+          <p className="display text-3xl text-primary tabular-nums leading-tight">{stats.pendingResets}</p>
           <p className="text-[11px] text-blue font-semibold">Gérer les comptes</p>
         </Link>
       </div>

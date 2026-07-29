@@ -40,8 +40,8 @@ export function MyAnnouncementCard({
   const body = (
     <div
       className={cn(
-        "rounded-lg border border-line bg-white px-4 py-3 border-l-4 space-y-1.5 transition",
-        a.status === "open" && (a.isSos ? "border-l-coral" : "border-l-gold"),
+        "rounded-lg border border-line surface px-4 py-3 border-l-4 space-y-1.5 transition",
+        a.status === "open" && (a.isSos ? "border-l-coral" : "border-l-accent"),
         a.status === "matched" && "border-l-success hover:bg-blue-faint",
         a.status === "cancelled" && "border-l-ink-faint opacity-70",
       )}
@@ -114,7 +114,7 @@ export function MyAnnouncementCard({
               </p>
             ) : (
               <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-gold animate-soft-pulse shrink-0" aria-hidden />
+                <span className="w-2 h-2 rounded-full bg-accent animate-soft-pulse shrink-0" aria-hidden />
                 {pending.length === 0
                   ? "En attente de proposition"
                   : `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider`}

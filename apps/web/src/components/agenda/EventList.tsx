@@ -11,7 +11,7 @@ function ItemRow({ item, onOpen, showDate }: { item: AgendaItemDto; onOpen: (i: 
     <button
       type="button"
       onClick={() => onOpen(item)}
-      className="w-full flex items-center gap-3 text-left bg-white border border-line rounded-lg px-4 py-3 hover:border-blue/40 transition focus-visible:outline-gold"
+      className="w-full flex items-center gap-3 text-left surface border border-line rounded-lg px-4 py-3 hover:border-blue/40 transition focus-visible:outline-accent"
     >
       <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", meta.dot)} aria-hidden />
       <span className="text-xs font-black tabular-nums text-ink-soft shrink-0 w-11">{item.startTime}</span>

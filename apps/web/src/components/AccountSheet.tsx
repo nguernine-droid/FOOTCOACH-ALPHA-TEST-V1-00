@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import { Avatar } from "@/components/Avatar";
+import { ThemePicker } from "@/components/ThemePicker";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { timeAgo } from "@/lib/time";
@@ -114,7 +115,7 @@ export function AccountSheet({
   if (view === "notifications") {
     return (
       <BottomSheet label="Notifications" onClose={onClose} footer={footer}>
-        <div className="sticky top-0 bg-white z-10 flex items-center gap-2 px-3 py-2 border-b border-line">
+        <div className="sticky top-0 surface z-10 flex items-center gap-2 px-3 py-2 border-b border-line">
           <button
             type="button"
             onClick={() => setView("menu")}
@@ -212,6 +213,14 @@ export function AccountSheet({
         </div>
       )}
 
+      {/* Apparence. Placée avant les raccourcis de navigation : c'est un
+          réglage, pas une destination — on ne quitte pas la feuille pour le
+          changer, on le change et on voit le résultat derrière. */}
+      <div className="border-t border-line px-5 py-4">
+        <h3 className="section-title text-xs text-secondary mb-3">Apparence</h3>
+        <ThemePicker />
+      </div>
+
       <div className="border-t border-line py-1">
         {isCoach && (
           <>
@@ -228,7 +237,7 @@ export function AccountSheet({
               }}
               right={
                 activities && activities.length > 0 ? (
-                  <span className="chip bg-blue-soft text-navy-700 shrink-0">{activities.length}</span>
+                  <span className="chip bg-blue-soft text-primary shrink-0">{activities.length}</span>
                 ) : undefined
               }
             />

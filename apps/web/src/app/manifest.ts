@@ -2,7 +2,17 @@ import type { MetadataRoute } from "next";
 
 /**
  * Manifeste PWA : permet « Ajouter à l'écran d'accueil » et l'ouverture en
- * plein écran, sans barre d'adresse. Les couleurs reprennent la DA navy/or.
+ * plein écran, sans barre d'adresse.
+ *
+ * COULEURS EN DUR, ET C'EST INÉVITABLE : un manifeste est du JSON lu par le
+ * système d'exploitation avant que la page n'existe — il ne peut ni lire une
+ * variable CSS, ni porter deux valeurs selon le thème.
+ *
+ * D'où le choix du bleu structurel plutôt que du fond d'application : c'est la
+ * seule teinte que les deux thèmes ont en commun (elle porte l'en-tête dans
+ * les deux), donc la seule qui ne produise pas un écran de démarrage blanc
+ * pour un coach en thème sombre. Ces valeurs doivent rester alignées sur
+ * `--structure-1` de `tokens.css`.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -15,7 +25,7 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#EDF1F8",
+    background_color: "#071B3F",
     theme_color: "#071B3F",
     icons: [
       { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },

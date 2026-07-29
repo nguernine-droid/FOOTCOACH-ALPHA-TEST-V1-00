@@ -101,7 +101,7 @@ export default function AnnouncementsPage() {
         </ButtonLink>
       </div>
 
-      <div className="rounded-lg bg-white border border-line px-4 py-3 flex gap-2.5">
+      <div className="rounded-lg surface border border-line px-4 py-3 flex gap-2.5">
         <ShieldCheck size={15} className="text-blue shrink-0 mt-0.5" aria-hidden />
         <p className="text-xs text-ink-soft">
           Un match amical doit être déclaré à votre district au moins{" "}

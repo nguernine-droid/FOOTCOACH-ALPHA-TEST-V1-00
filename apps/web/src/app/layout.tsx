@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const display = Barlow_Condensed({
@@ -29,15 +31,27 @@ export const viewport: Viewport = {
   // Sans `cover`, les env(safe-area-inset-*) valent toujours 0 : la barre
   // d'onglets basse ne saurait pas s'écarter de la barre d'accueil iOS.
   viewportFit: "cover",
-  // Teinte la barre du navigateur dans la continuité du header navy
-  themeColor: "#071B3F",
+  // `themeColor` n'est volontairement pas déclaré ici : la balise est posée
+  // par le script d'amorçage puis tenue à jour par `applyTheme`. Une balise
+  // statique rendue par Next se placerait avant et gagnerait la partie.
   // Le zoom système reste autorisé (accessibilité) : pas de maximumScale.
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${display.variable} ${body.variable}`}>
-      <body className="antialiased">{children}</body>
+    <html lang="fr" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <head>
+        {/* ANTI-FLASH. Ce script est bloquant et placé avant tout le reste : il
+            lit le choix mémorisé et pose `data-theme` sur <html> avant le
+            premier rendu. Sans lui, un coach en thème sombre verrait l'écran
+            blanc le temps que React démarre — à chaque chargement de page.
+            `suppressHydrationWarning` sur <html> parce que l'attribut qu'il
+            ajoute n'existe pas dans le HTML rendu par le serveur. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
+      <body className="antialiased">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

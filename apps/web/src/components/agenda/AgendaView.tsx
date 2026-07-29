@@ -105,7 +105,7 @@ export function AgendaView({ requestCreate = false }: { requestCreate?: boolean 
                 onClick={() => setView(v.key)}
                 className={cn(
                   "inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold transition",
-                  view === v.key ? "bg-navy-700 text-white" : "bg-white text-ink-soft hover:text-ink",
+                  view === v.key ? "bg-navy-700 text-white" : "surface text-ink-soft hover:text-ink",
                 )}
               >
                 <v.icon size={13} /> {v.label}

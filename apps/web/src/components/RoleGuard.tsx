@@ -18,6 +18,7 @@ import { AccountSheetContext } from "@/components/AccountSheetContext";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
 import { Logo } from "@/components/Logo";
+import { AppBackdrop } from "@/components/AppBackdrop";
 import { PageTransition } from "@/components/PageTransition";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
@@ -114,11 +115,12 @@ export function RoleGuard({
   if (!user) {
     return (
       <div className="min-h-dvh" aria-busy aria-label="Chargement">
-        <header className="sticky top-0 z-40 shadow-pop text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700 pt-[env(safe-area-inset-top)]">
+        <AppBackdrop />
+        <header className="app-header sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
           <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
             <Logo size={34} />
             <p className="display text-xl leading-none select-none">
-              FOOT<span className="text-gold">COACH</span>
+              FOOT<span className="text-accent-solid">COACH</span>
             </p>
           </div>
         </header>
@@ -128,7 +130,7 @@ export function RoleGuard({
           <Skeleton className="h-40" />
         </div>
         {nav && (
-          <div className="min-[960px]:hidden fixed bottom-0 inset-x-0 h-14 bg-navy-800 border-t border-white/10 pb-[env(safe-area-inset-bottom)]" />
+          <div className="app-tabbar min-[960px]:hidden fixed bottom-0 inset-x-0 h-14 pb-[env(safe-area-inset-bottom)]" />
         )}
       </div>
     );
@@ -138,6 +140,7 @@ export function RoleGuard({
     <AccountSheetContext.Provider
       value={{
         open: () => setSheetOpen(true),
+        isOpen: sheetOpen,
         unread,
         firstName: user.firstName,
         lastName: user.lastName,
@@ -145,20 +148,25 @@ export function RoleGuard({
       }}
     >
       <div className="min-h-dvh">
+        <AppBackdrop />
         {/* pt safe-area : en mode « ajouté à l'écran d'accueil », la page passe
-            sous la barre d'état — le dégradé navy la prolonge proprement. */}
-        <div className="sticky top-0 z-40 shadow-pop pt-[env(safe-area-inset-top)] bg-navy-900">
+            sous la barre d'état — la structure la prolonge proprement.
+
+            `.app-header` porte la recette du thème : masse bleu nuit le jour,
+            verre flouté la nuit, où le halo et le tracé du terrain se
+            poursuivent dessous au lieu de s'arrêter net. */}
+        <div className="app-header sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
           {/* Le header ne porte plus aucune action : contexte et titre seulement.
               Tout ce qui était dans le coin haut-droit vit maintenant dans la
               feuille « Moi », ouverte depuis la barre basse (et depuis l'avatar
               sur desktop, où la barre basse n'existe pas). */}
-          <header className="text-white bg-gradient-to-r from-navy-900 via-navy-800 to-navy-700">
+          <header className="text-on-structure">
             <div className={cn(SHELL_WIDTH, "h-16 flex items-center justify-between gap-4")}>
               <div className="flex items-center gap-3 min-w-0">
                 <Logo size={34} />
                 <div className="min-w-0 leading-tight">
                   <p className="display text-xl leading-none select-none">
-                    FOOT<span className="text-gold">COACH</span>
+                    FOOT<span className="text-accent-solid">COACH</span>
                   </p>
                   <p className="text-[11px] text-white/60 font-semibold truncate">
                     {teamLabel ? `${teamLabel} · ` : ""}
@@ -187,7 +195,7 @@ export function RoleGuard({
                   />
                   {unread && (
                     <span
-                      className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-gold ring-2 ring-navy-800"
+                      className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent-solid ring-2 ring-structure-2"
                       aria-label="Nouvelles activités"
                     />
                   )}

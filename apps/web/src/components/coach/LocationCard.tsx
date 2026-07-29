@@ -141,7 +141,7 @@ export function LocationCard({ user, onChange }: { user: UserDto; onChange: (upd
 
       {/* Position actuelle */}
       <div className="rounded-lg bg-paper px-4 py-3 flex items-center gap-3">
-        <span className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0">
+        <span className="w-9 h-9 rounded-full surface flex items-center justify-center shrink-0">
           {location?.source === "team" ? (
             <Users size={16} className="text-ink-soft" />
           ) : (

@@ -184,7 +184,7 @@ export function DateField({
                   // Raccourci sans objet si le champ n'accepte que des dates futures
                   disabled={Boolean(min) && toIso(new Date()) < min!}
                   onClick={() => pick(toIso(new Date()))}
-                  className="flex-1 min-h-12 rounded-lg bg-blue-soft text-navy-700 text-sm font-bold transition active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
+                  className="flex-1 min-h-12 rounded-lg bg-blue-soft text-primary text-sm font-bold transition active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
                 >
                   Aujourd&apos;hui
                 </button>

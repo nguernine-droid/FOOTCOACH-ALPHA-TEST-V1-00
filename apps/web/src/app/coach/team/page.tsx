@@ -57,7 +57,7 @@ export default function CoachTeamPage() {
               </span>
               {team.role === "adjoint" && <span className="chip bg-paper text-ink-soft shrink-0">Adjoint</span>}
               {active && (
-                <span className="chip bg-blue-soft text-navy-700 shrink-0">
+                <span className="chip bg-blue-soft text-primary shrink-0">
                   <ShieldCheck size={11} /> Équipe active
                 </span>
               )}

@@ -195,7 +195,7 @@ function RegisterContent() {
     <div className="min-h-dvh flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md space-y-4">
         <div className="text-center space-y-1">
-          <p className="display text-xl text-pitch-deep leading-none">
+          <p className="display text-xl text-primary leading-none">
             FOOT<span className="text-pitch">COACH</span>
           </p>
           <h1 className="text-2xl font-black">Créer un compte coach</h1>

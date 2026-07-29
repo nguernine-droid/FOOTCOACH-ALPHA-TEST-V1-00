@@ -14,7 +14,9 @@ const STATUS = {
 
 // Couleur d'identité stable par équipe (dérivée de l'id) : une équipe garde
 // la même couleur sur toutes les cards, qu'elle joue à domicile ou non.
-const TEAM_COLORS = ["bg-navy-700", "bg-tangerine", "bg-blue", "bg-[#6B4FA3]", "bg-[#0F766E]", "bg-[#8A5A2B]"];
+// Six jetons plutôt que six valeurs : chaque thème donne sa version de la
+// palette, assez soutenue pour porter du texte blanc sur les deux fonds.
+const TEAM_COLORS = ["bg-team-1", "bg-team-2", "bg-team-3", "bg-team-4", "bg-team-5", "bg-team-6"];
 
 export function teamColor(team: TeamDto): string {
   let hash = 0;
@@ -64,7 +66,7 @@ export function MatchCard({ match, children }: { match: MatchDto; children?: Rea
           {match.status === "scheduled" || match.status === "cancelled" ? (
             <p className="text-xs font-black text-ink-soft bg-paper rounded-full px-3 py-1.5">VS</p>
           ) : (
-            <p className="display text-5xl tabular-nums leading-none text-pitch-deep">
+            <p className="display text-5xl tabular-nums leading-none text-primary">
               {match.homeScore}
               <span className="text-ink-faint mx-1.5">–</span>
               {match.awayScore}

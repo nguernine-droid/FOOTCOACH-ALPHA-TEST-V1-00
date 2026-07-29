@@ -11,8 +11,10 @@ import { QuickActionProvider, type QuickAction } from "@/components/QuickActionC
 // Le radar vit désormais dans le tableau de bord ; les sections secondaires
 // (agenda, relations, mes équipes, profil) sont rassemblées dans la feuille
 // « Moi » de la barre basse ; le covoiturage est masqué.
+// `badge: "activity"` : le tableau de bord porte le fil d'activité, c'est donc
+// lui qui signale qu'il s'est passé quelque chose depuis la dernière visite.
 const TABS: AppTab[] = [
-  { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true },
+  { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true, badge: "activity" },
   { href: "/coach/announcements", label: "Annonces", icon: Megaphone },
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
 ];

@@ -1,63 +1,20 @@
 @import "tailwindcss";
+@import "./tokens.css";
+
+/* Aucune couleur littérale sous cette ligne : tout vient de `tokens.css`.
+   Les composants sont écrits UNE fois ; c'est le jeu de jetons qui change. */
 
 @theme {
-  /* Palette "FootCoach" — club house premium : navy structurel, bleu d'action, or d'accent */
-  --color-navy-900: #071B3F;
-  --color-navy-800: #0A2452;
-  --color-navy-700: #0C2E6B;
-
-  --color-blue: #1D6FE0;
-  --color-blue-dark: #1659B8;
-  --color-blue-soft: #E3ECFA;
-  --color-blue-faint: #F0F5FC;
-
-  /* Or pur : réservé aux surfaces navy (onglet actif, points, gardien) */
-  --color-gold: #F5B301;
-
-  --color-success: #1E9E58;
-  --color-success-soft: #DFF2E7;
-
-  /* Alias historiques re-thémés :
-     pitch = couleur d'action (bleu), pitch-deep = structurel (navy-700) */
-  --color-pitch: #1D6FE0;
-  --color-pitch-dark: #1659B8;
-  --color-pitch-deep: #0C2E6B;
-  --color-pitch-soft: #E3ECFA;
-
-  /* Or foncé lisible sur fond clair (texte, icônes, boutons accent) */
-  --color-tangerine: #A16207;
-  --color-tangerine-soft: #FBEED0;
-
-  --color-sky: #1D6FE0;
-  --color-sky-soft: #E3ECFA;
-
-  --color-coral: #E23D3D;
-  --color-coral-soft: #FBE2E2;
-
-  --color-sun: #8A6A00;
-  --color-sun-soft: #FCF0CF;
-
-  --color-paper: #EDF1F8;
-  --color-ink: #10203C;
-  --color-ink-soft: #4A5A78;
-  /* Ancien #8A97B0 : 2,9:1 sur blanc et 2,6:1 sur `paper`, sous le seuil AA
-     alors que ce ton porte des libellés de 10-11 px et les placeholders des
-     champs. Assombri à 5,4:1 sur blanc et 4,8:1 sur `paper`. */
-  --color-ink-faint: #5C6B85;
-  --color-line: #DDE4F0;
-
-  --color-border: #DDE4F0;
-  --color-input: #DDE4F0;
-  --color-ring: #1D6FE0;
-  --color-background: #EDF1F8;
-  --color-foreground: #10203C;
+  /* ————— Rayons —————
+     Identiques dans les deux thèmes : le clair est la traduction diurne du
+     sombre, pas un autre dessin. */
+  --radius-card: 20px;
+  --radius-btn: 14px;
+  --radius-pill: 999px;
 
   /* Fontes chargées via next/font (voir layout.tsx) */
   --font-display: var(--font-barlow), "Arial Narrow", "Segoe UI", sans-serif;
   --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
-
-  --shadow-card: 0 1px 2px rgba(7, 27, 63, 0.06), 0 8px 24px rgba(7, 27, 63, 0.07);
-  --shadow-pop: 0 10px 28px -14px rgba(7, 27, 63, 0.5);
 
   /* ————— Mouvement —————
      Une seule courbe pour toute l'app : décélération franche façon iOS, qui
@@ -70,6 +27,9 @@
   --dur-tap: 120ms;
   --dur-ui: 180ms;
   --dur-page: 320ms;
+  /* Bascule d'un thème à l'autre : assez lent pour être lu comme un fondu,
+     assez court pour ne pas retarder l'usage. */
+  --dur-theme: 250ms;
 
   /* Tailwind applique ces deux valeurs à tous ses utilitaires `transition` :
      plus besoin de préciser la durée ni la courbe au cas par cas. */
@@ -109,31 +69,29 @@
     to { transform: translateY(0); }
   }
 
-  /* ————— Radar ————— */
-  /* Le faisceau part du nord et tourne dans le sens horaire */
+  /* ————— Carte des matchs ————— */
+  /* Le cône part du nord et tourne dans le sens horaire */
   @keyframes radar-sweep {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
-  /* Un point s'allume au passage du faisceau, puis retombe à sa veilleuse.
-     Chaque point cale sa phase sur son relèvement via un animation-delay
-     négatif — aucun minuteur JS n'est nécessaire. */
-  @keyframes radar-blip {
-    0% { opacity: 1; transform: scale(1.45); }
-    12% { opacity: 1; transform: scale(1); }
-    70% { opacity: 0.7; transform: scale(1); }
-    100% { opacity: 0.55; transform: scale(1); }
+  /* Halo respirant sous le point « mon équipe » */
+  @keyframes beacon-pulse {
+    0% { opacity: 0.55; transform: scale(0.7); }
+    70% { opacity: 0; transform: scale(2.4); }
+    100% { opacity: 0; transform: scale(2.4); }
   }
-  /* Onde qui s'échappe du point au moment où le faisceau le croise */
-  @keyframes radar-echo {
-    0% { opacity: 0.6; transform: scale(0.6); }
-    45% { opacity: 0; transform: scale(2.6); }
-    100% { opacity: 0; transform: scale(2.6); }
+  /* Le maillot se pose sur la carte, ombre au sol comprise */
+  @keyframes pin-drop {
+    from { opacity: 0; transform: translate(-50%, -140%) scale(0.8); }
+    to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
   }
 }
 
 :root {
   --radius: 0.75rem;
+  /* Durée d'un tour du cône de balayage sur la carte des matchs */
+  --sweep-period: 8s;
 }
 
 @layer base {
@@ -145,6 +103,7 @@
     -webkit-tap-highlight-color: transparent;
     /* Le zoom système reste possible, mais plus de recadrage auto en paysage */
     -webkit-text-size-adjust: 100%;
+    background-color: var(--bg-app);
   }
   /* Supprime le délai de 300 ms et le double-tap-zoom sur les cibles tactiles */
   a,
@@ -163,18 +122,48 @@
   select:focus-visible,
   textarea:focus-visible,
   [role="tab"]:focus-visible {
-    outline: 2px solid var(--color-blue);
+    outline: 2px solid var(--focus-ring);
     outline-offset: 2px;
     border-radius: 0.5rem;
   }
   body {
-    @apply bg-paper text-ink selection:bg-blue-soft selection:text-navy-700;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    @apply selection:bg-cta-surface selection:text-primary;
     font-family: var(--font-inter), "Segoe UI", system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     /* `viewport-fit=cover` étend la page sous l'encoche : on écarte le contenu
        du flux normal des bords physiques (utile surtout en paysage). */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* ————— Fondu au changement de thème —————
+     Ciblé sur les SURFACES NON INTERACTIVES, jamais sur `*` : une transition
+     universelle fait tressauter des centaines d'éléments d'un coup, et elle
+     s'invite ensuite dans toutes les interactions ordinaires. Les boutons,
+     champs et pastilles gardent leur propre `transition` — plus courte, car
+     elle répond au doigt. Ici, seule la couleur bouge. */
+  body,
+  .card,
+  .surface,
+  .surface-2,
+  .app-header,
+  .app-tabbar {
+    transition:
+      background-color var(--dur-theme) ease,
+      border-color var(--dur-theme) ease,
+      color var(--dur-theme) ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body,
+    .card,
+    .surface,
+    .surface-2,
+    .app-header,
+    .app-tabbar {
+      transition: none;
+    }
   }
 }
 
@@ -204,17 +193,66 @@
 }
 
 @layer components {
-  /* Carte standard : blanche, coins mesurés, bordure fine + ombre discrète */
-  .card {
-    @apply bg-white rounded-xl border border-line relative;
-    box-shadow: var(--shadow-card);
+  /* ————— Surfaces —————
+     `surface` = le plan qui porte le contenu (fond d'une feuille, d'une carte
+     imbriquée) ; `surface-2` = un cran en retrait (bloc encastré, champ). */
+  .surface {
+    background-color: var(--surface-1);
+  }
+  .surface-2 {
+    background-color: var(--surface-2);
   }
 
-  /* Bandeau structurel navy (headers de sections, hero) */
+  /* Carte standard. UNE définition pour les deux thèmes : ce sont les jetons
+     `--card-*` qui portent la différence — aplat blanc et ombre portée le
+     jour, verre translucide qui prend la lumière par le haut la nuit. */
+  .card {
+    position: relative;
+    background-color: var(--card-bg);
+    background-image: linear-gradient(180deg, var(--card-sheen) 0%, transparent 60%);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--elevation-1);
+  }
+
+  /* Carte de mise en avant — l'état vide du tableau de bord.
+     Elle suit son thème (sombre la nuit, claire le jour) et se détache par
+     l'élévation, un liseré d'accent et un fond monté d'un cran. Elle réécrit
+     ses propres jetons d'encre : c'est ce qui permet au contenu à l'intérieur
+     de rester juste sans qu'aucun appelant ne connaisse le thème. */
+  .card-spotlight {
+    background-color: var(--spotlight-from);
+    background-image: linear-gradient(165deg, var(--spotlight-from) 0%, var(--spotlight-to) 100%);
+    border: 1px solid var(--spotlight-border);
+    border-radius: 24px;
+    box-shadow: var(--spotlight-shadow);
+    color: var(--spotlight-ink);
+
+    --text-primary: var(--spotlight-ink);
+    --text-secondary: var(--spotlight-muted);
+    --text-muted: var(--spotlight-muted);
+    --border-subtle: color-mix(in srgb, var(--spotlight-ink) 10%, transparent);
+  }
+
+  /* Titre de section : capitales condensées, lettres desserrées, graisse 800.
+     Distinct de `.display`, qui sert aussi aux scores et aux compteurs — un
+     chiffre ne veut pas du même interlettrage qu'un intitulé. */
+  .section-title {
+    font-family: var(--font-barlow), "Arial Narrow", sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  /* Bandeau structurel (headers de sections, hero) */
   .hero-pitch {
-    @apply rounded-xl text-white relative overflow-hidden;
-    background: linear-gradient(135deg, #071b3f 0%, #0a2452 55%, #0c2e6b 100%);
-    box-shadow: var(--shadow-pop);
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-card);
+    color: var(--text-on-structure);
+    background: linear-gradient(135deg, var(--structure-1) 0%, var(--structure-2) 55%, var(--structure-3) 100%);
+    box-shadow: var(--elevation-2);
   }
 
   /* Wordmark / titres façon club : condensé, capitales, serré */
@@ -222,14 +260,32 @@
     font-family: var(--font-barlow), "Arial Narrow", sans-serif;
     @apply font-bold uppercase tracking-wide;
   }
+  /* Les intitulés portent la graisse et l'interlettrage de la direction
+     artistique. Visés par `h2`/`h3` plutôt que par une classe à poser partout :
+     `.display` sert aussi aux scores, qui n'en veulent surtout pas. */
+  h2.display,
+  h3.display {
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
 
   /* Champ de formulaire.
      16 px sur mobile : en dessous, iOS zoome sur le champ au focus et décale
      tout l'écran. On revient à 14 px là où le pointeur est fin (desktop). */
   .field {
-    @apply w-full min-h-12 bg-paper border border-line rounded-lg px-4 py-3 text-base min-[960px]:text-sm
-      text-ink outline-none transition
-      placeholder:text-ink-faint focus:border-blue focus:bg-white focus:ring-2 focus:ring-blue/15;
+    @apply w-full min-h-12 px-4 py-3 text-base min-[960px]:text-sm outline-none transition;
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-btn);
+    color: var(--text-primary);
+  }
+  .field::placeholder {
+    color: var(--text-muted);
+  }
+  .field:focus {
+    background-color: var(--surface-1);
+    border-color: var(--focus-ring);
+    box-shadow: var(--focus-glow);
   }
 
   /* Bouton à icône seule : le dessin reste compact (44 px), mais la zone
@@ -258,53 +314,265 @@
 
   /* Petite pastille de statut (seul élément full-round avec les avatars) */
   .chip {
-    @apply inline-flex items-center gap-1.5 text-[11px] font-bold rounded-full px-3 py-1;
+    @apply inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1;
+    border-radius: var(--radius-pill);
   }
 
   /* Pastille *cliquable* : filtres, catégories, formats. Contrairement à `.chip`
      qui n'est qu'un libellé, celle-ci est une cible tactile — 44 px de haut. */
   .chip-choice {
-    @apply inline-flex items-center justify-center gap-1.5 min-h-11 px-4 rounded-lg
+    @apply inline-flex items-center justify-center gap-1.5 min-h-11 px-4
       text-xs font-bold border transition select-none active:scale-[0.97];
+    border-radius: var(--radius-btn);
   }
   .chip-choice-on {
-    @apply bg-navy-700 text-white border-navy-700;
+    background-color: var(--accent-solid);
+    border-color: var(--accent-solid);
+    color: var(--accent-on);
   }
   .chip-choice-off {
-    @apply bg-white text-ink-soft border-line hover:border-blue/40;
+    background-color: var(--surface-glass);
+    border-color: var(--border-subtle);
+    color: var(--text-secondary);
+  }
+  .chip-choice-off:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    color: var(--text-primary);
+  }
+
+  /* ————— Boutons —————
+     Les variantes sont des classes de composant plutôt que des chaînes
+     d'utilitaires : c'est le point unique où un thème les reteinte, sans que
+     le composant React ni ses appelants n'en sachent rien. */
+  .btn {
+    border-radius: var(--radius-btn);
+  }
+  .btn-primary,
+  .btn-cta {
+    background-image: linear-gradient(180deg, var(--cta) 0%, var(--cta-deep) 100%);
+    background-color: var(--cta);
+    color: var(--cta-on);
+    /* Reflet en haut : la lumière vient d'en haut, dans les deux thèmes */
+    box-shadow:
+      var(--sheen-soft),
+      var(--cta-glow);
+  }
+  .btn-primary:hover,
+  .btn-cta:hover {
+    filter: brightness(1.06);
+  }
+  .btn-primary:active,
+  .btn-cta:active {
+    filter: brightness(0.96);
+  }
+  .btn-accent {
+    background-image: linear-gradient(180deg, var(--accent-solid-bright) 0%, var(--accent-solid) 100%);
+    color: var(--accent-on);
+    box-shadow: var(--accent-glow);
+  }
+  .btn-accent:hover {
+    filter: brightness(1.04);
+  }
+  .btn-soft {
+    background-color: var(--surface-glass-strong);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+  }
+  .btn-soft:hover {
+    background-color: var(--cta-surface);
+  }
+  .btn-ghost {
+    background-color: transparent;
+    border: 1px solid var(--border-defined);
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover {
+    background-color: var(--surface-glass);
+    color: var(--text-primary);
+  }
+  .btn-danger {
+    background-color: var(--danger-surface);
+    color: var(--danger);
+  }
+  .btn-danger:hover {
+    background-color: color-mix(in srgb, var(--danger) 18%, transparent);
+  }
+
+  /* Bouton de création surélevé de la barre basse : disque doré dégradé,
+     reflet en haut et halo qui le décolle de la barre. */
+  .fab {
+    background-image: linear-gradient(180deg, var(--accent-solid-bright) 0%, var(--accent-solid) 100%);
+    color: var(--accent-on);
+    box-shadow:
+      var(--sheen-strong),
+      var(--elevation-2),
+      var(--accent-glow);
+  }
+  .fab:active {
+    box-shadow:
+      var(--sheen-strong),
+      var(--elevation-1);
+  }
+
+  /* ————— Coque de l'application ————— */
+  /* En-tête : masse structurelle le jour, verre flouté la nuit — la recette
+     est dans `--header-bg`, la règle ne change pas. */
+  .app-header {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--structure-line);
+    color: var(--text-on-structure);
+    backdrop-filter: blur(12px) saturate(1.1);
+    -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  }
+
+  /* Barre d'onglets basse. Le fond est volontairement QUASI OPAQUE (0,92-0,94) :
+     le floutage n'est qu'un supplément d'ambiance, et il n'est pas rendu
+     partout — sur un navigateur qui l'ignore, une barre à 0,8 laisse lire le
+     contenu à travers les libellés. La lisibilité ne peut pas dépendre d'un
+     effet optionnel. */
+  .app-tabbar {
+    background: var(--tabbar-bg);
+    border-top: 1px solid var(--structure-line);
+    backdrop-filter: blur(16px) saturate(1.1);
+    -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  }
+  /* Rangée d'onglets de bureau. Elle vit à l'intérieur du bloc déjà flouté du
+     header, donc elle ne porte aucun fond : un second verre par-dessus
+     dessinerait une couture horizontale.
+
+     Classe distincte, et NON `.app-header .app-tabbar` : les deux barres sont
+     rendues par le même composant, donc la barre basse mobile est elle aussi
+     un descendant du header. Un sélecteur descendant lui retirait son fond —
+     elle devenait transparente et le contenu défilait derrière les libellés. */
+  .app-subnav {
+    background: transparent;
+    border-top: 1px solid var(--structure-line);
+  }
+
+  /* Voile des feuilles modales */
+  .sheet-scrim {
+    background-color: var(--scrim);
+  }
+
+  /* Silhouettes de chargement */
+  .shimmer-sheen {
+    background-image: linear-gradient(90deg, transparent, var(--shimmer), transparent);
   }
 
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Balayage du radar : un secteur clair qui s'estompe derrière le faisceau.
-     `--radar-period` cadence à la fois le balayage et l'allumage des points. */
-  .radar-sweep {
+  /* ————— Carte des matchs proches —————
+     Le cône de balayage : un secteur d'environ 55°, accentué au centre et
+     transparent au bord, qui fait un tour en `--sweep-period`. Son opacité est
+     un jeton : sur un fond de carte clair, la valeur nocturne l'écraserait. */
+  .map-sweep {
     background: conic-gradient(
       from 0deg,
-      rgba(245, 179, 1, 0.42) 0deg,
-      rgba(245, 179, 1, 0.14) 22deg,
-      rgba(245, 179, 1, 0) 62deg,
-      rgba(245, 179, 1, 0) 360deg
+      color-mix(in srgb, var(--accent-solid) calc(var(--map-sweep-opacity) * 100%), transparent) 0deg,
+      color-mix(in srgb, var(--accent-solid) calc(var(--map-sweep-opacity) * 40%), transparent) 30deg,
+      transparent 55deg,
+      transparent 360deg
     );
-    animation: radar-sweep var(--radar-period, 4s) linear infinite;
-  }
-  .radar-blip {
-    animation: radar-blip var(--radar-period, 4s) linear infinite both;
-  }
-  .radar-echo {
-    animation: radar-echo var(--radar-period, 4s) linear infinite both;
+    /* Ce dégradé est un MASQUE, pas une couleur : seul son canal alpha compte,
+       et le noir opaque n'y désigne que « garder ». Il n'a donc pas de jeton —
+       le thématiser n'aurait aucun effet visible. */
+    -webkit-mask-image: radial-gradient(circle at center, #000 0%, rgb(0 0 0 / 0.55) 55%, transparent 100%);
+    mask-image: radial-gradient(circle at center, #000 0%, rgb(0 0 0 / 0.55) 55%, transparent 100%);
+    animation: radar-sweep var(--sweep-period) linear infinite;
   }
 
-  /* Mouvement réduit : le faisceau s'arrête, les points restent tous visibles.
-     La règle globale ci-dessous écrase la durée ; on neutralise en plus
-     l'opacité résiduelle des points pour qu'aucun ne disparaisse. */
+  /* Halo respirant sous la position de mon équipe */
+  .map-beacon {
+    animation: beacon-pulse 2.4s ease-out infinite;
+  }
+
+  /* Chute du maillot sur la carte. La translation fait partie de l'animation :
+     le pin est ancré par sa pointe basse, d'où le -100 % vertical d'arrivée. */
+  .map-pin {
+    animation: pin-drop var(--dur-page) var(--ease-app) both;
+  }
+
+  /* Glissière verticale en forme de pill, sur les bords de la carte */
+  .map-rail {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: var(--rail-length, 9rem);
+  }
+  .map-rail::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-pill);
+    background: var(--surface-glass);
+    border: 1px solid var(--border-defined);
+    backdrop-filter: blur(8px);
+  }
+  .map-rail input[type="range"] {
+    position: relative;
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--rail-length, 9rem);
+    height: 2.25rem;
+    transform: rotate(-90deg);
+    background: transparent;
+    cursor: pointer;
+    /* Le glissé se fait à la verticale : sans ça, le navigateur y voit un
+       défilement de page et le curseur ne suit pas le doigt. */
+    touch-action: none;
+  }
+  .map-rail input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(
+      90deg,
+      var(--accent-solid) 0 var(--rail-fill, 50%),
+      var(--map-rail-track) var(--rail-fill, 50%) 100%
+    );
+  }
+  .map-rail input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--map-rail-track);
+  }
+  .map-rail input[type="range"]::-moz-range-progress {
+    height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-solid);
+  }
+  .map-rail input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -7px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-1);
+    border: 1px solid var(--border-defined);
+    box-shadow: var(--elevation-1), var(--accent-glow);
+  }
+  .map-rail input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--border-defined);
+    border-radius: var(--radius-pill);
+    background: var(--surface-1);
+    box-shadow: var(--elevation-1), var(--accent-glow);
+  }
+
+  /* Mouvement réduit : le cône s'immobilise (il reste lisible comme un secteur
+     d'orientation), le halo s'éteint, les maillots sont déjà en place. */
   @media (prefers-reduced-motion: reduce) {
-    .radar-sweep { display: none; }
-    .radar-blip,
-    .radar-echo { animation: none; }
-    .radar-blip { opacity: 1; }
-    .radar-echo { opacity: 0; }
+    .map-sweep,
+    .map-beacon,
+    .map-pin {
+      animation: none;
+    }
+    .map-beacon { opacity: 0; }
+    .map-pin { opacity: 1; transform: translate(-50%, -100%); }
   }
 }
 

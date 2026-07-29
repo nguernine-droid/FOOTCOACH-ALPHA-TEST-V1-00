@@ -182,7 +182,7 @@ function AffiliationRequestsCard({
   }
 
   return (
-    <div className="card p-5 space-y-3 border-l-4 border-l-gold">
+    <div className="card p-5 space-y-3 border-l-4 border-l-accent">
       <div className="flex items-center gap-2">
         <UserPlus size={16} className="text-sun" />
         <p className="text-sm font-black">
@@ -311,7 +311,7 @@ function ClubCoaches() {
                   <span className="chip bg-paper text-ink-soft">Aucune équipe affectée</span>
                 ) : (
                   coach.teams.map((t) => (
-                    <span key={t.id} className="chip bg-pitch-soft text-pitch-deep">
+                    <span key={t.id} className="chip bg-pitch-soft text-primary">
                       {t.name}
                       {t.role === "adjoint" ? " (adjoint)" : ""}
                     </span>

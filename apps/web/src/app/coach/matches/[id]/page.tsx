@@ -69,7 +69,7 @@ function FinalScoreForm({
         <button
           type="button"
           onClick={() => set((v) => Math.max(0, v - 1))}
-          className="w-16 h-16 shrink-0 rounded-xl border border-line bg-white text-2xl text-ink-soft
+          className="w-16 h-16 shrink-0 rounded-xl border border-line surface text-2xl text-ink-soft
             transition active:scale-90 active:bg-paper hover:border-blue/40"
           aria-label={`Retirer un but à ${label}`}
         >
@@ -77,7 +77,7 @@ function FinalScoreForm({
         </button>
         {/* Largeur figée : un passage de 9 à 10 ne doit pas déplacer les boutons.
             La clé sur la valeur relance l'animation à chaque but. */}
-        <span className="display text-6xl tabular-nums leading-none text-navy-700 min-w-[2ch] text-center overflow-hidden">
+        <span className="display text-6xl tabular-nums leading-none text-primary min-w-[2ch] text-center overflow-hidden">
           <span key={value} className="animate-digit inline-block">
             {value}
           </span>
@@ -85,7 +85,7 @@ function FinalScoreForm({
         <button
           type="button"
           onClick={() => set((v) => Math.min(99, v + 1))}
-          className="w-16 h-16 shrink-0 rounded-xl border border-blue/30 bg-blue-soft text-2xl text-navy-700
+          className="w-16 h-16 shrink-0 rounded-xl border border-blue/30 bg-blue-soft text-2xl text-primary
             transition active:scale-90 active:bg-blue/20 hover:border-blue/60"
           aria-label={`Ajouter un but à ${label}`}
         >
@@ -222,7 +222,7 @@ function WithdrawSheet({
             onChange={(e) => setDetails(e.target.value.slice(0, 140))}
             rows={2}
             placeholder="Trois joueurs blessés à l'entraînement"
-            className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm
+            className="w-full rounded-lg border border-line surface px-4 py-3 text-sm
               focus:outline-none focus:border-blue focus:ring-2 focus:ring-blue/15"
           />
           <span className="block text-[11px] text-ink-faint text-right">{details.length}/140</span>
@@ -314,7 +314,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
       <Link
         href="/coach/matches"
         className="inline-flex items-center gap-1.5 min-h-11 -ml-2 px-2 rounded-lg text-xs font-bold text-ink-soft
-          transition hover:text-ink active:bg-white"
+          transition hover:text-ink active:bg-paper"
       >
         <ArrowLeft size={16} /> Retour aux matchs
       </Link>
@@ -410,7 +410,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                 </p>
               </div>
               <div className="flex flex-col items-center gap-3">
-                <p className="display text-5xl tabular-nums text-navy-700">
+                <p className="display text-5xl tabular-nums text-primary">
                   {match.homeScore}
                   <span className="text-ink-faint mx-2">–</span>
                   {match.awayScore}
@@ -456,7 +456,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                   Scannez le QR code affiché sur son écran pour le valider.
                 </p>
               </div>
-              <p className="display text-5xl tabular-nums text-navy-700 text-center">
+              <p className="display text-5xl tabular-nums text-primary text-center">
                 {match.homeScore}
                 <span className="text-ink-faint mx-2">–</span>
                 {match.awayScore}

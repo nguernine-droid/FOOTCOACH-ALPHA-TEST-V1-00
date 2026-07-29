@@ -116,7 +116,7 @@ export function QrScanner({ onResult, onClose }: { onResult: (text: string) => v
             <>
               <div className="relative rounded-xl overflow-hidden bg-black aspect-square">
                 <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
-                <div className="absolute inset-8 border-2 border-gold rounded-lg pointer-events-none" aria-hidden />
+                <div className="absolute inset-8 border-2 border-accent-solid rounded-lg pointer-events-none" aria-hidden />
               </div>
               <p className="text-xs text-white/80 text-center">
                 Visez le QR code affiché sur l&apos;écran du coach adverse.

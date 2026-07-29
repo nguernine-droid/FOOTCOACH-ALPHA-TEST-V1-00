@@ -219,7 +219,7 @@ export default function CoachProfilePage() {
           <div className="flex flex-col items-center gap-3">
             <QrCodeCanvas value={coachQrPayload(user.coachCode)} label="Mon QR code coach" />
             <div className="flex items-center gap-2">
-              <span className="display text-3xl tracking-[0.3em] text-navy-700">{user.coachCode}</span>
+              <span className="display text-3xl tracking-[0.3em] text-primary">{user.coachCode}</span>
               <button
                 type="button"
                 onClick={() => {

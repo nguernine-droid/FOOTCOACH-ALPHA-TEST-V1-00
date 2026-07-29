@@ -18,6 +18,7 @@ import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { RADIUS_OPTIONS, RadarScope, toBlips } from "@/components/announcements/RadarScope";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -64,6 +65,8 @@ export function RadarFeed() {
   );
   const [origin, setOrigin] = useState(stored?.location ?? null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Annonce dont la feuille de détail est ouverte, depuis un maillot de la carte */
+  const [detailId, setDetailId] = useState<string | null>(null);
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
 
   // La session peut dater d'avant le réglage de position : on relit la fiche
@@ -133,10 +136,19 @@ export function RadarFeed() {
     }
   }
 
-  /** Un point du radar renvoie à sa fiche dans la liste */
+  /** Un maillot de la carte ouvre le détail de son équipe */
+  function openDetail(id: string) {
+    setSelectedId(id);
+    setDetailId(id);
+  }
+
+  /** Depuis le détail : rejoindre la fiche complète, dans la liste */
   function focusCard(id: string) {
     setSelectedId(id);
-    cardRefs.current.get(id)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    setDetailId(null);
+    // La feuille se referme en 180 ms : on laisse la page se rendre avant de
+    // viser la fiche, sinon le défilement part depuis une page encore figée.
+    setTimeout(() => cardRefs.current.get(id)?.scrollIntoView({ block: "center", behavior: "smooth" }), 200);
   }
 
   const matchesFilters = useMemo(
@@ -162,38 +174,47 @@ export function RadarFeed() {
   const scaleKm = radiusKm ?? Math.max(10, Math.ceil(farthest / 10) * 10);
   const blips = useMemo(() => toBlips(inRange, scaleKm), [inRange, scaleKm]);
 
+  // L'annonce dont la feuille est ouverte. Relue dans la liste courante plutôt
+  // que copiée : un rechargement (réponse envoyée, retrait) la met à jour, et
+  // une annonce qui disparaît referme la feuille au lieu de la figer.
+  const detail = detailId ? (announcements ?? []).find((a) => a.id === detailId) ?? null : null;
+
   const header = (
     <div className="flex items-center gap-2.5">
-      <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
+      <span className="w-9 h-9 rounded-lg bg-accent-surface border border-defined text-accent flex items-center justify-center shrink-0">
         <Radar size={18} />
       </span>
       <div className="min-w-0">
-        <h3 className="display text-lg leading-none">Radar des matchs</h3>
-        <p className="text-xs text-ink-soft">Les équipes autour de vous qui cherchent un adversaire.</p>
+        <h3 className="display text-lg leading-none">Carte des matchs proches</h3>
+        <p className="text-xs text-ink-soft">
+          Explorez votre zone et découvrez les équipes qui s&apos;entraînent ou cherchent des adversaires.
+        </p>
       </div>
     </div>
   );
 
   if (!announcements) {
     return (
-      <section className="card p-5 space-y-4" aria-label="Radar des matchs" aria-busy>
+      <section className="card p-5 space-y-4" aria-label="Carte des matchs proches" aria-busy>
         {header}
-        <Skeleton className="h-[300px] max-w-[300px] mx-auto rounded-full" />
+        <Skeleton className="w-full aspect-square rounded-card" />
         <Skeleton className="h-40" />
       </section>
     );
   }
 
   return (
-    <section className="card p-5 space-y-4 animate-rise-in" aria-label="Radar des matchs">
+    <section className="card p-5 space-y-4 animate-rise-in" aria-label="Carte des matchs proches">
       {header}
 
       <RadarScope
         blips={blips}
         scaleKm={scaleKm}
         unknownCount={unknownCount}
-        onSelect={focusCard}
+        onSelect={openDetail}
         selectedId={selectedId}
+        radiusKm={radiusKm}
+        onRadiusChange={changeRadius}
       />
 
       {/* D'où l'on balaie : le coach doit pouvoir le corriger d'un tap */}
@@ -395,18 +416,18 @@ export function RadarFeed() {
                   </div>
                 </div>
                 {a.distanceKm !== null && (
-                  <span className="chip bg-blue-soft text-navy-700 shrink-0">
+                  <span className="chip bg-blue-soft text-primary shrink-0">
                     <Navigation size={11} /> à {a.distanceKm.toLocaleString("fr-FR")} km
                   </span>
                 )}
               </div>
 
               <div className="flex flex-wrap gap-1.5">
-                <span className="chip bg-pitch-soft text-pitch-deep">{categoryLabel(a.category)}</span>
+                <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
                 {a.gender && (
-                  <span className="chip bg-pitch-soft text-pitch-deep">{MATCH_GENDER_LABELS[a.gender]}</span>
+                  <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>
                 )}
-                <span className="chip bg-pitch-soft text-pitch-deep">{a.format}</span>
+                <span className="chip bg-pitch-soft text-primary">{a.format}</span>
                 <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[a.level]}</span>
               </div>
 
@@ -454,6 +475,100 @@ export function RadarFeed() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Détail de l'équipe touchée sur la carte. La feuille ne double pas la
+          fiche de la liste : elle en donne l'essentiel et propose les deux
+          suites possibles — répondre tout de suite, ou aller voir la fiche. */}
+      {detail && (
+        <BottomSheet
+          label={`Détail de l'annonce de ${detail.team.name}`}
+          onClose={() => setDetailId(null)}
+          footer={
+            <div className="space-y-2">
+              {detail.myResponseStatus === "pending" ? (
+                <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
+                  <Clock3 size={14} className="shrink-0" />
+                  Proposition envoyée — en attente de validation du coach
+                </p>
+              ) : detail.myResponseStatus === "declined" ? (
+                <p className="text-xs font-bold text-coral bg-coral-soft rounded-lg px-4 py-3 flex items-center gap-2">
+                  <XCircle size={14} className="shrink-0" />
+                  Proposition déclinée par le coach
+                </p>
+              ) : (
+                <Button
+                  variant="cta"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => respond(detail.id)}
+                  disabled={responding === detail.id}
+                >
+                  {responding === detail.id ? "Envoi…" : "Proposer de jouer"}
+                </Button>
+              )}
+              <Button variant="ghost" className="w-full" onClick={() => focusCard(detail.id)}>
+                Voir l&apos;annonce dans la liste
+              </Button>
+            </div>
+          }
+        >
+          <div className="px-5 pb-4 space-y-4">
+            {detail.isSos && (
+              <p className="rounded-lg bg-coral-soft px-4 py-2.5 text-xs font-bold text-coral flex items-start gap-2">
+                <UserMinus size={14} className="shrink-0 mt-px" aria-hidden />
+                <span>
+                  SOS — l&apos;adversaire s&apos;est désisté
+                  {detail.sosReason && ` (${WITHDRAWAL_REASON_LABELS[detail.sosReason].toLowerCase()})`}
+                </span>
+              </p>
+            )}
+
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  "w-12 h-12 rounded-full text-white flex items-center justify-center text-sm font-black shrink-0",
+                  teamColor(detail.team),
+                )}
+              >
+                {teamInitials(detail.team.name)}
+              </span>
+              <div className="min-w-0">
+                <p className="font-bold truncate">{detail.team.name}</p>
+                <p className="text-xs text-ink-soft truncate">
+                  {detail.team.city}
+                  {detail.distanceKm !== null && ` · à ${detail.distanceKm.toLocaleString("fr-FR")} km`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              <span className="chip bg-pitch-soft text-primary">{categoryLabel(detail.category)}</span>
+              {detail.gender && (
+                <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[detail.gender]}</span>
+              )}
+              <span className="chip bg-pitch-soft text-primary">{detail.format}</span>
+              <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[detail.level]}</span>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-ink-soft font-semibold">
+              <p className="flex items-center gap-1.5 capitalize">
+                <CalendarDays size={13} className="text-pitch shrink-0" /> {formatDate(detail.date)} à{" "}
+                {detail.time}
+              </p>
+              <p className="flex items-center gap-1.5">
+                <MapPin size={13} className="text-pitch shrink-0" /> {detail.stadium}, {detail.city}
+              </p>
+            </div>
+
+            {detail.comment && (
+              <div className="text-xs surface-2 rounded-lg px-4 py-3 space-y-0.5">
+                <p className="font-bold text-ink-soft">Informations pratiques</p>
+                <p className="text-ink-soft">{detail.comment}</p>
+              </div>
+            )}
+          </div>
+        </BottomSheet>
       )}
     </section>
   );

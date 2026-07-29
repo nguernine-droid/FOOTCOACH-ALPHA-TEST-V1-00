@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 /**
  * Logo FootCoach.
  *
- * La marque est bleue (#124BCB) : posée directement sur le header navy, elle
+ * La marque est d’un bleu vif : posée directement sur le header navy, elle
  * tomberait à 2,35:1 de contraste et se lirait à peine. Elle est donc portée
  * par une pastille claire, qui lui rend son intensité d'origine — celle du
  * fichier fourni, dessiné pour un fond blanc.

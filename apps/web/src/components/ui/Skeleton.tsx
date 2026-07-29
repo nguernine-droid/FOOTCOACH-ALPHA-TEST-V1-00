@@ -7,8 +7,10 @@ import { cn } from "@/lib/utils";
  */
 export function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-lg bg-line/60", className)} aria-hidden>
-      <span className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+    <div className={cn("relative overflow-hidden rounded-lg bg-defined", className)} aria-hidden>
+      {/* Le reflet est un jeton : un balayage blanc à 60 % passe inaperçu sur
+          un fond sombre, et brûle sur un fond clair. */}
+      <span className="animate-shimmer shimmer-sheen absolute inset-0" />
     </div>
   );
 }

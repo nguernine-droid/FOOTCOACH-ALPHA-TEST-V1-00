@@ -12,7 +12,7 @@ export default function Home() {
   }, [router]);
   return (
     <div className="min-h-dvh flex items-center justify-center animate-soft-pulse">
-      <span className="display text-2xl text-pitch-deep">
+      <span className="display text-2xl text-primary">
         FOOT<span className="text-pitch">COACH</span>
       </span>
     </div>
