@@ -15,43 +15,28 @@ const nextConfig = {
   images: { unoptimized: true },
 
   /**
-   * En-têtes de sécurité de l'application servie au navigateur.
+   * En-têtes de sécurité fixes, posés sur toutes les réponses.
    *
-   * La politique de contenu autorise `unsafe-inline` sur les styles : Next et
-   * Tailwind injectent des styles en ligne au rendu. Les SCRIPTS, eux, ne
-   * viennent que de l'origine — c'est ce qui compte contre l'injection de code.
-   * Les images acceptent `data:` et `blob:` pour l'aperçu de photo de profil et
-   * le rendu des QR codes sur canvas.
+   * La politique de contenu n'est PAS ici : elle contient un nonce qui change
+   * à chaque requête, elle vit donc dans `src/proxy.ts`. Deux politiques
+   * simultanées s'appliqueraient par intersection — plus difficile à raisonner
+   * qu'une seule, pour aucun gain.
    */
   async headers() {
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
-      "font-src 'self' data:",
-      "connect-src 'self'",
-      "media-src 'self' blob:",
-      "worker-src 'self'",
-      "manifest-src 'self'",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; ");
+    const isDev = process.env.NODE_ENV !== "production";
 
     return [
       {
         source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: csp },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "no-referrer" },
           // La caméra sert au scan du QR code ; le reste est refusé d'office.
           { key: "Permissions-Policy", value: "camera=(self), geolocation=(self), microphone=()" },
-          ...(process.env.NODE_ENV === "production"
-            ? [{ key: "Strict-Transport-Security", value: "max-age=15552000; includeSubDomains" }]
-            : []),
+          ...(isDev
+            ? []
+            : [{ key: "Strict-Transport-Security", value: "max-age=15552000; includeSubDomains" }]),
         ],
       },
     ];

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Barlow_Condensed, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
@@ -37,7 +38,12 @@ export const viewport: Viewport = {
   // Le zoom système reste autorisé (accessibilité) : pas de maximumScale.
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Jeton posé par le middleware, propre à cette requête. Le lire rend le rendu
+  // dynamique — ce qui serait de toute façon le cas : une page mise en cache
+  // servirait un nonce périmé, et ses scripts seraient refusés.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="fr" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
       <head>
@@ -45,9 +51,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             lit le choix mémorisé et pose `data-theme` sur <html> avant le
             premier rendu. Sans lui, un coach en thème sombre verrait l'écran
             blanc le temps que React démarre — à chaque chargement de page.
-            `suppressHydrationWarning` sur <html> parce que l'attribut qu'il
-            ajoute n'existe pas dans le HTML rendu par le serveur. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+
+            Il porte le nonce de la requête : c'est le seul script en ligne que
+            nous écrivons, et la politique de contenu n'autorise que ceux-là.
+
+            `suppressHydrationWarning` sur <html> parce que l'attribut que ce
+            script ajoute n'existe pas dans le HTML rendu par le serveur.
+
+            Et sur le <script> lui-même pour une autre raison : après avoir lu
+            la page, le navigateur VIDE l'attribut `nonce` — c'est une défense
+            contre son exfiltration par un sélecteur CSS. Le client lit donc
+            une chaîne vide là où le serveur avait écrit le jeton, et React y
+            voit une divergence. Le nonce, lui, reste dans la propriété DOM :
+            le script s'exécute normalement, il n'y a rien à réparer. */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
+        />
       </head>
       <body className="antialiased">
         <ThemeProvider>{children}</ThemeProvider>
