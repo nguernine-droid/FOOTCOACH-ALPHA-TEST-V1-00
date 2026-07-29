@@ -1,0 +1,1619 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FootCoach — l'application des matchs amicaux entre coachs</title>
+<meta name="description" content="FootCoach place les annonces des coachs autour de vous sur un radar, organise le match amical et fait valider le score par les deux bancs. Application web, à installer sur l'écran d'accueil.">
+<meta name="theme-color" content="#071B3F" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0A1330" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+
+<!-- Partage social. Remplacer l'URL par le domaine réel avant mise en ligne. -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:site_name" content="FootCoach">
+<meta property="og:title" content="FootCoach — l'application des matchs amicaux entre coachs">
+<meta property="og:description" content="Trouvez l'adversaire du week-end sur le radar, fixez le match, faites valider le score par les deux bancs.">
+<meta property="og:url" content="https://footcoach.fr/">
+<link rel="canonical" href="https://footcoach.fr/">
+<link rel="icon" href="./logo.png" type="image/png">
+<link rel="apple-touch-icon" href="./logo.png">
+
+<!-- Fontes de la marque, auto-hébergées : aucune requête vers un tiers, donc
+     rien à déclarer côté cookies ni RGPD. Sous-ensemble latin uniquement. -->
+<link rel="preload" href="./fonts/inter-variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/barlow-condensed-800.woff2" as="font" type="font/woff2" crossorigin>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   SITE VITRINE FOOTCOACH
+
+   Les couleurs viennent de `apps/web/src/app/tokens.css` : c'est la même
+   marque, donc les mêmes jetons. Si la direction artistique de l'application
+   bouge, ces valeurs bougent avec elle.
+
+   Trois strates, dans cet ordre : jetons du thème clair (défaut), thème sombre
+   par préférence système, puis `data-theme` posé par le sélecteur — qui doit
+   gagner dans LES DEUX sens, d'où les deux blocs explicites en fin de section.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: "Inter vitrine";
+  src: url("./fonts/inter-variable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed vitrine";
+  src: url("./fonts/barlow-condensed-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed vitrine";
+  src: url("./fonts/barlow-condensed-800.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+
+  --bg-app: #F2F5FB;
+  --bg-halo: #FFE9B8;
+  --bg-halo-opacity: 0.5;
+  --bg-texture-opacity: 0.05;
+
+  --surface-1: #FFFFFF;
+  --surface-2: #F7F9FD;
+  --border-subtle: rgba(10, 19, 48, 0.08);
+  --border-defined: rgba(10, 19, 48, 0.12);
+
+  --text-primary: #0A1330;
+  --text-secondary: #4A5578;
+  --text-muted: #636D8A;
+  --text-on-structure: #FFFFFF;
+  --text-on-structure-dim: rgba(255, 255, 255, 0.62);
+
+  --accent: #8A6A00;          /* doré lisible sur fond clair */
+  --accent-solid: #F5B921;    /* aplats seulement */
+  --accent-bright: #FFD469;
+  --accent-surface: #FFF6E0;
+  --accent-on: #0A1330;
+
+  --cta: #4E57D6;
+  --cta-deep: #3F47BE;
+  --cta-on: #FFFFFF;
+  --cta-surface: #E9EBFB;
+
+  --success: #157A45;
+  --success-surface: #E4F4EA;
+  --warning: #7D6000;
+  --warning-surface: #FCF0CF;
+  --danger: #C62F2F;
+
+  --structure-1: #071B3F;
+  --structure-2: #0A2452;
+  --structure-3: #0C2E6B;
+  --structure-line: rgba(255, 255, 255, 0.1);
+  --structure-veil: rgba(7, 27, 63, 0.92);
+
+  --elevation-1: 0 2px 8px rgba(10, 19, 48, 0.06);
+  --elevation-2: 0 12px 32px rgba(10, 19, 48, 0.1);
+  --elevation-3: 0 24px 60px -20px rgba(10, 19, 48, 0.22);
+  --cta-glow: 0 8px 20px -8px rgba(78, 87, 214, 0.55);
+  --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+
+  --card-bg: var(--surface-1);
+  --card-border: var(--border-subtle);
+
+  --map-bg: #E8EDF5;
+  --map-sweep-opacity: 0.18;
+  --pin-stroke: #0A1330;
+
+  --focus-ring: var(--cta);
+
+  --ease-app: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-tap: 120ms;
+  --dur-ui: 180ms;
+  --sweep-period: 8s;
+
+  --font-body: "Inter vitrine", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Barlow Condensed vitrine", "Arial Narrow", system-ui, sans-serif;
+
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-l: 20px;
+  --pad-page: clamp(1.15rem, 4vw, 2.5rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg-app: #0A1330;
+    --bg-halo: #F5B921;
+    --bg-halo-opacity: 0.12;
+    --bg-texture-opacity: 0.06;
+
+    --surface-1: #101B3D;
+    --surface-2: #16234A;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-defined: rgba(255, 255, 255, 0.14);
+
+    --text-primary: #FFFFFF;
+    --text-secondary: #A9B4D0;
+    --text-muted: #8592B7;
+
+    --accent: #F5B921;
+    --accent-solid: #F5B921;
+    --accent-bright: #FFD469;
+    --accent-surface: rgba(245, 185, 33, 0.14);
+
+    --cta: #6C74E0;
+    --cta-deep: #4E56CC;
+    --cta-surface: rgba(108, 116, 224, 0.22);
+
+    --success: #63D9A2;
+    --success-surface: rgba(30, 158, 88, 0.22);
+    --warning: #F5B921;
+    --warning-surface: rgba(245, 185, 33, 0.16);
+    --danger: #FF6B6B;
+
+    --structure-1: #0A1330;
+    --structure-2: #101B3D;
+    --structure-3: #16234A;
+    --structure-line: rgba(255, 255, 255, 0.08);
+    --structure-veil: rgba(10, 19, 48, 0.94);
+
+    --elevation-1: 0 2px 12px rgba(0, 0, 0, 0.4);
+    --elevation-2: 0 16px 40px rgba(0, 0, 0, 0.5);
+    --elevation-3: 0 24px 60px -20px rgba(0, 0, 0, 0.75);
+    --cta-glow: 0 10px 32px -12px rgba(108, 116, 224, 0.75);
+
+    --card-bg: color-mix(in srgb, var(--surface-1) 88%, transparent);
+
+    --map-bg: #060D24;
+    --map-sweep-opacity: 0.3;
+
+    --focus-ring: var(--accent);
+  }
+}
+
+/* Le choix explicite du visiteur l'emporte sur la préférence système — dans
+   les deux sens, sinon un thème clair demandé sous un OS sombre resterait
+   sombre. Les deux blocs sont donc écrits en entier. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-app: #F2F5FB;
+  --bg-halo: #FFE9B8;
+  --bg-halo-opacity: 0.5;
+  --bg-texture-opacity: 0.05;
+  --surface-1: #FFFFFF;
+  --surface-2: #F7F9FD;
+  --border-subtle: rgba(10, 19, 48, 0.08);
+  --border-defined: rgba(10, 19, 48, 0.12);
+  --text-primary: #0A1330;
+  --text-secondary: #4A5578;
+  --text-muted: #636D8A;
+  --accent: #8A6A00;
+  --accent-solid: #F5B921;
+  --accent-bright: #FFD469;
+  --accent-surface: #FFF6E0;
+  --cta: #4E57D6;
+  --cta-deep: #3F47BE;
+  --cta-surface: #E9EBFB;
+  --success: #157A45;
+  --success-surface: #E4F4EA;
+  --warning: #7D6000;
+  --warning-surface: #FCF0CF;
+  --danger: #C62F2F;
+  --structure-1: #071B3F;
+  --structure-2: #0A2452;
+  --structure-3: #0C2E6B;
+  --structure-line: rgba(255, 255, 255, 0.1);
+  --structure-veil: rgba(7, 27, 63, 0.92);
+  --elevation-1: 0 2px 8px rgba(10, 19, 48, 0.06);
+  --elevation-2: 0 12px 32px rgba(10, 19, 48, 0.1);
+  --elevation-3: 0 24px 60px -20px rgba(10, 19, 48, 0.22);
+  --cta-glow: 0 8px 20px -8px rgba(78, 87, 214, 0.55);
+  --card-bg: var(--surface-1);
+  --map-bg: #E8EDF5;
+  --map-sweep-opacity: 0.18;
+  --focus-ring: var(--cta);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-app: #0A1330;
+  --bg-halo: #F5B921;
+  --bg-halo-opacity: 0.12;
+  --bg-texture-opacity: 0.06;
+  --surface-1: #101B3D;
+  --surface-2: #16234A;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-defined: rgba(255, 255, 255, 0.14);
+  --text-primary: #FFFFFF;
+  --text-secondary: #A9B4D0;
+  --text-muted: #8592B7;
+  --accent: #F5B921;
+  --accent-solid: #F5B921;
+  --accent-bright: #FFD469;
+  --accent-surface: rgba(245, 185, 33, 0.14);
+  --cta: #6C74E0;
+  --cta-deep: #4E56CC;
+  --cta-surface: rgba(108, 116, 224, 0.22);
+  --success: #63D9A2;
+  --success-surface: rgba(30, 158, 88, 0.22);
+  --warning: #F5B921;
+  --warning-surface: rgba(245, 185, 33, 0.16);
+  --danger: #FF6B6B;
+  --structure-1: #0A1330;
+  --structure-2: #101B3D;
+  --structure-3: #16234A;
+  --structure-line: rgba(255, 255, 255, 0.08);
+  --structure-veil: rgba(10, 19, 48, 0.94);
+  --elevation-1: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --elevation-2: 0 16px 40px rgba(0, 0, 0, 0.5);
+  --elevation-3: 0 24px 60px -20px rgba(0, 0, 0, 0.75);
+  --cta-glow: 0 10px 32px -12px rgba(108, 116, 224, 0.75);
+  --card-bg: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  --map-bg: #060D24;
+  --map-sweep-opacity: 0.3;
+  --focus-ring: var(--accent);
+}
+
+/* ─────────────────────────────  BASE  ───────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  transition: background-color var(--dur-ui) var(--ease-app), color var(--dur-ui) var(--ease-app);
+}
+
+/* Le fond de l'application : un halo doré en haut à droite et le tracé d'un
+   terrain, très en retrait. Le site respire le même air que l'app. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+body::before {
+  background: radial-gradient(60rem 40rem at 88% -8%, var(--bg-halo) 0%, transparent 62%);
+  opacity: var(--bg-halo-opacity);
+}
+/* Tracé de terrain : ligne médiane et rond central, à la limite du visible.
+   Le même motif que le fond de l'application. */
+body::after {
+  background:
+    linear-gradient(to right,
+      transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    radial-gradient(circle at 50% 26%,
+      transparent 0 9.5rem, currentColor 9.5rem calc(9.5rem + 1px), transparent calc(9.5rem + 1px));
+  opacity: var(--bg-texture-opacity);
+}
+
+h1, h2, h3, .display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+p { margin: 0; }
+ul, ol { margin: 0; padding: 0; }
+
+a { color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  width: min(1140px, 100%);
+  margin-inline: auto;
+  padding-inline: var(--pad-page);
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+
+.lede { color: var(--text-secondary); font-size: 1.125rem; max-width: 62ch; }
+.small { font-size: 0.9375rem; color: var(--text-muted); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip {
+  position: absolute;
+  left: 1rem; top: -4rem;
+  z-index: 60;
+  background: var(--cta);
+  color: var(--cta-on);
+  padding: 0.75rem 1.15rem;
+  border-radius: var(--radius-s);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--dur-ui) var(--ease-app);
+}
+.skip:focus { top: 1rem; }
+
+/* ─────────────────────────────  BOUTONS  ────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  padding: 0.7rem 1.35rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  font: inherit;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform var(--dur-tap) var(--ease-app),
+    background-color var(--dur-ui) var(--ease-app),
+    border-color var(--dur-ui) var(--ease-app),
+    box-shadow var(--dur-ui) var(--ease-app);
+}
+.btn:active { transform: translateY(1px) scale(0.99); }
+
+.btn-cta {
+  background: linear-gradient(180deg, var(--cta) 0%, var(--cta-deep) 100%);
+  color: var(--cta-on);
+  box-shadow: var(--cta-glow), var(--sheen);
+}
+.btn-cta:hover { filter: brightness(1.06); }
+
+.btn-quiet {
+  background: transparent;
+  color: var(--text-primary);
+  border-color: var(--border-defined);
+}
+.btn-quiet:hover { background: var(--surface-2); border-color: var(--accent); }
+
+.btn-on-structure {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-on-structure);
+  border-color: var(--structure-line);
+}
+.btn-on-structure:hover { background: rgba(255, 255, 255, 0.16); }
+
+/* ─────────────────────────  BARRE SUPÉRIEURE  ──────────────────────────── */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: linear-gradient(90deg, var(--structure-1) 0%, var(--structure-2) 55%, var(--structure-3) 100%);
+  border-bottom: 1px solid var(--structure-line);
+  color: var(--text-on-structure);
+}
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 64px;
+  padding-block: 0.6rem;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: inherit;
+  margin-right: auto;
+}
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+.brand-mark img { width: 29px; height: 29px; display: block; }
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.wordmark span { color: var(--accent-solid); }
+
+.topnav { display: none; gap: 1.6rem; font-size: 0.9375rem; font-weight: 500; }
+.topnav a { color: var(--text-on-structure-dim); text-decoration: none; padding-block: 0.4rem; transition: color var(--dur-ui) var(--ease-app); }
+.topnav a:hover { color: var(--text-on-structure); }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--structure-line);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-on-structure);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--dur-ui) var(--ease-app);
+}
+.icon-btn:hover { background: rgba(255, 255, 255, 0.16); }
+.icon-sun { display: none; }
+:root[data-theme="dark"] .icon-sun { display: block; }
+:root[data-theme="dark"] .icon-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .icon-sun { display: block; }
+  :root:not([data-theme="light"]) .icon-moon { display: none; }
+}
+
+.topbar .btn { display: none; }
+
+@media (min-width: 960px) {
+  .topnav { display: flex; }
+  .topbar .btn { display: inline-flex; min-height: 44px; padding-inline: 1.1rem; }
+}
+
+/* ─────────────────────────────  SECTIONS  ──────────────────────────────── */
+
+section { position: relative; z-index: 1; }
+
+.section-pad { padding-block: clamp(3.5rem, 8vw, 6.5rem); }
+
+.section-head { display: grid; gap: 0.9rem; margin-bottom: clamp(2rem, 4vw, 3rem); }
+.section-head h2 { font-size: clamp(2rem, 4.6vw, 3rem); }
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--elevation-1);
+  padding: clamp(1.35rem, 3vw, 1.9rem);
+}
+
+/* ─────────────────────────────  HÉROS  ─────────────────────────────────── */
+
+.hero { padding-block: clamp(2.75rem, 7vw, 5.5rem) clamp(3rem, 7vw, 5rem); }
+.hero-grid { display: grid; gap: clamp(2.5rem, 6vw, 4rem); align-items: center; }
+.hero-copy { display: grid; gap: 1.4rem; justify-items: start; }
+.hero h1 {
+  font-size: clamp(2.75rem, 8.5vw, 5rem);
+  text-transform: uppercase;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
+  display: block;
+}
+.hero-actions { display: flex; flex-wrap: wrap; gap: 0.85rem; width: 100%; }
+.hero-actions .btn { flex: 1 1 15rem; }
+.hero-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.hero-note svg { flex-shrink: 0; margin-top: 0.15rem; color: var(--accent); }
+
+@media (min-width: 960px) {
+  .hero-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
+  .hero-actions .btn { flex: 0 0 auto; }
+}
+
+/* ── Bandeau de repères chiffrés ── */
+.figures {
+  display: grid;
+  gap: 1px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  overflow: hidden;
+}
+.figures > div { background: var(--surface-1); padding: 1.3rem 1.5rem; display: grid; gap: 0.3rem; }
+.figures dt {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.figures dt small { font-size: 1.15rem; color: var(--text-muted); font-family: var(--font-body); font-weight: 600; }
+.figures dd { margin: 0; color: var(--text-secondary); font-size: 0.9375rem; line-height: 1.5; }
+@media (min-width: 760px) { .figures { grid-template-columns: repeat(3, 1fr); } }
+
+/* ────────────────────  MAQUETTE DE TÉLÉPHONE / RADAR  ──────────────────── */
+
+.device {
+  --frame: 12px;
+  width: min(330px, 100%);
+  margin-inline: auto;
+  padding: var(--frame);
+  border-radius: 42px;
+  background: linear-gradient(160deg, #1A2447 0%, #050C1F 100%);
+  /* Le liseré n'est pas décoratif : sur le fond de nuit, le châssis navy se
+     confondrait avec la page et l'écran flotterait sans appareil autour. */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--elevation-3), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  position: relative;
+}
+.device::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--frame) + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 78px; height: 20px;
+  border-radius: 999px;
+  background: #050C1F;
+}
+.screen {
+  border-radius: 30px;
+  overflow: hidden;
+  background: #0A1330;
+  color: #FFFFFF;
+  display: grid;
+  gap: 0;
+}
+.screen-head {
+  background: linear-gradient(90deg, #071B3F 0%, #0C2E6B 100%);
+  padding: 2.35rem 0.9rem 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.screen-head .brand-mark { width: 26px; height: 26px; border-radius: 8px; }
+.screen-head .brand-mark img { width: 20px; height: 20px; }
+.screen-head .wordmark { font-size: 1.05rem; }
+.screen-head .team {
+  margin-left: auto;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.screen-body { padding: 0.85rem; display: grid; gap: 0.75rem; background: #0A1330; }
+
+.map {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-m);
+  background: #060D24;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.map .ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(245, 185, 33, 0.22);
+  border-radius: 50%;
+}
+.map .ring.r1 { width: 33%; height: 33%; }
+.map .ring.r2 { width: 66%; height: 66%; }
+.map .ring.r3 { width: 99%; height: 99%; }
+.map .cross { position: absolute; background: rgba(255, 255, 255, 0.06); }
+.map .cross.h { left: 0; right: 0; top: 50%; height: 1px; }
+.map .cross.v { top: 0; bottom: 0; left: 50%; width: 1px; }
+
+.sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    rgba(245, 185, 33, 0.30) 0deg,
+    rgba(245, 185, 33, 0.12) 30deg,
+    transparent 65deg,
+    transparent 360deg
+  );
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0 49%, transparent 50%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 0 49%, transparent 50%);
+  animation: sweep var(--sweep-period) linear infinite;
+}
+@keyframes sweep { to { transform: rotate(360deg); } }
+
+.me {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 9px; height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.14);
+}
+
+/* Un point s'allume au passage du faisceau. La phase est calée par un délai
+   NÉGATIF dérivé du relèvement : aucun minuteur, aucune synchronisation à
+   tenir — exactement le procédé employé dans l'application. */
+.pin {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--accent-solid);
+  box-shadow: 0 0 0 1px rgba(10, 19, 48, 0.6);
+  opacity: 0.28;
+  animation: pin-glow var(--sweep-period) linear infinite;
+  animation-delay: var(--phase);
+}
+@keyframes pin-glow {
+  0%   { opacity: 1; box-shadow: 0 0 12px 3px rgba(245, 185, 33, 0.75); transform: scale(1.25); }
+  14%  { opacity: 0.55; box-shadow: 0 0 0 1px rgba(10, 19, 48, 0.6); transform: scale(1); }
+  100% { opacity: 0.28; box-shadow: 0 0 0 1px rgba(10, 19, 48, 0.6); transform: scale(1); }
+}
+.pin.host { background: #FFFFFF; }
+
+.map-label {
+  position: absolute;
+  left: 0.6rem; bottom: 0.6rem;
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.map-radius {
+  position: absolute;
+  right: 0.6rem; top: 0.6rem;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #0A1330;
+  background: #F5B921;
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+}
+
+.mini-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-m);
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.mini-card .row { display: flex; align-items: baseline; gap: 0.5rem; }
+.mini-card .club {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+.mini-card .dist { margin-left: auto; font-size: 0.6875rem; color: #F5B921; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mini-card .meta { font-size: 0.6875rem; color: rgba(255, 255, 255, 0.62); }
+.mini-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(30, 158, 88, 0.22);
+  color: #63D9A2;
+  width: fit-content;
+}
+
+.tabbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.55rem 0.7rem 0.9rem;
+  background: rgba(10, 19, 48, 0.94);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.tabbar .slot {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+.tabbar .slot.on { color: #F5B921; }
+.tabbar .slot.on::after {
+  content: "";
+  width: 14px; height: 2px;
+  border-radius: 2px;
+  background: #F5B921;
+}
+.tabbar .fab {
+  flex: 0 0 auto;
+  width: 46px; height: 46px;
+  margin-top: -18px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #FFD469 0%, #F5B921 100%);
+  color: #0A1330;
+  box-shadow: 0 8px 20px -8px rgba(245, 185, 33, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.device-caption {
+  margin-top: 1.1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  max-width: 34ch;
+  margin-inline: auto;
+}
+
+/* ─────────────────────────  PARCOURS EN 3 TEMPS  ───────────────────────── */
+
+.flow { display: grid; gap: 1.25rem; counter-reset: etape; }
+@media (min-width: 860px) { .flow { grid-template-columns: repeat(3, 1fr); } }
+
+.flow li {
+  list-style: none;
+  counter-increment: etape;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--elevation-1);
+  padding: 1.6rem;
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+}
+.flow li::before {
+  content: counter(etape, decimal-leading-zero);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--accent);
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.flow h3 { font-size: 1.65rem; }
+.flow p { color: var(--text-secondary); font-size: 0.9688rem; }
+
+/* ─────────────────────────────  FONCTIONS  ─────────────────────────────── */
+
+.features { display: grid; gap: 1.15rem; }
+@media (min-width: 700px) { .features { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1040px) { .features { grid-template-columns: repeat(3, 1fr); } }
+
+.feature { display: grid; gap: 0.7rem; align-content: start; }
+.feature .ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px; height: 42px;
+  border-radius: var(--radius-m);
+  background: var(--accent-surface);
+  color: var(--accent);
+}
+.feature h3 { font-size: 1.4rem; }
+.feature p { color: var(--text-secondary); font-size: 0.9688rem; }
+
+/* ────────────────────  BLOC SOMBRE « BORD DU TERRAIN »  ─────────────────── */
+
+.band {
+  background: linear-gradient(135deg, var(--structure-1) 0%, var(--structure-2) 60%, var(--structure-3) 100%);
+  color: var(--text-on-structure);
+  border-radius: var(--radius-l);
+  padding: clamp(1.9rem, 5vw, 3.25rem);
+  display: grid;
+  gap: 2rem;
+  box-shadow: var(--elevation-2);
+}
+.band h2 { font-size: clamp(1.9rem, 4vw, 2.7rem); }
+.band .eyebrow { color: var(--accent-solid); }
+.band .lede { color: rgba(255, 255, 255, 0.78); }
+.band-list { display: grid; gap: 1.1rem; }
+.band-list li { list-style: none; display: flex; gap: 0.8rem; align-items: flex-start; }
+.band-list svg { flex-shrink: 0; color: var(--accent-solid); margin-top: 0.2rem; }
+.band-list b { display: block; font-weight: 600; }
+.band-list span { color: rgba(255, 255, 255, 0.7); font-size: 0.9375rem; }
+@media (min-width: 900px) {
+  .band { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 3rem; align-items: center; }
+  .band-list { grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+}
+
+/* ────────────────────────────  INSTALLATION  ───────────────────────────── */
+
+.install { background: var(--surface-2); border-block: 1px solid var(--border-subtle); }
+
+.os-tabs { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.6rem; }
+.os-tabs input { position: absolute; opacity: 0; pointer-events: none; }
+.os-tabs label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 46px;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-defined);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background-color var(--dur-ui) var(--ease-app), color var(--dur-ui) var(--ease-app), border-color var(--dur-ui) var(--ease-app);
+}
+.os-tabs label:hover { border-color: var(--accent); }
+/* L'onglet actif est doré dans les deux thèmes : le navy des surfaces
+   structurelles se confond avec le fond la nuit, et l'or est déjà la marque de
+   l'élément actif dans l'application. */
+.os-tabs input:checked + label {
+  background: var(--accent-solid);
+  border-color: var(--accent-solid);
+  color: var(--accent-on);
+  box-shadow: var(--sheen);
+}
+.os-tabs input:focus-visible + label { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+
+/* Les panneaux vivent DANS le groupe de boutons : le sélecteur `~` exige un
+   parent commun avec les boutons radio. `flex: 1 0 100%` les renvoie sur leur
+   propre ligne, pleine largeur, sous les onglets. */
+.os-tabs > .os-panels { flex: 1 0 100%; margin-top: 0.6rem; }
+
+.os-panel { display: none; }
+#os-ios:checked     ~ .os-panels #panel-ios,
+#os-android:checked ~ .os-panels #panel-android,
+#os-desktop:checked ~ .os-panels #panel-desktop { display: block; }
+
+.steps { display: grid; gap: 1.1rem; counter-reset: pas; }
+@media (min-width: 860px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.steps li {
+  list-style: none;
+  counter-increment: pas;
+  display: grid;
+  grid-template-columns: 2.4rem 1fr;
+  gap: 0.2rem 1rem;
+  align-items: start;
+}
+.steps li::before {
+  content: counter(pas);
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 2.4rem; height: 2.4rem;
+  border-radius: 50%;
+  background: var(--accent-solid);
+  color: var(--accent-on);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  box-shadow: var(--sheen);
+}
+.steps b { font-weight: 600; }
+.steps span { color: var(--text-secondary); font-size: 0.9375rem; }
+.steps kbd {
+  font: inherit;
+  font-weight: 600;
+  background: var(--cta-surface);
+  color: var(--cta);
+  border-radius: 6px;
+  padding: 0.05em 0.4em;
+  white-space: nowrap;
+}
+
+.note {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.5rem;
+  padding: 1rem 1.15rem;
+  border-radius: var(--radius-m);
+  background: var(--warning-surface);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+.note svg { flex-shrink: 0; color: var(--warning); margin-top: 0.15rem; }
+
+.after-install { display: grid; gap: 1.1rem; margin-top: 2.25rem; }
+@media (min-width: 860px) { .after-install { grid-template-columns: repeat(3, 1fr); } }
+.after-install div { background: var(--surface-1); border: 1px solid var(--border-subtle); border-radius: var(--radius-m); padding: 1.1rem 1.25rem; }
+.after-install h3 { font-size: 1.2rem; margin-bottom: 0.35rem; }
+.after-install p { color: var(--text-secondary); font-size: 0.9375rem; }
+
+/* ─────────────────────────────  LIMITES / FAQ  ─────────────────────────── */
+
+.two-col { display: grid; gap: clamp(2rem, 5vw, 3.5rem); }
+@media (min-width: 940px) { .two-col { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); } }
+
+.limits { display: grid; gap: 0.85rem; }
+.limits li {
+  list-style: none;
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  color: var(--text-secondary);
+  font-size: 0.9688rem;
+}
+.limits svg { flex-shrink: 0; color: var(--text-muted); margin-top: 0.2rem; }
+
+.faq { display: grid; gap: 0.75rem; }
+.faq details {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-m);
+  padding: 0 1.15rem;
+}
+.faq summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 1.05rem 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: "";
+  margin-left: auto;
+  width: 9px; height: 9px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg);
+  transition: transform var(--dur-ui) var(--ease-app);
+  flex-shrink: 0;
+}
+.faq details[open] summary::after { transform: rotate(-135deg); }
+.faq p { padding-bottom: 1.1rem; color: var(--text-secondary); font-size: 0.9688rem; }
+
+/* ────────────────────────────  APPEL FINAL  ────────────────────────────── */
+
+.closing {
+  text-align: center;
+  display: grid;
+  gap: 1.4rem;
+  justify-items: center;
+}
+.closing h2 { font-size: clamp(2.2rem, 6vw, 3.6rem); text-transform: uppercase; }
+.closing .btn { min-width: 15rem; }
+
+/* ─────────────────────────────  PIED DE PAGE  ──────────────────────────── */
+
+footer {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(90deg, var(--structure-1) 0%, var(--structure-2) 55%, var(--structure-3) 100%);
+  color: var(--text-on-structure);
+  padding-block: clamp(2.5rem, 5vw, 3.5rem);
+  margin-top: clamp(3rem, 7vw, 5rem);
+}
+.footer-grid { display: grid; gap: 2rem; }
+@media (min-width: 800px) { .footer-grid { grid-template-columns: 1.2fr 1fr 1fr; } }
+footer h3 { font-family: var(--font-body); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-solid); margin-bottom: 0.85rem; }
+footer ul { display: grid; gap: 0.55rem; }
+footer li { list-style: none; }
+footer a { color: rgba(255, 255, 255, 0.72); text-decoration: none; font-size: 0.9375rem; }
+footer a:hover { color: #FFFFFF; text-decoration: underline; }
+footer p { color: rgba(255, 255, 255, 0.6); font-size: 0.875rem; }
+.footer-bottom {
+  margin-top: 2.25rem;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--structure-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ─────────────────────────────  MOUVEMENT  ─────────────────────────────── */
+
+/* Même règle que dans l'application : le faisceau s'arrête et tous les points
+   restent allumés — l'information ne dépend jamais de l'animation. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+  .sweep { display: none; }
+  .pin { opacity: 1; }
+}
+</style>
+
+<script>
+/* Anti-flash : le thème mémorisé est posé avant le premier rendu. Sans lui,
+   un visiteur en thème sombre verrait un éclair blanc à chaque chargement. */
+(function () {
+  try {
+    var choix = localStorage.getItem("footcoach-vitrine-theme");
+    if (choix === "dark" || choix === "light") {
+      document.documentElement.setAttribute("data-theme", choix);
+    }
+  } catch (e) { /* navigation privée : on suit la préférence système */ }
+})();
+</script>
+</head>
+
+<body>
+<a class="skip" href="#contenu">Aller au contenu</a>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#contenu">
+      <span class="brand-mark"><img src="./logo.png" alt="" width="29" height="29"></span>
+      <span class="wordmark">FOOT<span>COACH</span></span>
+    </a>
+    <nav class="topnav" aria-label="Sections du site">
+      <a href="#radar">Le radar</a>
+      <a href="#fonctions">Fonctions</a>
+      <a href="#installer">Installation</a>
+      <a href="#questions">Questions</a>
+    </nav>
+    <button class="icon-btn" type="button" id="theme-toggle" aria-label="Changer de thème">
+      <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+      <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+    </button>
+    <a class="btn btn-on-structure" href="#installer">Installer l'application</a>
+  </div>
+</header>
+
+<main id="contenu">
+
+  <!-- ─────────────────────────────  HÉROS  ───────────────────────────── -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Matchs amicaux · entre coachs</p>
+        <h1>Il vous manque<br>un adversaire<em>pour samedi.</em></h1>
+        <p class="lede">
+          FootCoach affiche les annonces des coachs autour de vous sur un radar, à leur
+          vraie distance et dans leur vraie direction. Vous proposez, vous jouez, et le
+          score est validé par les deux bancs. Rien d'autre.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-cta" href="#installer">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/><path d="M12 7v6"/><path d="m9.5 10.5 2.5 2.5 2.5-2.5"/></svg>
+            Installer l'application
+          </a>
+          <a class="btn btn-quiet" href="https://app.footcoach.fr/register">Créer un compte coach</a>
+        </div>
+        <p class="hero-note">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/></svg>
+          Aucun magasin d'applications : FootCoach s'ajoute à l'écran d'accueil depuis
+          votre navigateur, en une vingtaine de secondes.
+        </p>
+      </div>
+
+      <!-- Maquette : le tableau de bord du coach, radar en tête. -->
+      <div>
+        <div class="device" role="img" aria-label="Écran de téléphone : le tableau de bord FootCoach, avec le radar des annonces autour du coach, une annonce d'AS Cyber à 6 kilomètres et la barre d'onglets de l'application.">
+          <div class="screen">
+            <div class="screen-head">
+              <span class="brand-mark"><img src="./logo.png" alt="" width="20" height="20"></span>
+              <span class="wordmark">FOOT<span>COACH</span></span>
+              <span class="team">FC Nexus U13</span>
+            </div>
+            <div class="screen-body">
+              <div class="map">
+                <span class="ring r1"></span>
+                <span class="ring r2"></span>
+                <span class="ring r3"></span>
+                <span class="cross h"></span>
+                <span class="cross v"></span>
+                <span class="sweep"></span>
+                <span class="pin" style="--x:67.2%; --y:25.4%; --phase:-0.78s"></span>
+                <span class="pin host" style="--x:81.8%; --y:66.9%; --phase:-2.62s"></span>
+                <span class="pin" style="--x:39.9%; --y:71.7%; --phase:-4.56s"></span>
+                <span class="pin" style="--x:16.9%; --y:42.3%; --phase:-6.29s"></span>
+                <span class="pin" style="--x:54.8%; --y:63.2%; --phase:-3.56s"></span>
+                <span class="pin" style="--x:19.4%; --y:24.3%; --phase:-6.89s"></span>
+                <span class="me"></span>
+                <span class="map-radius">50 km</span>
+                <span class="map-label">6 annonces ouvertes</span>
+              </div>
+              <div class="mini-card">
+                <div class="row">
+                  <span class="club">AS Cyber U15</span>
+                  <span class="dist">6 km · SO</span>
+                </div>
+                <span class="meta">sam. 12 sept. · 15h00 · Villeurbanne</span>
+                <span class="mini-badge">Délai FFF respecté</span>
+              </div>
+            </div>
+            <div class="tabbar">
+              <span class="slot on">Board</span>
+              <span class="slot">Annonces</span>
+              <span class="fab">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </span>
+              <span class="slot">Matchs</span>
+              <span class="slot">Moi</span>
+            </div>
+          </div>
+        </div>
+        <p class="device-caption">Le radar du tableau de bord : chaque équipe s'allume au passage du faisceau.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────────────  REPÈRES  ───────────────────────────── -->
+  <section class="wrap" aria-label="Repères">
+    <dl class="figures">
+      <div>
+        <dt>50 <small>km</small></dt>
+        <dd>Le périmètre par défaut du radar, réglable de 25 km à illimité — et ce qui sort du rayon vous est toujours annoncé.</dd>
+      </div>
+      <div>
+        <dt>10 <small>jours</small></dt>
+        <dd>Le délai de déclaration à la fédération, rappelé sur chaque annonce, avec l'attestation qui va avec.</dd>
+      </div>
+      <div>
+        <dt>2 <small>coachs</small></dt>
+        <dd>Pour valider un score final. Jamais un seul : l'adversaire confirme en scannant votre QR code.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <!-- ──────────────────────  PARCOURS EN 3 TEMPS  ────────────────────── -->
+  <section class="wrap section-pad" id="radar">
+    <div class="section-head">
+      <p class="eyebrow">Du besoin d'un adversaire au score homologué</p>
+      <h2>Trois temps, et c'est tout</h2>
+      <p class="lede">
+        Un amical se joue à deux bancs. FootCoach suit ce fil du début à la fin —
+        et s'arrête là où le terrain reprend ses droits.
+      </p>
+    </div>
+    <ol class="flow">
+      <li>
+        <h3>Trouver</h3>
+        <p>
+          Publiez votre créneau, ou repérez sur le radar les coachs qui cherchent le même
+          week-end que vous. Les distances sont calculées jusqu'au <b>lieu du match</b>,
+          pas jusqu'au siège du club : une annonce à 4 km du club mais à 50 km du terrain
+          s'affiche à 50 km.
+        </p>
+      </li>
+      <li>
+        <h3>Fixer</h3>
+        <p>
+          Le coach intéressé propose de jouer, vous acceptez, le match est créé chez les
+          deux équipes. Un désistement de l'invité ne vous laisse pas sans rien : votre
+          annonce repart en <b>SOS</b>, terrain et créneau conservés, en tête du radar.
+        </p>
+      </li>
+      <li>
+        <h3>Clore</h3>
+        <p>
+          Après le coup de sifflet, l'un saisit le score, l'autre le confirme en scannant
+          son QR code, face à face. Le jeton de validation ne transite jamais par l'API
+          vers l'adversaire : sans avoir vu l'écran, personne ne valide à distance.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ──────────────────────────  FONCTIONS  ──────────────────────────── -->
+  <section class="wrap section-pad" id="fonctions">
+    <div class="section-head">
+      <p class="eyebrow">Ce qu'il y a dans l'application</p>
+      <h2>Six choses, faites correctement</h2>
+    </div>
+    <div class="features">
+      <article class="card feature">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.2"/><path d="M12 12 18.4 5.6"/><circle cx="16.6" cy="7.4" r="1.4" fill="currentColor" stroke="none"/></svg></span>
+        <h3>Un radar, pas une liste</h3>
+        <p>
+          Chaque annonce est placée à sa distance et à son relèvement réels. Une ville
+          absente de l'annuaire n'est pas placée au hasard : elle reste dans la liste et
+          vous est signalée. Mieux vaut ne rien affirmer qu'une fausse position.
+        </p>
+      </article>
+      <article class="card feature">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3.5h6a1 1 0 0 1 1 1v1H8v-1a1 1 0 0 1 1-1z"/><path d="M8 5.5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-11a2 2 0 0 0-2-2h-2"/><path d="m9 13 2 2 4-4"/></svg></span>
+        <h3>Le délai FFF sous les yeux</h3>
+        <p>
+          Un amical se déclare au district au moins dix jours avant. À la publication,
+          l'attestation est obligatoire et le badge « délai respecté » suit l'annonce.
+          Une date plus courte n'est pas bloquée — les dérogations existent — mais elle
+          est dite.
+        </p>
+      </article>
+      <article class="card feature">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M20 16v2a2 2 0 0 1-2 2h-2"/><path d="M8 20H6a2 2 0 0 1-2-2v-2"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/></svg></span>
+        <h3>Le score signé des deux bancs</h3>
+        <p>
+          Vous saisissez, un QR code apparaît, le coach adverse le scanne depuis son
+          téléphone. Corriger le score régénère le code et invalide le précédent. Plus
+          de « on n'avait pas noté pareil ».
+        </p>
+      </article>
+      <article class="card feature">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.5a6 6 0 0 1 12 0c0 4.8 2 5.9 2 5.9H4s2-1.1 2-5.9"/><path d="M10.4 19.4a2 2 0 0 0 3.2 0"/></svg></span>
+        <h3>Prévenu, même app fermée</h3>
+        <p>
+          Nouvelle annonce dans votre périmètre, proposition reçue, réponse à votre
+          demande, score à valider : quatre notifications, chacune désactivable. Sur
+          iPhone, elles n'existent qu'une fois l'app installée — voir plus bas.
+        </p>
+      </article>
+      <article class="card feature">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9.2" cy="8" r="3.3"/><path d="M3.4 20a5.8 5.8 0 0 1 11.6 0"/><path d="M16.2 5.2a3.3 3.3 0 0 1 0 5.6"/><path d="M17.6 14.4A5.8 5.8 0 0 1 20.6 19"/></svg></span>
+        <h3>Le carnet d'adresses des coachs</h3>
+        <p>
+          Chaque coach a un code personnel et son QR code. On s'ajoute d'un scan, le lien
+          est immédiat et réciproque, et le téléphone n'est visible que de vos relations.
+          D'un amical à l'autre, vous gardez le contact.
+        </p>
+      </article>
+      <article class="card feature">
+        <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></span>
+        <h3>Votre position, au kilomètre</h3>
+        <p>
+          Géolocalisation ou simple adresse, à votre main. Les coordonnées sont arrondies
+          au centième de degré — environ un kilomètre — avant même d'être enregistrées,
+          et ne sont jamais montrées aux autres coachs.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ──────────────────  BLOC SOMBRE : BORD DU TERRAIN  ──────────────── -->
+  <section class="wrap section-pad" style="padding-block-start: 0;">
+    <div class="band">
+      <div style="display: grid; gap: 1rem;">
+        <p class="eyebrow">Conçue debout, une main sur le téléphone</p>
+        <h2>Utilisable au bord du terrain</h2>
+        <p class="lede">
+          L'autre main tient un ballon, un carnet ou un gamin. L'application a été dessinée
+          pour celle qui reste.
+        </p>
+      </div>
+      <ul class="band-list">
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>
+          <div><b>Tout en bas de l'écran</b><span>Aucune action dans l'en-tête : ce qui compte est à portée de pouce, en pleine largeur.</span></div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>
+          <div><b>Des cibles de 44 pixels</b><span>Boutons, champs et pastilles dimensionnés pour un doigt, pas pour un curseur.</span></div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>
+          <div><b>Des feuilles, pas des fenêtres</b><span>Tout ce qui s'ouvre monte du bas et se referme d'un glissé vers le bas.</span></div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 13 4 4L19 7"/></svg>
+          <div><b>Jour et nuit</b><span>Deux thèmes complets, contrastes vérifiés — lisible en plein soleil comme sous les projecteurs.</span></div>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────  INSTALLATION  ────────────────────────── -->
+  <section class="install section-pad" id="installer">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Installation · une vingtaine de secondes</p>
+        <h2>Mettre FootCoach sur l'écran d'accueil</h2>
+        <p class="lede">
+          FootCoach est une application web : rien à télécharger sur un magasin, aucune
+          mise à jour à installer. Vous l'ouvrez une fois dans votre navigateur, vous
+          l'ajoutez à l'écran d'accueil, et elle se comporte ensuite comme n'importe
+          quelle autre application — plein écran, icône, notifications.
+        </p>
+      </div>
+
+      <div class="os-tabs-wrapper">
+        <div class="os-tabs" role="radiogroup" aria-label="Choisir un appareil">
+          <input type="radio" name="os" id="os-ios" checked>
+          <label for="os-ios">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>
+            iPhone &amp; iPad
+          </label>
+          <input type="radio" name="os" id="os-android">
+          <label for="os-android">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M10 18.5h4"/></svg>
+            Android
+          </label>
+          <input type="radio" name="os" id="os-desktop">
+          <label for="os-desktop">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16.5V20"/></svg>
+            Ordinateur
+          </label>
+
+          <div class="os-panels">
+            <!-- iOS -->
+            <div class="os-panel" id="panel-ios">
+              <ol class="steps">
+                <li>
+                  <b>Ouvrez l'application dans Safari</b>
+                  <span>Rendez-vous sur <kbd>app.footcoach.fr</kbd>. Sur iPhone, seul Safari sait installer une application web — Chrome ou Firefox ne proposeront pas l'ajout.</span>
+                </li>
+                <li>
+                  <b>Touchez le bouton Partager</b>
+                  <span>Le carré avec une flèche vers le haut, dans la barre du bas (ou en haut à droite sur iPad).</span>
+                </li>
+                <li>
+                  <b>Choisissez « Sur l'écran d'accueil »</b>
+                  <span>Faites défiler la liste des actions ; l'entrée porte une icône de carré avec un « + ».</span>
+                </li>
+                <li>
+                  <b>Confirmez par « Ajouter »</b>
+                  <span>L'icône FootCoach rejoint vos applications. Elle s'ouvre sans barre d'adresse, la barre d'état prolongeant l'en-tête navy.</span>
+                </li>
+              </ol>
+              <p class="note">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 21 20H3z"/><path d="M12 10v4"/><path d="M12 17h.01"/></svg>
+                <span>
+                  <b>Sur iPhone, cette étape n'est pas facultative si vous voulez être prévenu.</b>
+                  Tant que l'application vit dans un onglet Safari, iOS n'expose tout simplement pas
+                  les notifications. Une fois ajoutée à l'écran d'accueil (iOS 16.4 ou plus récent),
+                  elles deviennent disponibles.
+                </span>
+              </p>
+            </div>
+
+            <!-- Android -->
+            <div class="os-panel" id="panel-android">
+              <ol class="steps">
+                <li>
+                  <b>Ouvrez l'application dans Chrome</b>
+                  <span>Rendez-vous sur <kbd>app.footcoach.fr</kbd>. Edge, Samsung Internet et Firefox savent également installer.</span>
+                </li>
+                <li>
+                  <b>Ouvrez le menu ⋮</b>
+                  <span>Les trois points verticaux, en haut à droite de la barre du navigateur.</span>
+                </li>
+                <li>
+                  <b>Choisissez « Installer l'application »</b>
+                  <span>Selon la version, l'entrée s'appelle « Ajouter à l'écran d'accueil ». C'est la même chose.</span>
+                </li>
+                <li>
+                  <b>Confirmez par « Installer »</b>
+                  <span>L'icône rejoint votre écran d'accueil et le tiroir d'applications, comme une application du Play Store.</span>
+                </li>
+              </ol>
+              <p class="note">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/></svg>
+                <span>
+                  Chrome propose souvent l'installation de lui-même, par un bandeau en bas de
+                  l'écran, dès la deuxième visite. Il fait exactement la même chose — vous pouvez
+                  l'accepter sans passer par le menu.
+                </span>
+              </p>
+            </div>
+
+            <!-- Ordinateur -->
+            <div class="os-panel" id="panel-desktop">
+              <ol class="steps">
+                <li>
+                  <b>Ouvrez l'application dans Chrome ou Edge</b>
+                  <span>Rendez-vous sur <kbd>app.footcoach.fr</kbd> et connectez-vous.</span>
+                </li>
+                <li>
+                  <b>Cliquez l'icône d'installation</b>
+                  <span>À droite de la barre d'adresse : un petit écran surmonté d'une flèche vers le bas.</span>
+                </li>
+                <li>
+                  <b>Confirmez par « Installer »</b>
+                  <span>FootCoach s'ouvre dans sa propre fenêtre, sans onglets ni barre d'adresse, et s'épingle à la barre des tâches.</span>
+                </li>
+                <li>
+                  <b>Sur Mac, par Safari</b>
+                  <span>Menu <kbd>Fichier</kbd> puis <kbd>Ajouter au Dock</kbd> (Safari 17 et plus). Firefox, lui, n'installe pas les applications web : l'app reste parfaitement utilisable dans un onglet.</span>
+                </li>
+              </ol>
+              <p class="note">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/></svg>
+                <span>
+                  Le scanner de QR code a besoin d'une caméra : sur ordinateur, la validation d'un
+                  score se fait donc plutôt en montrant le code à l'écran de votre collègue,
+                  téléphone en main.
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="after-install">
+        <div>
+          <h3>Activer les notifications</h3>
+          <p>Dans l'application : <b>Moi</b> → <b>Mon profil</b> → <b>Notifications</b>, puis autorisez quand le navigateur le demande. Chaque type d'alerte se coupe séparément.</p>
+        </div>
+        <div>
+          <h3>Les mises à jour</h3>
+          <p>Il n'y en a pas à installer. La version servie est toujours la dernière : fermez et rouvrez l'application, c'est fait.</p>
+        </div>
+        <div>
+          <h3>Désinstaller</h3>
+          <p>Comme n'importe quelle application : appui long sur l'icône, puis supprimer. Votre compte, lui, reste intact.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────  LIMITES ASSUMÉES + FAQ  ───────────────────── -->
+  <section class="wrap section-pad" id="questions">
+    <div class="two-col">
+      <div>
+        <div class="section-head" style="margin-bottom: 1.5rem;">
+          <p class="eyebrow">Le périmètre, dit franchement</p>
+          <h2>Ce que FootCoach ne fait pas</h2>
+        </div>
+        <ul class="limits">
+          <li>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
+            Pas de comptes joueurs ni parents : l'application ne réunit que des coachs.
+          </li>
+          <li>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
+            Pas de feuille de match, d'effectif, de convocations ni de composition d'équipe.
+          </li>
+          <li>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
+            Pas de covoiturage, pas de statistiques de joueurs, pas de temps forts : seul le score final est conservé.
+          </li>
+          <li>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
+            Pas de mode hors ligne : afficher une annonce périmée serait pire que de ne rien afficher.
+          </li>
+          <li>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 12h12"/></svg>
+            Aucune déclaration envoyée à votre district à votre place : c'est votre attestation, pas la nôtre.
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="section-head" style="margin-bottom: 1.5rem;">
+          <p class="eyebrow">Questions fréquentes</p>
+          <h2>Ce qu'on nous demande</h2>
+        </div>
+        <div class="faq">
+          <details>
+            <summary>Mon adversaire doit-il aussi avoir l'application ?</summary>
+            <p>Oui. C'est ce qui permet à un match d'exister des deux côtés, et surtout au score d'être validé par les deux bancs plutôt que déclaré par un seul. Un confrère s'inscrit en trois écrans, son équipe est créée avec son compte.</p>
+          </details>
+          <details>
+            <summary>Faut-il être rattaché à un club ?</summary>
+            <p>Non. FootCoach ne connaît que des coachs et les équipes qu'ils encadrent. Aucune affiliation, aucune validation par un dirigeant, aucun code de club à réclamer.</p>
+          </details>
+          <details>
+            <summary>Et la déclaration des dix jours ?</summary>
+            <p>Elle reste la vôtre. L'application vous demande d'attester l'avoir faite, calcule le délai entre la publication et le match, et l'affiche sur l'annonce. Une date plus courte passe quand même : les dérogations de district existent, et un avertissement vaut mieux qu'un blocage.</p>
+          </details>
+          <details>
+            <summary>Qui voit ma position ?</summary>
+            <p>Personne d'autre que vous. Elle sert à calculer une distance et une direction, elle est arrondie à environ un kilomètre avant d'être enregistrée, et elle n'apparaît sur aucun écran des autres coachs.</p>
+          </details>
+          <details>
+            <summary>Le scan du QR code ne fonctionne pas</summary>
+            <p>La caméra n'est accessible qu'en connexion sécurisée (adresse en <kbd>https://</kbd>). Si vous ouvrez l'application par une adresse IP locale en <kbd>http://</kbd>, le navigateur refuse l'accès et le scanner affiche « Caméra indisponible ». Vérifiez aussi que l'autorisation caméra n'a pas été refusée pour le site.</p>
+          </details>
+          <details>
+            <summary>Que devient une annonce si l'adversaire se désiste ?</summary>
+            <p>S'il s'agit de l'équipe invitée, vous gardez terrain et créneau : l'annonce repart en <b>SOS</b>, en tête du radar des autres coachs, sans repasser par le délai des dix jours — la déclaration porte sur la tenue du match, pas sur l'identité de l'adversaire. Si l'hôte se désiste, il n'a plus rien à offrir : le match est annulé.</p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ────────────────────────────  APPEL FINAL  ──────────────────────── -->
+  <section class="wrap section-pad" style="padding-block-start: 0;">
+    <div class="card closing">
+      <p class="eyebrow">Prêt pour le prochain week-end</p>
+      <h2>Le radar tourne déjà</h2>
+      <p class="lede" style="text-align: center;">
+        Installez FootCoach sur votre téléphone, créez votre compte coach, publiez votre
+        créneau. L'adversaire de samedi est peut-être à six kilomètres.
+      </p>
+      <div class="hero-actions" style="justify-content: center;">
+        <a class="btn btn-cta" href="#installer">Installer l'application</a>
+        <a class="btn btn-quiet" href="https://app.footcoach.fr/register">Créer un compte coach</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="#contenu" style="margin-bottom: 0.9rem;">
+          <span class="brand-mark"><img src="./logo.png" alt="" width="29" height="29"></span>
+          <span class="wordmark">FOOT<span>COACH</span></span>
+        </a>
+        <p>L'application des matchs amicaux entre coachs : trouver l'adversaire, fixer la rencontre, valider le score à deux.</p>
+      </div>
+      <div>
+        <h3>L'application</h3>
+        <ul>
+          <li><a href="https://app.footcoach.fr/">Ouvrir FootCoach</a></li>
+          <li><a href="https://app.footcoach.fr/register">Créer un compte coach</a></li>
+          <li><a href="#installer">Installer sur l'écran d'accueil</a></li>
+        </ul>
+      </div>
+      <div>
+        <h3>Le site</h3>
+        <ul>
+          <li><a href="#radar">Comment ça marche</a></li>
+          <li><a href="#fonctions">Fonctions</a></li>
+          <li><a href="#questions">Questions fréquentes</a></li>
+          <li><a href="mailto:contact@footcoach.fr">Nous écrire</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>FootCoach — version 1, matchs amicaux.</p>
+      <p>Ce site n'utilise ni cookie ni traceur ; seul votre choix de thème reste sur cet appareil.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Bascule de thème. Trois états possibles côté document : rien (on suit le
+   système), "light", "dark". Le bouton part de ce que le visiteur VOIT, pas de
+   ce qui est mémorisé — sans quoi le premier clic, sous un OS sombre, ne
+   ferait rien de visible. */
+(function () {
+  var racine = document.documentElement;
+  var bouton = document.getElementById("theme-toggle");
+  if (!bouton) return;
+
+  bouton.addEventListener("click", function () {
+    var actuel = racine.getAttribute("data-theme");
+    if (!actuel) {
+      actuel = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    var suivant = actuel === "dark" ? "light" : "dark";
+    racine.setAttribute("data-theme", suivant);
+    try { localStorage.setItem("footcoach-vitrine-theme", suivant); } catch (e) { /* rien à mémoriser */ }
+  });
+})();
+</script>
+</body>
+</html>
