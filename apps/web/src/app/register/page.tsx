@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { PASSWORD_MIN_LENGTH, passwordProblem } from "@footcoach/shared";
 import { register } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -81,12 +82,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
     : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())
       ? null
       : "Cette adresse email semble incomplète.";
+  // Même règle que l'API, même message : la validation vient du paquet partagé.
   const passwordError =
-    form.password.length === 0
-      ? "Choisissez un mot de passe."
-      : form.password.length < 8
-        ? "8 caractères minimum."
-        : null;
+    form.password.length === 0 ? "Choisissez un mot de passe." : passwordProblem(form.password);
 
   /** Passe à l'étape suivante si les champs de l'étape courante tiennent */
   function advance(to: number, blocked: boolean) {
@@ -154,7 +152,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
               {touched && emailError && <FieldError id="email-error">{emailError}</FieldError>}
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="password" className="text-xs font-bold text-ink-soft">Mot de passe (8 caractères minimum)</label>
+              <label htmlFor="password" className="text-xs font-bold text-ink-soft">Mot de passe ({PASSWORD_MIN_LENGTH} caractères minimum)</label>
               <input id="password" type="password" autoComplete="new-password" enterKeyHint="next" aria-invalid={Boolean(touched && passwordError) || undefined} value={form.password} onChange={(e) => set("password", e.target.value)} className="field" />
               {touched && passwordError && <FieldError id="password-error">{passwordError}</FieldError>}
             </div>

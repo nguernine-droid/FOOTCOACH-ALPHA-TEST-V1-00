@@ -118,10 +118,96 @@ export type TeamEventType = (typeof TEAM_EVENT_TYPES)[number];
 export const EVENT_RECURRENCES = ["none", "weekly"] as const;
 export type EventRecurrence = (typeof EVENT_RECURRENCES)[number];
 
+// ---------- Politique de mot de passe ----------
+
+/**
+ * Longueur minimale d'un mot de passe CHOISI (inscription, changement).
+ *
+ * Huit caractères sans autre exigence laissaient passer « motdepasse » et
+ * « 12345678 ». Ce n'était tenable que si la limitation de débit bornait le
+ * devinage — or elle ne le bornait pas (voir FC-01 et FC-02 du rapport
+ * d'audit). Douze caractères sortent le devinage hors de portée même sans
+ * frein.
+ */
+export const PASSWORD_MIN_LENGTH = 12;
+
+/**
+ * Longueur minimale acceptée À LA CONNEXION. Volontairement restée à 8 : la
+ * relever verrouillerait dehors les comptes existants dont le mot de passe fait
+ * 8 à 11 caractères, ainsi que les mots de passe temporaires déjà distribués
+ * par l'administrateur. La connexion doit accepter ce qui existe ; c'est au
+ * choix d'un nouveau mot de passe d'être exigeant.
+ */
+export const PASSWORD_LOGIN_MIN_LENGTH = 8;
+
+/**
+ * Mots de passe interdits, quelle que soit leur longueur.
+ *
+ * Liste courte et embarquée, pas un service tiers : un appel réseau sortant sur
+ * le chemin d'inscription ajouterait une dépendance et une latence pour un gain
+ * marginal. Ce qu'on veut écarter, ce sont les mots de passe qu'un attaquant
+ * essaie dans ses dix premières tentatives — et pour cette application-ci, le
+ * vocabulaire du football en fait partie autant que « azertyuiop ».
+ *
+ * La comparaison ignore la casse et les chiffres ou ponctuations ajoutés en
+ * bout : « Football123! » ne vaut pas mieux que « football ».
+ */
+const FORBIDDEN_PASSWORDS = [
+  // Universels
+  "password", "motdepasse", "azerty", "azertyuiop", "qwerty", "qwertyuiop",
+  "123456", "1234567890", "0123456789", "iloveyou", "admin", "administrateur",
+  "welcome", "bienvenue", "letmein", "changeme", "secret", "abc", "abcdef",
+  "monmotdepasse", "soleil", "bonjour", "coucou", "chouchou", "doudou",
+  // Propres à ce produit : les premiers essais d'un attaquant qui sait où il est
+  "footcoach", "football", "foot", "coach", "entraineur", "equipe", "match",
+  "stade", "ballon", "gardien", "champion", "victoire", "demo", "test",
+];
+
+/** Réduit un mot de passe à son ossature, pour le comparer à la liste noire. */
+function passwordStem(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    // Retire les accents : « équipe » et « equipe » sont le même mot de passe
+    .replace(/[̀-ͯ]/g, "")
+    // Puis les chiffres et la ponctuation de début et de fin, qui ne sont
+    // qu'un déguisement : « Football123! » -> « football »
+    .replace(/^[^a-z]+|[^a-z]+$/g, "");
+}
+
+/** Le mot de passe est-il un grand classique, déguisé ou non ? */
+export function isForbiddenPassword(value: string): boolean {
+  const stem = passwordStem(value);
+  if (stem.length === 0) return true; // uniquement des chiffres ou des symboles
+  return FORBIDDEN_PASSWORDS.includes(stem);
+}
+
+export const PASSWORD_TOO_SHORT = `${PASSWORD_MIN_LENGTH} caractères minimum.`;
+export const PASSWORD_TOO_COMMON =
+  "Ce mot de passe est trop courant — il figure dans les premiers essais d'une attaque.";
+
+/**
+ * Message d'erreur pour un mot de passe choisi, ou `null` s'il convient.
+ * Partagé pour que le formulaire et l'API disent exactement la même chose.
+ */
+export function passwordProblem(value: string): string | null {
+  if (value.length < PASSWORD_MIN_LENGTH) return PASSWORD_TOO_SHORT;
+  if (isForbiddenPassword(value)) return PASSWORD_TOO_COMMON;
+  return null;
+}
+
+/** Schéma d'un mot de passe CHOISI par l'utilisateur. */
+export const chosenPasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, PASSWORD_TOO_SHORT)
+  .refine((v) => !isForbiddenPassword(v), { message: PASSWORD_TOO_COMMON });
+
 // ---------- Schémas de requêtes ----------
 export const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  // Pas `chosenPasswordSchema` : voir PASSWORD_LOGIN_MIN_LENGTH. Relever cette
+  // borne reviendrait à refuser des mots de passe corrects.
+  password: z.string().min(PASSWORD_LOGIN_MIN_LENGTH),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
@@ -190,7 +276,7 @@ export const registerCoachSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
   email: z.string().email(),
-  password: z.string().min(8, "8 caractères minimum"),
+  password: chosenPasswordSchema,
   teamName: z.string().min(2).max(60),
   teamCity: z.string().min(1).max(60),
 });
