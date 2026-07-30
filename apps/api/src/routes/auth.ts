@@ -28,6 +28,13 @@ import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
 import { originOf } from "../lib/coachOrigin.js";
 import { authRateLimit } from "../lib/rateLimits.js";
+import {
+  emailKey,
+  pruneLoginAttempts,
+  recentFailures,
+  recordLoginAttempt,
+  tooManyFailures,
+} from "../lib/loginThrottle.js";
 
 const REFRESH_TTL_MS = 7 * 24 * 3600 * 1000;
 
@@ -170,9 +177,29 @@ const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 export function authRoutes(app: FastifyInstance) {
   app.post("/auth/login", authRateLimit, async (request): Promise<AuthResponseDto> => {
     const { email, password } = loginSchema.parse(request.body);
+
+    /**
+     * Frein partagé entre réplicas, en base : la limitation en mémoire de
+     * @fastify/rate-limit se multiplie par le nombre de réplicas (voir
+     * lib/loginThrottle.ts). Compté par compte et non par adresse — sans
+     * TRUST_PROXY, l'adresse vue est celle du conteneur web, et un frein par
+     * adresse verrouillerait tous les coachs à cause d'un seul attaquant.
+     */
+    const attemptKey = emailKey(email);
+    if (tooManyFailures(await recentFailures(attemptKey))) {
+      throw new HttpError(
+        429,
+        "Trop de tentatives échouées sur ce compte. Patientez quinze minutes, ou demandez une réinitialisation.",
+      );
+    }
+
     const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
     const passwordOk = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
     if (!user || !passwordOk) {
+      // Attendu, contrairement aux autres écritures de ce chemin : le refus ne
+      // doit pas partir avant que l'échec ne soit compté, sinon des tentatives
+      // simultanées passeraient toutes le frein.
+      await recordLoginAttempt({ key: attemptKey, ip: request.ip ?? null, succeeded: false });
       throw new HttpError(401, "Email ou mot de passe incorrect");
     }
     // Après la vérification du mot de passe : ne révèle pas l'existence du compte
@@ -184,6 +211,12 @@ export function authRoutes(app: FastifyInstance) {
     }
     // Trace de connexion pour les statistiques admin
     await db.insert(loginEvents).values({ userId: user.id, role: user.role });
+    // Tentative réussie, puis purge de la fenêtre écoulée : personne n'attend ce
+    // résultat, et la table n'a pas à croître indéfiniment. Les échecs éventuels
+    // ne bloquent pas la connexion — ce serait refuser un mot de passe correct.
+    void recordLoginAttempt({ key: attemptKey, ip: request.ip ?? null, succeeded: true })
+      .then(() => pruneLoginAttempts())
+      .catch((err) => request.log.warn({ err }, "trace de tentative de connexion non enregistrée"));
     const authUser: AuthUser = { id: user.id, role: user.role, teamId: await resolveTeamId(user) };
     return {
       accessToken: signAccessToken(authUser),

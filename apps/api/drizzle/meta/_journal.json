@@ -141,6 +141,13 @@
       "when": 1785243570221,
       "tag": "0019_wakeful_mikhail_rasputin",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785406948729,
+      "tag": "0020_login_attempts",
+      "breakpoints": true
     }
   ]
 }

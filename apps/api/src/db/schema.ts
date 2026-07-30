@@ -3,6 +3,7 @@ import {
   boolean,
   date,
   doublePrecision,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -109,6 +110,34 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Tentatives de connexion, réussies comme échouées — frein partagé entre
+ * réplicas sur le devinage de mot de passe (voir lib/loginThrottle.ts).
+ *
+ * Table distincte de `login_events` à dessein : celle-là ne compte que les
+ * réussites et nourrit les statistiques admin (comptes actifs, connexions par
+ * jour et par heure). Y verser les échecs aurait faussé tous ces chiffres.
+ *
+ * `email_key` est une empreinte SHA-256, jamais l'adresse en clair : la table
+ * contiendrait sinon la liste des adresses ESSAYÉES, y compris celles qui ne
+ * correspondent à aucun compte.
+ */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    emailKey: text("email_key").notNull(),
+    // Enregistrée pour constater une attaque après coup, jamais utilisée comme
+    // critère de blocage : sans TRUST_PROXY, c'est l'adresse du conteneur web.
+    ip: text("ip"),
+    succeeded: boolean("succeeded").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Le comptage lit toujours (email_key, succeeded, created_at) : sans cet
+  // index, chaque connexion balaierait la table entière.
+  (t) => [index("login_attempts_key_time_idx").on(t.emailKey, t.createdAt)],
+);
 
 // Une ligne par connexion réussie — alimente les stats admin (actifs, par jour/heure)
 export const loginEvents = pgTable("login_events", {
