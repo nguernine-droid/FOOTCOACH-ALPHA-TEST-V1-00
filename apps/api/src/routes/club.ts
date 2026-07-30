@@ -22,6 +22,7 @@ import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateTempPassword } from "../lib/passwords.js";
+import { revokeAllSessions } from "../lib/sessions.js";
 
 export function toClubDto(club: typeof clubs.$inferSelect): ClubDto {
   return { id: club.id, name: club.name, city: club.city, email: club.email, affiliationCode: club.affiliationCode };
@@ -315,9 +316,28 @@ export function clubRoutes(app: FastifyInstance) {
     const club = await getClubByOwner(request.user.id);
     const { id, coachId } = teamCoachParamsSchema.parse(request.params);
     await ownedTeam(club.id, id);
-    await db
+    const removed = await db
       .delete(teamCoaches)
-      .where(and(eq(teamCoaches.teamId, id), eq(teamCoaches.coachId, coachId)));
+      .where(and(eq(teamCoaches.teamId, id), eq(teamCoaches.coachId, coachId)))
+      .returning({ id: teamCoaches.id });
+
+    /**
+     * L'équipe active du coach est gravée dans son jeton d'accès, et
+     * `requireAuth` ne la revérifie en base que si le header X-Team-Id demande
+     * une AUTRE équipe. Sans révocation, un coach qu'on vient de retirer
+     * conservait donc ses droits sur cette équipe — publier une annonce en son
+     * nom, lire son agenda, saisir un score — jusqu'à sept jours, puisque le
+     * jeton de rafraîchissement ré-émet un jeton d'accès sans mot de passe.
+     *
+     * La révocation ramène cette fenêtre aux quinze minutes du jeton d'accès en
+     * cours, la même limite que l'application assume déjà pour la
+     * désactivation d'un compte. Le prochain rafraîchissement re-signera un
+     * jeton sans cette équipe.
+     *
+     * Seulement si quelque chose a été retiré : un appel sans effet n'a pas à
+     * déconnecter les appareils d'un coach.
+     */
+    if (removed.length > 0) await revokeAllSessions(coachId);
     return { ok: true };
   });
 }

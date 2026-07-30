@@ -19,18 +19,12 @@ import { generateCode } from "../lib/codes.js";
 import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateTempPassword } from "../lib/passwords.js";
+import { revokeAllSessions } from "../lib/sessions.js";
 
 const DAY_MS = 24 * 3600 * 1000;
 
 function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-async function revokeAllSessions(userId: string) {
-  await db
-    .update(refreshTokens)
-    .set({ revokedAt: new Date() })
-    .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
 }
 
 export function adminRoutes(app: FastifyInstance) {
