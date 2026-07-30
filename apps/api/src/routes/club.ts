@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, asc, count, eq, inArray } from "drizzle-orm";
 import {
+  idParamSchema,
+  teamCoachParamsSchema,
   assignCoachSchema,
   createClubCoachSchema,
   createClubTeamSchema,
@@ -127,7 +129,7 @@ export function clubRoutes(app: FastifyInstance) {
 
   app.patch("/club/teams/:id", async (request) => {
     const club = await getClubByOwner(request.user.id);
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     await ownedTeam(club.id, id);
     const input = updateClubTeamSchema.parse(request.body);
     const coords = input.city !== undefined ? cityCoords(input.city) : null;
@@ -144,7 +146,7 @@ export function clubRoutes(app: FastifyInstance) {
   // Suppression d'une équipe : refusée si elle a encore des membres (à vider d'abord)
   app.delete("/club/teams/:id", async (request) => {
     const club = await getClubByOwner(request.user.id);
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     await ownedTeam(club.id, id);
     const [{ value: memberCount }] = await db
       .select({ value: count() })
@@ -253,7 +255,7 @@ export function clubRoutes(app: FastifyInstance) {
   // Accepter : le coach rejoint le club (users.clubId posé)
   app.post("/club/affiliation-requests/:id/approve", async (request) => {
     const club = await getClubByOwner(request.user.id);
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     await db.transaction(async (tx) => {
       const [req] = await tx
         .select()
@@ -278,7 +280,7 @@ export function clubRoutes(app: FastifyInstance) {
 
   app.post("/club/affiliation-requests/:id/decline", async (request) => {
     const club = await getClubByOwner(request.user.id);
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const [updated] = await db
       .update(clubAffiliationRequests)
       .set({ status: "declined", decidedAt: new Date() })
@@ -297,7 +299,7 @@ export function clubRoutes(app: FastifyInstance) {
   // Affecter un coach affilié à une équipe du club (principal ou adjoint)
   app.post("/club/teams/:id/coaches", async (request, reply) => {
     const club = await getClubByOwner(request.user.id);
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     await ownedTeam(club.id, id);
     const input = assignCoachSchema.parse(request.body);
     await affiliatedCoach(club.id, input.coachId);
@@ -311,7 +313,7 @@ export function clubRoutes(app: FastifyInstance) {
 
   app.delete("/club/teams/:id/coaches/:coachId", async (request) => {
     const club = await getClubByOwner(request.user.id);
-    const { id, coachId } = request.params as { id: string; coachId: string };
+    const { id, coachId } = teamCoachParamsSchema.parse(request.params);
     await ownedTeam(club.id, id);
     await db
       .delete(teamCoaches)

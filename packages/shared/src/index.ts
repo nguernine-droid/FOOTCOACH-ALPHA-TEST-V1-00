@@ -215,6 +215,24 @@ export const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
 
+/**
+ * Identifiants d'objet passés dans le chemin.
+ *
+ * Le transtypage `request.params as { id: string }` ne valide rien à
+ * l'exécution : la chaîne partait telle quelle dans une comparaison sur une
+ * colonne `uuid`, et Postgres répondait par l'erreur 22P02. Le client recevait
+ * bien un 500 anonyme — aucune fuite — mais chaque appel malformé écrivait une
+ * erreur complète dans les journaux, que n'importe qui pouvait donc gonfler à
+ * volonté pour noyer une attaque réelle dans le bruit.
+ *
+ * Le ZodError est transformé en 400 par le gestionnaire d'erreurs : la
+ * validation ne demande rien de plus que de remplacer le transtypage.
+ */
+export const idParamSchema = z.object({ id: z.string().uuid() });
+export const coachIdParamSchema = z.object({ coachId: z.string().uuid() });
+export const teamCoachParamsSchema = z.object({ id: z.string().uuid(), coachId: z.string().uuid() });
+export const responseParamsSchema = z.object({ id: z.string().uuid(), responseId: z.string().uuid() });
+
 export const createAnnouncementSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   time: z.string().regex(/^\d{2}:\d{2}$/),

@@ -3,7 +3,7 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
-import { addRelationSchema, type CoachRelationDto, type UserDto } from "@footcoach/shared";
+import { addRelationSchema, coachIdParamSchema, type CoachRelationDto, type UserDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { clubs, coachRelations, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
@@ -11,7 +11,6 @@ import { HttpError } from "../plugins/errors.js";
 import { avatarUrlOf, toUserDto } from "./auth.js";
 import { UPLOADS_DIR } from "../lib/uploads.js";
 import { ALLOWED_IMAGE_TYPES, MAX_AVATAR_BYTES, sniffImageType } from "../lib/images.js";
-
 
 /** Fiches complètes des coachs liés : contact + club + équipes encadrées */
 async function buildRelations(coachIds: string[], createdAtById: Map<string, Date>): Promise<CoachRelationDto[]> {
@@ -176,7 +175,7 @@ export function relationRoutes(app: FastifyInstance) {
 
     // Retrait : les deux sens disparaissent, la relation n'a pas de sens à moitié
     coach.delete("/coach/relations/:coachId", async (request) => {
-      const { coachId } = request.params as { coachId: string };
+      const { coachId } = coachIdParamSchema.parse(request.params);
       const deleted = await db
         .delete(coachRelations)
         .where(

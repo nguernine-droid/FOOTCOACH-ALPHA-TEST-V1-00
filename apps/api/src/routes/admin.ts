@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 import { and, count, desc, eq, gte, ilike, isNull, max, or } from "drizzle-orm";
 import {
+  idParamSchema,
   ROLES,
   createClubSchema,
   updateAccountEmailSchema,
@@ -211,7 +212,7 @@ export function adminRoutes(app: FastifyInstance) {
 
   // Réinitialisation manuelle : mot de passe temporaire retourné UNE seule fois
   app.post("/admin/accounts/:id/reset-password", async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const account = await getManageableAccount(id, request.user.id);
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 10);
@@ -227,7 +228,7 @@ export function adminRoutes(app: FastifyInstance) {
   });
 
   app.post("/admin/accounts/:id/disable", async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const account = await getManageableAccount(id, request.user.id);
     await db.update(users).set({ disabledAt: new Date() }).where(eq(users.id, account.id));
     // Sans révocation, la session resterait valable jusqu'à 7 jours (refresh)
@@ -236,14 +237,14 @@ export function adminRoutes(app: FastifyInstance) {
   });
 
   app.post("/admin/accounts/:id/enable", async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const account = await getManageableAccount(id, request.user.id);
     await db.update(users).set({ disabledAt: null }).where(eq(users.id, account.id));
     return { ok: true };
   });
 
   app.patch("/admin/accounts/:id/email", async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const input = updateAccountEmailSchema.parse(request.body);
     const account = await getManageableAccount(id, request.user.id);
     const email = input.email.toLowerCase();
@@ -258,7 +259,7 @@ export function adminRoutes(app: FastifyInstance) {
   // Suppression définitive — réservée aux comptes joueur/parent/supporter :
   // un coach est référencé par son équipe et les événements qu'il a créés.
   app.delete("/admin/accounts/:id", async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const account = await getManageableAccount(id, request.user.id);
     if (account.role === "coach") {
       throw new HttpError(400, "Un compte coach ne peut pas être supprimé (il porte son équipe)");

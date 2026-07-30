@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, gte, inArray, ne, notInArray } from "drizzle-orm";
 import {
+  idParamSchema,
+  responseParamsSchema,
   createAnnouncementSchema,
   daysBetweenIso,
   MATCH_GENDER_LABELS,
@@ -266,7 +268,7 @@ export function announcementRoutes(app: FastifyInstance) {
   });
 
   app.delete("/announcements/:id", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const [announcement] = await db.select().from(matchAnnouncements).where(eq(matchAnnouncements.id, id));
     if (!announcement) throw new HttpError(404, "Annonce introuvable");
     if (announcement.teamId !== request.user.teamId) throw new HttpError(403, "Cette annonce ne vous appartient pas");
@@ -281,7 +283,7 @@ export function announcementRoutes(app: FastifyInstance) {
   // Proposer de jouer : crée une proposition en attente. L'annonce RESTE ouverte
   // (visible au radar) tant que le coach émetteur n'a pas accepté une proposition.
   app.post("/announcements/:id/respond", { preHandler: requireRole("coach") }, async (request, reply) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const responderTeamId = request.user.teamId;
     if (!responderTeamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
 
@@ -325,7 +327,7 @@ export function announcementRoutes(app: FastifyInstance) {
    * ouverte, et rien n'interdit de reproposer plus tard.
    */
   app.delete("/announcements/:id/respond", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     if (!request.user.teamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
 
     const [response] = await db
@@ -348,7 +350,7 @@ export function announcementRoutes(app: FastifyInstance) {
     "/announcements/:id/responses/:responseId/accept",
     { preHandler: requireRole("coach") },
     async (request, reply) => {
-      const { id, responseId } = request.params as { id: string; responseId: string };
+      const { id, responseId } = responseParamsSchema.parse(request.params);
 
       const match = await db.transaction(async (tx) => {
         const [announcement] = await tx
@@ -437,7 +439,7 @@ export function announcementRoutes(app: FastifyInstance) {
     "/announcements/:id/responses/:responseId/decline",
     { preHandler: requireRole("coach") },
     async (request) => {
-      const { id, responseId } = request.params as { id: string; responseId: string };
+      const { id, responseId } = responseParamsSchema.parse(request.params);
       const [announcement] = await db.select().from(matchAnnouncements).where(eq(matchAnnouncements.id, id));
       if (!announcement) throw new HttpError(404, "Annonce introuvable");
       if (announcement.teamId !== request.user.teamId)

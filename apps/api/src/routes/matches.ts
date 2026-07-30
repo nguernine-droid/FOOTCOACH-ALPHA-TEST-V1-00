@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { alias } from "drizzle-orm/pg-core";
 import { desc, eq, or } from "drizzle-orm";
 import {
+  idParamSchema,
   confirmScoreSchema,
   finalScoreSchema,
   withdrawMatchSchema,
@@ -98,7 +99,7 @@ export function matchRoutes(app: FastifyInstance) {
    * rouvrira, sans rien changer ici.
    */
   app.get("/matches/:id", async (request): Promise<MatchDetailDto> => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const row = await getMatchOr404(id);
     assertCoachOfMatch(row.match, request.user.teamId);
     return toDto(row, request.user.teamId);
@@ -121,7 +122,7 @@ export function matchRoutes(app: FastifyInstance) {
    * porte sur la tenue du match, pas sur l'identité de l'adversaire.
    */
   app.post("/matches/:id/withdraw", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const input = withdrawMatchSchema.parse(request.body);
     const myTeamId = request.user.teamId;
     const { match } = await getMatchOr404(id);
@@ -195,7 +196,7 @@ export function matchRoutes(app: FastifyInstance) {
 
   // Coup d'envoi : l'un ou l'autre coach passe le match en direct
   app.post("/matches/:id/kickoff", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const { match } = await getMatchOr404(id);
     assertCoachOfMatch(match, request.user.teamId);
     if (match.status === "cancelled") throw new HttpError(400, "Ce match a été annulé");
@@ -211,7 +212,7 @@ export function matchRoutes(app: FastifyInstance) {
    * invalide le QR précédemment affiché.
    */
   app.post("/matches/:id/final-score", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const input = finalScoreSchema.parse(request.body);
     const { match } = await getMatchOr404(id);
     assertCoachOfMatch(match, request.user.teamId);
@@ -249,7 +250,7 @@ export function matchRoutes(app: FastifyInstance) {
    * qu'en scannant l'écran de son homologue.
    */
   app.post("/matches/:id/confirm-score", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const input = confirmScoreSchema.parse(request.body);
     const { match } = await getMatchOr404(id);
     assertCoachOfMatch(match, request.user.teamId);

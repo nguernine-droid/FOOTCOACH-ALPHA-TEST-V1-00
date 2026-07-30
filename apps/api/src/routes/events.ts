@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { alias } from "drizzle-orm/pg-core";
 import { and, eq, gte, lte, ne, or } from "drizzle-orm";
-import { createEventSchema, type AgendaItemDto } from "@footcoach/shared";
+import { createEventSchema, idParamSchema, type AgendaItemDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matches, teamEvents, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
@@ -154,7 +154,7 @@ export function eventRoutes(app: FastifyInstance) {
   });
 
   app.put("/events/:id", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const event = await getEventOr404(id);
     if (event.teamId !== request.user.teamId) throw new HttpError(403, "Cet événement ne vous appartient pas");
     const input = createEventSchema.parse(request.body);
@@ -176,7 +176,7 @@ export function eventRoutes(app: FastifyInstance) {
   });
 
   app.delete("/events/:id", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = request.params as { id: string };
+    const { id } = idParamSchema.parse(request.params);
     const event = await getEventOr404(id);
     if (event.teamId !== request.user.teamId) throw new HttpError(403, "Cet événement ne vous appartient pas");
     await db.delete(teamEvents).where(eq(teamEvents.id, id));
