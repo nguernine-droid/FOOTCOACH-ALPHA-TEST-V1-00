@@ -146,7 +146,7 @@ docker compose up -d --build  # postgres + api + web (mode dev, hot reload)
 docker compose exec api npm run db:seed --workspace apps/api
 ```
 
-Application : **http://localhost:3002** — Postgres exposé sur l'hôte en **5433**.
+Application : **http://localhost:3002** — Postgres exposé sur l'hôte en **5433**, sur `127.0.0.1` uniquement (la base de développement porte un mot de passe écrit dans le dépôt : elle n'a rien à faire sur le réseau).
 Les migrations s'appliquent automatiquement au démarrage de l'API (verrou consultatif Postgres : sûr même avec plusieurs réplicas).
 
 > Le hot reload passe par des *bind mounts* ciblés : `apps/web/src`, `apps/web/public`, `apps/api/src`, `apps/api/drizzle` et `packages/shared/src`. Tout le reste vit dans l'image — **ajouter une dépendance impose donc de la reconstruire** (`docker compose build api`). Sous Windows, le rechargement de Next reste capricieux : `docker compose restart web` après une modification du front.

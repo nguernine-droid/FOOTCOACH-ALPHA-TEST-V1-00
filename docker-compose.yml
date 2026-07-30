@@ -10,8 +10,17 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      # 5433 côté hôte pour ne pas entrer en conflit avec un postgres local
-      - "5433:5432"
+      # 5433 côté hôte pour ne pas entrer en conflit avec un postgres local.
+      #
+      # L'adresse 127.0.0.1 n'est pas décorative : sans elle, Docker publie sur
+      # 0.0.0.0, et la base de développement — dont le mot de passe par défaut
+      # est écrit dans ce fichier — devient joignable par tout le monde sur le
+      # réseau du bureau, du coworking ou du Wi-Fi partagé. Lecture complète,
+      # empreintes bcrypt et adresses des comptes de test comprises.
+      #
+      # Le développement hors Docker continue de fonctionner : il se connecte
+      # depuis la machine hôte, donc par la boucle locale.
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-footcoach} -d ${POSTGRES_DB:-footcoach}"]
       interval: 5s
