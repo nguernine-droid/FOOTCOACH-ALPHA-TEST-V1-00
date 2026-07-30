@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import bcrypt from "bcryptjs";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   forgotPasswordSchema,
@@ -35,6 +34,12 @@ import {
   recordLoginAttempt,
   tooManyFailures,
 } from "../lib/loginThrottle.js";
+import {
+  DUMMY_PASSWORD_HASH,
+  hashPassword,
+  needsRehash,
+  verifyPassword,
+} from "../lib/passwordHash.js";
 
 const REFRESH_TTL_MS = 7 * 24 * 3600 * 1000;
 
@@ -167,13 +172,6 @@ const V1_ROLE_MESSAGE =
   "Cet espace n'est pas disponible dans la version 1 de FootCoach, réservée aux coachs.";
 
 
-/**
- * Empreinte bcrypt d'un mot de passe qui n'existe pas. Sert à comparer même
- * quand le compte est inconnu : sans cela, la réponse revient bien plus vite
- * pour un email non inscrit, ce qui suffit à dresser la liste des comptes.
- */
-const DUMMY_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
-
 export function authRoutes(app: FastifyInstance) {
   app.post("/auth/login", authRateLimit, async (request): Promise<AuthResponseDto> => {
     const { email, password } = loginSchema.parse(request.body);
@@ -194,7 +192,10 @@ export function authRoutes(app: FastifyInstance) {
     }
 
     const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
-    const passwordOk = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+    // La comparaison a lieu même pour un compte inconnu, contre une empreinte
+    // qui ne correspond à rien : sans cela la réponse reviendrait bien plus vite
+    // pour un email non inscrit, ce qui suffit à dresser la liste des comptes.
+    const passwordOk = await verifyPassword(password, user?.passwordHash ?? (await DUMMY_PASSWORD_HASH));
     if (!user || !passwordOk) {
       // Attendu, contrairement aux autres écritures de ce chemin : le refus ne
       // doit pas partir avant que l'échec ne soit compté, sinon des tentatives
@@ -209,6 +210,22 @@ export function authRoutes(app: FastifyInstance) {
     if (!isV1Role(user.role)) {
       throw new HttpError(403, V1_ROLE_MESSAGE);
     }
+    /**
+     * Réencodage opportuniste : c'est ici, et nulle part ailleurs, que l'on
+     * détient le mot de passe en clair en même temps qu'une empreinte au format
+     * hérité. Une empreinte bcrypt est donc réécrite en scrypt à cette
+     * occasion — d'où l'absence de toute migration de données.
+     *
+     * Sans await : le coach n'a pas à attendre un second hachage pour entrer, et
+     * un échec ici ne doit pas faire échouer une connexion valide. Au pire, le
+     * réencodage se fera à la prochaine.
+     */
+    if (needsRehash(user.passwordHash)) {
+      void hashPassword(password)
+        .then((passwordHash) => db.update(users).set({ passwordHash }).where(eq(users.id, user.id)))
+        .catch((err) => request.log.warn({ err }, "réencodage du mot de passe différé"));
+    }
+
     // Trace de connexion pour les statistiques admin
     await db.insert(loginEvents).values({ userId: user.id, role: user.role });
     // Tentative réussie, puis purge de la fenêtre écoulée : personne n'attend ce

@@ -104,8 +104,8 @@ describeOrSkip("frein de connexion, de bout en bout", async (t) => {
   t.after(async () => {
     await app?.close();
     await cleanup();
-    const { sql } = await import("../db/client.js");
-    await sql.end();
+    // Le pool de connexions est partagé par les deux blocs de ce fichier : il est
+    // fermé par le dernier, pas ici.
   });
 
   await t.test("un mot de passe correct passe, sans frein", async () => {
@@ -153,5 +153,98 @@ describeOrSkip("frein de connexion, de bout en bout", async (t) => {
     for (const row of rows) {
       assert.doesNotMatch(row.emailKey, /throttle\.test/, "l'adresse ne doit pas être lisible");
     }
+  });
+});
+
+/**
+ * Migration transparente des empreintes (FC-16), contre un vrai Postgres.
+ *
+ * Le passage de bcrypt à scrypt ne devait verrouiller personne dehors et ne
+ * demander aucune migration de données : une empreinte héritée doit permettre
+ * de se connecter, puis être réécrite à cette occasion.
+ */
+describeOrSkip("réencodage des empreintes héritées", async (t) => {
+  const { db } = await import("../db/client.js");
+  const { loginAttempts, loginEvents, users } = await import("../db/schema.js");
+  const { runMigrations } = await import("../db/migrate.js");
+  const { authRoutes } = await import("../routes/auth.js");
+  const { registerErrorHandler } = await import("../plugins/errors.js");
+  const { emailKey } = await import("../lib/loginThrottle.js");
+  const { needsRehash } = await import("../lib/passwordHash.js");
+  const bcryptjs = (await import("bcryptjs")).default;
+
+  const EMAIL = "legacy@throttle.test";
+  const PASSWORD = "MotDePasseHerite2019";
+
+  let app: FastifyInstance;
+  let base: string;
+
+  t.before(async () => {
+    await runMigrations();
+    await db.delete(loginAttempts).where(eq(loginAttempts.emailKey, emailKey(EMAIL)));
+    const anciens = await db.select({ id: users.id }).from(users).where(eq(users.email, EMAIL));
+    for (const { id } of anciens) {
+      await db.delete(loginEvents).where(eq(loginEvents.userId, id));
+      await db.delete(users).where(eq(users.id, id));
+    }
+    // Un compte tel qu'il existait AVANT ce changement : empreinte bcrypt coût 10
+    await db.insert(users).values({
+      email: EMAIL,
+      passwordHash: await bcryptjs.hash(PASSWORD, 10),
+      role: "coach",
+      firstName: "Ancien",
+      lastName: "Compte",
+    });
+
+    app = Fastify();
+    registerErrorHandler(app);
+    app.register((instance) => authRoutes(instance));
+    await app.listen({ port: 0, host: "127.0.0.1" });
+    const address = app.server.address();
+    assert.ok(address && typeof address === "object");
+    base = `http://127.0.0.1:${address.port}`;
+  });
+
+  t.after(async () => {
+    await app?.close();
+    await db.delete(loginAttempts).where(eq(loginAttempts.emailKey, emailKey(EMAIL)));
+    const restes = await db.select({ id: users.id }).from(users).where(eq(users.email, EMAIL));
+    for (const { id } of restes) {
+      await db.delete(loginEvents).where(eq(loginEvents.userId, id));
+      await db.delete(users).where(eq(users.id, id));
+    }
+    // Dernier bloc du fichier : le pool peut être refermé, sinon le processus de
+    // test resterait vivant sur des connexions ouvertes.
+    const { sql } = await import("../db/client.js");
+    await sql.end();
+  });
+
+  await t.test("un compte au format bcrypt se connecte, puis est réencodé", async () => {
+    const [avant] = await db.select().from(users).where(eq(users.email, EMAIL));
+    assert.ok(needsRehash(avant.passwordHash), "le compte doit bien partir d'une empreinte héritée");
+
+    const res = await fetch(`${base}/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    });
+    assert.equal(res.status, 200, "une empreinte héritée doit permettre de se connecter");
+
+    // Le réencodage est délibérément lancé sans await : le coach n'attend pas.
+    let apres = avant;
+    for (let i = 0; i < 40 && needsRehash(apres.passwordHash); i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      [apres] = await db.select().from(users).where(eq(users.email, EMAIL));
+    }
+    assert.equal(needsRehash(apres.passwordHash), false, "l'empreinte doit avoir été réécrite en scrypt");
+    assert.match(apres.passwordHash, /^scrypt\$/);
+
+    // Et le compte se reconnecte avec le même mot de passe, désormais en scrypt
+    const encore = await fetch(`${base}/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    });
+    assert.equal(encore.status, 200, "le mot de passe doit valoir après réencodage");
   });
 });

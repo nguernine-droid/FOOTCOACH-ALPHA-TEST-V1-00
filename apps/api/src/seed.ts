@@ -1,10 +1,10 @@
-import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
 import { clubs, matchAnnouncements, matches, teamCoaches, teams, users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { cityCoords } from "./lib/cities.js";
 import { SeedRefused, assertSeedAllowed } from "./seedGuard.js";
+import { hashPassword } from "./lib/passwordHash.js";
 
 /**
  * Mot de passe commun des comptes de démonstration. Surchargeable pour ne pas
@@ -24,7 +24,7 @@ async function upsertUser(input: {
   lastName: string;
   teamId?: string | null;
 }) {
-  const passwordHash = await bcrypt.hash(PASSWORD, 10);
+  const passwordHash = await hashPassword(PASSWORD);
   const [user] = await db
     .insert(users)
     .values({ ...input, passwordHash, teamId: input.teamId ?? null })

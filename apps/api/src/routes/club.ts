@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import bcrypt from "bcryptjs";
 import { and, asc, count, eq, inArray } from "drizzle-orm";
 import {
   idParamSchema,
@@ -23,6 +22,7 @@ import { generateCode } from "../lib/codes.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateTempPassword } from "../lib/passwords.js";
 import { revokeAllSessions } from "../lib/sessions.js";
+import { hashPassword } from "../lib/passwordHash.js";
 
 export function toClubDto(club: typeof clubs.$inferSelect): ClubDto {
   return { id: club.id, name: club.name, city: club.city, email: club.email, affiliationCode: club.affiliationCode };
@@ -215,7 +215,7 @@ export function clubRoutes(app: FastifyInstance) {
     if (existing) throw new HttpError(400, "Un compte existe déjà avec cet email");
 
     const tempPassword = generateTempPassword();
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const passwordHash = await hashPassword(tempPassword);
     const [coach] = await db
       .insert(users)
       .values({

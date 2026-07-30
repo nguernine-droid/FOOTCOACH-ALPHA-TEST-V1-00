@@ -1,6 +1,5 @@
 
 import type { FastifyInstance } from "fastify";
-import bcrypt from "bcryptjs";
 import { and, eq } from "drizzle-orm";
 import {
   createTeamSchema,
@@ -17,6 +16,7 @@ import { insertTeamWithCode } from "./club.js";
 import { registerRateLimit } from "../lib/rateLimits.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateCode } from "../lib/codes.js";
+import { hashPassword } from "../lib/passwordHash.js";
 
 async function assertEmailFree(email: string) {
   const [existing] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
@@ -38,7 +38,7 @@ export function registrationRoutes(app: FastifyInstance) {
   app.post("/auth/register-coach", registerRateLimit, async (request, reply): Promise<AuthResponseDto> => {
     const input = registerCoachSchema.parse(request.body);
     await assertEmailFree(input.email);
-    const passwordHash = await bcrypt.hash(input.password, 10);
+    const passwordHash = await hashPassword(input.password);
 
     const user = await db.transaction(async (tx) => {
       const [created] = await tx

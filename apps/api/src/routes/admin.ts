@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import bcrypt from "bcryptjs";
 import { and, count, desc, eq, gte, ilike, isNull, max, or } from "drizzle-orm";
 import {
   idParamSchema,
@@ -20,6 +19,7 @@ import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateTempPassword } from "../lib/passwords.js";
 import { revokeAllSessions } from "../lib/sessions.js";
+import { hashPassword } from "../lib/passwordHash.js";
 
 const DAY_MS = 24 * 3600 * 1000;
 
@@ -110,7 +110,7 @@ export function adminRoutes(app: FastifyInstance) {
     if (existing) throw new HttpError(400, "Un compte existe déjà avec cet email");
 
     const tempPassword = generateTempPassword();
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const passwordHash = await hashPassword(tempPassword);
     const coords = cityCoords(input.city);
 
     const club = await db.transaction(async (tx) => {
@@ -209,7 +209,7 @@ export function adminRoutes(app: FastifyInstance) {
     const { id } = idParamSchema.parse(request.params);
     const account = await getManageableAccount(id, request.user.id);
     const tempPassword = generateTempPassword();
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const passwordHash = await hashPassword(tempPassword);
     await db.transaction(async (tx) => {
       await tx.update(users).set({ passwordHash }).where(eq(users.id, account.id));
       await tx
