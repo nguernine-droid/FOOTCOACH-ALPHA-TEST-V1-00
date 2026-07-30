@@ -10,13 +10,8 @@ import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { avatarUrlOf, toUserDto } from "./auth.js";
 import { UPLOADS_DIR } from "../lib/uploads.js";
+import { ALLOWED_IMAGE_TYPES, MAX_AVATAR_BYTES, sniffImageType } from "../lib/images.js";
 
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
 
 /** Fiches complètes des coachs liés : contact + club + équipes encadrées */
 async function buildRelations(coachIds: string[], createdAtById: Map<string, Date>): Promise<CoachRelationDto[]> {
@@ -59,8 +54,10 @@ export function relationRoutes(app: FastifyInstance) {
     const file = await request.file({ limits: { fileSize: MAX_AVATAR_BYTES, files: 1 } });
     if (!file) throw new HttpError(400, "Aucun fichier reçu");
 
-    const extension = ALLOWED_IMAGE_TYPES[file.mimetype];
-    if (!extension) throw new HttpError(400, "Format accepté : JPEG, PNG ou WebP");
+    // Premier filtre, sur le type ANNONCÉ : évite de lire deux mégaoctets pour
+    // un envoi qui ne pouvait de toute façon pas convenir.
+    const declared = ALLOWED_IMAGE_TYPES[file.mimetype];
+    if (!declared) throw new HttpError(400, "Format accepté : JPEG, PNG ou WebP");
 
     let buffer: Buffer;
     try {
@@ -69,6 +66,26 @@ export function relationRoutes(app: FastifyInstance) {
       throw new HttpError(413, "Image trop lourde (2 Mo maximum)");
     }
     if (file.file.truncated) throw new HttpError(413, "Image trop lourde (2 Mo maximum)");
+
+    /**
+     * Second filtre, sur le CONTENU. Le `Content-Type` du multipart est écrit
+     * par l'appelant : il annonce un type sans le prouver. Sans cette
+     * vérification, n'importe quels octets déclarés `image/png` étaient stockés
+     * puis servis publiquement sous /api/uploads/<nom>.png.
+     *
+     * L'extension retenue vient du contenu, jamais de la déclaration : c'est
+     * elle qui décidera du `Content-Type` servi par fastify-static.
+     */
+    const extension = sniffImageType(buffer);
+    if (!extension) {
+      throw new HttpError(400, "Ce fichier n'est pas une image JPEG, PNG ou WebP");
+    }
+    if (extension !== declared) {
+      throw new HttpError(
+        400,
+        `Le fichier annonce ${file.mimetype} mais son contenu est du ${extension.toUpperCase()} — envoyez-le à nouveau`,
+      );
+    }
 
     const [current] = await db.select().from(users).where(eq(users.id, request.user.id));
     if (!current) throw new HttpError(404, "Utilisateur introuvable");

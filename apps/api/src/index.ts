@@ -6,6 +6,7 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { env } from "./env.js";
 import { UPLOADS_DIR, ensureUploadsDir } from "./lib/uploads.js";
+import { MAX_AVATAR_BYTES } from "./lib/images.js";
 import { rateLimitOptions } from "./plugins/rateLimit.js";
 import { runMigrations } from "./db/migrate.js";
 import { registerErrorHandler } from "./plugins/errors.js";
@@ -81,7 +82,9 @@ await app.register(helmet, {
 await app.register(rateLimit, rateLimitOptions);
 
 await app.register(multipart, {
-  limits: { fileSize: 2 * 1024 * 1024, files: 1, fields: 10, parts: 20 },
+  // Même constante que la route d'avatar : la limite était écrite deux fois,
+  // libre de diverger d'un côté sans l'autre.
+  limits: { fileSize: MAX_AVATAR_BYTES, files: 1, fields: 10, parts: 20 },
 });
 
 // Photos de profil : le navigateur y accède via le proxy du web, sous /api/uploads/*
