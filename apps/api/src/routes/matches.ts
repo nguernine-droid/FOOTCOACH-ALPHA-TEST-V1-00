@@ -86,9 +86,21 @@ export function matchRoutes(app: FastifyInstance) {
     return rows.map((r) => toDto(r, teamId));
   });
 
+  /**
+   * Détail d'un match. La vérification d'appartenance manquait ici, alors que
+   * les quatre autres routes de ce fichier la portent : tout compte authentifié
+   * pouvait lire n'importe quel match par son identifiant — équipes, lieu,
+   * score, et surtout le motif et la précision libre d'un désistement, où un
+   * coach écrit parfois « blessure de X ».
+   *
+   * `assertCoachOfMatch` vérifie l'appartenance à l'une des deux équipes, pas le
+   * rôle : la règle vaudra telle quelle pour un supporter le jour où son espace
+   * rouvrira, sans rien changer ici.
+   */
   app.get("/matches/:id", async (request): Promise<MatchDetailDto> => {
     const { id } = request.params as { id: string };
     const row = await getMatchOr404(id);
+    assertCoachOfMatch(row.match, request.user.teamId);
     return toDto(row, request.user.teamId);
   });
 
