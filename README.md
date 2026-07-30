@@ -186,17 +186,44 @@ les définir s'arrête avec un message explicite au lieu de signer ses jetons av
 une clé publiquement connue. `docker-compose.prod.yml` applique la même exigence
 au mot de passe PostgreSQL.
 
-**Authentification.** Mots de passe hachés en bcrypt. Jeton d'accès de 15
-minutes, jeton de rafraîchissement de 7 jours stocké haché, révoqué et remplacé
-à chaque usage. La comparaison de mot de passe s'exécute même pour un compte
-inconnu : sans cela, l'écart de temps de réponse suffit à dresser la liste des
-comptes. « Mot de passe oublié » répond la même chose dans tous les cas.
+**Authentification.** Mots de passe hachés en **scrypt** (natif, mémoire-dur),
+avec lecture des anciennes empreintes bcrypt : elles sont réencodées à la
+première connexion réussie, sans migration. Un mot de passe choisi fait 12
+caractères minimum et ne peut pas être un grand classique ; la connexion, elle,
+accepte toujours 8 caractères pour ne verrouiller dehors aucun compte existant.
+Jeton d'accès de 15 minutes, jeton de rafraîchissement de 7 jours stocké haché,
+révoqué et remplacé à chaque usage. La comparaison de mot de passe s'exécute même
+pour un compte inconnu, contre une empreinte de coût équivalent : sans cela,
+l'écart de temps de réponse suffit à dresser la liste des comptes. « Mot de passe
+oublié » répond la même chose dans tous les cas.
 
 **Limitation de débit.** 10 tentatives par minute sur la connexion, le
 rafraîchissement et le mot de passe oublié ; 5 inscriptions par tranche de 10
-minutes ; 300 requêtes par minute au global. Comptées par compte une fois
-authentifié — sinon les coachs d'un même club, derrière la même adresse, se
-partageraient un seul quota.
+minutes ; 300 requêtes par minute au global.
+
+Le compteur suit le **compte** une fois authentifié — sinon les coachs d'un même
+club, derrière la même adresse, se partageraient un seul quota. L'identité est
+tirée du jeton **après vérification de sa signature** : dériver le compteur d'un
+en-tête non vérifié revenait à laisser l'appelant s'en fabriquer un neuf à chaque
+essai. Les routes d'authentification comptent par adresse en toutes
+circonstances, puisque l'appelant n'y est pas encore authentifié.
+
+Ces compteurs vivent en mémoire, donc par réplica. Un **frein complémentaire en
+base** (`login_attempts`) plafonne les échecs par compte à 10 par quart d'heure :
+lui est partagé, y compris avec `--scale api=3`. Il porte sur le compte et non
+sur l'adresse — sans `TRUST_PROXY`, l'adresse vue est celle du conteneur `web`,
+et un frein par adresse verrouillerait tous les coachs à cause d'un seul
+attaquant.
+
+**Adresse des clients (`TRUST_PROXY`).** Vide par défaut : aucun en-tête
+`X-Forwarded-For` n'est cru, l'adresse retenue est celle du pair TCP. À ne
+renseigner que derrière un reverse proxy configuré pour **ajouter** l'adresse
+réelle (`proxy_add_x_forwarded_for` chez nginx) — Next relaie cet en-tête tel
+quel et ne peut donc pas en attester. Voir `.env.example`.
+
+**Fichiers téléversés.** La signature du contenu est vérifiée, pas seulement le
+type déclaré : un fichier qui n'est pas un JPEG, PNG ou WebP est refusé, et
+l'extension servie est dérivée du contenu.
 
 **En-têtes.** Politique de contenu, `nosniff`, `frame-ancestors: none`,
 `Referrer-Policy: no-referrer` et HSTS sur les deux services. Les photos de
@@ -206,15 +233,45 @@ profil sont servies avec une politique qui n'autorise l'exécution de rien.
 
 1. Générer les secrets : `openssl rand -base64 48`, deux fois, valeurs distinctes.
 2. Placer un reverse proxy TLS en façade (nginx, traefik, Caddy) — l'application
-   ne termine pas le TLS elle-même.
-3. Ne pas exposer le port PostgreSQL (déjà retiré par `docker-compose.prod.yml`).
+   ne termine pas le TLS elle-même. Puis, et seulement une fois qu'il ajoute
+   `X-Forwarded-For`, régler `TRUST_PROXY=loopback,uniquelocal`.
+3. Ne pas exposer le port PostgreSQL (déjà retiré par `docker-compose.prod.yml` ;
+   en développement il n'écoute que sur `127.0.0.1`).
 4. Sauvegarder la base **et** le volume `uploads` (photos de profil).
 5. Surveiller `npm audit` : les avis de sécurité sortent après les déploiements.
+   ⚠️ Ne jamais lancer `npm audit fix --force` — il propose `next@9.3.3`, sept
+   majeures en arrière. Voir `SECURITY_AUDIT.md`, FC-05, pour l'état des avis
+   ouverts et pourquoi ils ne sont pas atteignables.
+
+## Tests
+
+```bash
+npm test          # tous les workspaces
+npm run typecheck
+```
+
+`node:test` via `tsx`, sans dépendance supplémentaire. Les tests couvrent les
+protections de sécurité — limitation de débit, garde-fous du seed, politique de
+mot de passe, validation des fichiers téléversés, épinglage de l'algorithme des
+jetons. Deux tests d'intégration demandent un Postgres et s'ignorent sans lui :
+
+```bash
+docker compose up -d postgres
+FOOTCOACH_TEST_DATABASE_URL=postgres://footcoach:<mdp>@localhost:5433/footcoach npm test
+```
+
+Ils écrivent dans la base visée (comptes `@throttle.test`) et nettoient derrière
+eux — à ne pointer que sur une base de développement.
 
 **Limites connues, assumées à ce stade :** pas de second facteur sur le compte
 administrateur, pas de détection de rejeu d'un jeton de rafraîchissement révoqué,
 et le jeton d'accès reste valable jusqu'à 15 minutes après une désactivation de
-compte.
+compte ou un retrait d'équipe. L'inscription révèle qu'une adresse est déjà
+inscrite : la refermer demande un circuit de confirmation par courriel, décrit
+dans `SECURITY_AUDIT.md` (FC-14).
+
+Le détail de l'audit de sécurité, des correctifs et de ce qui reste ouvert est
+dans [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
 
 ## Développement hors Docker
 

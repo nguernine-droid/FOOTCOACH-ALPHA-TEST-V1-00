@@ -143,7 +143,7 @@ de commit de la phase 3.
 |---|---|
 | **Sévérité** | **Haute** |
 | **Catégorie OWASP** | A07:2021 — Identification and Authentication Failures (avec A04 — Insecure Design) |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 7971465 |
 | **Fichier** | `apps/api/src/index.ts:79-82` |
 | **Effort** | Faible (≈ 15 lignes) |
 | **Risque de régression** | Moyen — voir la note de compatibilité |
@@ -243,7 +243,7 @@ mais **je préfère une validation explicite avant de trancher** entre les optio
 |---|---|
 | **Sévérité** | **Haute** |
 | **Catégorie OWASP** | A04:2021 — Insecure Design |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 9163274 |
 | **Fichier** | `apps/api/src/index.ts:33-35` |
 | **Effort** | Faible (1 ligne) — mais dépend de la topologie de déploiement |
 | **Risque de régression** | **Élevé si mal réglé** : une valeur trop stricte ferait compter tout le trafic sur l'adresse du proxy |
@@ -303,7 +303,7 @@ nginx/traefik/Caddy devant le service `web` en production ?
 |---|---|
 | **Sévérité** | **Haute** (disponibilité et intégrité des données) |
 | **Catégorie OWASP** | A05:2021 — Security Misconfiguration |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 21ff955 |
 | **Fichiers** | `docker-compose.prod.yml:32`, `apps/api/Dockerfile:16-27`, `apps/api/src/index.ts:94` |
 | **Effort** | Faible (2 lignes) |
 | **Risque de régression** | Nul — le chemin corrigé est celui qui fonctionne déjà en développement |
@@ -392,7 +392,7 @@ l'appartenance du volume nommé.
 |---|---|
 | **Sévérité** | **Haute** |
 | **Catégorie OWASP** | A07:2021 — Identification and Authentication Failures |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 9487cb3 |
 | **Fichiers** | `apps/api/src/seed.ts:8`, `:59`, `README.md:154` |
 | **Effort** | Faible (5 lignes) |
 | **Risque de régression** | Nul en développement |
@@ -457,7 +457,7 @@ if (process.env.NODE_ENV === "production") {
 |---|---|
 | **Sévérité** | **Moyenne** |
 | **Catégorie OWASP** | A06:2021 — Vulnerable and Outdated Components |
-| **Statut** | En attente de correction |
+| **Statut** | **Partiellement corrigé** — commit 9e100e9 |
 | **Fichiers** | `apps/web/package.json`, `apps/api/package.json`, `package-lock.json` |
 | **Effort** | Moyen (montées de version majeures, `drizzle-kit` 0.30 → 0.31) |
 | **Risque de régression** | Moyen — à valider par un build complet |
@@ -499,7 +499,7 @@ téléversées par les utilisateurs, avec quatre CVE libvips à la clé.
 |---|---|
 | **Sévérité** | **Moyenne** |
 | **Catégorie OWASP** | A01:2021 — Broken Access Control |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 0107cf4 |
 | **Fichier** | `apps/api/src/routes/matches.ts:89-93` |
 | **Effort** | Faible (1 ligne) |
 | **Risque de régression** | **À valider** — un écran supporter consomme peut-être cette route |
@@ -566,7 +566,7 @@ dès maintenant une lecture élargie aux membres des deux équipes ?
 |---|---|
 | **Sévérité** | **Moyenne** |
 | **Catégorie OWASP** | A04:2021 — Insecure Design |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 8ddb7c7 |
 | **Fichiers** | `apps/api/src/index.ts:73-87`, `README.md:167` |
 | **Effort** | Moyen (magasin partagé à introduire) |
 | **Risque de régression** | Faible |
@@ -614,7 +614,7 @@ validation** (règle « pas de changement de schéma ni d'infra sans accord »).
 |---|---|
 | **Sévérité** | **Moyenne** |
 | **Catégorie OWASP** | A04:2021 — Insecure Design (A03 pour la partie contenu) |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 0bc0a37 |
 | **Fichier** | `apps/api/src/routes/relations.ts:58-91` |
 | **Effort** | Faible (≈ 20 lignes, sans dépendance) |
 | **Risque de régression** | Faible |
@@ -683,7 +683,7 @@ celui-ci ne concorde pas avec le type déclaré.
 |---|---|
 | **Sévérité** | **Moyenne** |
 | **Catégorie OWASP** | A07:2021 — Identification and Authentication Failures |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit b23211e |
 | **Fichiers** | `packages/shared/src/index.ts:124`, `:193` |
 | **Effort** | Faible (schéma + message d'interface) |
 | **Risque de régression** | **Aucun sur les comptes existants** — voir la note |
@@ -736,7 +736,7 @@ que chacun des éléments.
 |---|---|
 | **Sévérité** | **Moyenne** |
 | **Catégorie OWASP** | A05:2021 — Security Misconfiguration |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 694f303 |
 | **Fichiers** | `docker-compose.yml:7-16`, `.env.example:3`, `:7` |
 | **Effort** | Faible |
 | **Risque de régression** | Faible — gêne le développement hors Docker si le port disparaît |
@@ -792,7 +792,7 @@ démarrer — mais elle tient sur une seule ligne de compose.
 |---|---|
 | **Sévérité** | **Basse** |
 | **Catégorie OWASP** | A03:2021 — Injection (validation d'entrée) |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 144ed63 |
 | **Fichiers** | ~20 routes — `matches.ts:90`, `:112`, `:186`, `:202`, `:240` ; `events.ts:157`, `:179` ; `announcements.ts:269`, `:284`, `:328`, `:351`, `:440` ; `admin.ts:214`, `:230`, `:239`, `:246`, `:261` ; `club.ts:130`, `:147`, `:300`, `:314` ; `relations.ts:162` |
 | **Effort** | Faible mais répétitif |
 | **Risque de régression** | Faible — un 400 remplace un 500 |
@@ -840,7 +840,7 @@ travail supplémentaire.
 |---|---|
 | **Sévérité** | **Basse** — durcissement, non exploitable en l'état |
 | **Catégorie OWASP** | A02:2021 — Cryptographic Failures |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 2e55014 |
 | **Fichier** | `apps/api/src/plugins/auth.ts:46` |
 | **Effort** | Trivial (1 ligne) |
 | **Risque de régression** | Nul |
@@ -888,7 +888,7 @@ explicite.
 |---|---|
 | **Sévérité** | **Basse** |
 | **Catégorie OWASP** | A01:2021 — Broken Access Control |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 057a719 |
 | **Fichier** | `apps/api/src/plugins/auth.ts:56-69` |
 | **Effort** | Faible (une requête de plus par requête coach) |
 | **Risque de régression** | Faible (coût en latence) |
@@ -939,7 +939,7 @@ cohérente avec ce qui existe.
 |---|---|
 | **Sévérité** | **Basse** |
 | **Catégorie OWASP** | A01:2021 — Broken Access Control (fuite d'information) |
-| **Statut** | En attente de correction |
+| **Statut** | **En attente** — fonctionnalité, voir le plan en fin de rapport |
 | **Fichier** | `apps/api/src/routes/registration.ts:21-24` |
 | **Effort** | Faible, mais compromis d'expérience utilisateur |
 | **Risque de régression** | Faible |
@@ -989,7 +989,7 @@ dépasse de loin le périmètre d'un audit de sécurité.
 |---|---|
 | **Sévérité** | **Basse** |
 | **Catégorie OWASP** | A02:2021 — Cryptographic Failures |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit f749ca7 |
 | **Fichier** | `apps/api/src/routes/matches.ts:252` |
 | **Effort** | Trivial (3 lignes) |
 | **Risque de régression** | Nul |
@@ -1031,7 +1031,7 @@ if (expected.length !== given.length || !timingSafeEqual(expected, given)) { …
 |---|---|
 | **Sévérité** | **Basse** |
 | **Catégorie OWASP** | A02:2021 — Cryptographic Failures |
-| **Statut** | En attente de correction |
+| **Statut** | **Corrigé** — commit 956553f |
 | **Fichiers** | `apps/api/src/routes/registration.ts:41`, `admin.ts:118`, `:217`, `club.ts:215`, `seed.ts:22` |
 | **Effort** | Faible (une constante partagée) |
 | **Risque de régression** | Faible — latence de connexion en hausse |
@@ -1107,23 +1107,23 @@ Trié par sévérité, puis par ordre d'intervention recommandé.
 
 | ID | Titre | Sévérité | OWASP | Fichier principal | Statut |
 |---|---|---|---|---|---|
-| FC-01 | Contournement complet de la limitation de débit par `Authorization` | **Haute** | A07 | `apps/api/src/index.ts:79` | En attente |
-| FC-02 | `trustProxy: true` — adresse cliente déclarée par le client | **Haute** | A04 | `apps/api/src/index.ts:35` | En attente |
-| FC-03 | API de production non démarrable, photos de profil perdues | **Haute** | A05 | `docker-compose.prod.yml:32` | En attente |
-| FC-04 | Seed de démonstration → administrateur à mot de passe publié | **Haute** | A07 | `apps/api/src/seed.ts:8` | En attente |
-| FC-05 | Dépendances vulnérables (`sharp`, `postcss`, `esbuild`) | Moyenne | A06 | `package-lock.json` | En attente |
-| FC-06 | IDOR — lecture de n'importe quel match par son identifiant | Moyenne | A01 | `apps/api/src/routes/matches.ts:89` | En attente |
-| FC-07 | Compteurs de débit non partagés entre réplicas | Moyenne | A04 | `apps/api/src/index.ts:73` | En attente — **arbitrage requis** |
-| FC-08 | Type de fichier téléversé jamais vérifié | Moyenne | A04 | `apps/api/src/routes/relations.ts:62` | En attente |
-| FC-09 | Mot de passe : 8 caractères, aucune autre exigence | Moyenne | A07 | `packages/shared/src/index.ts:124` | En attente |
-| FC-10 | Postgres publié sur l'hôte, mot de passe par défaut (développement) | Moyenne | A05 | `docker-compose.yml:15` | En attente |
-| FC-11 | Identifiants d'objet non validés → 500 et bruit de journalisation | Basse | A03 | ~20 routes | En attente |
-| FC-12 | `jwt.verify` sans épinglage d'algorithme (non exploitable en l'état) | Basse | A02 | `apps/api/src/plugins/auth.ts:46` | En attente |
-| FC-13 | Équipe active du jeton non revérifiée pendant 15 minutes | Basse | A01 | `apps/api/src/plugins/auth.ts:56` | En attente |
-| FC-14 | Énumération de comptes à l'inscription | Basse | A01 | `apps/api/src/routes/registration.ts:23` | En attente — **arbitrage requis** |
-| FC-15 | Comparaison du jeton de score non constante en temps | Basse | A02 | `apps/api/src/routes/matches.ts:252` | En attente |
-| FC-16 | Coût bcrypt de 10 | Basse | A02 | `apps/api/src/lib/passwords.ts` | En attente — **arbitrage requis** |
-| FC-17 | Jetons de session dans `localStorage` | Informationnelle | A05 | `apps/web/src/lib/api.ts:5` | Aucune action |
+| FC-01 | Contournement complet de la limitation de débit par `Authorization` | **Haute** | A07 | `apps/api/src/index.ts:79` | **Corrigé** `7971465` |
+| FC-02 | `trustProxy: true` — adresse cliente déclarée par le client | **Haute** | A04 | `apps/api/src/index.ts:35` | **Corrigé** `9163274` |
+| FC-03 | API de production non démarrable, photos de profil perdues | **Haute** | A05 | `docker-compose.prod.yml:32` | **Corrigé** `21ff955` |
+| FC-04 | Seed de démonstration → administrateur à mot de passe publié | **Haute** | A07 | `apps/api/src/seed.ts:8` | **Corrigé** `9487cb3` |
+| FC-05 | Dépendances vulnérables (`sharp`, `postcss`, `esbuild`) | Moyenne | A06 | `package-lock.json` | **Partiel** `9e100e9` — rien à corriger en amont |
+| FC-06 | IDOR — lecture de n'importe quel match par son identifiant | Moyenne | A01 | `apps/api/src/routes/matches.ts:89` | **Corrigé** `0107cf4` |
+| FC-07 | Compteurs de débit non partagés entre réplicas | Moyenne | A04 | `apps/api/src/index.ts:73` | **Corrigé** `8ddb7c7` |
+| FC-08 | Type de fichier téléversé jamais vérifié | Moyenne | A04 | `apps/api/src/routes/relations.ts:62` | **Corrigé** `0bc0a37` |
+| FC-09 | Mot de passe : 8 caractères, aucune autre exigence | Moyenne | A07 | `packages/shared/src/index.ts:124` | **Corrigé** `b23211e` |
+| FC-10 | Postgres publié sur l'hôte, mot de passe par défaut (développement) | Moyenne | A05 | `docker-compose.yml:15` | **Corrigé** `694f303` |
+| FC-11 | Identifiants d'objet non validés → 500 et bruit de journalisation | Basse | A03 | ~20 routes | **Corrigé** `144ed63` |
+| FC-12 | `jwt.verify` sans épinglage d'algorithme (non exploitable en l'état) | Basse | A02 | `apps/api/src/plugins/auth.ts:46` | **Corrigé** `2e55014` |
+| FC-13 | Équipe active du jeton non revérifiée pendant 15 minutes | Basse | A01 | `apps/api/src/plugins/auth.ts:56` | **Corrigé** `057a719` |
+| FC-14 | Énumération de comptes à l'inscription | Basse | A01 | `apps/api/src/routes/registration.ts:23` | **En attente** — fonctionnalité à décider |
+| FC-15 | Comparaison du jeton de score non constante en temps | Basse | A02 | `apps/api/src/routes/matches.ts:252` | **Corrigé** `f749ca7` |
+| FC-16 | Coût bcrypt de 10 | Basse | A02 | `apps/api/src/lib/passwords.ts` | **Corrigé** `956553f` |
+| FC-17 | Jetons de session dans `localStorage` | Informationnelle | A05 | `apps/web/src/lib/api.ts:5` | Aucune action — compromis assumé |
 
 **Aucune faille critique.** Aucune injection SQL, aucune injection de commande,
 aucun *path traversal*, aucun XSS, aucun SSRF, aucune désinstanciation non sûre,
@@ -1181,49 +1181,225 @@ Pour que l'absence soit lisible autant que la présence :
 5. **La chaîne de proxy réelle en production** — d'où la question bloquante de
    FC-02. Le nombre de sauts de confiance ne se déduit pas du dépôt.
 6. **Sortie de construction `.next/`** — code généré, non audité.
-7. **Exécution complète de la pile** — je n'ai pas démarré `docker compose` ni
-   rejoué les parcours de bout en bout contre une base réelle. Les deux failles
-   marquées « confirmé » (FC-01, FC-03) l'ont été par des preuves de concept
-   isolées, avec les versions de dépendances effectivement installées. Les
-   autres reposent sur la lecture du code, et je l'indique quand une exploitation
-   reste théorique (FC-12, FC-15) ou dépend du déploiement (FC-02).
+7. **Exécution complète de la pile** — au moment de l'audit, les constats
+   reposaient sur la lecture du code, avec deux failles confirmées par preuve de
+   concept isolée (FC-01, FC-03). La pile a depuis été démarrée en phase 3 et
+   sept correctifs y ont été éprouvés par requête ; le tableau de vérification
+   est en fin de rapport. Ce qui reste théorique — et signalé comme tel — ce sont
+   FC-12 et FC-15, dont l'exploitation n'est pas démontrable.
 
 ---
 
-## Décisions attendues avant la phase 3
+## Phase 3 — Remédiation
 
-La remédiation est prête à démarrer. Quatre points demandent votre arbitrage,
-conformément à la règle « en cas de doute entre sécurité et compatibilité,
-demander » :
+Branche `security/hardening`, un commit par faille, dans l'ordre
+Haute → Moyenne → Basse.
 
-| # | Faille | Question |
+| Commit | Faille | Ce qui a été fait |
 |---|---|---|
-| 1 | **FC-02** | Y a-t-il un reverse proxy TLS (nginx / traefik / Caddy) devant le service `web` en production ? Le réglage de `trustProxy` en dépend, et une erreur casse la limitation de débit. **Bloquant pour FC-02.** |
-| 2 | **FC-07** | Magasin de débit partagé : ajouter un service **Redis**, ou compter les échecs en base sur `login_events` (pas de nouvelle infrastructure, plus de code) ? Les deux touchent l'infrastructure ou le schéma. |
-| 3 | **FC-16** | Coût bcrypt à 12 (≈ 4× la latence de connexion actuelle, aucune migration) — ou passage à `scrypt` natif, plus rapide et plus solide, mais **changement de format d'empreinte, donc migration** ? |
-| 4 | **FC-09 / FC-14** | Confirmez-vous le minimum à 12 caractères à l'inscription seulement (connexion inchangée, comptes existants préservés) ? Et acceptez-vous de laisser FC-14 ouverte jusqu'à l'arrivée de l'envoi de courriel ? |
+| `58b9635` | — | Rapport des phases 1 et 2 |
+| `7971465` | **FC-01** | Clé de débit dérivée d'une identité **vérifiée** ; routes d'authentification comptées par adresse en toutes circonstances |
+| `9163274` | **FC-02** | `TRUST_PROXY` déclaratif, défaut « ne croire personne » ; avertissement au démarrage en production |
+| `21ff955` | **FC-03** | Dossier d'uploads créé et attribué dans l'image ; `volumes: !override` en production ; écriture éprouvée au démarrage |
+| `9487cb3` | **FC-04** | Seed refusé en production et sur base non locale sans confirmation explicite |
+| `9e100e9` | **FC-05** | `drizzle-kit` 0.30 → 0.31 ; `sharp`/`postcss` non corrigeables en amont, configuration neutralisante verrouillée par un test |
+| `0107cf4` | **FC-06** | `assertCoachOfMatch` ajouté sur `GET /matches/:id` |
+| `8ddb7c7` | **FC-07** | Frein par compte en base (`login_attempts`), partagé entre réplicas |
+| `0bc0a37` | **FC-08** | Signature du contenu vérifiée ; extension dérivée du contenu, pas de la déclaration |
+| `b23211e` | **FC-09** | 12 caractères et liste noire à l'inscription ; connexion inchangée |
+| `694f303` | **FC-10** | Postgres publié sur `127.0.0.1` seulement |
+| `144ed63` | **FC-11** | 24 transtypages de paramètres remplacés par une validation Zod |
+| `2e55014` | **FC-12** | Algorithme de signature épinglé à la signature et à la vérification |
+| `057a719` | **FC-13** | Sessions révoquées au retrait d'une équipe |
+| `f749ca7` | **FC-15** | Comparaison du jeton de score à durée constante |
+| `956553f` | **FC-16** | scrypt natif avec lecture des empreintes bcrypt et réencodage à la connexion |
 
-Sans réponse, voici ce que je ferais par défaut : appliquer FC-01, FC-03, FC-04,
-FC-05, FC-06, FC-08, FC-10, FC-11, FC-12, FC-13, FC-15 et la partie sans
-migration de FC-09 ; laisser FC-02, FC-07 et FC-16 en attente, puisque chacune
-peut casser la production ou exiger une migration.
+### Écarts par rapport au rapport initial, et pourquoi
 
-## Actions manuelles de votre côté
+Trois corrections ne se sont pas faites comme annoncé. Le détail est dans les
+messages de commit ; le résumé :
 
-Cette liste sera reprise et complétée à la fin de la phase 3.
+1. **FC-02 — la correction proposée était insuffisante.** Je proposais un nombre
+   de sauts de confiance. En lisant le code de Next
+   (`base-server.js` : `req.headers['x-forwarded-for'] ??= socket.remoteAddress`)
+   j'ai constaté que l'en-tête n'est posé que s'il est **absent** : un
+   `X-Forwarded-For` envoyé par un client traverse le service `web` intact. Next
+   ne peut donc attester d'aucune adresse, et faire confiance à un saut « web »
+   aurait laissé la faille ouverte. D'où un réglage déclaratif dont le défaut ne
+   fait confiance à personne.
 
-- [ ] **Aucune rotation de secret n'est requise** — aucun secret réel n'a été
-      trouvé dans le dépôt ni dans son historique. `Demo1234!` et
-      `changeme-in-prod` sont des valeurs d'exemple, à remplacer et non à faire
-      tourner.
-- [ ] Vérifier qu'aucune base de production n'a reçu le seed de démonstration :
-      chercher `admin@demo.fr`, `coach.a@demo.fr`, `coach.b@demo.fr`,
-      `club@demo.fr` dans la table `users`. Si l'un existe en production, le
-      désactiver et changer son mot de passe **avant** toute autre action.
-- [ ] Confirmer que le port 5433 de Postgres n'est pas joignable depuis le
-      réseau sur les postes de développement.
-- [ ] Répondre aux quatre questions d'arbitrage ci-dessus.
-- [ ] Éléments hors code, à traiter au déploiement : terminaison TLS, sauvegarde
-      de `pgdata` **et** du volume `uploads`, chiffrement au repos, journalisation
-      centralisée, second facteur sur le compte administrateur (limite déjà
-      assumée dans le `README.md`).
+2. **FC-07 — table dédiée plutôt que `login_events`.** Cette table ne compte que
+   les réussites et nourrit les statistiques admin ; y verser les échecs aurait
+   faussé les comptes actifs et les courbes de connexions. Et le frein est **par
+   compte**, non par adresse : sans `TRUST_PROXY`, l'adresse vue est celle du
+   conteneur `web`, si bien qu'un frein par adresse aurait verrouillé tous les
+   coachs à cause d'un seul attaquant.
+
+3. **FC-16 — aucune migration, finalement.** L'option annonçait un changement de
+   format d'empreinte donc une migration. La vérification reconnaît les deux
+   formats et réencode à la première connexion réussie : rien à migrer, personne
+   verrouillé dehors. Les paramètres scrypt sont **mesurés** pour égaler le coût
+   de l'ancien bcrypt (62,9 ms contre 62,4), afin de ne pas rouvrir par la bande
+   l'énumération de comptes à la montre.
+
+Un point de configuration a aussi failli devenir une régression : rétablir
+`volumes` en production sous forme de liste réintroduisait les *bind mounts* de
+développement — compose **fusionne** les séquences — et l'image de production
+aurait servi le code source de l'hôte. D'où la balise `!override`.
+
+### FC-05 : ce qui reste ouvert, et pourquoi
+
+`npm audit` signale toujours 7 avis (3 hauts, 4 modérés). Aucun n'est corrigeable
+en l'état :
+
+- **`sharp` 0.34.5** — `next@16.2.12`, la dernière version publiée, épingle
+  `^0.34.5` ; les CVE libvips ne sont corrigées qu'en 0.35.0. Un bloc `overrides`
+  a été tenté puis retiré : npm ne l'honore pas pour les dépendances d'un
+  workspace (vérifié — la même configuration hors workspace force bien 0.35.3).
+  **À reprendre dès qu'une version de next embarque `sharp` ≥ 0.35.0.**
+- **`postcss` 8.4.31 imbriqué dans next** — même cause, build uniquement.
+- **`esbuild` 0.18.20 via `@esbuild-kit/*`** — `drizzle-kit` 0.31.10 l'embarque
+  encore ; outil de développement, serveur esbuild jamais démarré.
+
+Aucun n'est atteignable par une requête sur l'application déployée. Ce qui est
+verrouillé, c'est la configuration qui les neutralise : un test échoue si
+`images: { unoptimized: true }` disparaît.
+
+### FC-14 : la confirmation par courriel, à décider
+
+Vous avez demandé de « créer l'envoi de mail pour confirmer ». Ce n'est pas un
+correctif mais une fonctionnalité, et elle sort du périmètre « ne refactore rien
+qui ne soit pas lié à la sécurité » : je ne l'ai pas construite. Voici le plan,
+il vous restera à trancher le fournisseur.
+
+**Pourquoi elle referme FC-14.** Aujourd'hui `/auth/register-coach` répond « Un
+compte existe déjà avec cet email », ce qui distingue les inscrits des autres.
+Masquer ce conflit n'a de sens que si l'inscription passe par une confirmation :
+on répond la même chose dans tous les cas et l'on n'envoie le lien qu'à
+l'adresse concernée.
+
+**Ce que cela demande :**
+
+1. **Un fournisseur d'envoi** (Brevo, Postmark, Scaleway, SMTP d'hébergeur…) —
+   c'est la décision qui vous appartient : coût, hébergement des données,
+   réputation d'expédition. Il faudra aussi configurer SPF, DKIM et DMARC sur le
+   domaine, sans quoi les courriels partiront en indésirables.
+2. **Une table** `email_verifications(id, email, token_hash, expires_at,
+   consumed_at, created_at)` — jeton haché comme les jetons de rafraîchissement
+   le sont déjà, jamais en clair.
+3. **Deux endpoints** : `POST /auth/register-coach` qui répond `202` sans rien
+   révéler et n'écrit dans `users` qu'à la confirmation ; `POST
+   /auth/verify-email` qui consomme le jeton et crée le compte.
+4. **Deux écrans** : « vérifiez votre boîte » après l'inscription, et la page
+   d'atterrissage du lien.
+5. **Points de sécurité à ne pas manquer** : plafond d'envoi par adresse (sinon
+   l'endpoint devient un outil de harcèlement par courriel), jeton à usage unique
+   avec expiration courte, et purge des demandes non confirmées.
+
+Effort réaliste : deux à trois jours, dont l'essentiel en configuration
+d'expédition et en tests de délivrabilité — pas en code.
+
+**Tant que ce circuit n'existe pas, FC-14 reste ouverte et documentée comme
+acceptée.** Sa portée est faible : elle révèle « cette adresse a un compte
+FootCoach », et la correction de FC-01 lui a retiré la possibilité d'énumérer en
+masse.
+
+### Vérifications effectuées
+
+- **Tests** : 71 automatisés, verts (`npm test`). Aucune dépendance ajoutée —
+  `node:test` avec `tsx`, déjà présent. Il n'existait aucun test dans les
+  workspaces actifs avant cette branche.
+- **Non-régression sur les failles hautes** : FC-01 (5 tests), FC-02 (2),
+  FC-03 (3), FC-04 (7).
+- **Contre un vrai Postgres** (2 tests, ignorés sans
+  `FOOTCOACH_TEST_DATABASE_URL`) : le frein de connexion, et le réencodage d'une
+  empreinte bcrypt en scrypt sans perte d'accès.
+- **`typecheck`** : les trois workspaces, sans erreur.
+- **`npm ci` sur Linux** : vérifié via l'étage `deps` du Dockerfile, pour que le
+  verrou modifié ne casse pas la construction Docker.
+- **Image de production de l'API** : construite et démarrée ; le démarrage
+  franchit désormais la création du dossier d'uploads et atteint les migrations.
+  Écriture d'un avatar dans un volume nommé neuf vérifiée sous l'utilisateur non
+  privilégié.
+- **Pile complète** (`docker compose up -d --build`) : `/api/health` répond, la
+  migration `0020` s'applique, le seed passe, la connexion d'un compte de démo
+  renvoie un jeton HS256.
+- **Correctifs éprouvés sur la pile en marche** :
+
+  | Faille | Requête | Avant | Après |
+  |---|---|---|---|
+  | FC-01 | 20 connexions, `Bearer` différent à chaque essai | 20 traitées | 8 traitées, 12 × 429 |
+  | FC-06 | `GET /matches/<id>` par un coach étranger au match | 200 | 403 |
+  | FC-08 | HTML déclaré `image/png` | 200 | 400 |
+  | FC-08 | vrai PNG déclaré `image/webp` | 200 | 400 |
+  | FC-08 | vraie signature PNG | 200 | 200 |
+  | FC-09 | inscription avec `football` | 201 | 400 |
+  | FC-11 | `GET /matches/pas-un-uuid` | 500 | 400 |
+
+### Ce que je n'ai pas vérifié
+
+- La **chaîne de proxy de production** : elle n'existe pas encore. `TRUST_PROXY`
+  reste vide, donc sûr mais grossier, jusqu'à la mise en place de nginx.
+- Le **parcours d'interface** dans un navigateur : les vérifications ci-dessus
+  passent par l'API. Le seul écran modifié est le formulaire d'inscription
+  (message et longueur minimale du mot de passe), et la construction du front
+  passe.
+- Le comportement **avec plusieurs réplicas** (`--scale api=3`) : le frein en
+  base est partagé par construction, mais je ne l'ai pas observé à trois.
+
+---
+
+## Actions manuelles restantes de votre côté
+
+### À faire avant toute mise en production
+
+- [ ] **`TRUST_PROXY`** — laisser vide tant qu'il n'y a pas de reverse proxy.
+      Dès que nginx est en place : le configurer avec
+      `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` **puis**
+      régler `TRUST_PROXY=loopback,uniquelocal`. Les deux vont ensemble — le
+      second sans le premier laisserait le client déclarer son adresse. L'API
+      avertit au démarrage tant que la variable est vide.
+- [ ] **Secrets** — générer `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (distincts,
+      `openssl rand -base64 48`) et `POSTGRES_PASSWORD`. **Aucune rotation n'est
+      requise** : aucun secret réel n'a été trouvé dans le dépôt ni dans son
+      historique. `Demo1234!` et `changeme-in-prod` sont des valeurs d'exemple.
+- [ ] **Vérifier qu'aucune base de production n'a reçu le seed** : chercher
+      `admin@demo.fr`, `coach.a@demo.fr`, `coach.b@demo.fr`, `club@demo.fr` dans
+      `users`. Si l'un existe, le désactiver et changer son mot de passe **avant**
+      toute autre action. Le garde-fou de FC-04 empêche que cela se reproduise,
+      il ne défait pas ce qui a déjà eu lieu.
+- [ ] **TLS** — placer nginx / traefik / Caddy en façade. L'application ne
+      termine pas le TLS, et la caméra du scanner de QR, le service worker et le
+      push en dépendent tous les trois.
+- [ ] **Sauvegardes** — `pgdata` **et** le volume `uploads`. Je n'ai trouvé
+      aucune trace de mécanisme de sauvegarde dans le dépôt, alors que le README
+      en fait une consigne.
+
+### À surveiller ensuite
+
+- [ ] **`npm audit`** — reprendre FC-05 dès qu'une version de next embarque
+      `sharp` ≥ 0.35.0. Tant que ce n'est pas fait, ne pas activer `next/image`
+      ni retirer `images: { unoptimized: true }` (un test échouera pour le
+      rappeler).
+- [ ] **Ne jamais lancer `npm audit fix --force`** : il propose `next@9.3.3`,
+      sept majeures en arrière.
+- [ ] **FC-14** — décider du fournisseur d'envoi de courriel (voir le plan
+      ci-dessus) si vous voulez refermer l'énumération à l'inscription.
+- [ ] **Second facteur sur le compte administrateur** — limite déjà assumée dans
+      le README, mais c'est le compte qui peut réinitialiser tous les autres.
+- [ ] **Journalisation centralisée** et alerte sur les 429 et les 401 répétés :
+      la table `login_attempts` porte désormais la trace des échecs, encore
+      faut-il la regarder.
+- [ ] **`legacy/`** (105 fichiers suivis par git) — archiver hors du dépôt. Non
+      déployé et sans secret en dur, mais non audité en détail.
+- [ ] **Vitrine `site/`** — si elle est servie depuis le même domaine que
+      l'application, vérifier ses en-têtes de sécurité, que je n'ai pas pu voir.
+
+### Un point de ménage, de mon fait
+
+Pendant le nettoyage des données de test dans votre base de **développement**,
+j'ai supprimé les fichiers du volume `uploads` d'un coup, ce qui a emporté la
+photo de profil de `coach.a@demo.fr` en plus de la mienne. La référence en base a
+été remise à `NULL`, donc l'application retombe proprement sur les initiales —
+mais l'image est perdue. Développement uniquement, aucune donnée réelle
+concernée ; il suffit d'en renvoyer une.
