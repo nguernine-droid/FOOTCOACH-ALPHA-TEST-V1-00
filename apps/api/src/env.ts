@@ -8,6 +8,27 @@ import { z } from "zod";
  */
 const DEV_ONLY_SECRETS = ["dev-access-secret-not-for-prod", "dev-refresh-secret-not-for-prod"];
 
+/**
+ * Analyse de `TRUST_PROXY`. Exportée pour être exerçable par un test : c'est la
+ * fonction qui décide si l'adresse d'un client est croyable, et la seule valeur
+ * qu'elle ne doit JAMAIS produire est `true` — qui reviendrait à faire confiance
+ * à tous les sauts, donc à laisser l'appelant choisir son adresse.
+ *
+ * Voir le commentaire du champ TRUST_PROXY plus bas pour les valeurs admises.
+ */
+export function parseTrustProxy(value: string | undefined): false | number | string[] {
+  const raw = value?.trim();
+  if (!raw) return false;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  const entries = raw
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  // Une liste vide ferait retomber Fastify sur son défaut : mieux vaut dire
+  // explicitement « personne ».
+  return entries.length > 0 ? entries : false;
+}
+
 const envSchema = z
   .object({
     DATABASE_URL: z.string().url(),
@@ -49,6 +70,33 @@ const envSchema = z
       .string()
       .optional()
       .transform((v) => v === "true"),
+    /**
+     * Sauts de confiance devant l'API, pour établir l'adresse du client.
+     *
+     * Ce réglage décide de qui l'on croit quand une requête annonce une
+     * adresse dans `X-Forwarded-For`. Il ne peut pas être devine : il décrit la
+     * chaîne de proxys réellement déployée, et une erreur casse la limitation
+     * de débit dans un sens (tout le trafic sur un seul compteur) ou dans
+     * l'autre (un compteur par adresse annoncée, donc aucun plafond).
+     *
+     * Non renseigné = ne croire personne. L'adresse retenue est alors celle du
+     * pair TCP, c'est-à-dire le conteneur `web` : la limitation reste correcte,
+     * mais grossière — tout le trafic anonyme partage un compteur.
+     *
+     * Valeurs acceptées, transmises telles quelles à Fastify :
+     *   - un entier   : nombre de sauts de confiance (« 2 » = nginx puis web) ;
+     *   - une liste   : adresses ou réseaux de confiance, séparés par des
+     *                   virgules. Les mots-clés de `proxy-addr` sont admis —
+     *                   « loopback,uniquelocal » couvre le réseau privé Docker.
+     *
+     * ⚠️ Next NE COMPLÈTE PAS `X-Forwarded-For` : `base-server.js` ne le pose
+     * que s'il est absent (`??=`). Un en-tête envoyé par le client traverse donc
+     * le service `web` intact. La confiance doit venir du reverse proxy en
+     * façade, configuré pour AJOUTER l'adresse réelle :
+     *     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     * Sans ce reverse proxy, laisser TRUST_PROXY vide.
+     */
+    TRUST_PROXY: z.string().optional().transform(parseTrustProxy),
   })
   // Refus de démarrer plutôt que de tourner en production avec des secrets
   // connus : une API qui répond avec la mauvaise clé est pire qu'une API qui

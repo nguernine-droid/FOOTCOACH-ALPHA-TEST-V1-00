@@ -30,13 +30,26 @@ const app = Fastify({
       censor: "[masqué]",
     },
   },
-  // Derrière le proxy Next : sans cela l'adresse vue est celle du proxy, et la
-  // limitation de débit compterait tout le trafic sur un seul compteur.
-  trustProxy: true,
+  // Qui l'on croit quand une requête annonce son adresse dans X-Forwarded-For.
+  // Déclaré par le déploiement (TRUST_PROXY), jamais deviné : `true` revenait à
+  // laisser le client choisir son adresse, donc son compteur de débit. Voir la
+  // note détaillée dans env.ts.
+  trustProxy: env.TRUST_PROXY,
   // 1 Mo suffit à tous les corps JSON de l'application (les images passent par
   // le multipart, qui a ses propres limites).
   bodyLimit: 1_048_576,
 });
+
+// Dire à voix haute ce que la limitation de débit vaut réellement. Sans saut de
+// confiance déclaré, elle fonctionne — mais tout le trafic anonyme partage le
+// compteur du conteneur web, ce qui n'est pas ce qu'on croit avoir déployé.
+if (env.NODE_ENV === "production" && env.TRUST_PROXY === false) {
+  app.log.warn(
+    "TRUST_PROXY n'est pas renseigné : l'adresse des clients anonymes est celle du service web, " +
+      "donc tout leur trafic partage un seul compteur de débit. Derrière un reverse proxy qui " +
+      "complète X-Forwarded-For, régler TRUST_PROXY (voir .env.example).",
+  );
+}
 
 // En production, seules les origines déclarées sont acceptées. Le navigateur
 // ne parle normalement qu'au service web, qui proxifie l'API : une origine

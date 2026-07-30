@@ -41,6 +41,10 @@ services:
       # Lève les plafonds de débit pour la simulation de charge, qui joue cent
       # coachs depuis une seule adresse. Refusé si NODE_ENV=production.
       RATE_LIMIT_DISABLED: ${RATE_LIMIT_DISABLED:-}
+      # Sauts de confiance pour établir l'adresse des clients. Vide = ne croire
+      # personne, ce qui est le bon réglage sans reverse proxy en façade : Next
+      # relaie X-Forwarded-For tel quel, il ne peut donc pas en attester.
+      TRUST_PROXY: ${TRUST_PROXY:-}
     # Pas de port hôte : l'API n'est accessible que via le proxy Next (service web).
     # Cela permet `docker compose up --scale api=3` sans conflit de ports.
     volumes:
