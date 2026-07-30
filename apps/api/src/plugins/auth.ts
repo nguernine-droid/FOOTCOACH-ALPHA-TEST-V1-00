@@ -30,8 +30,21 @@ declare module "fastify" {
   }
 }
 
+/**
+ * Algorithme de signature des jetons d'accès, épinglé des deux côtés.
+ *
+ * `jsonwebtoken` 9 refuse déjà `alg: none` quand le secret est une chaîne — je
+ * l'ai vérifié sur la version installée plutôt que de le supposer, l'attaque
+ * ressort « jwt signature is required ». Il n'y avait donc pas de faille
+ * exploitable ici. Mais cette garantie reposait sur le comportement par défaut
+ * d'une dépendance, pas sur une intention écrite dans le code : une montée de
+ * version qui l'assouplirait passerait inaperçue. L'écrire coûte une ligne.
+ */
+const ACCESS_TOKEN_ALGORITHM = "HS256" as const;
+
 export function signAccessToken(user: AuthUser): string {
   return jwt.sign({ sub: user.id, role: user.role, teamId: user.teamId }, env.JWT_ACCESS_SECRET, {
+    algorithm: ACCESS_TOKEN_ALGORITHM,
     expiresIn: "15m",
   });
 }
@@ -43,7 +56,9 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
     return reply.code(401).send({ error: "Token manquant" });
   }
   try {
-    const payload = jwt.verify(header.slice(7), env.JWT_ACCESS_SECRET) as jwt.JwtPayload;
+    const payload = jwt.verify(header.slice(7), env.JWT_ACCESS_SECRET, {
+      algorithms: [ACCESS_TOKEN_ALGORITHM],
+    }) as jwt.JwtPayload;
     request.user = {
       id: payload.sub as string,
       role: payload.role as Role,
