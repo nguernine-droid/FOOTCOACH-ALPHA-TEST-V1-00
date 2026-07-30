@@ -151,6 +151,8 @@ Les migrations s'appliquent automatiquement au démarrage de l'API (verrou consu
 
 > Le hot reload passe par des *bind mounts* ciblés : `apps/web/src`, `apps/web/public`, `apps/api/src`, `apps/api/drizzle` et `packages/shared/src`. Tout le reste vit dans l'image — **ajouter une dépendance impose donc de la reconstruire** (`docker compose build api`). Sous Windows, le rechargement de Next reste capricieux : `docker compose restart web` après une modification du front.
 
+> **Le seed est réservé au développement.** Il crée des comptes aux identifiants publiés ci-dessous, administrateur compris, et il **réécrit** les comptes existants portant les mêmes adresses. Le script refuse donc de s'exécuter si `NODE_ENV=production`, et il demande `FOOTCOACH_SEED_CONFIRM=oui` dès que `DATABASE_URL` ne pointe pas vers une base locale. `FOOTCOACH_SEED_PASSWORD` permet de ne pas dépendre du mot de passe écrit dans ce fichier.
+
 ### Comptes de démo (mot de passe commun : `Demo1234!`)
 
 | Compte | Email | Équipes |

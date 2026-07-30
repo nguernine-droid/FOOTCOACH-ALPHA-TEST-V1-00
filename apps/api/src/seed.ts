@@ -4,8 +4,13 @@ import { db, sql } from "./db/client.js";
 import { clubs, matchAnnouncements, matches, teamCoaches, teams, users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { cityCoords } from "./lib/cities.js";
+import { SeedRefused, assertSeedAllowed } from "./seedGuard.js";
 
-const PASSWORD = "Demo1234!";
+/**
+ * Mot de passe commun des comptes de démonstration. Surchargeable pour ne pas
+ * dépendre d'une valeur écrite dans le dépôt sur une base de recette partagée.
+ */
+const PASSWORD = process.env.FOOTCOACH_SEED_PASSWORD ?? "Demo1234!";
 
 function plusDays(days: number): string {
   const d = new Date(Date.now() + days * 86400000);
@@ -47,6 +52,14 @@ async function upsertTeam(name: string, city: string, coachId: string, joinCode:
 }
 
 async function main() {
+  // Avant toute écriture, et avant même les migrations : ce jeu de données crée
+  // un administrateur au mot de passe publié dans le README.
+  assertSeedAllowed({
+    nodeEnv: process.env.NODE_ENV,
+    databaseUrl: process.env.DATABASE_URL,
+    confirm: process.env.FOOTCOACH_SEED_CONFIRM,
+  });
+
   await runMigrations();
 
   const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", firstName: "Alexandre", lastName: "Martin" });
@@ -176,6 +189,8 @@ async function main() {
 main()
   .then(() => sql.end())
   .catch((err) => {
-    console.error(err);
+    // Un refus de garde-fou n'est pas un incident : le message seul suffit,
+    // une trace d'exécution ne dirait rien de plus à celui qui déploie.
+    console.error(err instanceof SeedRefused ? err.message : err);
     process.exit(1);
   });
