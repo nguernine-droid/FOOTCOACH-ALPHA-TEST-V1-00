@@ -15,6 +15,7 @@ import { announcementResponses, matchAnnouncements, matches, teams } from "../db
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { cityCoords } from "../lib/cities.js";
+import { tokensMatch } from "../lib/tokens.js";
 import { notifyScoreToConfirm, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
 
 const homeTeam = alias(teams, "home_team");
@@ -262,7 +263,13 @@ export function matchRoutes(app: FastifyInstance) {
     if (request.user.teamId === match.scoreSubmittedByTeamId) {
       throw new HttpError(403, "Le score doit être validé par le coach adverse");
     }
-    if (input.token !== match.confirmationToken) {
+    // Comparaison à durée constante. Une comparaison de chaînes s'arrête au
+    // premier octet qui diffère : sa durée renseigne sur le nombre d'octets
+    // corrects. L'exploitation est ici très théorique — le jeton fait 24 octets
+    // aléatoires, l'appelant doit déjà être le coach de l'équipe adverse, et le
+    // bruit réseau noie l'écart — mais un jeton d'authentification ne se compare
+    // pas autrement, et cela ne coûte rien.
+    if (!tokensMatch(input.token, match.confirmationToken)) {
       throw new HttpError(400, "QR code invalide ou périmé — demandez au coach de réafficher le sien");
     }
 
