@@ -33,7 +33,17 @@ services:
       # cet en-tête tel quel et ne peut pas en attester. Réglage attendu avec un
       # reverse proxy dans le réseau Docker : loopback,uniquelocal
       TRUST_PROXY: ${TRUST_PROXY:-}
-    volumes: []
+    # `!override` REMPLACE la liste du fichier de base au lieu de la fusionner —
+    # comportement par défaut de compose sur les séquences. Sans cette balise,
+    # les bind mounts de rechargement à chaud du fichier de base survivraient et
+    # l'image de production servirait le code source de l'hôte.
+    #
+    # Ce qu'il faut retirer, ce sont ces bind mounts ; PAS le volume des photos
+    # de profil, qui doit survivre aux reconstructions d'image. Une liste vide
+    # emportait les deux : les avatars disparaissaient à chaque déploiement,
+    # alors que le README demande de sauvegarder ce volume comme la base.
+    volumes: !override
+      - uploads:/app/uploads
 
   web:
     build:

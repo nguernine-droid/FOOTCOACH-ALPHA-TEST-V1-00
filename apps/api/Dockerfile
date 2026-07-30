@@ -20,6 +20,16 @@ COPY package.json ./
 COPY packages/shared packages/shared
 COPY apps/api apps/api
 RUN addgroup -S app && adduser -S app -G app
+# Le dossier des photos de profil doit exister ET appartenir à l'utilisateur non
+# privilégié AVANT le changement d'utilisateur. Sans cela, `mkdir /app/uploads`
+# au démarrage de l'API (index.ts) échoue en EACCES — /app appartient à root —
+# et comme c'est un `await` de premier niveau, hors du try qui entoure listen(),
+# le conteneur s'arrête au lieu de servir.
+#
+# Le créer ici rend aussi le service démarrable SANS volume monté, et donne la
+# bonne appartenance au volume nommé quand il l'est : Docker recopie les
+# permissions du point de montage de l'image.
+RUN mkdir -p /app/uploads && chown app:app /app/uploads
 USER app
 EXPOSE 4000
 CMD ["npm", "run", "start", "--workspace", "apps/api"]

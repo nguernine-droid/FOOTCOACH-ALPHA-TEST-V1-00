@@ -1,4 +1,3 @@
-import { mkdir } from "node:fs/promises";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -6,7 +5,7 @@ import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { env } from "./env.js";
-import { UPLOADS_DIR } from "./lib/uploads.js";
+import { UPLOADS_DIR, ensureUploadsDir } from "./lib/uploads.js";
 import { rateLimitOptions } from "./plugins/rateLimit.js";
 import { runMigrations } from "./db/migrate.js";
 import { registerErrorHandler } from "./plugins/errors.js";
@@ -86,7 +85,14 @@ await app.register(multipart, {
 });
 
 // Photos de profil : le navigateur y accède via le proxy du web, sous /api/uploads/*
-await mkdir(UPLOADS_DIR, { recursive: true });
+// Vérifié ici, avec un message explicite : un dossier inaccessible arrêtait le
+// conteneur sur une trace d'exécution, sans dire quoi réparer.
+try {
+  await ensureUploadsDir();
+} catch (err) {
+  app.log.error(err);
+  process.exit(1);
+}
 await app.register(fastifyStatic, {
   root: UPLOADS_DIR,
   prefix: "/uploads/",
