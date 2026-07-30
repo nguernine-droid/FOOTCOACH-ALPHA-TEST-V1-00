@@ -7,7 +7,7 @@ import rateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { env } from "./env.js";
 import { UPLOADS_DIR } from "./lib/uploads.js";
-import { GLOBAL_MAX } from "./lib/rateLimits.js";
+import { rateLimitOptions } from "./plugins/rateLimit.js";
 import { runMigrations } from "./db/migrate.js";
 import { registerErrorHandler } from "./plugins/errors.js";
 import { authRoutes } from "./routes/auth.js";
@@ -65,26 +65,8 @@ await app.register(helmet, {
   hsts: env.NODE_ENV === "production" ? { maxAge: 15_552_000, includeSubDomains: true } : false,
 });
 
-/**
- * Limitation de débit. Le plafond global protège l'API d'un client emballé ;
- * les routes d'authentification ont le leur, bien plus bas, parce qu'elles
- * sont les seules où l'on peut deviner quelque chose par répétition.
- */
-await app.register(rateLimit, {
-  global: true,
-  max: GLOBAL_MAX,
-  timeWindow: "1 minute",
-  // Un coach derrière le NAT d'un club partage l'adresse de ses collègues :
-  // une fois authentifié, on compte par compte plutôt que par adresse.
-  keyGenerator: (request) => {
-    const header = request.headers.authorization;
-    return header?.startsWith("Bearer ") ? header.slice(7, 40) : (request.ip ?? "anonyme");
-  },
-  // Objet en forme d'erreur : le gestionnaire d'erreurs global le reçoit tel
-  // quel et se fie à `statusCode`. Sans lui, le dépassement de quota ressortait
-  // en 500 — un client bien élevé ne saurait pas qu'il doit ralentir.
-  errorResponseBuilder: () => ({ statusCode: 429, message: "Trop de requêtes, patientez un instant" }),
-});
+// Limitation de débit — réglages dans plugins/rateLimit.ts, exercés par un test
+await app.register(rateLimit, rateLimitOptions);
 
 await app.register(multipart, {
   limits: { fileSize: 2 * 1024 * 1024, files: 1, fields: 10, parts: 20 },
