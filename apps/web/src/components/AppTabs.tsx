@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, Plus, type LucideIcon } from "lucide-react";
@@ -51,6 +52,10 @@ export function AppTabs({
   const pathname = usePathname();
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
   const account = useAccountEntry();
+  // `document.body` n'existe pas au rendu serveur : le portail n'est posé
+  // qu'une fois le composant monté côté client (voir BottomSheet).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Même bouton dans les deux barres : lien de création, ou validation du
   // formulaire ouvert (associé par l'attribut `form`, donc à distance).
@@ -158,17 +163,25 @@ export function AppTabs({
         </nav>
       </div>
 
-      {/* Mobile : barre fixe en bas de l'écran.
+      {/* Mobile : barre fixe en bas de l'écran, rendue dans `document.body` par
+          un portail. `RoleGuard` rend `{nav}` à l'intérieur de `.app-header`,
+          qui porte un `backdrop-filter` — un ancêtre filtré ou transformé
+          devient le référentiel d'un descendant `fixed` (même piège que
+          `BottomSheet`). Sans portail, la barre se collerait au bas du
+          header au lieu du bas de l'écran, un comportement que Safari applique
+          strictement et que certains outils d'émulation ne reproduisent pas.
+
           Le fond, la bordure et le floutage appartiennent entièrement à
           `.app-tabbar` — aucun utilitaire de couleur ici, sans quoi il
           gagnerait sur la recette du thème (les utilitaires priment sur la
           couche `components`) et la barre ne suivrait plus. */}
-      <nav
-        role="tablist"
-        aria-label={ariaLabel}
-        className="app-tabbar min-[960px]:hidden fixed bottom-0 inset-x-0 z-40
-          pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
-      >
+      {mounted && createPortal(
+        <nav
+          role="tablist"
+          aria-label={ariaLabel}
+          className="app-tabbar min-[960px]:hidden fixed bottom-0 inset-x-0 z-40
+            pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+        >
         {/* Les deux moitiés sont des frères flex-1 de part et d'autre du « + » :
             chaque onglet garde ainsi la même largeur des deux côtés. */}
         <div className="flex items-stretch">
@@ -268,7 +281,9 @@ export function AppTabs({
             </Fragment>
           ))}
         </div>
-      </nav>
+        </nav>,
+        document.body,
+      )}
     </>
   );
 }
