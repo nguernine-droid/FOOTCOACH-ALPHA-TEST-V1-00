@@ -86,6 +86,7 @@ export function AccountSheet({
   activeTeamId,
   onSelectTeam,
   activities,
+  unreadCount,
   onSeenNotifications,
   onClose,
   onLogout,
@@ -96,6 +97,8 @@ export function AccountSheet({
   onSelectTeam: (teamId: string) => void;
   /** Fil d'activité du coach — `null` tant qu'il charge, absent pour les autres rôles */
   activities: ActivityDto[] | null;
+  /** Événements plus récents que la dernière consultation — pilote le badge, pas le total du fil */
+  unreadCount: number;
   /** Appelé à l'ouverture de la liste : éteint la pastille « non-lu » */
   onSeenNotifications: () => void;
   onClose: () => void;
@@ -236,8 +239,8 @@ export function AccountSheet({
                 setView("notifications");
               }}
               right={
-                activities && activities.length > 0 ? (
-                  <span className="chip bg-blue-soft text-primary shrink-0">{activities.length}</span>
+                unreadCount > 0 ? (
+                  <span className="chip bg-blue-soft text-primary shrink-0">{unreadCount}</span>
                 ) : undefined
               }
             />

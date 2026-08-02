@@ -102,7 +102,9 @@ export function RoleGuard({
   }, [user, hasNotifications]);
 
   const teamLabel = activeTeam?.name ?? user?.teamName ?? null;
-  const unread = Boolean(activities?.[0] && (!activitySeen || activities[0].createdAt > activitySeen));
+  // Non-lu = plus récent que la dernière consultation, pas juste « présent dans les 15 derniers »
+  const unreadCount = activities?.filter((a) => !activitySeen || a.createdAt > activitySeen).length ?? 0;
+  const unread = unreadCount > 0;
   const markNotificationsSeen = useCallback(() => {
     const latest = activities?.[0]?.createdAt;
     if (!latest) return;
@@ -240,6 +242,7 @@ export function RoleGuard({
             activeTeamId={activeTeamId}
             onSelectTeam={changeActiveTeam}
             activities={hasNotifications ? activities : []}
+            unreadCount={hasNotifications ? unreadCount : 0}
             onSeenNotifications={markNotificationsSeen}
             onClose={() => setSheetOpen(false)}
             onLogout={async () => {
