@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   JETONS FOOTCOACH
+   JETONS FOOTCOACH — direction « TABLEAU NOIR »
 
    L'UNIQUE fichier de l'application qui contient des couleurs littérales.
    Partout ailleurs — CSS, composants, SVG en ligne — on ne manipule que ces
@@ -8,11 +8,30 @@
        grep -rnE '#[0-9A-Fa-f]{3,8}\b|rgba?\(' apps/web/src --include=*.css \
             --include=*.tsx | grep -v tokens.css     # doit être vide
 
+   ── La direction ─────────────────────────────────────────────────────────
+   Trois matières, pas une de plus : le GRAPHITE de l'ardoise, le PAPIER de
+   chaux, et une seule couleur signal — la CHAUX (#D8F24A), celle du trait de
+   craie sur le tableau tactique.
+
+   C'est un parti pris contre le code visuel des fédérations : plus de bleu
+   marine institutionnel, plus d'or de médaille, plus de blason. Le référent
+   n'est pas le maillot, c'est l'outil du coach. La structure (en-tête, barre
+   d'onglets) est un aplat d'ardoise SANS DÉGRADÉ, souligné d'un trait de
+   chaux ; le contenu se pose dessus comme une feuille sur une table.
+
+   ── Une seule couleur signal ─────────────────────────────────────────────
+   `--accent` et `--cta` partagent volontairement la famille de la chaux : la
+   direction n'a qu'un signal, et deux verts voisins se liraient comme une
+   hésitation. Ils restent DEUX jetons parce qu'ils ont deux rôles — l'accent
+   marque (onglet actif, pastille, anneau), l'action engage (bouton, lien) —
+   et parce qu'un thème futur peut vouloir les séparer. Ce qui les distingue à
+   l'écran, c'est la forme et la clarté, pas la teinte.
+
    ── Nommage ──────────────────────────────────────────────────────────────
-   Les jetons portent un RÔLE, jamais une couleur : `--accent`, pas `--gold` ;
-   `--surface-1`, pas `--navy`. C'est ce qui permet au thème clair d'être une
-   traduction du thème sombre et non un second design — un composant qui dit
-   « fond de carte » reste juste dans les deux.
+   Les jetons portent un RÔLE, jamais une couleur : `--accent`, pas `--chaux` ;
+   `--surface-1`, pas `--graphite`. C'est ce qui permet au thème clair d'être
+   une traduction du thème sombre et non un second design — un composant qui
+   dit « fond de carte » reste juste dans les deux.
 
    ── Les deux thèmes ──────────────────────────────────────────────────────
    Le thème sombre est la référence esthétique ; le clair en est la version
@@ -20,12 +39,16 @@
    les valeurs de ces jetons changent.
 
    ── Contraste ────────────────────────────────────────────────────────────
-   Chaque paire texte/fond a été mesurée. Trois valeurs de la spécification
-   d'origine ne passaient pas l'AA et ont été rapprochées du seuil en gardant
-   leur teinte — c'est signalé au cas par cas ci-dessous.
+   Chaque paire texte/fond a été mesurée, y compris sur les fonds teintés où
+   une couleur passe le seuil sur blanc mais le rate chez elle. Les valeurs
+   notées ci-dessous sont les ratios réels, pas des estimations.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─────────────────────────────  THÈME CLAIR  ─────────────────────────────
+   « Papier de chaux » : un blanc cassé légèrement chaud, pas un gris froid.
+   Sur un écran de coach en plein soleil, le papier tient mieux que le blanc
+   pur, et il donne à l'ardoise de l'en-tête un contraste de matière.
+
    `:root` ET `[data-theme="light"]` : le premier est le défaut du document,
    le second permet de rétablir le thème clair SOUS un document sombre. C'est
    ce qui rend possible un aperçu miniature honnête dans le réglage — il ne
@@ -35,84 +58,103 @@
   color-scheme: light;
 
   /* — Fond de l'application — */
-  --bg-app: #F2F5FB;
-  /* Opacité du tracé de terrain posé sur le fond */
-  --bg-app-texture: 0.04;
-  /* Halo d'ambiance en haut à droite : crème très pâle le jour */
-  --bg-app-halo: #FFE9B8;
+  --bg-app: #F1F1EC;
+  /* Opacité du schéma tactique posé sur le fond */
+  --bg-app-texture: 0.05;
+  /* Halo d'ambiance en haut à droite : une trace de craie très pâle */
+  --bg-app-halo: #E4F5A8;
   --bg-app-halo-opacity: 0.5;
 
   /* — Surfaces — */
   --surface-1: #FFFFFF; /* le plan qui porte le contenu */
-  --surface-2: #F7F9FD; /* un cran en retrait : bloc encastré, champ */
-  --surface-glass: rgba(10, 19, 48, 0.04);
-  --surface-glass-strong: rgba(10, 19, 48, 0.06);
-  --border-subtle: rgba(10, 19, 48, 0.08);
+  --surface-2: #F6F6F1; /* un cran en retrait : bloc encastré, champ */
+  --surface-glass: rgba(22, 24, 28, 0.04);
+  --surface-glass-strong: rgba(22, 24, 28, 0.06);
+  --border-subtle: rgba(22, 24, 28, 0.1);
   /* Bordure d'une surface posée sur une autre de même teinte (cartes, rangées) */
-  --border-defined: rgba(10, 19, 48, 0.12);
+  --border-defined: rgba(22, 24, 28, 0.16);
 
   /* — Texte — */
-  --text-primary: #0A1330; /* 18,3:1 sur surface-1 */
-  --text-secondary: #4A5578; /* 7,3:1 */
-  /* Spécifié #8A93AD → 3,1:1 sur blanc, sous le seuil AA alors que ce ton
-     porte les libellés de 10-11 px et les placeholders. Assombri à teinte
-     constante : 5,1:1 sur surface-1, 4,8:1 sur surface-2, 4,7:1 sur bg-app. */
-  --text-muted: #636D8A;
-  /* Texte posé sur une structure sombre (en-tête, barre d'onglets) */
+  --text-primary: #16181C; /* 17,8:1 sur surface-1 */
+  --text-secondary: #4C5058; /* 8,1:1 */
+  /* Le ton le plus fragile : il porte les libellés de 10-11 px et les
+     invites de saisie. Réglé pour tenir sur les TROIS fonds clairs, y compris
+     le fond de l'application, qui est le plus sombre des trois — 5,4:1 sur
+     surface-1, 5,0:1 sur surface-2, 4,7:1 sur bg-app. */
+  --text-muted: #666B73;
+  /* Texte posé sur l'ardoise (en-tête, barre d'onglets) */
   --text-on-structure: #FFFFFF;
-  --text-on-structure-dim: rgba(255, 255, 255, 0.6);
+  --text-on-structure-dim: rgba(255, 255, 255, 0.62);
 
-  /* — Accent —
-     Spécifié #C98A00 → 2,9:1 sur blanc : sous le seuil AA texte, et même sous
-     les 3:1 des icônes. Assombri à teinte constante — 5,1:1 sur surface-1,
-     4,7:1 sur accent-surface. Le doré pur reste disponible pour les GRANDES
-     surfaces pleines (FAB, badges), où c'est lui qui porte le texte. */
-  --accent: #8A6A00;
-  --accent-solid: #F5B921; /* aplats seulement, jamais du texte dessus */
-  --accent-solid-bright: #FFD469; /* haut des dégradés dorés */
-  --accent-surface: #FFF6E0;
-  --accent-on: #0A1330; /* encre posée SUR accent-solid — 10,2:1 */
+  /* — Accent : la chaux —
+     Le vert de craie pur ne peut pas porter du texte sur du papier (1,6:1).
+     Le jour, l'accent TEXTE descend donc dans la même teinte jusqu'à l'olive
+     — 6,1:1 sur surface-1, 5,4:1 sur son propre fond teinté — tandis que la
+     chaux pure reste réservée aux APLATS, où c'est elle qui porte l'encre. */
+  --accent: #4F6B00;
+  --accent-solid: #D8F24A; /* aplats seulement, jamais du texte dessus */
+  --accent-solid-bright: #E9FB86; /* haut des dégradés de chaux */
+  --accent-surface: #EDF6D0;
+  --accent-on: #16181C; /* encre posée SUR accent-solid — 14,2:1 */
 
-  /* — Action principale — */
-  --cta: #4E57D6; /* 5,7:1 avec cta-on */
-  --cta-deep: #3F47BE; /* bas du dégradé du bouton plein */
-  --cta-on: #FFFFFF;
-  --cta-surface: #E9EBFB;
+  /* — Action principale —
+     Même famille que l'accent : la direction n'a qu'une couleur signal.
 
-  /* — États — */
-  /* Spécifié #D93A3A → 4,6:1 sur blanc mais 4,0:1 sur son propre fond teinté.
-     Assombri : 5,5:1 sur surface-1, 4,8:1 sur danger-surface. */
-  --danger: #C62F2F;
-  --danger-surface: #FCE9E9;
+     DEUX jetons pour deux emplois, et c'est ce qui fait tenir la teinte sur
+     les deux fonds. `--cta` est l'action ÉCRITE (un lien, une icône) : posée
+     sur du papier, elle doit descendre jusqu'à l'olive pour être lisible.
+     `--cta-fill*` est l'action PLEINE : là, c'est la chaux qui porte l'encre,
+     et un bloc d'olive à l'encre blanche se lirait comme un bouton éteint.
+     Le bouton principal est donc un bloc de craie dans les deux thèmes —
+     14,2:1 avec son encre d'ardoise. */
+  --cta: #4F6B00;
+  --cta-deep: #3C5200;
+  --cta-fill: #E9FB86;
+  --cta-fill-deep: #D8F24A;
+  --cta-on: #16181C;
+  --cta-surface: #EDF6D0;
+
+  /* — États —
+     Trois signaux qui doivent rester distincts de la chaux ET entre eux. Le
+     succès descend vers un vert franchement plus bleu que l'accent, sans quoi
+     « validé » et « mis en avant » se confondraient. */
+  --danger: #C62F2F; /* 5,5:1 sur surface-1, 4,6:1 sur danger-surface */
+  --danger-surface: #FBE7E7;
   --danger-solid: #FF3B3B; /* pastilles de notification, jamais de texte */
-  --success: #157A45; /* 5,4:1 sur surface-1, 4,6:1 sur success-surface */
-  --success-surface: #E4F4EA;
-  --warning: #7D6000; /* même ambre que l’accent, d’un cran plus foncé :
-     posé sur `warning-surface`, #8A6A00 tombait à 4,47:1 */
-  --warning-surface: #FCF0CF;
+  --success: #0F6B44; /* 6,6:1 sur surface-1, 5,7:1 sur success-surface */
+  --success-surface: #E2F2E9;
+  --warning: #7A5200; /* ambre : 6,9:1 sur surface-1, 6,1:1 sur son fond */
+  --warning-surface: #FBEFD2;
 
   /* — Structure : en-tête et barre d'onglets —
-     Le jour, la structure reste une masse bleu nuit : c'est la signature de la
-     marque, et elle donne au contenu clair un cadre où se poser. */
-  --structure-1: #071B3F;
-  --structure-2: #0A2452;
-  --structure-3: #0C2E6B;
-  --structure-veil: rgba(7, 27, 63, 0.92);
+     Un APLAT d'ardoise, sans dégradé : c'est ce qui distingue le plus
+     nettement cette direction de la précédente, où le bandeau était un
+     dégradé de bleu nuit. Une masse unie se lit comme un matériau ; un
+     dégradé se lit comme un effet. */
+  --structure-1: #16181C;
+  --structure-2: #1C1F25;
+  --structure-3: #22262E;
+  --structure-veil: rgba(22, 24, 28, 0.94);
   --structure-line: rgba(255, 255, 255, 0.1);
+  /* Le trait de craie sous l'en-tête — la signature de la direction. Il est
+     posé dans les DEUX thèmes sur la même ardoise, donc il ne change pas de
+     valeur : c'est un trait de craie, pas une couleur de thème. */
+  --header-rule: rgba(216, 242, 74, 0.7);
 
   /* — Élévation —
-     Le jour : de vraies ombres portées. (La nuit, ce sont des halos.) */
-  --elevation-1: 0 2px 8px rgba(10, 19, 48, 0.06);
-  --elevation-2: 0 12px 32px rgba(10, 19, 48, 0.1);
-  --elevation-3: 0 24px 60px -20px rgba(10, 19, 48, 0.22);
-  --focus-glow: 0 0 0 4px rgba(78, 87, 214, 0.18);
-  --accent-glow: 0 0 0 1px rgba(138, 106, 0, 0.35), 0 8px 20px -8px rgba(10, 19, 48, 0.25);
-  --cta-glow: 0 8px 20px -8px rgba(78, 87, 214, 0.55);
+     Le jour : de vraies ombres portées, neutres et sèches. (La nuit, ce sont
+     des halos.) */
+  --elevation-1: 0 2px 8px rgba(22, 24, 28, 0.07);
+  --elevation-2: 0 12px 32px rgba(22, 24, 28, 0.11);
+  --elevation-3: 0 24px 60px -20px rgba(22, 24, 28, 0.24);
+  --focus-glow: 0 0 0 4px rgba(79, 107, 0, 0.2);
+  --accent-glow: 0 0 0 1px rgba(79, 107, 0, 0.3), 0 8px 20px -8px rgba(22, 24, 28, 0.26);
+  --cta-glow: 0 8px 20px -8px rgba(79, 107, 0, 0.55);
 
   --focus-ring: var(--cta);
 
   /* — Voile des feuilles modales — */
-  --scrim: rgba(10, 19, 48, 0.45);
+  --scrim: rgba(22, 24, 28, 0.48);
 
   /* — Recettes de surface —
      Portées par des jetons pour que `.card`, l'en-tête et la barre d'onglets
@@ -122,218 +164,220 @@
   --card-bg: var(--surface-1);
   --card-sheen: transparent;
   --card-border: var(--border-subtle);
-  --header-bg: linear-gradient(90deg, var(--structure-1) 0%, var(--structure-2) 55%, var(--structure-3) 100%);
+  /* Aplat, pas dégradé — voir « Structure » ci-dessus. */
+  --header-bg: var(--structure-1);
   --tabbar-bg: var(--structure-veil);
   /* Reflet qui traverse les silhouettes de chargement */
   --shimmer: rgba(255, 255, 255, 0.75);
   /* Liseré clair en haut d'une surface pleine : la lumière vient d'en haut,
-     dans les deux thèmes. C'est ce qui donne du volume aux boutons dorés et
-     violets sans leur ajouter d'ombre. */
+     dans les deux thèmes. C'est ce qui donne du volume aux boutons sans leur
+     ajouter d'ombre. */
   --sheen-soft: inset 0 1px 0 rgba(255, 255, 255, 0.28);
   --sheen-strong: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 
   /* — Carte de mise en avant (état vide) —
-     Le jour, elle ne peut pas se distinguer par sa clarté : tout est clair.
-     Elle se distingue par son élévation et un liseré d'accent. */
-  --spotlight-from: #FFFFFF;
-  /* Un fond légèrement crème plutôt que blanc : sur une page où toutes les
-     autres cartes sont blanches, l'ombre seule ne suffit pas à désigner celle
-     qu'il faut regarder. La teinte reste sous le seuil du perceptible comme
-     « couleur » — elle se lit comme de la lumière. */
-  --spotlight-to: #FFF6E4;
-  --spotlight-border: rgba(138, 106, 0, 0.35);
+     Elle est SOMBRE, même le jour. C'est le geste central de la direction :
+     sur une page de papier, la carte qu'il faut regarder est l'ardoise
+     elle-même. Elle ne se distingue pas par un liseré ou une ombre de plus,
+     mais parce qu'elle est d'une autre matière. Elle réécrit son encre chez
+     elle (voir `.card-spotlight`), donc son contenu reste juste sans que
+     personne n'ait à connaître le thème. */
+  --spotlight-from: #1C1F25;
+  --spotlight-to: #16181C;
+  --spotlight-border: rgba(216, 242, 74, 0.32);
   --spotlight-shadow: var(--elevation-3);
-  --spotlight-ink: #0A1330;
-  --spotlight-muted: #4A5578;
+  --spotlight-ink: #F1F1EC; /* 14,6:1 sur spotlight-from */
+  --spotlight-muted: #B6BBC4; /* 8,6:1 */
 
-  /* — Carte des matchs : fond uni, plus clair que le blanc des cartes — */
-  --map-bg: #E8EDF5;
-  --map-vignette: rgba(10, 19, 48, 0.1);
+  /* — Carte des matchs : un fond d'ardoise clair, plus dense que le papier — */
+  --map-bg: #E4E4DC;
+  --map-vignette: rgba(22, 24, 28, 0.1);
   /* Le cône de balayage écraserait un fond clair : il y est plus discret */
-  --map-sweep-opacity: 0.18;
+  --map-sweep-opacity: 0.2;
   --map-ring: var(--accent);
   /* Marqueurs : le contour doit tenir sur le fond de carte du thème */
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
-  --pin-stroke: #0A1330;
-  --pin-shadow: rgba(10, 19, 48, 0.35);
-  --pin-lift: drop-shadow(0 3px 4px rgba(10, 19, 48, 0.3));
-  --pin-emphasis: drop-shadow(0 0 8px rgba(138, 106, 0, 0.7));
+  --pin-stroke: #16181C;
+  --pin-shadow: rgba(22, 24, 28, 0.35);
+  --pin-lift: drop-shadow(0 3px 4px rgba(22, 24, 28, 0.3));
+  --pin-emphasis: drop-shadow(0 0 8px rgba(216, 242, 74, 0.75));
 
-  /* — Illustration de l'état vide — */
-  --illus-turf-light: #3FA45C;
-  --illus-turf-dark: #217A42;
-  --illus-turf-side-light: #1B6537;
-  --illus-turf-side-dark: #12492A;
-  --illus-line: #FFFFFF;
+  /* — Illustration de l'état vide —
+     Elle est posée sur la carte de mise en avant, qui est sombre dans LES DEUX
+     thèmes : ses valeurs sont donc identiques partout. Le terrain n'y est plus
+     une pelouse mais une ardoise, et ses lignes sont tracées à la craie. */
+  --illus-turf-light: #2C3138;
+  --illus-turf-dark: #22262E;
+  --illus-turf-side-light: #1C1F25;
+  --illus-turf-side-dark: #131519;
+  --illus-line: #F1F1EC;
   --illus-paper-light: #FFFFFF;
-  --illus-paper-dark: #DDE3F5;
-  --illus-rule: #8E9AC0;
-  /* Détail sombre posé SUR du blanc (le panneau du ballon) : il reste sombre
-     dans les deux thèmes, puisque son fond, lui, ne change pas. */
-  --illus-structure: #16234A;
-  /* Mâts et têtes de projecteur : eux se détachent du FOND DE LA CARTE, qui
-     change de thème. D'où deux jetons distincts — sans quoi, sur la carte
-     sombre, les projecteurs disparaîtraient dans leur propre fond. */
-  --illus-frame: #16234A;
-  --illus-frame-deep: #0A1330;
-  --illus-light: #FFD469;
-  --illus-shadow: #0A1330;
+  --illus-paper-dark: #E4E4DC;
+  --illus-rule: #9AA0A8;
+  /* Détail sombre posé SUR du blanc (le panneau du ballon) */
+  --illus-structure: #16181C;
+  /* Mâts et têtes de projecteur : ils se détachent du fond de la carte, qui
+     est sombre — ils restent donc clairs dans les deux thèmes. */
+  --illus-frame: #6E7783;
+  --illus-frame-deep: #4A515B;
+  --illus-light: #D8F24A;
+  --illus-shadow: #0B0D10;
 
   /* — Identité d'équipe : six teintes stables, dérivées de l'id —
-     Toutes portent du texte blanc et fonctionnent sur les deux fonds. */
-  --team-1: #0C2E6B;
-  --team-2: #8A5A2B;
-  --team-3: #1D6FE0;
-  --team-4: #6B4FA3;
-  --team-5: #0F766E;
-  --team-6: #A16207;
+     Choisies pour coexister avec la chaux sans lui disputer le regard : aucune
+     n'est un vert-jaune. Toutes portent du texte blanc (5,4:1 au minimum) et
+     fonctionnent sur les deux fonds. */
+  --team-1: #3A4553;
+  --team-2: #8A4B2A;
+  --team-3: #2A6B5E;
+  --team-4: #5E4A78;
+  --team-5: #7A6A1F;
+  --team-6: #A03A4A;
 
   /* — QR code : lu par un appareil photo, pas par un œil.
        Contraste maximal, identique dans les deux thèmes. — */
-  --qr-dark: #071B3F;
+  --qr-dark: #16181C;
   --qr-light: #FFFFFF;
 
   /* — Couleur de la barre du navigateur / status bar — */
-  --browser-chrome: #071B3F;
+  --browser-chrome: #16181C;
 }
 
 /* ─────────────────────────────  THÈME SOMBRE  ──────────────────────────── */
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --bg-app: #0A1330;
-  --bg-app-texture: 0.05;
-  --bg-app-halo: #F5B921;
-  --bg-app-halo-opacity: 0.12;
+  --bg-app: #101215;
+  --bg-app-texture: 0.06;
+  --bg-app-halo: #D8F24A;
+  --bg-app-halo-opacity: 0.1;
 
-  --surface-1: #101B3D;
-  --surface-2: #16234A;
+  --surface-1: #191C21;
+  --surface-2: #22262E;
   --surface-glass: rgba(255, 255, 255, 0.04);
   --surface-glass-strong: rgba(255, 255, 255, 0.07);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-defined: rgba(255, 255, 255, 0.14);
 
-  --text-primary: #FFFFFF; /* 17,4:1 sur surface-1 */
-  --text-secondary: #A9B4D0; /* 8,1:1 */
-  /* Spécifié #6E7BA0 → 4,0:1 sur surface-1, sous le seuil. Éclairci à teinte
-     constante : 5,5:1 sur surface-1, 5,0:1 sur surface-2, 5,9:1 sur bg-app. */
-  --text-muted: #8592B7;
+  --text-primary: #FFFFFF; /* 17,1:1 sur surface-1 */
+  --text-secondary: #AEB3BC; /* 8,1:1 */
+  --text-muted: #868D98; /* 5,1:1 sur surface-1, 5,6:1 sur bg-app */
   --text-on-structure: #FFFFFF;
-  --text-on-structure-dim: rgba(255, 255, 255, 0.6);
+  --text-on-structure-dim: rgba(255, 255, 255, 0.62);
 
-  /* La nuit, le doré passe l'AA : l'accent texte et l'accent aplat se
-     rejoignent sur la même valeur. */
-  --accent: #F5B921; /* 9,0:1 sur surface-1 */
-  --accent-solid: #F5B921;
-  --accent-solid-bright: #FFD469;
-  --accent-surface: rgba(245, 185, 33, 0.14);
-  --accent-on: #0A1330;
+  /* La nuit, la chaux passe largement l'AA : l'accent texte et l'accent aplat
+     se rejoignent sur la même valeur — 13,6:1 sur surface-1. */
+  --accent: #D8F24A;
+  --accent-solid: #D8F24A;
+  --accent-solid-bright: #E9FB86;
+  --accent-surface: rgba(216, 242, 74, 0.14);
+  --accent-on: #101215;
 
-  /* #6C74E0 avec du blanc tombe à 4,0:1 : la teinte de référence reste celle
-     de la direction artistique, mais le bouton plein descend vers `cta-deep`,
-     ce qui remonte le libellé à ~4,8:1 là où il se trouve. */
-  --cta: #6C74E0;
-  --cta-deep: #4E56CC;
-  --cta-on: #FFFFFF;
-  --cta-surface: rgba(108, 116, 224, 0.22);
+  /* La nuit, l'action écrite n'a plus besoin de descendre : la chaux passe
+     largement le seuil sur l'ardoise. Le bouton plein, lui, est exactement le
+     même bloc de craie que le jour — c'est le seul élément de l'application
+     qui ne change pas d'un thème à l'autre, et c'est voulu : l'action
+     principale doit se reconnaître avant d'être lue. */
+  --cta: #D8F24A;
+  --cta-deep: #A9C72E;
+  --cta-fill: #E9FB86;
+  --cta-fill-deep: #D8F24A;
+  --cta-on: #101215;
+  --cta-surface: rgba(216, 242, 74, 0.18);
 
-  --danger: #FF6B6B; /* 6,1:1 */
-  --danger-surface: rgba(226, 61, 61, 0.22);
+  --danger: #FF7A7A; /* 6,8:1 */
+  --danger-surface: rgba(198, 47, 47, 0.26);
   --danger-solid: #FF3B3B;
-  --success: #63D9A2; /* 9,7:1 */
-  --success-surface: rgba(30, 158, 88, 0.22);
-  --warning: #F5B921;
-  --warning-surface: rgba(245, 185, 33, 0.16);
+  --success: #4FD39B; /* 9,1:1 */
+  --success-surface: rgba(15, 107, 68, 0.3);
+  --warning: #F0B03C; /* 8,9:1 */
+  --warning-surface: rgba(240, 176, 60, 0.16);
 
-  /* La nuit, la structure ne se distingue plus du fond : elle s'efface
-     derrière un verre flouté, et le halo se poursuit sous elle. */
-  --structure-1: #0A1330;
-  --structure-2: #101B3D;
-  --structure-3: #16234A;
-  --structure-veil: rgba(10, 19, 48, 0.94);
+  /* La nuit, l'ardoise et le fond se rejoignent presque : la structure ne se
+     distingue plus par sa valeur mais par son trait de craie. */
+  --structure-1: #0E1013;
+  --structure-2: #16181C;
+  --structure-3: #1C1F25;
+  --structure-veil: rgba(14, 16, 19, 0.94);
   --structure-line: rgba(255, 255, 255, 0.08);
+  --header-rule: rgba(216, 242, 74, 0.55);
 
-  /* Pas d'ombre grise la nuit : de la profondeur noire et des halos colorés */
-  --elevation-1: 0 2px 12px rgba(0, 0, 0, 0.4);
-  --elevation-2: 0 16px 40px rgba(0, 0, 0, 0.5);
+  /* Pas d'ombre grise la nuit : de la profondeur noire et des halos de chaux */
+  --elevation-1: 0 2px 12px rgba(0, 0, 0, 0.45);
+  --elevation-2: 0 16px 40px rgba(0, 0, 0, 0.55);
   --elevation-3: 0 24px 60px -20px rgba(0, 0, 0, 0.75);
-  --focus-glow: 0 0 32px rgba(245, 185, 33, 0.35);
-  --accent-glow: 0 0 40px rgba(245, 185, 33, 0.35);
-  --cta-glow: 0 10px 32px -12px rgba(108, 116, 224, 0.75);
+  --focus-glow: 0 0 32px rgba(216, 242, 74, 0.3);
+  --accent-glow: 0 0 40px rgba(216, 242, 74, 0.28);
+  --cta-glow: 0 10px 32px -12px rgba(216, 242, 74, 0.5);
 
   --focus-ring: var(--accent);
 
-  --scrim: rgba(2, 6, 20, 0.72);
+  --scrim: rgba(4, 5, 7, 0.74);
 
   --card-bg: color-mix(in srgb, var(--surface-1) 88%, transparent);
   --card-sheen: var(--surface-glass-strong);
   --card-border: var(--border-subtle);
-  --header-bg: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--bg-app) 88%, transparent) 0%,
-    color-mix(in srgb, var(--bg-app) 66%, transparent) 100%
-  );
+  /* Aplat également la nuit — mais teinté du fond, donc il se fond dans la
+     page et ne laisse que le trait de craie pour marquer la limite. */
+  --header-bg: var(--structure-1);
   --tabbar-bg: var(--structure-veil);
   --shimmer: rgba(255, 255, 255, 0.08);
   --sheen-soft: inset 0 1px 0 rgba(255, 255, 255, 0.28);
   --sheen-strong: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 
-  /* Carte de mise en avant — SOMBRE elle aussi.
-     Une carte blanche au milieu d'un écran de nuit attire le regard, mais elle
-     éblouit et sort de la direction artistique : l'écran cesse d'être d'une
-     seule pièce. Elle se détache donc comme les cartes claires se détachent le
-     jour — en montant d'un cran (surface-2 en haut), avec un liseré doré, une
-     ombre plus profonde et un halo d'accent. */
-  --spotlight-from: #16234A;
-  --spotlight-to: #101B3D;
-  --spotlight-border: rgba(245, 185, 33, 0.4);
+  /* Carte de mise en avant — sombre elle aussi, mais montée d'un cran par
+     rapport aux cartes ordinaires, avec un liseré et un halo de chaux. */
+  --spotlight-from: #22262E;
+  --spotlight-to: #191C21;
+  --spotlight-border: rgba(216, 242, 74, 0.4);
   --spotlight-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 24px 60px -20px rgba(0, 0, 0, 0.75),
-    0 0 48px -12px rgba(245, 185, 33, 0.28);
-  --spotlight-ink: #FFFFFF; /* 15,0:1 sur spotlight-from */
-  --spotlight-muted: #A9B4D0; /* 7,4:1 */
+    0 0 48px -12px rgba(216, 242, 74, 0.22);
+  --spotlight-ink: #FFFFFF; /* 15,2:1 sur spotlight-from */
+  --spotlight-muted: #AEB3BC; /* 7,2:1 */
 
-  /* — Carte des matchs : fond uni, plus profond que la surface des cartes — */
-  --map-bg: #0A1330;
-  --map-vignette: rgba(10, 19, 48, 0.78);
+  /* — Carte des matchs : plus profonde que la surface des cartes — */
+  --map-bg: #0B0D10;
+  --map-vignette: rgba(11, 13, 16, 0.78);
   --map-sweep-opacity: 0.3;
   --map-ring: var(--accent);
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
-  --pin-stroke: #0A1330;
-  --pin-shadow: rgba(0, 0, 0, 0.45);
-  --pin-lift: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
-  --pin-emphasis: drop-shadow(0 0 10px rgba(245, 185, 33, 0.55));
+  --pin-stroke: #101215;
+  --pin-shadow: rgba(0, 0, 0, 0.5);
+  --pin-lift: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+  --pin-emphasis: drop-shadow(0 0 10px rgba(216, 242, 74, 0.6));
 
-  --illus-turf-light: #3FA45C;
-  --illus-turf-dark: #217A42;
-  --illus-turf-side-light: #1B6537;
-  --illus-turf-side-dark: #12492A;
-  --illus-line: #FFFFFF;
+  /* Identiques au thème clair : l'illustration est posée sur une carte sombre
+     dans les deux cas (voir le bloc clair). */
+  --illus-turf-light: #2C3138;
+  --illus-turf-dark: #22262E;
+  --illus-turf-side-light: #1C1F25;
+  --illus-turf-side-dark: #131519;
+  --illus-line: #F1F1EC;
   --illus-paper-light: #FFFFFF;
-  --illus-paper-dark: #DDE3F5;
-  --illus-rule: #8E9AC0;
-  --illus-structure: #16234A;
-  /* Éclaircis : la carte de mise en avant est sombre la nuit, les projecteurs
-     doivent se lire dessus. */
-  --illus-frame: #4C5D95;
-  --illus-frame-deep: #2A3763;
-  --illus-light: #FFD469;
-  --illus-shadow: #000A1E;
+  --illus-paper-dark: #E4E4DC;
+  --illus-rule: #9AA0A8;
+  --illus-structure: #16181C;
+  --illus-frame: #6E7783;
+  --illus-frame-deep: #4A515B;
+  --illus-light: #D8F24A;
+  --illus-shadow: #000000;
 
-  --team-1: #3B6FD4;
-  --team-2: #C08A4E;
-  --team-3: #4E8FF0;
-  --team-4: #9277CF;
-  --team-5: #2AA79B;
-  --team-6: #D9A038;
+  /* Mêmes teintes d'équipe, éclaircies pour tenir sur un fond d'ardoise */
+  --team-1: #6E7C91;
+  --team-2: #C8794A;
+  --team-3: #45A392;
+  --team-4: #9179B4;
+  --team-5: #BCA53A;
+  --team-6: #D4657A;
 
-  --qr-dark: #071B3F;
+  --qr-dark: #16181C;
   --qr-light: #FFFFFF;
 
-  --browser-chrome: #0A1330;
+  --browser-chrome: #0E1013;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -348,6 +392,11 @@
    ALIAS : ils ne désignent plus une couleur mais pointent vers le jeton de
    rôle correspondant. Le code déjà écrit suit les deux thèmes sans être
    réécrit ; le code neuf utilise les noms de rôle.
+
+   Deux familles d'alias sont désormais des faux amis assumés : `blue`/`pitch`/
+   `sky` ne sont plus bleus (ils pointent sur l'action, donc sur la chaux) et
+   `gold`/`tangerine` ne sont plus dorés (ils pointent sur l'accent). Les
+   renommer coûterait une réécriture de 130 occurrences pour zéro effet visible.
    ═══════════════════════════════════════════════════════════════════════════ */
 @theme inline {
   /* — Rôles — */
@@ -410,6 +459,9 @@
   --color-background: var(--bg-app);
   --color-foreground: var(--text-primary);
 
+  /* `navy-*` ne désigne plus du bleu nuit mais l'ardoise. Conservé parce que
+     l'encre posée sur la chaux (le pictogramme du bouton flottant) s'écrit
+     `text-navy-900` — c'est bien la structure qu'elle emprunte. */
   --color-navy-900: var(--structure-1);
   --color-navy-800: var(--structure-2);
   --color-navy-700: var(--structure-3);

@@ -1,13 +1,18 @@
 /**
  * Fond de l'application.
  *
- * Trois plans, tous fixes : ils ne défilent pas avec le contenu, comme une
- * pelouse et des projecteurs ne bougent pas quand on parcourt les gradins.
+ * Trois plans, tous fixes : ils ne défilent pas avec le contenu.
  *   1. l'aplat de fond, posé par la feuille de style sur `html` et `body` ;
- *   2. un halo d'ambiance en haut à droite — or de projecteur la nuit,
- *      crème très pâle le jour ;
- *   3. le tracé d'un terrain vu du dessus, à peine perceptible, mais c'est ce
- *      qui empêche le fond de se lire comme un aplat mort.
+ *   2. un halo d'ambiance en haut à droite — trace de craie très pâle ;
+ *   3. un SCHÉMA TACTIQUE, à peine perceptible, mais c'est ce qui empêche le
+ *      fond de se lire comme un aplat mort.
+ *
+ * Le plan (3) ne dessine PLUS un terrain vu du dessus. Le tracé de terrain est
+ * le cliché de la catégorie — toutes les applications de football l'ont, et
+ * c'est l'un des signaux qui rattachaient l'ancienne direction à l'imagerie
+ * fédérale. Ici, c'est ce qu'un coach dessine lui-même : des positions, des
+ * courses en pointillés, une trajectoire de passe. Le sujet n'est plus le
+ * stade, c'est le travail.
  *
  * Un seul dessin pour les deux thèmes : il est tracé en `currentColor`, et
  * c'est le jeton `--text-primary` qui lui donne son encre — sombre le jour,
@@ -29,8 +34,8 @@ export function AppBackdrop() {
         }}
       />
 
-      {/* Tracé du terrain. `slice` : le dessin couvre toujours l'écran, quitte
-          à sortir du cadre — une ligne qui s'arrête en plein vide se verrait. */}
+      {/* Schéma tactique. `slice` : le dessin couvre toujours l'écran, quitte à
+          sortir du cadre — un trait qui s'arrête en plein vide se verrait. */}
       <svg
         className="absolute inset-0 w-full h-full text-primary"
         style={{ opacity: "var(--bg-app-texture)" }}
@@ -39,31 +44,59 @@ export function AppBackdrop() {
         fill="none"
         stroke="currentColor"
         strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       >
-        {/* Touches et lignes de but */}
-        <rect x={60} y={80} width={680} height={1240} />
-        {/* Ligne médiane et rond central */}
-        <line x1={60} y1={700} x2={740} y2={700} />
-        <circle cx={400} cy={700} r={110} />
-        <circle cx={400} cy={700} r={7} fill="currentColor" stroke="none" />
+        {/* ————— Bloc haut : une combinaison sur le côté droit —————
+            Trois joueurs, une passe (trait plein) et deux appels (pointillés).
+            Les nôtres sont des cercles, l'adversaire une croix : c'est la
+            convention d'un tableau, elle se lit sans légende. */}
+        <circle cx={180} cy={200} r={22} />
+        <circle cx={430} cy={310} r={22} />
+        <circle cx={650} cy={180} r={22} />
 
-        {/* Surface de réparation et surface de but — haut */}
-        <rect x={190} y={80} width={420} height={200} />
-        <rect x={295} y={80} width={210} height={80} />
-        <path d="M330 280 A 110 110 0 0 0 470 280" />
-        <circle cx={400} cy={210} r={6} fill="currentColor" stroke="none" />
+        {/* Passe : de l'un à l'autre, trait plein, chevron d'arrivée */}
+        <path d="M204 210 L406 300" />
+        <path d="M382 282 L410 302 L384 318" />
 
-        {/* … et bas */}
-        <rect x={190} y={1120} width={420} height={200} />
-        <rect x={295} y={1240} width={210} height={80} />
-        <path d="M330 1120 A 110 110 0 0 1 470 1120" />
-        <circle cx={400} cy={1190} r={6} fill="currentColor" stroke="none" />
+        {/* Appel dans le dos, en pointillés — le joueur part avant la passe */}
+        <path d="M452 296 C 530 250, 570 205, 622 188" strokeDasharray="14 16" />
+        <path d="M598 168 L626 187 L602 208" />
 
-        {/* Arcs de corner */}
-        <path d="M60 110 A 30 30 0 0 0 90 80" />
-        <path d="M710 80 A 30 30 0 0 0 740 110" />
-        <path d="M60 1290 A 30 30 0 0 1 90 1320" />
-        <path d="M710 1320 A 30 30 0 0 1 740 1290" />
+        {/* Adversaire pris à contre-pied */}
+        <path d="M540 386 L580 426 M580 386 L540 426" />
+
+        {/* ————— Bloc médian : une sortie de balle depuis l'arrière ————— */}
+        <circle cx={150} cy={640} r={22} />
+        <circle cx={370} cy={720} r={22} />
+        <path d="M172 652 L348 712" />
+        <path d="M324 694 L352 714 L326 730" />
+
+        {/* Course longue vers l'avant, le long du couloir */}
+        <path d="M392 700 C 470 610, 500 520, 496 430" strokeDasharray="14 16" />
+        <path d="M474 452 L497 424 L520 452" />
+
+        {/* Deux plots d'entraînement */}
+        <path d="M640 660 L664 706 L616 706 Z" />
+        <path d="M700 780 L724 826 L676 826 Z" />
+
+        {/* ————— Bloc bas : un pressing à deux ————— */}
+        <circle cx={240} cy={1080} r={22} />
+        <circle cx={470} cy={1150} r={22} />
+        <path d="M560 1010 L600 1050 M600 1010 L560 1050" />
+
+        <path d="M262 1068 C 380 1010, 470 1010, 546 1032" strokeDasharray="14 16" />
+        <path d="M524 1014 L550 1033 L528 1054" />
+        <path d="M486 1132 C 540 1100, 570 1076, 580 1058" strokeDasharray="14 16" />
+
+        {/* Zone à défendre, esquissée à main levée */}
+        <path
+          d="M120 1230 C 260 1190, 420 1200, 540 1250 C 620 1284, 600 1330, 470 1336 C 320 1344, 160 1320, 116 1284 C 92 1264, 96 1240, 120 1230 Z"
+          strokeDasharray="6 18"
+        />
+
+        {/* Ligne d'axe : le seul trait droit du dessin, il tient l'ensemble */}
+        <path d="M60 900 L740 900" strokeDasharray="2 26" />
       </svg>
     </div>
   );
