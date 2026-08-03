@@ -13,7 +13,7 @@
   --radius-pill: 999px;
 
   /* Fontes chargées via next/font (voir layout.tsx) */
-  --font-display: var(--font-barlow), "Arial Narrow", "Segoe UI", sans-serif;
+  --font-display: var(--font-space-grotesk), "Segoe UI", system-ui, sans-serif;
   --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
 
   /* ————— Mouvement —————
@@ -237,36 +237,48 @@
   /* Titre de section : capitales condensées, lettres desserrées, graisse 800.
      Distinct de `.display`, qui sert aussi aux scores et aux compteurs — un
      chiffre ne veut pas du même interlettrage qu'un intitulé. */
+  /* Titre de section. L'interlettrage est nettement plus large qu'ailleurs :
+     dans une direction où la couleur ne hiérarchise rien, c'est l'espacement
+     qui doit dire « ceci est un titre ». */
   .section-title {
-    font-family: var(--font-barlow), "Arial Narrow", sans-serif;
-    font-weight: 800;
-    letter-spacing: 0.04em;
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     line-height: 1;
   }
 
-  /* Bandeau structurel (headers de sections, hero) */
+  /* Bandeau structurel (headers de sections, hero).
+     Aplat noir, sans dégradé ni liseré coloré : dans cette direction, la
+     structure ne se signale pas, elle se contente d'exister. */
   .hero-pitch {
     position: relative;
     overflow: hidden;
     border-radius: var(--radius-card);
     color: var(--text-on-structure);
-    background: linear-gradient(135deg, var(--structure-1) 0%, var(--structure-2) 55%, var(--structure-3) 100%);
+    background: var(--structure-1);
     box-shadow: var(--elevation-2);
   }
 
-  /* Wordmark / titres façon club : condensé, capitales, serré */
+  /* Mot-repère, scores, compteurs.
+     C'est ici que passe tout le budget d'identité de la direction : sans
+     couleur, il ne reste que la lettre. Serrage négatif et graisse forte —
+     les chiffres doivent former un bloc, pas une suite de signes.
+     `tabular-nums` : sans chiffres de largeur fixe, un score qui passe de 1 à 4
+     ou un compte à rebours qui s'égrène font sautiller toute la ligne. */
   .display {
-    font-family: var(--font-barlow), "Arial Narrow", sans-serif;
-    @apply font-bold uppercase tracking-wide;
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    @apply font-bold uppercase;
   }
   /* Les intitulés portent la graisse et l'interlettrage de la direction
      artistique. Visés par `h2`/`h3` plutôt que par une classe à poser partout :
      `.display` sert aussi aux scores, qui n'en veulent surtout pas. */
   h2.display,
   h3.display {
-    font-weight: 800;
-    letter-spacing: 0.04em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
   }
 
   /* Champ de formulaire.
@@ -349,8 +361,8 @@
   }
   .btn-primary,
   .btn-cta {
-    background-image: linear-gradient(180deg, var(--cta) 0%, var(--cta-deep) 100%);
-    background-color: var(--cta);
+    background-image: linear-gradient(180deg, var(--cta-fill) 0%, var(--cta-fill-deep) 100%);
+    background-color: var(--cta-fill-deep);
     color: var(--cta-on);
     /* Reflet en haut : la lumière vient d'en haut, dans les deux thèmes */
     box-shadow:
@@ -365,13 +377,19 @@
   .btn-cta:active {
     filter: brightness(0.96);
   }
+  /* Variante inverse : un bloc noir à libellé de signal.
+     Depuis que le bouton principal EST le signal, une variante « accent » de
+     la même couleur ne serait qu'un doublon — et elle dépenserait deux fois le
+     budget d'orange sur le même écran. Celle-ci est l'action de second rang,
+     celle qu'on propose sans la réclamer. */
   .btn-accent {
-    background-image: linear-gradient(180deg, var(--accent-solid-bright) 0%, var(--accent-solid) 100%);
-    color: var(--accent-on);
-    box-shadow: var(--accent-glow);
+    background-color: var(--structure-1);
+    border: 1px solid var(--border-defined);
+    color: var(--accent-solid);
+    box-shadow: var(--sheen-soft), var(--elevation-1);
   }
   .btn-accent:hover {
-    filter: brightness(1.04);
+    background-color: var(--structure-2);
   }
   .btn-soft {
     background-color: var(--surface-glass-strong);

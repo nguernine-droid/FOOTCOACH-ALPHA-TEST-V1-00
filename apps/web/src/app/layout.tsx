@@ -1,14 +1,28 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Barlow_Condensed, Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const display = Barlow_Condensed({
+/**
+ * Fonte d'affichage : scores, comptes à rebours, intitulés, numéros de maillot.
+ *
+ * C'est la pièce maîtresse de cette direction. Une palette monochrome ne
+ * hiérarchise rien par la couleur : tout le caractère doit venir de la lettre.
+ *
+ * Space Grotesk remplace Barlow Condensed. Le condensé est la fonte par défaut
+ * du graphisme sportif — on la retrouve de l'habillage télé aux affiches de
+ * fédération, et elle rangeait l'application dans cette famille-là. Space
+ * Grotesk vient au contraire du registre technique, avec des chiffres très
+ * dessinés : exactement ce qu'il faut quand un score doit porter un écran à
+ * lui seul.
+ *
+ * Graisse variable, d'où l'absence de `weight`.
+ */
+const display = Space_Grotesk({
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-barlow",
+  variable: "--font-space-grotesk",
 });
 
 const body = Inter({

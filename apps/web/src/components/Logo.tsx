@@ -1,29 +1,52 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Logo FootCoach.
+ * Marque FootCoach.
  *
- * La marque est d’un bleu vif : posée directement sur le header navy, elle
- * tomberait à 2,35:1 de contraste et se lirait à peine. Elle est donc portée
- * par une pastille claire, qui lui rend son intensité d'origine — celle du
- * fichier fourni, dessiné pour un fond blanc.
+ * Dessinée ici, en SVG et en jetons, plutôt que servie comme image. Trois
+ * raisons : elle suit le thème sans qu'on ait à maintenir deux fichiers, elle
+ * reste nette à toutes les tailles, et elle ne coûte pas une requête.
  *
- * `alt` vide : le logo jouxte toujours le mot-repère « FOOTCOACH », un lecteur
- * d'écran annoncerait deux fois la même chose.
+ * Le motif n'est pas un blason. L'écusson est le code du club affilié, et
+ * c'était l'un des signaux qui rattachaient l'ancienne direction à l'imagerie
+ * fédérale. Ce n'est pas non plus une illustration : dans cette direction, la
+ * marque est une MIRE — un carré, un repère, un point. Le vocabulaire d'un
+ * système qui désigne plutôt qu'il ne décore.
+ *
+ * C'est le seul endroit de l'application où le signal apparaît sans qu'il y
+ * ait rien à faire. La marque est l'exception qui fonde la règle : elle dit ce
+ * que la couleur veut dire, avant qu'on ait à s'en servir.
+ *
+ * `aria-hidden` : le logo jouxte toujours le mot-repère « FOOTCOACH », un
+ * lecteur d'écran annoncerait deux fois la même chose.
  */
 export function Logo({ size = 34, className }: { size?: number; className?: string }) {
-  // Marque à 76 % de la pastille : assez de marge pour que le cercle du logo
-  // ne touche pas le bord arrondi.
-  const mark = Math.round(size * 0.76);
   return (
-    <span
-      className={cn("shrink-0 inline-flex items-center justify-center rounded-xl bg-white shadow-sm", className)}
-      style={{ width: size, height: size }}
+    <svg
+      className={cn("shrink-0", className)}
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden
+      focusable="false"
     >
-      {/* Fichier statique servi tel quel : dimensions fixées, donc zéro
-          décalage de mise en page au chargement. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.png" alt="" width={mark} height={mark} style={{ width: mark, height: mark }} />
-    </span>
+      {/* La tuile est NOIRE, pas orange : le signal ne remplit jamais une
+          surface qui n'appelle pas d'action. */}
+      <rect width="32" height="32" rx="8" fill="var(--structure-1)" />
+
+      {/* La mire : quatre angles, ouverts. Un cadre fermé serait un cadre ;
+          ouvert, il vise. */}
+      <path
+        d="M8 12V9.5C8 8.7 8.7 8 9.5 8H12M20 8H22.5C23.3 8 24 8.7 24 9.5V12M24 20V22.5C24 23.3 23.3 24 22.5 24H20M12 24H9.5C8.7 24 8 23.3 8 22.5V20"
+        stroke="var(--text-on-structure)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+
+      {/* Le point visé. Seul élément coloré de la marque, et seul élément
+          plein : c'est lui qu'on regarde. */}
+      <circle cx="16" cy="16" r="3.4" fill="var(--accent-solid)" />
+    </svg>
   );
 }
