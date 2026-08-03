@@ -1,14 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Barlow_Condensed, Inter } from "next/font/google";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const display = Barlow_Condensed({
+/**
+ * Fonte d'affichage : scores, comptes à rebours, intitulés, numéros de maillot.
+ *
+ * Bricolage Grotesque remplace Barlow Condensed. Le condensé est la fonte par
+ * défaut du graphisme sportif — on la retrouve de l'habillage télé aux affiches
+ * de fédération, et elle rangeait l'application dans cette famille-là.
+ * Bricolage a des irrégularités assumées (des terminaisons coupées de biais,
+ * des courbes qui ne se referment pas tout à fait) : elle a la main d'un objet
+ * fabriqué, ce qui est exactement le registre de cette direction.
+ *
+ * Graisse variable, d'où l'absence de `weight`.
+ */
+const display = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-barlow",
+  variable: "--font-bricolage",
 });
 
 const body = Inter({

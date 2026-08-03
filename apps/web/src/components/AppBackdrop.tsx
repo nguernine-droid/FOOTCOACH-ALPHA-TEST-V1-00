@@ -1,13 +1,21 @@
 /**
  * Fond de l'application.
  *
- * Trois plans, tous fixes : ils ne défilent pas avec le contenu, comme une
- * pelouse et des projecteurs ne bougent pas quand on parcourt les gradins.
+ * Trois plans, tous fixes : ils ne défilent pas avec le contenu.
  *   1. l'aplat de fond, posé par la feuille de style sur `html` et `body` ;
- *   2. un halo d'ambiance en haut à droite — or de projecteur la nuit,
- *      crème très pâle le jour ;
- *   3. le tracé d'un terrain vu du dessus, à peine perceptible, mais c'est ce
- *      qui empêche le fond de se lire comme un aplat mort.
+ *   2. un halo d'ambiance en haut à droite — une lumière de fin de journée ;
+ *   3. une MAILLE DE FILET, à peine perceptible, mais c'est ce qui empêche le
+ *      fond de se lire comme un aplat mort.
+ *
+ * Le plan (3) ne dessine PLUS un terrain vu du dessus. Le tracé de terrain est
+ * le cliché de la catégorie — toutes les applications de football l'ont, et
+ * c'est l'un des signaux qui rattachaient l'ancienne direction à l'imagerie
+ * fédérale. Ici, c'est une matière et non un plan : la maille d'un filet de
+ * but, détendue, avec ses mailles qui s'ouvrent là où la corde a travaillé.
+ *
+ * Dessiné à la main plutôt que par un `pattern` répété : un motif parfaitement
+ * régulier se lit comme une texture d'écran de veille. Les irrégularités sont
+ * le sujet.
  *
  * Un seul dessin pour les deux thèmes : il est tracé en `currentColor`, et
  * c'est le jeton `--text-primary` qui lui donne son encre — sombre le jour,
@@ -29,8 +37,8 @@ export function AppBackdrop() {
         }}
       />
 
-      {/* Tracé du terrain. `slice` : le dessin couvre toujours l'écran, quitte
-          à sortir du cadre — une ligne qui s'arrête en plein vide se verrait. */}
+      {/* Maille. `slice` : le dessin couvre toujours l'écran, quitte à sortir
+          du cadre — une corde qui s'arrête en plein vide se verrait. */}
       <svg
         className="absolute inset-0 w-full h-full text-primary"
         style={{ opacity: "var(--bg-app-texture)" }}
@@ -38,32 +46,33 @@ export function AppBackdrop() {
         preserveAspectRatio="xMidYMid slice"
         fill="none"
         stroke="currentColor"
-        strokeWidth={3}
+        strokeWidth={2.5}
+        strokeLinecap="round"
       >
-        {/* Touches et lignes de but */}
-        <rect x={60} y={80} width={680} height={1240} />
-        {/* Ligne médiane et rond central */}
-        <line x1={60} y1={700} x2={740} y2={700} />
-        <circle cx={400} cy={700} r={110} />
-        <circle cx={400} cy={700} r={7} fill="currentColor" stroke="none" />
+        {/* Cordes descendantes vers la droite. Elles s'écartent vers le bas :
+            un filet pend, il ne quadrille pas. */}
+        <path d="M-40 60 C 180 240, 420 470, 700 760" />
+        <path d="M60 20 C 290 210, 530 450, 800 730" />
+        <path d="M-40 260 C 170 450, 400 690, 660 990" />
+        <path d="M60 220 C 280 420, 520 670, 790 970" />
+        <path d="M-40 480 C 160 680, 380 930, 620 1240" />
+        <path d="M70 450 C 280 650, 500 900, 760 1210" />
+        <path d="M-40 720 C 150 920, 350 1170, 570 1450" />
+        <path d="M80 690 C 280 890, 480 1140, 720 1440" />
 
-        {/* Surface de réparation et surface de but — haut */}
-        <rect x={190} y={80} width={420} height={200} />
-        <rect x={295} y={80} width={210} height={80} />
-        <path d="M330 280 A 110 110 0 0 0 470 280" />
-        <circle cx={400} cy={210} r={6} fill="currentColor" stroke="none" />
+        {/* Cordes descendantes vers la gauche */}
+        <path d="M840 60 C 620 240, 380 470, 100 760" />
+        <path d="M740 20 C 510 210, 270 450, 0 730" />
+        <path d="M840 260 C 630 450, 400 690, 140 990" />
+        <path d="M740 220 C 520 420, 280 670, 10 970" />
+        <path d="M840 480 C 640 680, 420 930, 180 1240" />
+        <path d="M730 450 C 520 650, 300 900, 40 1210" />
+        <path d="M840 720 C 650 920, 450 1170, 230 1450" />
+        <path d="M720 690 C 520 890, 320 1140, 80 1440" />
 
-        {/* … et bas */}
-        <rect x={190} y={1120} width={420} height={200} />
-        <rect x={295} y={1240} width={210} height={80} />
-        <path d="M330 1120 A 110 110 0 0 1 470 1120" />
-        <circle cx={400} cy={1190} r={6} fill="currentColor" stroke="none" />
-
-        {/* Arcs de corner */}
-        <path d="M60 110 A 30 30 0 0 0 90 80" />
-        <path d="M710 80 A 30 30 0 0 0 740 110" />
-        <path d="M60 1290 A 30 30 0 0 1 90 1320" />
-        <path d="M710 1320 A 30 30 0 0 1 740 1290" />
+        {/* La barre transversale à laquelle le filet est accroché : le seul
+            trait droit du dessin, il tient l'ensemble. */}
+        <path d="M-40 96 L840 96" strokeWidth={4} />
       </svg>
     </div>
   );

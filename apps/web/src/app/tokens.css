@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   JETONS FOOTCOACH
+   JETONS FOOTCOACH — direction « TERRE BATTUE »
 
    L'UNIQUE fichier de l'application qui contient des couleurs littérales.
    Partout ailleurs — CSS, composants, SVG en ligne — on ne manipule que ces
@@ -8,24 +8,47 @@
        grep -rnE '#[0-9A-Fa-f]{3,8}\b|rgba?\(' apps/web/src --include=*.css \
             --include=*.tsx | grep -v tokens.css     # doit être vide
 
+   ── La direction ─────────────────────────────────────────────────────────
+   Une palette entièrement CHAUDE, ce qu'aucune application de football ne
+   fait : crème, cuir, terre cuite. Le référent n'est ni la fédération ni le
+   tableau tactique, c'est le terrain de quartier en fin d'après-midi — un
+   ballon usé, une lumière basse, des gens qui se connaissent.
+
+   C'est un parti pris contre le code visuel des fédérations, et le plus
+   éloigné de tout ce qui existe dans la catégorie : plus de bleu marine, plus
+   d'or de médaille, plus de blason, et surtout plus une seule teinte froide.
+   La cible est autant les parents que les coachs, et une palette chaude
+   accueille là où le bleu institutionnel convoque.
+
+   ── Le risque assumé ─────────────────────────────────────────────────────
+   Une direction chaude passe moins bien la « performance » et la donnée. Elle
+   est donc tenue par des NEUTRES bruns très désaturés — le brun-noir de la
+   structure, le crème du fond — et la terre cuite reste réservée à ce qui
+   appelle une action. Un écran couvert de terracotta se lirait comme une
+   alerte permanente.
+
    ── Nommage ──────────────────────────────────────────────────────────────
-   Les jetons portent un RÔLE, jamais une couleur : `--accent`, pas `--gold` ;
-   `--surface-1`, pas `--navy`. C'est ce qui permet au thème clair d'être une
-   traduction du thème sombre et non un second design — un composant qui dit
-   « fond de carte » reste juste dans les deux.
+   Les jetons portent un RÔLE, jamais une couleur : `--accent`, pas
+   `--terracotta` ; `--surface-1`, pas `--creme`. C'est ce qui permet au thème
+   clair d'être une traduction du thème sombre et non un second design.
 
    ── Les deux thèmes ──────────────────────────────────────────────────────
    Le thème sombre est la référence esthétique ; le clair en est la version
    diurne. Rayons, espacements, dessin des composants sont IDENTIQUES : seules
-   les valeurs de ces jetons changent.
+   les valeurs de ces jetons changent. Ici, le sombre n'est pas un noir neutre
+   mais une nuit chaude — un brun si profond qu'il se lit comme noir.
 
    ── Contraste ────────────────────────────────────────────────────────────
-   Chaque paire texte/fond a été mesurée. Trois valeurs de la spécification
-   d'origine ne passaient pas l'AA et ont été rapprochées du seuil en gardant
-   leur teinte — c'est signalé au cas par cas ci-dessous.
+   Chaque paire texte/fond a été mesurée, y compris sur les fonds teintés où
+   une couleur passe le seuil sur blanc mais le rate chez elle. Les valeurs
+   notées ci-dessous sont les ratios réels, pas des estimations.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─────────────────────────────  THÈME CLAIR  ─────────────────────────────
+   « Crème » : un papier chaud, presque ivoire. C'est lui qui porte la
+   direction — sur un blanc pur, la terre cuite vire à l'orange criard ; sur
+   du crème, elle redevient une matière.
+
    `:root` ET `[data-theme="light"]` : le premier est le défaut du document,
    le second permet de rétablir le thème clair SOUS un document sombre. C'est
    ce qui rend possible un aperçu miniature honnête dans le réglage — il ne
@@ -35,305 +58,322 @@
   color-scheme: light;
 
   /* — Fond de l'application — */
-  --bg-app: #F2F5FB;
-  /* Opacité du tracé de terrain posé sur le fond */
-  --bg-app-texture: 0.04;
-  /* Halo d'ambiance en haut à droite : crème très pâle le jour */
-  --bg-app-halo: #FFE9B8;
-  --bg-app-halo-opacity: 0.5;
+  --bg-app: #FBF3EA;
+  /* Opacité de la maille de filet posée sur le fond */
+  --bg-app-texture: 0.05;
+  /* Halo d'ambiance en haut à droite : une lumière de fin de journée */
+  --bg-app-halo: #F5C89A;
+  --bg-app-halo-opacity: 0.55;
 
   /* — Surfaces — */
   --surface-1: #FFFFFF; /* le plan qui porte le contenu */
-  --surface-2: #F7F9FD; /* un cran en retrait : bloc encastré, champ */
-  --surface-glass: rgba(10, 19, 48, 0.04);
-  --surface-glass-strong: rgba(10, 19, 48, 0.06);
-  --border-subtle: rgba(10, 19, 48, 0.08);
+  --surface-2: #F8EFE3; /* un cran en retrait : bloc encastré, champ */
+  --surface-glass: rgba(42, 29, 20, 0.04);
+  --surface-glass-strong: rgba(42, 29, 20, 0.06);
+  --border-subtle: rgba(42, 29, 20, 0.1);
   /* Bordure d'une surface posée sur une autre de même teinte (cartes, rangées) */
-  --border-defined: rgba(10, 19, 48, 0.12);
+  --border-defined: rgba(42, 29, 20, 0.16);
 
-  /* — Texte — */
-  --text-primary: #0A1330; /* 18,3:1 sur surface-1 */
-  --text-secondary: #4A5578; /* 7,3:1 */
-  /* Spécifié #8A93AD → 3,1:1 sur blanc, sous le seuil AA alors que ce ton
-     porte les libellés de 10-11 px et les placeholders. Assombri à teinte
-     constante : 5,1:1 sur surface-1, 4,8:1 sur surface-2, 4,7:1 sur bg-app. */
-  --text-muted: #636D8A;
-  /* Texte posé sur une structure sombre (en-tête, barre d'onglets) */
+  /* — Texte —
+     De l'encre brune, pas du gris : sur un fond crème, un gris neutre
+     paraît sale. Toute la grille de gris est décalée vers le brun. */
+  --text-primary: #2A1D14; /* 16,4:1 sur surface-1 */
+  --text-secondary: #5E4A3C; /* 8,3:1 */
+  /* Le ton le plus fragile : il porte les libellés de 10-11 px et les
+     invites de saisie. Réglé pour tenir sur les TROIS fonds clairs —
+     5,4:1 sur surface-1, 4,7:1 sur surface-2, 4,9:1 sur bg-app. */
+  --text-muted: #7A6759;
+  /* Texte posé sur le cuir (en-tête, barre d'onglets) */
   --text-on-structure: #FFFFFF;
-  --text-on-structure-dim: rgba(255, 255, 255, 0.6);
+  --text-on-structure-dim: rgba(255, 255, 255, 0.62);
 
-  /* — Accent —
-     Spécifié #C98A00 → 2,9:1 sur blanc : sous le seuil AA texte, et même sous
-     les 3:1 des icônes. Assombri à teinte constante — 5,1:1 sur surface-1,
-     4,7:1 sur accent-surface. Le doré pur reste disponible pour les GRANDES
-     surfaces pleines (FAB, badges), où c'est lui qui porte le texte. */
-  --accent: #8A6A00;
-  --accent-solid: #F5B921; /* aplats seulement, jamais du texte dessus */
-  --accent-solid-bright: #FFD469; /* haut des dégradés dorés */
-  --accent-surface: #FFF6E0;
-  --accent-on: #0A1330; /* encre posée SUR accent-solid — 10,2:1 */
+  /* — Accent : la terre cuite —
+     La terre cuite pleine ne porte pas de texte clair sur du papier (3,3:1).
+     Le jour, l'accent TEXTE descend donc dans la même teinte jusqu'à la
+     brique — 5,7:1 sur surface-1, 4,8:1 sur son propre fond teinté —
+     tandis que la terre cuite reste réservée aux APLATS, où c'est elle qui
+     porte l'encre brune. */
+  --accent: #B0431A;
+  --accent-solid: #E2673A; /* aplats seulement, jamais du texte clair dessus */
+  --accent-solid-bright: #F08A5D; /* haut des dégradés de terre cuite */
+  --accent-surface: #FBE7DC;
+  --accent-on: #2A1D14; /* encre posée SUR accent-solid — 4,9:1 */
 
-  /* — Action principale — */
-  --cta: #4E57D6; /* 5,7:1 avec cta-on */
-  --cta-deep: #3F47BE; /* bas du dégradé du bouton plein */
+  /* — Action principale —
+     Même famille que l'accent : la direction n'a qu'une couleur d'appel.
+
+     DEUX jetons pour deux emplois. `--cta` est l'action ÉCRITE (un lien, une
+     icône) : posée sur du papier, elle doit descendre jusqu'à la brique pour
+     être lisible. `--cta-fill*` est l'action PLEINE — une brique cuite à
+     l'encre blanche, 4,8:1 en haut du dégradé et 6,3:1 en bas. Elle est
+     identique dans les deux thèmes : l'action principale doit se reconnaître
+     avant d'être lue. */
+  --cta: #B0431A;
+  --cta-deep: #94360F;
+  --cta-fill: #C24E20;
+  --cta-fill-deep: #A63F16;
   --cta-on: #FFFFFF;
-  --cta-surface: #E9EBFB;
+  --cta-surface: #FBE7DC;
 
-  /* — États — */
-  /* Spécifié #D93A3A → 4,6:1 sur blanc mais 4,0:1 sur son propre fond teinté.
-     Assombri : 5,5:1 sur surface-1, 4,8:1 sur danger-surface. */
-  --danger: #C62F2F;
-  --danger-surface: #FCE9E9;
-  --danger-solid: #FF3B3B; /* pastilles de notification, jamais de texte */
-  --success: #157A45; /* 5,4:1 sur surface-1, 4,6:1 sur success-surface */
-  --success-surface: #E4F4EA;
-  --warning: #7D6000; /* même ambre que l’accent, d’un cran plus foncé :
-     posé sur `warning-surface`, #8A6A00 tombait à 4,47:1 */
-  --warning-surface: #FCF0CF;
+  /* — États —
+     L'erreur ne peut pas être un rouge ordinaire : à côté de la terre cuite,
+     il s'y confondrait. Elle descend donc vers le VIN — plus sombre, plus
+     bleu — ce qui la distingue nettement de l'accent tout en restant du
+     registre de l'alerte. Le succès est une sauge, pas un vert vif : le vert
+     saturé est la seule teinte froide qui jure vraiment sur du crème. */
+  --danger: #96203C; /* 8,2:1 sur surface-1, 6,8:1 sur danger-surface */
+  --danger-surface: #FBE4E9;
+  --danger-solid: #C42B4C; /* pastilles de notification, jamais de texte */
+  --success: #35673F; /* 6,6:1 sur surface-1, 5,7:1 sur success-surface */
+  --success-surface: #E6F0E4;
+  --warning: #855A00; /* ocre : 5,3:1 sur son propre fond */
+  --warning-surface: #FBEEDA;
 
   /* — Structure : en-tête et barre d'onglets —
-     Le jour, la structure reste une masse bleu nuit : c'est la signature de la
-     marque, et elle donne au contenu clair un cadre où se poser. */
-  --structure-1: #071B3F;
-  --structure-2: #0A2452;
-  --structure-3: #0C2E6B;
-  --structure-veil: rgba(7, 27, 63, 0.92);
+     Un APLAT de cuir sombre, sans dégradé. Une masse unie se lit comme un
+     matériau ; un dégradé se lit comme un effet — et c'est le dégradé de bleu
+     nuit qui rattachait l'ancienne direction à l'imagerie fédérale. */
+  --structure-1: #241811;
+  --structure-2: #2E2018;
+  --structure-3: #3A2A20;
+  --structure-veil: rgba(36, 24, 17, 0.94);
   --structure-line: rgba(255, 255, 255, 0.1);
+  /* Le liseré de terre cuite sous l'en-tête — la couture de la marque. Posé
+     dans les DEUX thèmes sur le même cuir, il ne change pas de valeur. */
+  --header-rule: rgba(226, 103, 58, 0.75);
 
   /* — Élévation —
-     Le jour : de vraies ombres portées. (La nuit, ce sont des halos.) */
-  --elevation-1: 0 2px 8px rgba(10, 19, 48, 0.06);
-  --elevation-2: 0 12px 32px rgba(10, 19, 48, 0.1);
-  --elevation-3: 0 24px 60px -20px rgba(10, 19, 48, 0.22);
-  --focus-glow: 0 0 0 4px rgba(78, 87, 214, 0.18);
-  --accent-glow: 0 0 0 1px rgba(138, 106, 0, 0.35), 0 8px 20px -8px rgba(10, 19, 48, 0.25);
-  --cta-glow: 0 8px 20px -8px rgba(78, 87, 214, 0.55);
+     Le jour : de vraies ombres portées, brunes plutôt que grises. Une ombre
+     grise sur un fond crème se voit comme une salissure. */
+  --elevation-1: 0 2px 8px rgba(42, 29, 20, 0.08);
+  --elevation-2: 0 12px 32px rgba(42, 29, 20, 0.12);
+  --elevation-3: 0 24px 60px -20px rgba(42, 29, 20, 0.26);
+  --focus-glow: 0 0 0 4px rgba(176, 67, 26, 0.2);
+  --accent-glow: 0 0 0 1px rgba(176, 67, 26, 0.3), 0 8px 20px -8px rgba(42, 29, 20, 0.28);
+  --cta-glow: 0 8px 20px -8px rgba(176, 67, 26, 0.55);
 
   --focus-ring: var(--cta);
 
   /* — Voile des feuilles modales — */
-  --scrim: rgba(10, 19, 48, 0.45);
+  --scrim: rgba(36, 24, 17, 0.5);
 
   /* — Recettes de surface —
      Portées par des jetons pour que `.card`, l'en-tête et la barre d'onglets
-     n'aient qu'UNE définition chacun, sans règle conditionnelle par thème.
-     Le jour, une carte est un aplat blanc avec une ombre ; la nuit, un verre
-     qui prend la lumière par le haut. Même règle CSS, deux recettes. */
+     n'aient qu'UNE définition chacun, sans règle conditionnelle par thème. */
   --card-bg: var(--surface-1);
   --card-sheen: transparent;
   --card-border: var(--border-subtle);
-  --header-bg: linear-gradient(90deg, var(--structure-1) 0%, var(--structure-2) 55%, var(--structure-3) 100%);
+  /* Aplat, pas dégradé — voir « Structure » ci-dessus. */
+  --header-bg: var(--structure-1);
   --tabbar-bg: var(--structure-veil);
   /* Reflet qui traverse les silhouettes de chargement */
   --shimmer: rgba(255, 255, 255, 0.75);
   /* Liseré clair en haut d'une surface pleine : la lumière vient d'en haut,
-     dans les deux thèmes. C'est ce qui donne du volume aux boutons dorés et
-     violets sans leur ajouter d'ombre. */
+     dans les deux thèmes. C'est ce qui donne du volume aux boutons sans leur
+     ajouter d'ombre. */
   --sheen-soft: inset 0 1px 0 rgba(255, 255, 255, 0.28);
   --sheen-strong: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 
   /* — Carte de mise en avant (état vide) —
-     Le jour, elle ne peut pas se distinguer par sa clarté : tout est clair.
-     Elle se distingue par son élévation et un liseré d'accent. */
-  --spotlight-from: #FFFFFF;
-  /* Un fond légèrement crème plutôt que blanc : sur une page où toutes les
-     autres cartes sont blanches, l'ombre seule ne suffit pas à désigner celle
-     qu'il faut regarder. La teinte reste sous le seuil du perceptible comme
-     « couleur » — elle se lit comme de la lumière. */
-  --spotlight-to: #FFF6E4;
-  --spotlight-border: rgba(138, 106, 0, 0.35);
+     Elle est en CUIR, même le jour. C'est le geste central de la direction :
+     sur une page de papier crème, la carte qu'il faut regarder n'est pas plus
+     claire ni plus ombrée, elle est d'une autre matière. Elle réécrit son
+     encre chez elle (voir `.card-spotlight`), donc son contenu reste juste
+     sans que personne n'ait à connaître le thème. */
+  --spotlight-from: #2E2018;
+  --spotlight-to: #241811;
+  --spotlight-border: rgba(226, 103, 58, 0.35);
   --spotlight-shadow: var(--elevation-3);
-  --spotlight-ink: #0A1330;
-  --spotlight-muted: #4A5578;
+  --spotlight-ink: #FBF3EA; /* 14,3:1 sur spotlight-from */
+  --spotlight-muted: #C4B3A6; /* 8,3:1 */
 
-  /* — Carte des matchs : fond uni, plus clair que le blanc des cartes — */
-  --map-bg: #E8EDF5;
-  --map-vignette: rgba(10, 19, 48, 0.1);
+  /* — Carte des matchs : une terre battue claire, plus dense que le papier — */
+  --map-bg: #EDDFCE;
+  --map-vignette: rgba(42, 29, 20, 0.1);
   /* Le cône de balayage écraserait un fond clair : il y est plus discret */
-  --map-sweep-opacity: 0.18;
+  --map-sweep-opacity: 0.2;
   --map-ring: var(--accent);
   /* Marqueurs : le contour doit tenir sur le fond de carte du thème */
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
-  --pin-stroke: #0A1330;
-  --pin-shadow: rgba(10, 19, 48, 0.35);
-  --pin-lift: drop-shadow(0 3px 4px rgba(10, 19, 48, 0.3));
-  --pin-emphasis: drop-shadow(0 0 8px rgba(138, 106, 0, 0.7));
+  --pin-stroke: #2A1D14;
+  --pin-shadow: rgba(42, 29, 20, 0.35);
+  --pin-lift: drop-shadow(0 3px 4px rgba(42, 29, 20, 0.3));
+  --pin-emphasis: drop-shadow(0 0 8px rgba(226, 103, 58, 0.8));
 
-  /* — Illustration de l'état vide — */
-  --illus-turf-light: #3FA45C;
-  --illus-turf-dark: #217A42;
-  --illus-turf-side-light: #1B6537;
-  --illus-turf-side-dark: #12492A;
-  --illus-line: #FFFFFF;
+  /* — Illustration de l'état vide —
+     Elle est posée sur la carte de mise en avant, qui est en cuir dans LES
+     DEUX thèmes : ses valeurs sont donc identiques partout. Le terrain n'y est
+     plus une pelouse mais de la terre battue, et ses lignes sont tracées à la
+     chaux comme sur un terrain stabilisé. */
+  --illus-turf-light: #6B4A33;
+  --illus-turf-dark: #563A28;
+  --illus-turf-side-light: #40291C;
+  --illus-turf-side-dark: #2E1D14;
+  --illus-line: #FBF3EA;
   --illus-paper-light: #FFFFFF;
-  --illus-paper-dark: #DDE3F5;
-  --illus-rule: #8E9AC0;
-  /* Détail sombre posé SUR du blanc (le panneau du ballon) : il reste sombre
-     dans les deux thèmes, puisque son fond, lui, ne change pas. */
-  --illus-structure: #16234A;
-  /* Mâts et têtes de projecteur : eux se détachent du FOND DE LA CARTE, qui
-     change de thème. D'où deux jetons distincts — sans quoi, sur la carte
-     sombre, les projecteurs disparaîtraient dans leur propre fond. */
-  --illus-frame: #16234A;
-  --illus-frame-deep: #0A1330;
-  --illus-light: #FFD469;
-  --illus-shadow: #0A1330;
+  --illus-paper-dark: #EDDFCE;
+  --illus-rule: #A8907C;
+  /* Détail sombre posé SUR du blanc (le panneau du ballon) */
+  --illus-structure: #2A1D14;
+  /* Mâts et têtes de projecteur : ils se détachent du fond de la carte, qui
+     est sombre — ils restent donc clairs dans les deux thèmes. */
+  --illus-frame: #8A7260;
+  --illus-frame-deep: #5E4A3C;
+  --illus-light: #F5C89A;
+  --illus-shadow: #150D08;
 
   /* — Identité d'équipe : six teintes stables, dérivées de l'id —
-     Toutes portent du texte blanc et fonctionnent sur les deux fonds. */
-  --team-1: #0C2E6B;
-  --team-2: #8A5A2B;
-  --team-3: #1D6FE0;
-  --team-4: #6B4FA3;
-  --team-5: #0F766E;
-  --team-6: #A16207;
+     Toutes prises dans le registre chaud ou terreux, pour qu'aucune ne tombe
+     comme un corps étranger sur le crème. Aucune n'est une terre cuite : elles
+     ne doivent pas se faire passer pour l'accent. Toutes portent du texte
+     blanc (5,1:1 au minimum). */
+  --team-1: #6B4A33;
+  --team-2: #96203C;
+  --team-3: #35673F;
+  --team-4: #6A4E7C;
+  --team-5: #855A00;
+  --team-6: #2F5E6B;
 
   /* — QR code : lu par un appareil photo, pas par un œil.
        Contraste maximal, identique dans les deux thèmes. — */
-  --qr-dark: #071B3F;
+  --qr-dark: #241811;
   --qr-light: #FFFFFF;
 
   /* — Couleur de la barre du navigateur / status bar — */
-  --browser-chrome: #071B3F;
+  --browser-chrome: #241811;
 }
 
 /* ─────────────────────────────  THÈME SOMBRE  ──────────────────────────── */
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --bg-app: #0A1330;
-  --bg-app-texture: 0.05;
-  --bg-app-halo: #F5B921;
+  /* Une nuit chaude, pas un noir neutre : du brun assez profond pour se lire
+     comme noir, mais qui garde la température de la direction. */
+  --bg-app: #17100C;
+  --bg-app-texture: 0.06;
+  --bg-app-halo: #E2673A;
   --bg-app-halo-opacity: 0.12;
 
-  --surface-1: #101B3D;
-  --surface-2: #16234A;
+  --surface-1: #211812;
+  --surface-2: #2C211A;
   --surface-glass: rgba(255, 255, 255, 0.04);
   --surface-glass-strong: rgba(255, 255, 255, 0.07);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-defined: rgba(255, 255, 255, 0.14);
 
   --text-primary: #FFFFFF; /* 17,4:1 sur surface-1 */
-  --text-secondary: #A9B4D0; /* 8,1:1 */
-  /* Spécifié #6E7BA0 → 4,0:1 sur surface-1, sous le seuil. Éclairci à teinte
-     constante : 5,5:1 sur surface-1, 5,0:1 sur surface-2, 5,9:1 sur bg-app. */
-  --text-muted: #8592B7;
+  --text-secondary: #C4B3A6; /* 8,6:1 */
+  --text-muted: #9A897C; /* 5,2:1 sur surface-1, 5,6:1 sur bg-app */
   --text-on-structure: #FFFFFF;
-  --text-on-structure-dim: rgba(255, 255, 255, 0.6);
+  --text-on-structure-dim: rgba(255, 255, 255, 0.62);
 
-  /* La nuit, le doré passe l'AA : l'accent texte et l'accent aplat se
-     rejoignent sur la même valeur. */
-  --accent: #F5B921; /* 9,0:1 sur surface-1 */
-  --accent-solid: #F5B921;
-  --accent-solid-bright: #FFD469;
-  --accent-surface: rgba(245, 185, 33, 0.14);
-  --accent-on: #0A1330;
+  /* La nuit, l'accent texte remonte vers l'abricot : la terre cuite pleine
+     n'a que 3,9:1 sur la surface des cartes, l'abricot en a 8,4:1. */
+  --accent: #FF9A6B;
+  --accent-solid: #E2673A;
+  --accent-solid-bright: #F08A5D;
+  --accent-surface: rgba(226, 103, 58, 0.16);
+  --accent-on: #2A1D14;
 
-  /* #6C74E0 avec du blanc tombe à 4,0:1 : la teinte de référence reste celle
-     de la direction artistique, mais le bouton plein descend vers `cta-deep`,
-     ce qui remonte le libellé à ~4,8:1 là où il se trouve. */
-  --cta: #6C74E0;
-  --cta-deep: #4E56CC;
+  /* Le bouton plein ne bouge pas d'un thème à l'autre — voir le bloc clair. */
+  --cta: #FF9A6B;
+  --cta-deep: #E2673A;
+  --cta-fill: #C24E20;
+  --cta-fill-deep: #A63F16;
   --cta-on: #FFFFFF;
-  --cta-surface: rgba(108, 116, 224, 0.22);
+  --cta-surface: rgba(226, 103, 58, 0.2);
 
-  --danger: #FF6B6B; /* 6,1:1 */
-  --danger-surface: rgba(226, 61, 61, 0.22);
-  --danger-solid: #FF3B3B;
-  --success: #63D9A2; /* 9,7:1 */
-  --success-surface: rgba(30, 158, 88, 0.22);
-  --warning: #F5B921;
-  --warning-surface: rgba(245, 185, 33, 0.16);
+  --danger: #FF8FA3; /* 8,1:1 */
+  --danger-surface: rgba(150, 32, 60, 0.32);
+  --danger-solid: #E23D5C;
+  --success: #7FC98A; /* 8,8:1 */
+  --success-surface: rgba(53, 103, 63, 0.3);
+  --warning: #E0A83C; /* 8,2:1 */
+  --warning-surface: rgba(224, 168, 60, 0.16);
 
-  /* La nuit, la structure ne se distingue plus du fond : elle s'efface
-     derrière un verre flouté, et le halo se poursuit sous elle. */
-  --structure-1: #0A1330;
-  --structure-2: #101B3D;
-  --structure-3: #16234A;
-  --structure-veil: rgba(10, 19, 48, 0.94);
+  /* La nuit, le cuir et le fond se rejoignent presque : la structure ne se
+     distingue plus par sa valeur mais par sa couture de terre cuite. */
+  --structure-1: #1C130E;
+  --structure-2: #241811;
+  --structure-3: #2E2018;
+  --structure-veil: rgba(28, 19, 14, 0.94);
   --structure-line: rgba(255, 255, 255, 0.08);
+  --header-rule: rgba(226, 103, 58, 0.6);
 
-  /* Pas d'ombre grise la nuit : de la profondeur noire et des halos colorés */
-  --elevation-1: 0 2px 12px rgba(0, 0, 0, 0.4);
-  --elevation-2: 0 16px 40px rgba(0, 0, 0, 0.5);
+  /* Pas d'ombre grise la nuit : de la profondeur et des halos chauds */
+  --elevation-1: 0 2px 12px rgba(0, 0, 0, 0.45);
+  --elevation-2: 0 16px 40px rgba(0, 0, 0, 0.55);
   --elevation-3: 0 24px 60px -20px rgba(0, 0, 0, 0.75);
-  --focus-glow: 0 0 32px rgba(245, 185, 33, 0.35);
-  --accent-glow: 0 0 40px rgba(245, 185, 33, 0.35);
-  --cta-glow: 0 10px 32px -12px rgba(108, 116, 224, 0.75);
+  --focus-glow: 0 0 32px rgba(226, 103, 58, 0.35);
+  --accent-glow: 0 0 40px rgba(226, 103, 58, 0.3);
+  --cta-glow: 0 10px 32px -12px rgba(226, 103, 58, 0.6);
 
   --focus-ring: var(--accent);
 
-  --scrim: rgba(2, 6, 20, 0.72);
+  --scrim: rgba(10, 6, 4, 0.74);
 
   --card-bg: color-mix(in srgb, var(--surface-1) 88%, transparent);
   --card-sheen: var(--surface-glass-strong);
   --card-border: var(--border-subtle);
-  --header-bg: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--bg-app) 88%, transparent) 0%,
-    color-mix(in srgb, var(--bg-app) 66%, transparent) 100%
-  );
+  --header-bg: var(--structure-1);
   --tabbar-bg: var(--structure-veil);
   --shimmer: rgba(255, 255, 255, 0.08);
   --sheen-soft: inset 0 1px 0 rgba(255, 255, 255, 0.28);
   --sheen-strong: inset 0 1px 0 rgba(255, 255, 255, 0.55);
 
-  /* Carte de mise en avant — SOMBRE elle aussi.
-     Une carte blanche au milieu d'un écran de nuit attire le regard, mais elle
-     éblouit et sort de la direction artistique : l'écran cesse d'être d'une
-     seule pièce. Elle se détache donc comme les cartes claires se détachent le
-     jour — en montant d'un cran (surface-2 en haut), avec un liseré doré, une
-     ombre plus profonde et un halo d'accent. */
-  --spotlight-from: #16234A;
-  --spotlight-to: #101B3D;
-  --spotlight-border: rgba(245, 185, 33, 0.4);
+  /* Carte de mise en avant — en cuir elle aussi, mais montée d'un cran par
+     rapport aux cartes ordinaires, avec un liseré et un halo de terre cuite. */
+  --spotlight-from: #2C211A;
+  --spotlight-to: #211812;
+  --spotlight-border: rgba(226, 103, 58, 0.42);
   --spotlight-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 24px 60px -20px rgba(0, 0, 0, 0.75),
-    0 0 48px -12px rgba(245, 185, 33, 0.28);
-  --spotlight-ink: #FFFFFF; /* 15,0:1 sur spotlight-from */
-  --spotlight-muted: #A9B4D0; /* 7,4:1 */
+    0 0 48px -12px rgba(226, 103, 58, 0.25);
+  --spotlight-ink: #FFFFFF;
+  --spotlight-muted: #C4B3A6;
 
-  /* — Carte des matchs : fond uni, plus profond que la surface des cartes — */
-  --map-bg: #0A1330;
-  --map-vignette: rgba(10, 19, 48, 0.78);
+  /* — Carte des matchs : plus profonde que la surface des cartes — */
+  --map-bg: #120C08;
+  --map-vignette: rgba(18, 12, 8, 0.78);
   --map-sweep-opacity: 0.3;
   --map-ring: var(--accent);
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
-  --pin-stroke: #0A1330;
-  --pin-shadow: rgba(0, 0, 0, 0.45);
-  --pin-lift: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
-  --pin-emphasis: drop-shadow(0 0 10px rgba(245, 185, 33, 0.55));
+  --pin-stroke: #17100C;
+  --pin-shadow: rgba(0, 0, 0, 0.5);
+  --pin-lift: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.55));
+  --pin-emphasis: drop-shadow(0 0 10px rgba(226, 103, 58, 0.65));
 
-  --illus-turf-light: #3FA45C;
-  --illus-turf-dark: #217A42;
-  --illus-turf-side-light: #1B6537;
-  --illus-turf-side-dark: #12492A;
-  --illus-line: #FFFFFF;
+  /* Identiques au thème clair : l'illustration est posée sur une carte en cuir
+     dans les deux cas (voir le bloc clair). */
+  --illus-turf-light: #6B4A33;
+  --illus-turf-dark: #563A28;
+  --illus-turf-side-light: #40291C;
+  --illus-turf-side-dark: #2E1D14;
+  --illus-line: #FBF3EA;
   --illus-paper-light: #FFFFFF;
-  --illus-paper-dark: #DDE3F5;
-  --illus-rule: #8E9AC0;
-  --illus-structure: #16234A;
-  /* Éclaircis : la carte de mise en avant est sombre la nuit, les projecteurs
-     doivent se lire dessus. */
-  --illus-frame: #4C5D95;
-  --illus-frame-deep: #2A3763;
-  --illus-light: #FFD469;
-  --illus-shadow: #000A1E;
+  --illus-paper-dark: #EDDFCE;
+  --illus-rule: #A8907C;
+  --illus-structure: #2A1D14;
+  --illus-frame: #8A7260;
+  --illus-frame-deep: #5E4A3C;
+  --illus-light: #F5C89A;
+  --illus-shadow: #000000;
 
-  --team-1: #3B6FD4;
-  --team-2: #C08A4E;
-  --team-3: #4E8FF0;
-  --team-4: #9277CF;
-  --team-5: #2AA79B;
-  --team-6: #D9A038;
+  /* Mêmes teintes d'équipe, éclaircies pour tenir sur un fond de cuir */
+  --team-1: #A6805F;
+  --team-2: #DE6B85;
+  --team-3: #6FAF79;
+  --team-4: #A288B4;
+  --team-5: #D2A03C;
+  --team-6: #63A0AF;
 
-  --qr-dark: #071B3F;
+  --qr-dark: #241811;
   --qr-light: #FFFFFF;
 
-  --browser-chrome: #0A1330;
+  --browser-chrome: #1C130E;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -348,6 +388,11 @@
    ALIAS : ils ne désignent plus une couleur mais pointent vers le jeton de
    rôle correspondant. Le code déjà écrit suit les deux thèmes sans être
    réécrit ; le code neuf utilise les noms de rôle.
+
+   Deux familles d'alias sont désormais des faux amis assumés : `blue`/`pitch`/
+   `sky` ne sont plus bleus (ils pointent sur l'action, donc sur la brique) et
+   `gold`/`tangerine` ne sont plus dorés (ils pointent sur l'accent). Les
+   renommer coûterait une réécriture de 130 occurrences pour zéro effet visible.
    ═══════════════════════════════════════════════════════════════════════════ */
 @theme inline {
   /* — Rôles — */
@@ -410,6 +455,9 @@
   --color-background: var(--bg-app);
   --color-foreground: var(--text-primary);
 
+  /* `navy-*` ne désigne plus du bleu nuit mais le cuir. Conservé parce que
+     l'encre posée sur la terre cuite (le pictogramme du bouton flottant)
+     s'écrit `text-navy-900` — c'est bien la structure qu'elle emprunte. */
   --color-navy-900: var(--structure-1);
   --color-navy-800: var(--structure-2);
   --color-navy-700: var(--structure-3);

@@ -13,7 +13,7 @@
   --radius-pill: 999px;
 
   /* Fontes chargées via next/font (voir layout.tsx) */
-  --font-display: var(--font-barlow), "Arial Narrow", "Segoe UI", sans-serif;
+  --font-display: var(--font-bricolage), "Segoe UI", system-ui, sans-serif;
   --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
 
   /* ————— Mouvement —————
@@ -238,27 +238,34 @@
      Distinct de `.display`, qui sert aussi aux scores et aux compteurs — un
      chiffre ne veut pas du même interlettrage qu'un intitulé. */
   .section-title {
-    font-family: var(--font-barlow), "Arial Narrow", sans-serif;
+    font-family: var(--font-display);
     font-weight: 800;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     line-height: 1;
   }
 
-  /* Bandeau structurel (headers de sections, hero) */
+  /* Bandeau structurel (headers de sections, hero).
+     Aplat comme l'en-tête : le dégradé diagonal appartenait à la direction
+     précédente. La couture de terre cuite repasse en bas, ce qui rattache le
+     bandeau à la coque de l'application plutôt qu'aux cartes. */
   .hero-pitch {
     position: relative;
     overflow: hidden;
     border-radius: var(--radius-card);
     color: var(--text-on-structure);
-    background: linear-gradient(135deg, var(--structure-1) 0%, var(--structure-2) 55%, var(--structure-3) 100%);
+    background: var(--structure-1);
+    border-bottom: 2px solid var(--header-rule);
     box-shadow: var(--elevation-2);
   }
 
-  /* Wordmark / titres façon club : condensé, capitales, serré */
+  /* Mot-repère, scores, compteurs.
+     `tabular-nums` : sans chiffres de largeur fixe, un score qui passe de 1 à 4
+     ou un compte à rebours qui s'égrène font sautiller toute la ligne. */
   .display {
-    font-family: var(--font-barlow), "Arial Narrow", sans-serif;
-    @apply font-bold uppercase tracking-wide;
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    @apply font-extrabold uppercase tracking-tight;
   }
   /* Les intitulés portent la graisse et l'interlettrage de la direction
      artistique. Visés par `h2`/`h3` plutôt que par une classe à poser partout :
@@ -349,8 +356,8 @@
   }
   .btn-primary,
   .btn-cta {
-    background-image: linear-gradient(180deg, var(--cta) 0%, var(--cta-deep) 100%);
-    background-color: var(--cta);
+    background-image: linear-gradient(180deg, var(--cta-fill) 0%, var(--cta-fill-deep) 100%);
+    background-color: var(--cta-fill-deep);
     color: var(--cta-on);
     /* Reflet en haut : la lumière vient d'en haut, dans les deux thèmes */
     box-shadow:
@@ -365,13 +372,20 @@
   .btn-cta:active {
     filter: brightness(0.96);
   }
+  /* Variante inverse : un bloc de cuir à libellé de terre cuite.
+     Depuis que le bouton principal EST la brique, une variante « accent » de
+     la même couleur ne serait qu'un doublon. Celle-ci dit autre chose — c'est
+     l'action de second rang, celle qu'on propose sans la réclamer. La bordure
+     n'est pas décorative : la nuit, le cuir et le fond se ressemblent trop
+     pour que le bloc se détache seul. */
   .btn-accent {
-    background-image: linear-gradient(180deg, var(--accent-solid-bright) 0%, var(--accent-solid) 100%);
-    color: var(--accent-on);
-    box-shadow: var(--accent-glow);
+    background-color: var(--structure-1);
+    border: 1px solid var(--border-defined);
+    color: var(--accent-solid-bright);
+    box-shadow: var(--sheen-soft), var(--elevation-1);
   }
   .btn-accent:hover {
-    filter: brightness(1.04);
+    background-color: var(--structure-2);
   }
   .btn-soft {
     background-color: var(--surface-glass-strong);
@@ -417,9 +431,12 @@
   /* ————— Coque de l'application ————— */
   /* En-tête : masse structurelle le jour, verre flouté la nuit — la recette
      est dans `--header-bg`, la règle ne change pas. */
+  /* En-tête : un aplat de cuir, souligné d'une couture de terre cuite.
+     Le trait fait 2 px et non 1 : à 1 px il se lit comme une bordure
+     technique, à 2 px comme une couture. */
   .app-header {
     background: var(--header-bg);
-    border-bottom: 1px solid var(--structure-line);
+    border-bottom: 2px solid var(--header-rule);
     color: var(--text-on-structure);
     backdrop-filter: blur(12px) saturate(1.1);
     -webkit-backdrop-filter: blur(12px) saturate(1.1);
