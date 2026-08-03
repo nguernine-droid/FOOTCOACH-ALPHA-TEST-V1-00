@@ -38,6 +38,20 @@ export function respectsFffNotice(matchDate: string, announcedOn: string): boole
 }
 
 /**
+ * Version des documents contractuels en vigueur — CGU et politique de
+ * confidentialité, publiées ensemble sur le site.
+ *
+ * C'est ELLE qui est enregistrée avec l'acceptation, pas la date seule : une
+ * acceptation ne vaut que pour un texte précis. Le jour où les CGU changent sur
+ * un point substantiel, cette constante est incrémentée et les comptes dont la
+ * version enregistrée est antérieure doivent se prononcer de nouveau.
+ *
+ * À tenir aligné sur l'en-tête de `site/cgu.html` (« Version : 1 »).
+ */
+export const LEGAL_VERSION = "1";
+export const LEGAL_UPDATED_AT = "2026-07-29";
+
+/**
  * Cycle de vie d'un match : le coach saisit le score final à la fin de la
  * rencontre (`awaiting_confirmation`), puis le coach adverse le valide en
  * scannant le QR code affiché — c'est cette validation qui clôt le match.
@@ -290,6 +304,15 @@ export const createTeamSchema = z.object({
 });
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 
+/**
+ * Acceptation exigée à l'inscription. `z.literal(true)` et non `z.boolean()` :
+ * le champ absent, `false`, ou n'importe quoi d'autre fait échouer la requête.
+ * La case décochée ne peut donc pas créer de compte, même en contournant
+ * l'interface — l'acceptation est vérifiée là où elle a une valeur, au serveur.
+ */
+const acceptedSchema = (subject: string) =>
+  z.literal(true, { errorMap: () => ({ message: `Acceptation requise : ${subject}` }) });
+
 export const registerCoachSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
@@ -297,6 +320,12 @@ export const registerCoachSchema = z.object({
   password: chosenPasswordSchema,
   teamName: z.string().min(2).max(60),
   teamCity: z.string().min(1).max(60),
+  // Deux acceptations distinctes, et non une case unique fourre-tout : la
+  // clause de responsabilité (déclaration à la fédération, licences, transport)
+  // est celle qui protège réellement l'éditeur. Acceptée à part, elle ne peut
+  // pas être présentée comme noyée dans un renvoi aux conditions générales.
+  acceptTerms: acceptedSchema("conditions générales d'utilisation"),
+  acceptResponsibility: acceptedSchema("responsabilités du coach et de son club"),
 });
 export type RegisterCoachInput = z.infer<typeof registerCoachSchema>;
 

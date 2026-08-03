@@ -61,16 +61,39 @@ test("un mot de passe convenable passe, sans exigence de gymnastique", () => {
   }
 });
 
+const INSCRIPTION = {
+  firstName: "Alex",
+  lastName: "Martin",
+  email: "alex@exemple.fr",
+  teamName: "FC Exemple",
+  teamCity: "Lyon",
+  acceptTerms: true,
+  acceptResponsibility: true,
+} as const;
+
 test("l'inscription applique la politique", () => {
-  const base = {
-    firstName: "Alex",
-    lastName: "Martin",
-    email: "alex@exemple.fr",
-    teamName: "FC Exemple",
-    teamCity: "Lyon",
-  };
-  assert.equal(registerCoachSchema.safeParse({ ...base, password: "azerty12" }).success, false);
-  assert.equal(registerCoachSchema.safeParse({ ...base, password: BON }).success, true);
+  assert.equal(registerCoachSchema.safeParse({ ...INSCRIPTION, password: "azerty12" }).success, false);
+  assert.equal(registerCoachSchema.safeParse({ ...INSCRIPTION, password: BON }).success, true);
+});
+
+test("sans les deux acceptations, l'inscription est refusée par le serveur", () => {
+  // Le vrai point de contrôle. L'interface empêche déjà de valider sans cocher,
+  // mais l'interface n'est pas une preuve : c'est ici que ça se joue, et une
+  // case simplement absente doit échouer autant qu'une case à `false`.
+  for (const manquant of [
+    { acceptTerms: false },
+    { acceptResponsibility: false },
+    { acceptTerms: undefined },
+    { acceptResponsibility: undefined },
+    { acceptTerms: "oui" },
+  ]) {
+    const candidat = { ...INSCRIPTION, password: BON, ...manquant };
+    assert.equal(
+      registerCoachSchema.safeParse(candidat).success,
+      false,
+      `${JSON.stringify(manquant)} ne doit pas créer de compte`,
+    );
+  }
 });
 
 test("la CONNEXION reste à 8 : ne pas verrouiller dehors les comptes existants", () => {

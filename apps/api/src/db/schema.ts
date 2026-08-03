@@ -91,6 +91,13 @@ export const users = pgTable("users", {
   notifyScore: boolean("notify_score").notNull().default(true),
   // Compte désactivé par l'admin : connexion et refresh refusés
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  // ————— Acceptation des conditions —————
+  // Trace de l'acceptation donnée à l'inscription : quand, et pour QUEL texte.
+  // La version compte autant que la date — une acceptation ne vaut que pour le
+  // texte qu'elle visait. Nullable : les comptes créés avant la mise en place
+  // de l'écran d'acceptation n'ont rien accepté, et cela doit se voir.
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
