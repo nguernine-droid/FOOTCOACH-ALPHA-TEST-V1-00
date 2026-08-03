@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import {
   createTeamSchema,
   registerCoachSchema,
+  LEGAL_VERSION,
   type AuthResponseDto,
   type CoachTeamDto,
 } from "@footcoach/shared";
@@ -35,6 +36,10 @@ async function buildAuthResponse(user: typeof users.$inferSelect): Promise<AuthR
 export function registrationRoutes(app: FastifyInstance) {
   // Inscription coach : crée le compte ET son équipe en une fois. Plafonnée par
   // adresse — sans cela la table des comptes se remplit sans effort.
+  //
+  // Le schéma exige les deux acceptations (`z.literal(true)`) : un corps de
+  // requête sans elles n'atteint jamais l'insertion. C'est délibérément le
+  // serveur qui tranche — une case cochée dans un navigateur ne prouve rien.
   app.post("/auth/register-coach", registerRateLimit, async (request, reply): Promise<AuthResponseDto> => {
     const input = registerCoachSchema.parse(request.body);
     await assertEmailFree(input.email);
@@ -49,6 +54,11 @@ export function registrationRoutes(app: FastifyInstance) {
           role: "coach",
           firstName: input.firstName,
           lastName: input.lastName,
+          // Horodatage pris ici, à l'insertion : c'est l'instant où le compte
+          // naît de cette acceptation. La version dit à quel texte elle se
+          // rapporte — sans elle, la trace ne prouverait rien de précis.
+          termsAcceptedAt: new Date(),
+          termsVersion: LEGAL_VERSION,
         })
         .returning();
       const coords = cityCoords(input.teamCity);

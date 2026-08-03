@@ -7,6 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import { PASSWORD_MIN_LENGTH, passwordProblem } from "@footcoach/shared";
 import { register } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
+import { LegalConsent } from "@/components/LegalConsent";
+import { LEGAL_LINKS } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
 // Inscription volontairement découpée en petites étapes :
@@ -67,6 +69,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", teamName: "", teamCity: "" });
+  // Les deux acceptations vivent hors de `form` : ce sont des booléens, et
+  // surtout ils ne partent jamais d'une valeur « déjà donnée ».
+  const [consent, setConsent] = useState({ responsibility: false, terms: false });
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -97,11 +102,15 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   async function finish(e: React.FormEvent) {
     e.preventDefault();
     setTouched(true);
-    if (!form.teamName.trim() || !form.teamCity.trim()) return;
+    if (!consent.responsibility || !consent.terms) return;
     setLoading(true);
     setError(null);
     try {
-      await register("/auth/register-coach", form);
+      await register("/auth/register-coach", {
+        ...form,
+        acceptTerms: consent.terms,
+        acceptResponsibility: consent.responsibility,
+      });
       router.replace("/coach/team?bienvenue=1");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Inscription impossible");
@@ -111,7 +120,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-4">
-      <Dots total={3} current={step} />
+      <Dots total={4} current={step} />
       {step === 0 && (
         <StepCard title="Qui êtes-vous ?" subtitle="Commençons par votre nom." onBack={onBack}>
           <form
@@ -161,8 +170,15 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         </StepCard>
       )}
       {step === 2 && (
-        <StepCard title="Votre équipe" subtitle="Dernière étape ! Elle sera créée avec vous." onBack={() => setStep(1)}>
-          <form onSubmit={finish} noValidate className="space-y-4">
+        <StepCard title="Votre équipe" subtitle="Elle sera créée avec vous." onBack={() => setStep(1)}>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              advance(3, !form.teamName.trim() || !form.teamCity.trim());
+            }}
+            className="space-y-4"
+          >
             <div className="space-y-1.5">
               <label htmlFor="teamName" className="text-xs font-bold text-ink-soft">Nom de l&apos;équipe</label>
               <input id="teamName" autoComplete="organization" autoCapitalize="words" enterKeyHint="next" value={form.teamName} onChange={(e) => set("teamName", e.target.value)} className="field" placeholder="FC Exemple" />
@@ -173,6 +189,23 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
               <input id="teamCity" autoComplete="address-level2" autoCapitalize="words" enterKeyHint="done" value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
               {touched && !form.teamCity.trim() && <FieldError id="teamCity-error">Indiquez la ville de l&apos;équipe.</FieldError>}
             </div>
+            <Button type="submit" size="lg" className="w-full">Continuer</Button>
+          </form>
+        </StepCard>
+      )}
+      {step === 3 && (
+        <StepCard
+          title="À savoir avant de commencer"
+          subtitle="Ce que l'application fait — et ce qu'elle ne fait pas à votre place."
+          onBack={() => setStep(2)}
+        >
+          <form onSubmit={finish} noValidate className="space-y-4">
+            <LegalConsent
+              responsibility={consent.responsibility}
+              terms={consent.terms}
+              onChange={(key, value) => setConsent((c) => ({ ...c, [key]: value }))}
+              showErrors={touched}
+            />
             {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
               {loading ? "Création…" : "Créer mon compte et mon équipe"}
@@ -211,6 +244,20 @@ function RegisterContent() {
             Se connecter
           </Link>
         </div>
+
+        {/* Les mentions légales doivent rester atteignables sans compte : c'est
+            la seule page qui dit qui édite le service et comment le joindre. */}
+        <nav aria-label="Informations légales" className="flex justify-center gap-3 text-[11px] text-ink-faint">
+          <a href={LEGAL_LINKS.legalNotice} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Mentions légales
+          </a>
+          <a href={LEGAL_LINKS.cgu} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            CGU
+          </a>
+          <a href={LEGAL_LINKS.privacy} target="_blank" rel="noopener noreferrer" className="hover:underline">
+            Confidentialité
+          </a>
+        </nav>
       </div>
     </div>
   );
