@@ -1,46 +1,59 @@
 # Sources graphiques
 
-`logo.png` est **la source** du logo FootCoach : marque bleue `#124BCB` sur fond
-transparent. Ce dossier n'est pas servi par Next — seul `public/` l'est. Les
-fichiers réellement livrés au navigateur en sont dérivés.
+`icon.svg` est **la source** des icônes de l'application. Ce dossier n'est pas
+servi par Next — seuls `public/` et `src/app/` le sont ; les fichiers livrés au
+navigateur en sont dérivés.
 
 | Dérivé | Rôle | Format |
 | --- | --- | --- |
-| `../public/logo.png` | Logo dans l'app (header, écran de connexion) | 256×256, transparent |
-| `../src/app/icon.png` | Favicon et icône PWA (`any` + `maskable`) | 512×512, fond blanc, marque à 72 % |
-| `../src/app/apple-icon.png` | Écran d'accueil iOS | 180×180, fond blanc opaque |
+| `../src/app/icon.png` | Favicon et icône PWA (`any` + `maskable`) | 512×512, fond perdu opaque |
+| `../src/app/apple-icon.png` | Écran d'accueil iOS | 180×180, fond perdu opaque |
 
-Le fond blanc des icônes n'est pas un choix esthétique : un masque circulaire ou
-en squircle rogne les bords, et iOS ne gère pas la transparence sur l'écran
-d'accueil. La marge à 72 % garantit que le logo n'est jamais coupé.
+Le fond perdu opaque n'est pas un choix esthétique : les systèmes appliquent
+leur propre masque — cercle sur Android, squircle sur iOS — et un coin arrondi
+dessiné se verrait comme un liseré à l'intérieur du masque. iOS, de son côté,
+ne gère pas la transparence sur l'écran d'accueil. La marque occupe 62 % du
+côté, donc elle tient dans la zone de sécurité `maskable` (le cercle intérieur
+de 80 %) quel que soit le rognage.
 
-## Régénérer après un changement de logo
+## Régénérer après un changement de marque
 
-Remplacer `logo.png`, puis depuis la racine du dépôt :
+`icon.svg` reprend le dessin de `../src/components/Logo.tsx`, mais avec des
+**couleurs littérales** : un SVG rasterisé hors du navigateur n'a aucune
+feuille de style à interroger. Les deux fichiers changent donc ensemble, et les
+valeurs d'`icon.svg` doivent rester alignées sur `../src/app/tokens.css`.
+
+Depuis la racine du dépôt :
 
 ```bash
-node -e "
-const sharp=require('sharp');
-(async()=>{
-  const src='apps/web/img/logo.png';
-  const trimmed=await sharp(src).trim({threshold:10}).png().toBuffer();
-  await sharp(trimmed).resize(256,256,{fit:'contain',background:{r:0,g:0,b:0,alpha:0}})
-    .png({compressionLevel:9,palette:true}).toFile('apps/web/public/logo.png');
-  const mark=await sharp(trimmed).resize(368,368,{fit:'contain',background:{r:0,g:0,b:0,alpha:0}}).toBuffer();
-  await sharp({create:{width:512,height:512,channels:4,background:'#ffffff'}})
-    .composite([{input:mark,gravity:'center'}]).png({compressionLevel:9}).toFile('apps/web/src/app/icon.png');
-  const ios=await sharp(trimmed).resize(132,132,{fit:'contain',background:{r:0,g:0,b:0,alpha:0}}).toBuffer();
-  await sharp({create:{width:180,height:180,channels:4,background:'#ffffff'}})
-    .composite([{input:ios,gravity:'center'}]).png({compressionLevel:9}).toFile('apps/web/src/app/apple-icon.png');
-})();
-"
+docker compose exec -T web sh -c 'cat > /tmp/icon.svg' < apps/web/img/icon.svg
+docker compose exec -T web node --input-type=module -e "$(cat apps/web/img/make-icons.mjs)"
 ```
+
+Le SVG passe par `/tmp` du conteneur parce que `apps/web/img/` n'y est pas
+monté (seuls `src/` et `public/` le sont). Les PNG, eux, sont écrits dans
+`src/app/`, qui est monté : ils atterrissent bien sur l'hôte.
 
 `sharp` est déjà présent (dépendance de Next).
 
-## À savoir
+## Vérifier
 
-La marque bleue tombe à **2,35:1 de contraste sur le header navy** : elle y est
-donc portée par une pastille blanche (voir `src/components/Logo.tsx`). Une
-déclinaison monochrome blanche permettrait de la poser directement sur le navy,
-sans pastille.
+```bash
+docker compose exec -T web node -e "
+const s=require('sharp');
+for (const f of ['icon','apple-icon'])
+  s('/app/apps/web/src/app/'+f+'.png').metadata().then(m=>console.log(f,m.width+'×'+m.height,m.channels+' canaux'));
+"
+```
+
+Une icône `maskable` se contrôle à l'œil en superposant mentalement un cercle
+inscrit : rien d'essentiel ne doit en sortir.
+
+## Reste de l'ancienne direction
+
+`logo.png` (marque bleue `#124BCB` sur fond transparent) était la source du
+temps où la marque était une image matricielle, portée par une pastille
+blanche. Elle n'est plus utilisée nulle part : le logo de l'application est
+désormais dessiné en SVG et en jetons dans `Logo.tsx`, et les icônes viennent
+d'`icon.svg`. Le fichier est conservé comme archive de l'ancienne identité.
+`../public/logo.png` en est le dérivé, lui aussi sans usage.
