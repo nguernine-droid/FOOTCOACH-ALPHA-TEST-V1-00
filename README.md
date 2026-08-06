@@ -364,6 +364,7 @@ Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Moi**.
 
 - Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets. Sur un formulaire de création, il **pivote pour devenir un « ✓ »** qui valide — grisé tant que le genre de l'équipe n'est pas choisi.
 - La feuille **« Moi »** rassemble l'identité, l'**équipe active**, **Mon profil**, **Mes relations**, **Mes équipes**, l'**agenda** et les **notifications** (avec pastille de non-lus). Sur desktop, où la barre basse n'existe pas, l'avatar du header ouvre la même feuille.
+- Le **bloc d'identité en haut de la feuille** mène à la **carte du coach** (`/coach/card`) : photo au centre, points à la place de la note, catégorie d'âge de l'équipe à celle du poste, nom, club, puis matchs joués et palier. Les casquettes s'y affichent en pastilles. Format portrait 5/7 — c'est ce rapport qui la fait lire comme une carte et non comme une fiche. Les autres rôles n'en ont pas : elle parle de points et de matchs encadrés.
 - Le **radar** vit dans le **tableau de bord** ; `/coach/radar` y redirige.
 - **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.
 

@@ -160,19 +160,40 @@ export function AccountSheet({
 
   return (
     <BottomSheet label="Mon compte" onClose={onClose} footer={footer}>
-      {/* Identité — lecture seule */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
-        <div className="min-w-0">
-          <p className="text-base font-black truncate">
-            {user.firstName} {user.lastName}
-          </p>
-          <p className="text-xs text-ink-soft font-semibold truncate">
-            {ROLE_LABELS[user.role]}
-            {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
-          </p>
+      {/* Identité — mène à la carte du coach. Les autres rôles n'en ont pas :
+          la carte parle de points et de matchs encadrés. */}
+      {isCoach ? (
+        <Link
+          href="/coach/card"
+          onClick={onClose}
+          className="flex items-center gap-3 px-5 py-4 w-full text-left transition hover:bg-paper active:bg-paper"
+        >
+          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-black truncate">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="text-xs text-ink-soft font-semibold truncate">
+              {ROLE_LABELS[user.role]}
+              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
+            </p>
+          </div>
+          <span className="chip bg-accent-surface text-accent shrink-0">Ma carte</span>
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3 px-5 py-4">
+          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
+          <div className="min-w-0">
+            <p className="text-base font-black truncate">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="text-xs text-ink-soft font-semibold truncate">
+              {ROLE_LABELS[user.role]}
+              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Équipe active : la bascule n'a de sens qu'à partir de deux équipes */}
       {isCoach && teams.length > 1 && (

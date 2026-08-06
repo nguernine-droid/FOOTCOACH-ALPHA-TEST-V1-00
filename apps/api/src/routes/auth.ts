@@ -30,6 +30,7 @@ import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js"
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
 import { originOf } from "../lib/coachOrigin.js";
+import { matchesPlayedBy } from "../lib/coachStats.js";
 import { totalPointsOf } from "../lib/points.js";
 import { authRateLimit } from "../lib/rateLimits.js";
 import {
@@ -124,9 +125,11 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
   // Position effective du coach : la sienne, ou à défaut la ville de son équipe
   let location: CoachLocationDto | null = null;
   let points = 0;
+  let matchesPlayed = 0;
   if (user.role === "coach") {
     coachCode = await ensureCoachCode(user);
     points = await totalPointsOf(user.id);
+    matchesPlayed = await matchesPlayedBy(user.id);
     coachTeams = await getCoachTeams(user.id);
     teamId = coachTeams[0]?.id ?? null;
     teamName = coachTeams[0]?.name ?? null;
@@ -166,6 +169,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
           points,
           level: levelForPoints(points),
           categories: asCoachCategories(user.coachCategories),
+          matchesPlayed,
           notifications: {
             newAnnouncement: user.notifyNewAnnouncement,
             announcementResponse: user.notifyAnnouncementResponse,

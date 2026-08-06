@@ -660,6 +660,8 @@ export interface UserDto {
   level?: CoachLevelDto;
   /** Coach : ses casquettes (tableau vide = simple coach) */
   categories?: CoachCategory[];
+  /** Coach : matchs terminés par les équipes qu'il encadre — son compteur d'expérience */
+  matchesPlayed?: number;
 }
 
 /** Point de référence d'un coach pour les distances, le radar et les alertes */
