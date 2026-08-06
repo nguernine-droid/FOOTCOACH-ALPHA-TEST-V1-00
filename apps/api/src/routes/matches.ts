@@ -1,22 +1,28 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { alias } from "drizzle-orm/pg-core";
-import { desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, isNull, or } from "drizzle-orm";
 import {
   idParamSchema,
-  confirmScoreSchema,
+  confirmEncounterSchema,
   finalScoreSchema,
+  levelForPoints,
   withdrawMatchSchema,
+  MATCH_POINTS,
+  POINTS_COOLDOWN_DAYS,
+  type EncounterResultDto,
   type MatchDetailDto,
   type MatchDto,
+  type PointReason,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
+import { announcementResponses, coachPoints, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { cityCoords } from "../lib/cities.js";
+import { pairOnCooldown, totalPointsOf } from "../lib/points.js";
 import { tokensMatch } from "../lib/tokens.js";
-import { notifyScoreToConfirm, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
+import { notifyScoreRecorded, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
 
 const homeTeam = alias(teams, "home_team");
 const awayTeam = alias(teams, "away_team");
@@ -39,10 +45,18 @@ function kickoffPassed(match: typeof matches.$inferSelect): boolean {
   return new Date(`${match.date}T${match.time}`).getTime() <= Date.now();
 }
 
+/**
+ * Le scan de rencontre n'a de sens qu'à partir du JOUR du match, pas de l'heure
+ * du coup d'envoi : les coachs se croisent souvent bien avant, à l'arrivée du
+ * car ou au vestiaire. Avant ce jour-là, il n'y a rien à attester.
+ *
+ * La borne est calculée côté serveur : l'horloge d'un téléphone se règle.
+ */
+function encounterDayReached(match: typeof matches.$inferSelect): boolean {
+  return new Date(`${match.date}T00:00`).getTime() <= Date.now();
+}
+
 function toDto({ match, home, away }: MatchRow, viewerTeamId: string | null): MatchDto {
-  // Le jeton du QR n'est rendu qu'au coach qui a saisi le score : c'est lui qui
-  // l'affiche, l'autre l'obtient en scannant.
-  const isSubmitter = viewerTeamId != null && viewerTeamId === match.scoreSubmittedByTeamId;
   return {
     id: match.id,
     homeTeam: { id: home.id, name: home.name, city: home.city },
@@ -55,9 +69,13 @@ function toDto({ match, home, away }: MatchRow, viewerTeamId: string | null): Ma
     awayScore: match.awayScore,
     mySide: viewerTeamId === match.homeTeamId ? "home" : viewerTeamId === match.awayTeamId ? "away" : null,
     scoreSubmittedByTeamId: match.scoreSubmittedByTeamId,
-    scoreConfirmedAt: match.scoreConfirmedAt?.toISOString() ?? null,
-    confirmationToken: isSubmitter ? match.confirmationToken : null,
     finalScoreDue: kickoffPassed(match) && (match.status === "scheduled" || match.status === "live"),
+    encounterConfirmedAt: match.encounterConfirmedAt?.toISOString() ?? null,
+    encounterOpen: encounterDayReached(match) && match.status !== "cancelled",
+    // Jamais servi dans la liste : le jeton ne sort qu'au coach hôte qui demande
+    // explicitement à l'afficher (POST /matches/:id/encounter-qr), et qui est
+    // alors enregistré comme celui qui a tenu l'écran.
+    encounterToken: null,
     withdrawnByTeamId: match.withdrawnByTeamId,
     withdrawalReason: match.withdrawalReason,
     withdrawalDetails: match.withdrawalDetails,
@@ -148,15 +166,33 @@ export function matchRoutes(app: FastifyInstance) {
         .where(eq(matches.id, id));
 
       if (iAmHome) {
-        // Le SOS d'un cycle précédent n'a plus d'objet : l'annonce est éteinte.
+        // Le SOS d'un cycle précédent n'a plus d'objet : l'annonce est éteinte,
+        // et la relance qui lui restait due avec elle.
         await tx
           .update(matchAnnouncements)
-          .set({ status: "cancelled", isSos: false, sosReason: null, sosDetails: null })
+          .set({
+            status: "cancelled",
+            isSos: false,
+            sosReason: null,
+            sosDetails: null,
+            sosAlertedAt: null,
+            sosWidenedAt: null,
+          })
           .where(eq(matchAnnouncements.id, match.announcementId));
       } else {
         await tx
           .update(matchAnnouncements)
-          .set({ status: "open", isSos: true, sosReason: input.reason, sosDetails: details })
+          .set({
+            status: "open",
+            isSos: true,
+            sosReason: input.reason,
+            sosDetails: details,
+            // Départ du compte à rebours : les jokers sont alertés maintenant,
+            // les autres coachs le seront faute de réponse. `sosWidenedAt`
+            // repart à NULL — un second désistement rouvre un cycle entier.
+            sosAlertedAt: new Date(),
+            sosWidenedAt: null,
+          })
           .where(eq(matchAnnouncements.id, match.announcementId));
         await tx
           .delete(announcementResponses)
@@ -207,10 +243,124 @@ export function matchRoutes(app: FastifyInstance) {
   });
 
   /**
-   * Saisie du score final par l'un des deux coachs. Le match passe en attente de
-   * validation et un jeton est émis : c'est le contenu du QR code que le coach
-   * adverse devra scanner. Une nouvelle saisie régénère le jeton, ce qui
-   * invalide le QR précédemment affiché.
+   * Le QR de rencontre, servi au coach de l'équipe qui REÇOIT — celle dont
+   * l'annonce est à l'origine du match. Le sens est fixe, contrairement à
+   * l'ancienne validation du score où c'était le premier qui saisissait qui
+   * montrait : ici, l'hôte reçoit chez lui, c'est lui qui tient l'écran.
+   *
+   * Une écriture, donc un POST : l'appel retient QUEL coach a affiché le QR.
+   * C'est lui qui touchera les points côté hôte, et non « le coach principal »
+   * — l'adjoint qui encadre réellement le déplacement ne doit pas être effacé.
+   *
+   * Le jeton est créé au premier affichage et ne change plus : le régénérer
+   * invaliderait le QR déjà ouvert sur le téléphone d'à côté.
+   */
+  app.post("/matches/:id/encounter-qr", { preHandler: requireRole("coach") }, async (request) => {
+    const { id } = idParamSchema.parse(request.params);
+    const { match } = await getMatchOr404(id);
+    assertCoachOfMatch(match, request.user.teamId);
+    if (match.status === "cancelled") throw new HttpError(400, "Ce match a été annulé");
+    if (request.user.teamId !== match.homeTeamId) {
+      throw new HttpError(403, "C'est l'équipe qui reçoit qui montre le QR code");
+    }
+    if (match.encounterConfirmedAt) throw new HttpError(400, "La rencontre est déjà validée");
+    if (!encounterDayReached(match)) {
+      throw new HttpError(400, "Le QR code de rencontre s'ouvre le jour du match");
+    }
+
+    const token = match.encounterToken ?? crypto.randomBytes(24).toString("base64url");
+    await db
+      .update(matches)
+      .set({ encounterToken: token, encounterTokenCoachId: request.user.id })
+      .where(eq(matches.id, id));
+    return { token };
+  });
+
+  /**
+   * Validation de la rencontre par le coach qui s'est DÉPLACÉ. Deux garde-fous
+   * cumulés : il doit être le coach de l'équipe visiteuse, et présenter le
+   * jeton du QR — qu'il ne peut obtenir qu'en le scannant sur l'écran d'en
+   * face. C'est ce qui rend l'attestation impossible à distance, et donc les
+   * points impossibles à réclamer sans s'être déplacé.
+   *
+   * Les deux coachs gagnent 10 points ; celui qui répond à un SOS en gagne 20.
+   * Sauf si ces deux équipes se sont déjà rencontrées contre points dans les
+   * trente derniers jours : la rencontre est alors validée sans rien rapporter.
+   */
+  app.post("/matches/:id/confirm-encounter", { preHandler: requireRole("coach") }, async (request): Promise<EncounterResultDto> => {
+    const { id } = idParamSchema.parse(request.params);
+    const input = confirmEncounterSchema.parse(request.body);
+    const { match } = await getMatchOr404(id);
+    assertCoachOfMatch(match, request.user.teamId);
+
+    if (match.status === "cancelled") throw new HttpError(400, "Ce match a été annulé");
+    if (match.encounterConfirmedAt) throw new HttpError(400, "Cette rencontre est déjà validée");
+    if (request.user.teamId !== match.awayTeamId) {
+      throw new HttpError(403, "C'est le coach qui se déplace qui scanne le QR code");
+    }
+    if (!match.encounterToken) {
+      throw new HttpError(400, "Le coach qui reçoit n'a pas encore affiché son QR code");
+    }
+    // Comparaison à durée constante. Une comparaison de chaînes s'arrête au
+    // premier octet qui diffère : sa durée renseigne sur le nombre d'octets
+    // corrects. L'exploitation est ici très théorique — le jeton fait 24 octets
+    // aléatoires, l'appelant doit déjà être le coach de l'équipe visiteuse, et
+    // le bruit réseau noie l'écart — mais un jeton d'authentification ne se
+    // compare pas autrement, et cela ne coûte rien.
+    if (!tokensMatch(input.token, match.encounterToken)) {
+      throw new HttpError(400, "QR code invalide — demandez au coach de réafficher le sien");
+    }
+
+    // Le bonus tient à l'état de l'annonce AU MOMENT où elle a été reprise :
+    // `is_sos` retombe une fois l'annonce pourvue, il faut donc le lire avant.
+    const [announcement] = await db
+      .select({ isSos: matchAnnouncements.isSos })
+      .from(matchAnnouncements)
+      .where(eq(matchAnnouncements.id, match.announcementId));
+    const wasSos = announcement?.isSos ?? false;
+    const reason: PointReason = wasSos ? "sos" : "rencontre";
+
+    const onCooldown = await pairOnCooldown(match.homeTeamId, match.awayTeamId);
+    const scannerPoints = onCooldown ? 0 : wasSos ? MATCH_POINTS.sosResponder : MATCH_POINTS.rencontre;
+    const hostPoints = onCooldown ? 0 : MATCH_POINTS.rencontre;
+
+    await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(matches)
+        .set({ encounterConfirmedAt: new Date(), encounterConfirmedByCoachId: request.user.id })
+        .where(and(eq(matches.id, id), isNull(matches.encounterConfirmedAt)))
+        .returning({ id: matches.id });
+      // Deux scans simultanés : le second ne trouve plus la rencontre ouverte
+      // et repart sans créditer quoi que ce soit.
+      if (!updated) throw new HttpError(400, "Cette rencontre vient d'être validée");
+
+      if (onCooldown) return;
+      const awards = [{ coachId: request.user.id, points: scannerPoints, reason }];
+      // Côté hôte, seul le coach qui a tenu l'écran est crédité. S'il manque,
+      // c'est que le QR n'a jamais été demandé — auquel cas on n'en est pas là.
+      if (match.encounterTokenCoachId && match.encounterTokenCoachId !== request.user.id) {
+        awards.push({ coachId: match.encounterTokenCoachId, points: hostPoints, reason: "rencontre" });
+      }
+      await tx.insert(coachPoints).values(awards.map((a) => ({ ...a, matchId: id })));
+    });
+
+    const totalPoints = await totalPointsOf(request.user.id);
+    return {
+      pointsAwarded: scannerPoints,
+      reason,
+      cappedByCooldown: onCooldown,
+      totalPoints,
+      level: levelForPoints(totalPoints),
+    };
+  });
+
+  /**
+   * Saisie du score final par l'un des deux coachs — elle clôt le match.
+   *
+   * Plus de contre-signature : c'est le scan de rencontre, plus tôt dans la
+   * journée, qui atteste que les deux équipes se sont bien retrouvées. Le score
+   * reste donc la parole d'un seul coach ; il est corrigeable tant que personne
+   * n'a rien à y redire, ce que l'ancienne validation figeait.
    */
   app.post("/matches/:id/final-score", { preHandler: requireRole("coach") }, async (request) => {
     const { id } = idParamSchema.parse(request.params);
@@ -218,65 +368,29 @@ export function matchRoutes(app: FastifyInstance) {
     const { match } = await getMatchOr404(id);
     assertCoachOfMatch(match, request.user.teamId);
     if (match.status === "cancelled") throw new HttpError(400, "Ce match a été annulé");
-    if (match.status === "finished") throw new HttpError(400, "Le score de ce match a déjà été validé");
     if (!kickoffPassed(match)) throw new HttpError(400, "Le match n'a pas encore eu lieu");
 
-    const token = crypto.randomBytes(24).toString("base64url");
     await db
       .update(matches)
       .set({
         homeScore: input.homeScore,
         awayScore: input.awayScore,
-        status: "awaiting_confirmation",
+        status: "finished",
         scoreSubmittedByTeamId: request.user.teamId,
         scoreSubmittedAt: new Date(),
-        confirmationToken: token,
       })
       .where(eq(matches.id, id));
 
-    // Le coach adverse doit scanner ce QR : on le prévient tout de suite
+    // Le coach adverse n'a plus rien à valider, mais il doit savoir ce qui a
+    // été inscrit : c'est la seule chose qui lui permet de le contester.
     const opponentTeamId = match.homeTeamId === request.user.teamId ? match.awayTeamId : match.homeTeamId;
     const [submitter] = await db.select().from(teams).where(eq(teams.id, request.user.teamId!));
-    notifyScoreToConfirm({
+    notifyScoreRecorded({
       opponentTeamId,
       submittedByTeamName: submitter?.name ?? "L'équipe adverse",
+      score: `${input.homeScore} – ${input.awayScore}`,
       matchId: id,
     });
-    return { token };
-  });
-
-  /**
-   * Validation par le coach adverse. Deux garde-fous cumulés : il doit être le
-   * coach de l'AUTRE équipe, et présenter le jeton du QR — qu'il ne peut obtenir
-   * qu'en scannant l'écran de son homologue.
-   */
-  app.post("/matches/:id/confirm-score", { preHandler: requireRole("coach") }, async (request) => {
-    const { id } = idParamSchema.parse(request.params);
-    const input = confirmScoreSchema.parse(request.body);
-    const { match } = await getMatchOr404(id);
-    assertCoachOfMatch(match, request.user.teamId);
-
-    if (match.status === "finished") throw new HttpError(400, "Le score de ce match a déjà été validé");
-    if (match.status !== "awaiting_confirmation" || !match.confirmationToken) {
-      throw new HttpError(400, "Aucun score en attente de validation sur ce match");
-    }
-    if (request.user.teamId === match.scoreSubmittedByTeamId) {
-      throw new HttpError(403, "Le score doit être validé par le coach adverse");
-    }
-    // Comparaison à durée constante. Une comparaison de chaînes s'arrête au
-    // premier octet qui diffère : sa durée renseigne sur le nombre d'octets
-    // corrects. L'exploitation est ici très théorique — le jeton fait 24 octets
-    // aléatoires, l'appelant doit déjà être le coach de l'équipe adverse, et le
-    // bruit réseau noie l'écart — mais un jeton d'authentification ne se compare
-    // pas autrement, et cela ne coûte rien.
-    if (!tokensMatch(input.token, match.confirmationToken)) {
-      throw new HttpError(400, "QR code invalide ou périmé — demandez au coach de réafficher le sien");
-    }
-
-    await db
-      .update(matches)
-      .set({ status: "finished", scoreConfirmedAt: new Date(), confirmationToken: null })
-      .where(eq(matches.id, id));
     return { ok: true };
   });
 }

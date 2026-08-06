@@ -4,23 +4,61 @@ La **V1 est volontairement restreinte à la gestion des matchs amicaux entre coa
 
 | Rôle | Ce qu'il peut faire |
 |---|---|
-| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé), puis saisir le **score final** et le faire valider par le coach adverse |
+| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé), **valider la rencontre au stade** en se scannant avec le coach adverse (ce qui rapporte des points), puis saisir le **score final** |
 | **Admin** | Gérer les comptes coachs (réinitialisation de mot de passe, désactivation), consulter les statistiques |
 
 Il n'y a **pas de comptes joueur ni parent** : tout ce qui en dépendait (effectif, présences, composition d'équipe, covoiturage, temps forts) a été retiré. Les rôles **supporter et club** restent implémentés mais **masqués** : leur connexion est refusée par l'API. Voir « Ce qui est masqué en V1 » plus bas.
 
 L'application est **conçue pour être utilisée à une main sur un téléphone** et **installable sur l'écran d'accueil** — voir « Ergonomie mobile » et « Installation ».
 
-### Score final validé par les deux coachs
+### La rencontre validée au stade, et les points
 
-Un match ne se clôt pas sur la parole d'un seul coach :
+Ce qui atteste qu'un match a eu lieu n'est pas le score, mais le **face-à-face des deux coachs** :
 
-1. la rencontre passée, le match affiche **« Score final à saisir »** tant que rien n'est enregistré (bandeau sur le tableau de bord, la liste des matchs et la feuille de match) ;
-2. l'un des deux coachs saisit le score → le match passe en `awaiting_confirmation` et un **QR code** s'affiche sur son écran ;
-3. le coach adverse ouvre le même match et **scanne ce QR code depuis l'application** (sa caméra s'ouvre dans la page) ;
-4. le score est alors validé et le match passe en `finished`.
+1. le jour du match, la feuille affiche **« Rencontre à valider »** (tableau de bord, liste des matchs, feuille de match) ;
+2. le coach de l'équipe qui **reçoit** — celle dont l'annonce est à l'origine du match — affiche un **QR code** ;
+3. le coach qui **s'est déplacé** le scanne depuis son application, face à lui ;
+4. la rencontre est validée, et **les deux coachs gagnent des points**.
 
-Deux garde-fous cumulés : la validation n'est acceptée que du coach de l'**autre** équipe, et seulement avec le **jeton** contenu dans le QR — jeton qui n'est jamais renvoyé à l'adversaire par l'API, il ne peut l'obtenir qu'en voyant l'écran. Corriger le score régénère le jeton, ce qui invalide le QR précédent.
+Le sens est imposé : l'API refuse que le visiteur affiche le QR (403) comme que l'hôte se valide lui-même (403). Le **jeton** du QR n'est jamais servi au visiteur par l'API — il ne peut l'obtenir qu'en voyant l'écran d'en face. C'est ce qui rend l'attestation impossible à distance, et donc les points impossibles à réclamer sans s'être déplacé.
+
+**Barème.** 10 points pour chacun des deux coachs. Le coach qui répond à une annonce repartie en **SOS** en gagne 20 : c'est lui qui dépanne, en reprenant un match qu'un autre vient d'abandonner. L'hôte reste à 10. Une même **paire d'équipes** ne rapporte qu'une fois tous les 30 jours — les rencontres suivantes sont bien validées, elles ne paient plus. Sans ce plafond, deux coachs complices fabriqueraient un palier en une soirée.
+
+### Casquettes du coach
+
+Un coach peut se donner des casquettes, **cumulables**, depuis **Mon profil → Mes casquettes**. N'en cocher aucune est le cas ordinaire et se lit « simple coach » — il n'y a pas de case pour dire non.
+
+| Casquette | Effet |
+|---|---|
+| **Joker** | Il accepte d'être alerté quand un coach de son secteur se retrouve sans adversaire. **Les alertes SOS ne partent qu'aux jokers**, et seulement à ceux dont le rayon couvre le lieu : se dire disponible n'est pas se dire ubiquiste. |
+| **Contributeur** | Décoratif pour l'instant — un badge sur sa fiche. La casquette prendra son sens en V2, elle est modélisée dès maintenant pour que les coachs puissent se déclarer sans attendre. |
+
+Se déclarer joker **est** l'abonnement aux SOS : le ciblage ne recoupe pas la préférence « nouvelle annonce », qui répond à une autre question. Un coach qui a coupé le flot des annonces neuves mais s'est déclaré joker veut précisément cela — n'être dérangé que quand quelqu'un est en panne.
+
+**Relance automatique, d'autant plus rapide que le match approche.** Si le SOS reste sans réponse, il est élargi à tous les coachs du secteur au bout d'un délai qui dépend de l'échéance (`SOS_WIDEN_DELAYS`) :
+
+| Match dans | Délai avant élargissement |
+|---|---|
+| aujourd'hui ou demain | **10 minutes** |
+| 2 à 6 jours | **30 minutes** |
+| 7 jours et plus | **60 minutes** |
+
+Une heure d'avance pour les jokers ne coûte rien sur un match dans quinze jours ; elle peut faire perdre la rencontre s'il se joue demain. À l'inverse, élargir en dix minutes un SOS lointain gaspille l'attention de tout un secteur.
+
+Les jokers sont exclus de la relance : ils ont déjà reçu le premier appel, les rappeler à l'ordre reviendrait à punir ceux qui se sont portés volontaires. Une seule proposition suffit à annuler la relance — même si l'émetteur n'a pas encore tranché, le SOS a fait son travail.
+
+Le différé vit en base (`match_announcements.sos_alerted_at` / `sos_widened_at`), balayé toutes les 2 minutes par `lib/sosRelay.ts` (index partiel `sos_pending_relay_idx`) :
+
+- **sûr à plusieurs répliques** — la relance est réclamée par un `UPDATE … WHERE sos_widened_at IS NULL … RETURNING`, si bien qu'un `docker compose up --scale api=3` n'envoie pas la notification trois fois ;
+- **survit aux redémarrages** — une passe a lieu au démarrage, ce qui rattrape les relances dues pendant un déploiement ;
+- **remis à zéro à chaque nouveau SOS** sur la même annonce : un second désistement rouvre un cycle entier ;
+- sans push configuré, rien n'est consommé — les annonces ne sont pas marquées, la relance reste due le jour où le push arrive.
+
+Les casquettes s'affichent sur les fiches de relations, à côté du palier.
+
+**Paliers.** Le total reste interne, seul le **palier** circule (Nouveau → Bronze 30 → Argent 100 → Or 250 → Platine 500, `COACH_LEVELS` dans `@footcoach/shared`). Il s'affiche sur les fiches de relations, comme repère de fiabilité avant de proposer un match à quelqu'un qu'on ne connaît pas. Le coach voit son total chiffré et sa progression sur **Mon profil**, et nulle part ailleurs.
+
+**Le score, lui, ne se contre-signe plus.** Il est saisi par l'un ou l'autre coach et clôt le match ; l'adversaire en est notifié et peut le corriger. C'est la rencontre qui est attestée, pas le résultat — un désaccord sur un but se règle entre coachs, pas par un refus de validation qui laissait le match ouvert indéfiniment.
 
 > La caméra n'est accessible qu'en **contexte sécurisé** : HTTPS en production, ou `localhost` en développement. Sur une IP locale en HTTP, le navigateur refusera l'accès et le scanner affichera « Caméra indisponible ».
 
@@ -28,9 +66,11 @@ Deux garde-fous cumulés : la validation n'est acceptée que du coach de l'**aut
 
 Un match amical doit être déclaré à la fédération (district / ligue) **au moins 10 jours avant** la rencontre. À la publication d'une annonce :
 
-- une **case d'attestation est obligatoire** (« J'atteste avoir déclaré ce match amical à ma fédération ») — vérifiée côté API, pas seulement dans le formulaire ;
+- un **rappel du délai** est affiché ;
 - une date à moins de 10 jours **n'est pas bloquée** mais affiche un avertissement (les dérogations de district existent) ;
 - chaque annonce porte un badge « Délai FFF respecté » ou « Délai FFF non respecté (n j) », calculé entre la publication et la date du match.
+
+Il n'y a **plus de case à cocher par annonce**. Que la déclaration au district relève du coach et de son club est accepté **une fois, à l'inscription** (« Je comprends que la déclaration du match à ma fédération… relève de ma responsabilité »), avec date et version conservées sur le compte — la redemander à chaque publication faisait double emploi. La colonne `match_announcements.federation_declared` reste en base pour les annonces publiées sous l'ancienne règle, mais n'est plus écrite ni affichée : sur une annonce récente, `false` signifie « la question n'a pas été posée ».
 
 ## Le radar
 
@@ -61,14 +101,16 @@ Le géocodage passe par l'**API Adresse de l'État** (`api-adresse.data.gouv.fr`
 
 ## Notifications push
 
-Le coach peut être prévenu **même l'application fermée**, sur les quatre événements de la V1 — chacun désactivable dans **Mon profil → Notifications** :
+Le coach peut être prévenu **même l'application fermée**. Les quatre premiers sont désactivables dans **Mon profil → Notifications** ; le cinquième dépend de la casquette **joker** et de rien d'autre :
 
 | Déclencheur | Ciblage |
 |---|---|
 | Nouvelle annonce dans mon périmètre | Coachs dont le rayon couvre le lieu du match (jamais l'auteur) |
 | Une équipe propose de jouer mon annonce | Coachs de l'équipe émettrice |
 | Ma proposition est acceptée ou déclinée | Coachs de l'équipe qui a proposé |
-| Score final à valider | Coachs de l'équipe adverse |
+| Score final enregistré par l'adversaire | Coachs de l'équipe adverse |
+| **SOS** — un coach se retrouve sans adversaire | **Jokers** dont le rayon couvre le lieu (voir « Casquettes ») |
+| **SOS sans réponse** (10 à 60 min selon l'urgence) | Tous les autres coachs du secteur (jokers exclus, ils ont déjà été appelés) |
 
 Détails d'implémentation :
 
@@ -295,12 +337,22 @@ mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
 
 « Créer un compte coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
 
+L'étape « équipe » demande son nom, sa ville, sa **catégorie** (obligatoire) et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
+
+### Références d'équipe
+
+Chaque équipe porte une **catégorie** (U6 → Vétérans) et un **stade habituel**. Ils sont demandés à sa création — à l'inscription comme dans **Mes équipes › Créer une équipe** — et **préremplissent chaque annonce** publiée en son nom : catégorie, stade et ville arrivent déjà renseignés, il ne reste que la date, l'heure et le genre.
+
+Ce ne sont que des valeurs de départ : un déplacement se joue ailleurs, un amical peut se caler sur une autre catégorie, et tous les champs de l'annonce restent modifiables.
+
+Les équipes créées avant cette version n'en ont pas — le formulaire d'annonce retombe alors sur ses valeurs par défaut, et **Mes équipes** signale « Catégorie à renseigner ». Le crayon en bout de ligne ouvre une feuille qui règle les deux valeurs (`PATCH /coach/teams/:id`, réservé aux encadrants de l'équipe).
+
 ## Relations entre coachs
 
 Les coachs se constituent un réseau pour garder le contact d'un amical à l'autre.
 
 - Chaque coach a un **code personnel** (ex. `3QYU25`) et le **QR code** correspondant, dans **Mon profil**.
-- On ajoute un confrère depuis **Relations** en saisissant son code, ou en **scannant son QR** (même scanner que la validation des scores, donc mêmes contraintes de caméra).
+- On ajoute un confrère depuis **Relations** en saisissant son code, ou en **scannant son QR** (même scanner que la validation des rencontres, donc mêmes contraintes de caméra).
 - Le lien est **immédiat et réciproque** : détenir le code suppose d'avoir vu l'écran de l'autre ou reçu son code de sa part. Le retrait supprime le lien des deux côtés.
 - Une fiche de relation montre nom, prénom, **téléphone appelable**, club et équipes encadrées. Le téléphone n'est visible que des relations.
 
@@ -310,7 +362,7 @@ Dans **Mon profil**, le coach personnalise son compte : photo, nom, prénom, té
 
 Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Moi**.
 
-- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets. Sur un formulaire de création, il **pivote pour devenir un « ✓ »** qui valide — grisé tant que l'attestation FFF n'est pas cochée.
+- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets. Sur un formulaire de création, il **pivote pour devenir un « ✓ »** qui valide — grisé tant que le genre de l'équipe n'est pas choisi.
 - La feuille **« Moi »** rassemble l'identité, l'**équipe active**, **Mon profil**, **Mes relations**, **Mes équipes**, l'**agenda** et les **notifications** (avec pastille de non-lus). Sur desktop, où la barre basse n'existe pas, l'avatar du header ouvre la même feuille.
 - Le **radar** vit dans le **tableau de bord** ; `/coach/radar` y redirige.
 - **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.
@@ -342,8 +394,9 @@ Tables conservées mais plus lues : `attendances`, `lineups`, `match_events`, `c
 ## Scénario de démonstration
 
 1. **Coach A** règle sa position dans **Mon profil → Ma position** (« Utiliser ma position », ou une adresse), puis choisit son périmètre sur le radar.
-2. Il publie une annonce depuis le bouton « + » : date à plus de 10 jours (badge « Délai FFF respecté ») et attestation cochée.
+2. Il publie une annonce depuis le bouton « + » : catégorie, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date (à plus de 10 jours → badge « Délai FFF respecté »), l'heure et le genre.
 3. **Coach B** (navigation privée) voit apparaître l'annonce **sur le radar de son tableau de bord**, à sa vraie distance et dans sa vraie direction, et clique « Proposer de jouer ». S'il a activé les notifications, il a été prévenu à la publication.
 4. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé.
-5. Une fois la date passée, les deux coachs voient **« Score final à saisir »**. Coach A saisit le score avec les compteurs, un **QR code** s'affiche.
-6. **Coach B** ouvre le même match, clique **« Scanner le QR code »** et vise l'écran de coach A → le score est validé et le match passe en « Terminé ».
+5. Le jour du match, les deux coachs voient **« Rencontre à valider »**. Coach A, qui reçoit, ouvre la feuille de match et clique **« Afficher le QR code »**.
+6. **Coach B** ouvre le même match, clique **« Scanner le QR code »** et vise l'écran de coach A → la rencontre est validée et chacun gagne 10 points, annoncés à coach B juste après son scan.
+7. Après le coup de sifflet final, l'un des deux saisit le score avec les compteurs : le match passe en « Terminé », l'autre en est notifié.

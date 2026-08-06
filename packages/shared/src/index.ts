@@ -52,9 +52,14 @@ export const LEGAL_VERSION = "1";
 export const LEGAL_UPDATED_AT = "2026-07-29";
 
 /**
- * Cycle de vie d'un match : le coach saisit le score final à la fin de la
- * rencontre (`awaiting_confirmation`), puis le coach adverse le valide en
- * scannant le QR code affiché — c'est cette validation qui clôt le match.
+ * Cycle de vie d'un match : `scheduled` → `live` au coup d'envoi → `finished`
+ * dès qu'un des deux coachs saisit le score final. Ce qui atteste que la
+ * rencontre a bien eu lieu n'est plus le score, mais le scan du QR entre les
+ * deux coachs au stade.
+ *
+ * `awaiting_confirmation` n'est PLUS produit : il datait de l'époque où le
+ * score était contre-signé par le coach adverse. La valeur reste dans l'enum
+ * pour les matchs clos sous cette règle, que rien ne doit rendre illisibles.
  *
  * `cancelled` : l'un des deux coachs s'est désisté avant le coup d'envoi. Le
  * match est conservé (trace du désistement), il ne compte plus nulle part.
@@ -109,6 +114,15 @@ export function categoryLabel(category: string): string {
 }
 
 /**
+ * Ramène une valeur venue de la base à la liste connue. Les catégories y sont
+ * stockées en texte libre : une valeur retirée de la liste ne doit pas ressortir
+ * typée comme si elle en faisait toujours partie, elle vaut alors « aucune ».
+ */
+export function asMatchCategory(value: string | null | undefined): MatchCategory | null {
+  return value && (MATCH_CATEGORIES as readonly string[]).includes(value) ? (value as MatchCategory) : null;
+}
+
+/**
  * Genre de l'équipe, distinct de la catégorie : dédoubler les catégories
  * (U15, U15F…) rendrait « U15 » ambigu et doublerait la liste. « Mixte » n'est
  * pas un fourre-tout — jusqu'aux U11, les équipes le sont réellement.
@@ -131,6 +145,150 @@ export type TeamEventType = (typeof TEAM_EVENT_TYPES)[number];
 
 export const EVENT_RECURRENCES = ["none", "weekly"] as const;
 export type EventRecurrence = (typeof EVENT_RECURRENCES)[number];
+
+// ---------- Catégories de coach ----------
+
+/**
+ * Casquettes qu'un coach se donne, **cumulables** : il peut être joker et
+ * contributeur à la fois. Aucune n'est un rôle de compte — elles ne changent
+ * pas ses droits, elles disent ce qu'il accepte de faire pour les autres.
+ *
+ * Ne pas en cocher est le cas ordinaire et se lit « simple coach » : c'est un
+ * choix, pas un manque. D'où le tableau vide plutôt qu'une valeur « aucune »
+ * qu'il faudrait ensuite exclure partout.
+ */
+/**
+ * Délai laissé aux jokers avant d'élargir le SOS à tous les coachs du secteur.
+ *
+ * Il se resserre à mesure que le coup d'envoi approche : une heure d'avance
+ * pour les jokers ne coûte rien sur un match dans quinze jours, elle peut faire
+ * perdre la rencontre s'il se joue demain. À l'inverse, élargir en dix minutes
+ * un SOS lointain gaspille l'attention de tout un secteur pour rien.
+ *
+ * Le premier seuil qui couvre l'échéance l'emporte ; au-delà du dernier, c'est
+ * `SOS_WIDEN_DEFAULT_MINUTES`. Une seule table à retoucher pour réajuster.
+ */
+export const SOS_WIDEN_DELAYS = [
+  /** Le match est aujourd'hui ou demain : on ne peut plus attendre */
+  { withinDays: 1, minutes: 10 },
+  /** Dans la semaine : de quoi laisser un joker répondre entre deux entraînements */
+  { withinDays: 6, minutes: 30 },
+] as const;
+
+/** Au-delà du dernier seuil — le match est assez loin pour laisser du temps */
+export const SOS_WIDEN_DEFAULT_MINUTES = 60;
+
+/** Délai avant élargissement, pour un match dans `daysUntilMatch` jours */
+export function sosWidenDelayMinutes(daysUntilMatch: number): number {
+  for (const { withinDays, minutes } of SOS_WIDEN_DELAYS) {
+    if (daysUntilMatch <= withinDays) return minutes;
+  }
+  return SOS_WIDEN_DEFAULT_MINUTES;
+}
+
+/** Le plus court des délais — borne grossière pour ne pas relire des annonces trop fraîches */
+export const SOS_WIDEN_MIN_MINUTES = Math.min(
+  SOS_WIDEN_DEFAULT_MINUTES,
+  ...SOS_WIDEN_DELAYS.map((d) => d.minutes),
+);
+
+export const COACH_CATEGORIES = ["joker", "contributeur"] as const;
+export type CoachCategory = (typeof COACH_CATEGORIES)[number];
+
+export const COACH_CATEGORY_LABELS: Record<CoachCategory, string> = {
+  joker: "Joker",
+  contributeur: "Contributeur",
+};
+
+/** Ce que la casquette engage, affiché à côté de la case à cocher */
+export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
+  joker:
+    "Vous acceptez d'être alerté quand un coach de votre secteur se retrouve sans adversaire. Ces alertes SOS ne partent qu'aux jokers.",
+  contributeur:
+    "Vous faites vivre l'application : retours, idées, signalements. Sans effet pour l'instant — la casquette prendra son sens dans une prochaine version.",
+};
+
+/** Choix des casquettes par le coach lui-même. Tableau vide = aucune. */
+export const updateCoachCategoriesSchema = z.object({
+  categories: z.array(z.enum(COACH_CATEGORIES)).max(COACH_CATEGORIES.length),
+});
+export type UpdateCoachCategoriesInput = z.infer<typeof updateCoachCategoriesSchema>;
+
+/** Valeurs venues de la base ramenées à la liste connue, sans doublon */
+export function asCoachCategories(values: readonly string[] | null | undefined): CoachCategory[] {
+  if (!values) return [];
+  const known = new Set<string>(COACH_CATEGORIES);
+  return [...new Set(values.filter((v): v is CoachCategory => known.has(v)))];
+}
+
+// ---------- Points et paliers ----------
+
+/**
+ * Points gagnés quand les deux coachs valident leur rencontre en se scannant
+ * au stade. Les deux en gagnent : celui qui reçoit a tenu son engagement autant
+ * que celui qui s'est déplacé.
+ *
+ * Le dépannage vaut double, mais pour le seul coach qui répond à un SOS : c'est
+ * lui qui rend le service, en acceptant un match qu'un autre vient d'abandonner.
+ * L'hôte, lui, ne gagne rien de plus à voir son adversaire se désister.
+ */
+export const MATCH_POINTS = {
+  /** Rencontre honorée, pour chacun des deux coachs */
+  rencontre: 10,
+  /** Coach venu répondre à une annonce repartie en SOS (remplace les 10, ne s'y ajoute pas) */
+  sosResponder: 20,
+} as const;
+
+/**
+ * Délai avant qu'une même paire d'équipes rerapporte des points. Deux coachs
+ * complices pourraient sinon enchaîner annonce → réponse → scan et fabriquer un
+ * palier en une soirée. Les rencontres suivantes ont bien lieu et sont
+ * enregistrées — elles ne paient simplement plus.
+ *
+ * Trente jours glissants plutôt qu'un mois calendaire : ce dernier rouvrirait
+ * les compteurs le 1er, et deux matchs les 31 et 1er paieraient tous les deux.
+ */
+export const POINTS_COOLDOWN_DAYS = 30;
+
+export const POINT_REASONS = ["rencontre", "sos"] as const;
+export type PointReason = (typeof POINT_REASONS)[number];
+
+/**
+ * Paliers affichés sur la fiche d'un coach. Le total brut reste interne : un
+ * chiffre invite à la comparaison permanente, un palier se gagne et se garde.
+ *
+ * Les seuils visent un coach qui joue quelques amicaux par mois — Bronze après
+ * trois rencontres, Platine au bout de plusieurs saisons. Une seule liste à
+ * retoucher pour les rééquilibrer, tout le reste en découle.
+ */
+export const COACH_LEVELS = [
+  { name: "Nouveau", min: 0 },
+  { name: "Bronze", min: 30 },
+  { name: "Argent", min: 100 },
+  { name: "Or", min: 250 },
+  { name: "Platine", min: 500 },
+] as const;
+
+export type CoachLevelName = (typeof COACH_LEVELS)[number]["name"];
+
+export interface CoachLevelDto {
+  name: CoachLevelName;
+  /** Seuil atteint pour ce palier */
+  min: number;
+  /** Seuil du palier suivant, null au dernier — sert à la barre de progression */
+  next: number | null;
+}
+
+/** Palier correspondant à un total de points, et le seuil suivant s'il en reste un */
+export function levelForPoints(points: number): CoachLevelDto {
+  let index = 0;
+  for (let i = 0; i < COACH_LEVELS.length; i++) {
+    if (points >= COACH_LEVELS[i].min) index = i;
+  }
+  const level = COACH_LEVELS[index];
+  const upcoming = COACH_LEVELS[index + 1];
+  return { name: level.name, min: level.min, next: upcoming ? upcoming.min : null };
+}
 
 // ---------- Politique de mot de passe ----------
 
@@ -259,29 +417,32 @@ export const createAnnouncementSchema = z.object({
   level: z.enum(MATCH_LEVELS),
   format: z.enum(MATCH_FORMATS),
   comment: z.string().max(500).optional(),
-  // Attestation obligatoire : la déclaration du match amical à la fédération
-  // incombe au coach, l'application en garde la trace.
-  federationDeclared: z.boolean().refine((v) => v, {
-    message: "Vous devez attester avoir déclaré ce match amical à votre fédération",
-  }),
+  // Plus d'attestation par annonce : la responsabilité de déclarer le match à
+  // la fédération est acceptée à l'inscription (registerCoachSchema →
+  // acceptResponsibility), pour tous les matchs à venir. La redemander à
+  // chaque publication ne renforçait rien et faisait un obstacle de plus.
 });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 
 /** Coup d'envoi : passage de `scheduled` à `live` */
 export const kickoffSchema = z.object({});
 
-/** Saisie du score final par un des deux coachs — ouvre la validation par QR */
+/**
+ * Saisie du score final par l'un des deux coachs. Elle clôt le match : il n'y a
+ * plus de contre-validation, c'est le scan de rencontre qui atteste que les
+ * deux équipes se sont bien retrouvées.
+ */
 export const finalScoreSchema = z.object({
   homeScore: z.number().int().min(0).max(99),
   awayScore: z.number().int().min(0).max(99),
 });
 export type FinalScoreInput = z.infer<typeof finalScoreSchema>;
 
-/** Validation du score par le coach adverse : le jeton vient du QR scanné */
-export const confirmScoreSchema = z.object({
+/** Validation de la rencontre par le coach qui s'est déplacé : le jeton vient du QR scanné */
+export const confirmEncounterSchema = z.object({
   token: z.string().min(10).max(100),
 });
-export type ConfirmScoreInput = z.infer<typeof confirmScoreSchema>;
+export type ConfirmEncounterInput = z.infer<typeof confirmEncounterSchema>;
 
 /**
  * Désistement d'un des deux coachs avant le coup d'envoi. Le motif est imposé,
@@ -295,14 +456,38 @@ export const withdrawMatchSchema = z.object({
 export type WithdrawMatchInput = z.infer<typeof withdrawMatchSchema>;
 
 /**
+ * Références d'une équipe : sa catégorie d'engagement et son stade habituel.
+ *
+ * Renseignées une fois à la création, elles préremplissent chaque annonce — un
+ * coach de U13 qui reçoit toujours au même stade ne les ressaisit plus. Elles
+ * restent modifiables annonce par annonce : un déplacement se joue ailleurs, et
+ * un amical peut se caler sur une autre catégorie.
+ *
+ * Le stade est facultatif (tous les clubs n'en ont pas un attitré) ; la chaîne
+ * vide vaut « aucun » et sera stockée `null`.
+ */
+export const teamReferencesSchema = z.object({
+  category: z.enum(MATCH_CATEGORIES),
+  stadium: z.string().trim().max(150).optional(),
+});
+export type TeamReferencesInput = z.infer<typeof teamReferencesSchema>;
+
+/**
  * Création d'une équipe supplémentaire par un coach déjà inscrit. Mêmes bornes
  * que l'équipe créée à l'inscription : c'est la même chose, créée plus tard.
  */
-export const createTeamSchema = z.object({
+export const createTeamSchema = teamReferencesSchema.extend({
   name: z.string().trim().min(2).max(60),
   city: z.string().trim().min(1).max(60),
 });
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
+
+/**
+ * Mise à jour des seules références. Le nom et la ville n'en font pas partie :
+ * la ville sert de point d'ancrage au radar et aux distances déjà calculées,
+ * la changer relève d'autre chose que régler un préremplissage.
+ */
+export const updateTeamReferencesSchema = teamReferencesSchema;
 
 /**
  * Acceptation exigée à l'inscription. `z.literal(true)` et non `z.boolean()` :
@@ -320,6 +505,10 @@ export const registerCoachSchema = z.object({
   password: chosenPasswordSchema,
   teamName: z.string().min(2).max(60),
   teamCity: z.string().min(1).max(60),
+  // Références de l'équipe créée avec le compte : mêmes règles que partout
+  // ailleurs (voir teamReferencesSchema), simplement préfixées « team ».
+  teamCategory: z.enum(MATCH_CATEGORIES),
+  teamStadium: z.string().trim().max(150).optional(),
   // Deux acceptations distinctes, et non une case unique fourre-tout : la
   // clause de responsabilité (déclaration à la fédération, licences, transport)
   // est celle qui protège réellement l'éditeur. Acceptée à part, elle ne peut
@@ -466,6 +655,11 @@ export interface UserDto {
   radarRadiusKm?: number | null;
   /** Coach : quelles notifications il accepte de recevoir */
   notifications?: NotificationPrefsDto;
+  /** Coach : total de points gagnés aux rencontres, et le palier qui en découle */
+  points?: number;
+  level?: CoachLevelDto;
+  /** Coach : ses casquettes (tableau vide = simple coach) */
+  categories?: CoachCategory[];
 }
 
 /** Point de référence d'un coach pour les distances, le radar et les alertes */
@@ -518,6 +712,13 @@ export interface CoachTeamDto {
   name: string;
   city: string;
   role: TeamCoachRole;
+  /**
+   * Références reprises à la publication d'une annonce. `null` pour les équipes
+   * créées avant leur introduction : rien n'est deviné, le formulaire retombe
+   * alors sur ses valeurs par défaut.
+   */
+  category: MatchCategory | null;
+  stadium: string | null;
 }
 
 /** Proposition d'un coach adverse sur une annonce (visible par l'émetteur) */
@@ -544,8 +745,6 @@ export interface AnnouncementDto {
   status: AnnouncementStatus;
   isMine: boolean;
   createdAt: string;
-  /** Le coach a attesté avoir déclaré ce match amical à sa fédération */
-  federationDeclared: boolean;
   /** Jours entre la publication de l'annonce et la date du match (délai FFF : 10 minimum) */
   noticeDays: number;
   /** Renseignés quand l'annonce est matchée : le match créé et l'équipe qui a répondu */
@@ -594,16 +793,25 @@ export interface MatchDto {
   mySide: MatchSide | null;
   /** Équipe dont le coach a saisi le score final (null tant qu'aucune saisie) */
   scoreSubmittedByTeamId: string | null;
-  /** Horodatage de la validation par le coach adverse (null tant qu'en attente) */
-  scoreConfirmedAt: string | null;
-  /**
-   * Jeton du QR code, exposé au seul coach ayant saisi le score pour qu'il
-   * l'affiche. Toujours null pour le coach adverse : c'est le scan qui le lui
-   * apporte, et c'est ce qui rend la validation infalsifiable à distance.
-   */
-  confirmationToken: string | null;
   /** true si le coup d'envoi est passé et que le score final reste à saisir */
   finalScoreDue: boolean;
+  /**
+   * ————— Rencontre —————
+   * Horodatage du scan qui atteste que les deux coachs se sont retrouvés.
+   */
+  encounterConfirmedAt: string | null;
+  /**
+   * true le jour du match et après : avant, il n'y a rien à attester. Calculé
+   * par le serveur pour que l'heure du téléphone n'ouvre pas la fenêtre.
+   */
+  encounterOpen: boolean;
+  /**
+   * Jeton du QR, servi au seul coach de l'équipe qui REÇOIT, et seulement
+   * lorsqu'il demande à l'afficher. Toujours null pour celui qui se déplace :
+   * c'est le scan qui le lui apporte, et c'est ce qui rend la validation
+   * impossible à distance.
+   */
+  encounterToken: string | null;
   /** Désistement : équipe qui a renoncé, et son motif (null si le match tient toujours) */
   withdrawnByTeamId: string | null;
   withdrawalReason: WithdrawalReason | null;
@@ -611,6 +819,23 @@ export interface MatchDto {
 }
 
 export type MatchDetailDto = MatchDto;
+
+/** Réponse au scan de rencontre : ce qui a été validé, et ce qu'il a rapporté */
+export interface EncounterResultDto {
+  /** Points crédités au coach qui vient de scanner (0 si le plafond s'applique) */
+  pointsAwarded: number;
+  reason: PointReason;
+  /**
+   * true quand la rencontre est bien validée mais ne rapporte rien : ces deux
+   * équipes se sont déjà rencontrées dans les trente derniers jours. Dit
+   * explicitement plutôt que déduit d'un `pointsAwarded` à zéro, qu'on
+   * confondrait avec une erreur.
+   */
+  cappedByCooldown: boolean;
+  /** Nouveau total et nouveau palier du coach qui a scanné */
+  totalPoints: number;
+  level: CoachLevelDto;
+}
 
 /** Événement du fil d'activité (espace coach) */
 export interface ActivityDto {
@@ -741,6 +966,10 @@ export interface CoachRelationDto {
   clubName: string | null;
   teams: TeamDto[];
   createdAt: string;
+  /** Palier de ce coach — un signal de fiabilité avant de lui proposer un match */
+  level: CoachLevelDto;
+  /** Ses casquettes : savoir qu'un confrère est joker sert le jour d'un désistement */
+  categories: CoachCategory[];
 }
 
 export interface AuthResponseDto {

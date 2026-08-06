@@ -3,12 +3,20 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
-import { addRelationSchema, coachIdParamSchema, type CoachRelationDto, type UserDto } from "@footcoach/shared";
+import {
+  addRelationSchema,
+  asCoachCategories,
+  coachIdParamSchema,
+  levelForPoints,
+  type CoachRelationDto,
+  type UserDto,
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { clubs, coachRelations, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { avatarUrlOf, toUserDto } from "./auth.js";
+import { totalPointsOfMany } from "../lib/points.js";
 import { UPLOADS_DIR } from "../lib/uploads.js";
 import { ALLOWED_IMAGE_TYPES, MAX_AVATAR_BYTES, sniffImageType } from "../lib/images.js";
 
@@ -32,6 +40,10 @@ async function buildRelations(coachIds: string[], createdAtById: Map<string, Dat
     .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
     .where(inArray(teamCoaches.coachId, coachIds));
 
+  // Un seul agrégat pour toute la liste : une requête par fiche en aurait fait
+  // autant que de relations, sur un écran qui les affiche toutes d'un coup.
+  const pointsByCoach = await totalPointsOfMany(coachIds);
+
   return coachRows.map((c) => ({
     id: c.id,
     firstName: c.firstName,
@@ -41,6 +53,10 @@ async function buildRelations(coachIds: string[], createdAtById: Map<string, Dat
     clubName: c.clubId ? (clubById.get(c.clubId) ?? null) : null,
     teams: teamRows.filter((t) => t.coachId === c.id).map(({ id, name, city }) => ({ id, name, city })),
     createdAt: (createdAtById.get(c.id) ?? new Date()).toISOString(),
+    // Le palier seul, jamais le total : on donne un repère de fiabilité, pas de
+    // quoi comparer deux confrères au point près.
+    level: levelForPoints(pointsByCoach.get(c.id) ?? 0),
+    categories: asCoachCategories(c.coachCategories),
   }));
 }
 

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
-import { clubs, matchAnnouncements, matches, teamCoaches, teams, users } from "./db/schema.js";
+import { MATCH_POINTS } from "@footcoach/shared";
+import { clubs, coachPoints, matchAnnouncements, matches, teamCoaches, teams, users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { cityCoords } from "./lib/cities.js";
 import { SeedRefused, assertSeedAllowed } from "./seedGuard.js";
@@ -36,15 +37,29 @@ async function upsertUser(input: {
   return user;
 }
 
-async function upsertTeam(name: string, city: string, coachId: string, joinCode: string) {
+async function upsertTeam(
+  name: string,
+  city: string,
+  coachId: string,
+  joinCode: string,
+  // Références du préremplissage : les comptes de démo doivent montrer une
+  // publication d'annonce déjà remplie, c'est là tout leur intérêt.
+  references: { category: string; stadium: string },
+) {
   const coords = cityCoords(city);
+  const values = {
+    name,
+    city,
+    coachId,
+    lat: coords?.lat ?? null,
+    lng: coords?.lng ?? null,
+    category: references.category,
+    stadium: references.stadium,
+  };
   const [team] = await db
     .insert(teams)
-    .values({ name, city, coachId, joinCode, lat: coords?.lat ?? null, lng: coords?.lng ?? null })
-    .onConflictDoUpdate({
-      target: teams.joinCode,
-      set: { name, city, coachId, lat: coords?.lat ?? null, lng: coords?.lng ?? null },
-    })
+    .values({ ...values, joinCode })
+    .onConflictDoUpdate({ target: teams.joinCode, set: values })
     .returning();
   // Affectation coach principal (idempotent via l'index unique (team_id, coach_id))
   await db.insert(teamCoaches).values({ teamId: team.id, coachId, role: "principal" }).onConflictDoNothing();
@@ -64,10 +79,24 @@ async function main() {
 
   const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", firstName: "Alexandre", lastName: "Martin" });
   const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", firstName: "Bruno", lastName: "Silva" });
-  const teamA = await upsertTeam("FC Nexus U13", "Lyon", coachA.id, "DEMOA1");
-  const teamB = await upsertTeam("AS Cyber", "Villeurbanne", coachB.id, "DEMOB2");
+  const teamA = await upsertTeam("FC Nexus U13", "Lyon", coachA.id, "DEMOA1", {
+    category: "U13",
+    stadium: "Plaine des Jeux de Gerland",
+  });
+  const teamB = await upsertTeam("AS Cyber", "Villeurbanne", coachB.id, "DEMOB2", {
+    category: "U13",
+    stadium: "Stade des Iris",
+  });
   // Coach A encadre une seconde équipe (U15) : démo du multi-équipes "Mes équipes"
-  await upsertTeam("FC Nexus U15", "Lyon", coachA.id, "DEMOA3");
+  await upsertTeam("FC Nexus U15", "Lyon", coachA.id, "DEMOA3", {
+    category: "U15",
+    stadium: "Plaine des Jeux de Gerland",
+  });
+
+  // Casquettes de démo : un joker (seul destinataire des SOS) et un
+  // contributeur, pour que les deux badges se voient sur les fiches.
+  await db.update(users).set({ coachCategories: ["joker"] }).where(eq(users.id, coachB.id));
+  await db.update(users).set({ coachCategories: ["contributeur"] }).where(eq(users.id, coachA.id));
 
   await upsertUser({ email: "admin@demo.fr", role: "admin", firstName: "Alice", lastName: "Admin" });
 
@@ -98,8 +127,13 @@ async function main() {
       joinCode: "DEMOC1",
       lat: teamCoords?.lat ?? null,
       lng: teamCoords?.lng ?? null,
+      category: "U11",
+      stadium: "Stade Georges Lyvet",
     })
-    .onConflictDoUpdate({ target: teams.joinCode, set: { clubId: demoClub.id, name: "Étoile U11" } });
+    .onConflictDoUpdate({
+      target: teams.joinCode,
+      set: { clubId: demoClub.id, name: "Étoile U11", category: "U11", stadium: "Stade Georges Lyvet" },
+    });
 
   const existing = await db.select().from(matchAnnouncements);
   if (existing.length === 0) {
@@ -115,7 +149,6 @@ async function main() {
       level: "loisir",
       format: "8v8",
       comment: "Match amical, terrain synthétique. Vestiaires disponibles.",
-      federationDeclared: true,
     });
 
     // Annonce du coach A déjà matchée → match à venir (J+3)
@@ -132,7 +165,6 @@ async function main() {
         format: "8v8",
         comment: "Amical de préparation.",
         status: "matched",
-        federationDeclared: true,
       })
       .returning();
     await db
@@ -147,7 +179,7 @@ async function main() {
       })
       .returning();
 
-    // Match terminé (J-4), score validé par les deux coachs
+    // Match terminé (J-4), rencontre validée au stade et score enregistré
     const [pastAnn] = await db
       .insert(matchAnnouncements)
       .values({
@@ -160,10 +192,9 @@ async function main() {
         level: "loisir",
         format: "8v8",
         status: "matched",
-        federationDeclared: true,
       })
       .returning();
-    await db
+    const [pastMatch] = await db
       .insert(matches)
       .values({
         announcementId: pastAnn.id,
@@ -172,14 +203,23 @@ async function main() {
         date: pastAnn.date,
         time: pastAnn.time,
         location: "Stade des Iris, Villeurbanne",
-        // Score déjà saisi ET validé par le coach adverse
         status: "finished",
         homeScore: 1,
         awayScore: 3,
         scoreSubmittedByTeamId: teamB.id,
         scoreSubmittedAt: new Date(),
-        scoreConfirmedAt: new Date(),
-      });
+        // Les deux coachs se sont scannés au stade : c'est de là que viennent
+        // leurs points, et c'est ce que les comptes de démo doivent montrer.
+        encounterTokenCoachId: coachB.id,
+        encounterConfirmedAt: new Date(),
+        encounterConfirmedByCoachId: coachA.id,
+      })
+      .returning();
+
+    await db.insert(coachPoints).values([
+      { coachId: coachA.id, matchId: pastMatch.id, points: MATCH_POINTS.rencontre, reason: "rencontre" },
+      { coachId: coachB.id, matchId: pastMatch.id, points: MATCH_POINTS.rencontre, reason: "rencontre" },
+    ]);
   }
 
   const count = (await db.select().from(users)).length;

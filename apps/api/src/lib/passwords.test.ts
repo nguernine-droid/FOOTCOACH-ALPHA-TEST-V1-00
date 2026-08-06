@@ -67,6 +67,7 @@ const INSCRIPTION = {
   email: "alex@exemple.fr",
   teamName: "FC Exemple",
   teamCity: "Lyon",
+  teamCategory: "U13",
   acceptTerms: true,
   acceptResponsibility: true,
 } as const;

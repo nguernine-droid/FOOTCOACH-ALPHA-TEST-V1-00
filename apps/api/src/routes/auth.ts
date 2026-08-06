@@ -2,8 +2,12 @@ import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
+  asCoachCategories,
+  asMatchCategory,
   forgotPasswordSchema,
   isV1Role,
+  levelForPoints,
+  updateCoachCategoriesSchema,
   updateProfileSchema,
   loginSchema,
   refreshSchema,
@@ -26,6 +30,7 @@ import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js"
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
 import { originOf } from "../lib/coachOrigin.js";
+import { totalPointsOf } from "../lib/points.js";
 import { authRateLimit } from "../lib/rateLimits.js";
 import {
   emailKey,
@@ -60,13 +65,24 @@ export async function issueRefreshToken(userId: string): Promise<string> {
 // Équipes encadrées par un coach (via team_coaches), coach principal en premier
 export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
   const rows = await db
-    .select({ id: teams.id, name: teams.name, city: teams.city, role: teamCoaches.role })
+    .select({
+      id: teams.id,
+      name: teams.name,
+      city: teams.city,
+      role: teamCoaches.role,
+      // Références du préremplissage : elles voyagent avec la session, si bien
+      // que le formulaire d'annonce n'a aucune requête à faire pour les obtenir.
+      category: teams.category,
+      stadium: teams.stadium,
+    })
     .from(teamCoaches)
     .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
     .where(eq(teamCoaches.coachId, coachId))
     .orderBy(asc(teamCoaches.createdAt));
   // Tri stable : équipe(s) où il est "principal" avant celles où il est "adjoint"
-  return rows.sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1));
+  return rows
+    .sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1))
+    .map((row) => ({ ...row, category: asMatchCategory(row.category) }));
 }
 
 /** URL publique d'une photo de profil (servie par l'API, proxifiée sous /api) */
@@ -107,8 +123,10 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
   let coachCode: string | null | undefined;
   // Position effective du coach : la sienne, ou à défaut la ville de son équipe
   let location: CoachLocationDto | null = null;
+  let points = 0;
   if (user.role === "coach") {
     coachCode = await ensureCoachCode(user);
+    points = await totalPointsOf(user.id);
     coachTeams = await getCoachTeams(user.id);
     teamId = coachTeams[0]?.id ?? null;
     teamName = coachTeams[0]?.name ?? null;
@@ -145,6 +163,9 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
           pendingClubName: pendingClubName ?? null,
           location,
           radarRadiusKm: user.radarRadiusKm,
+          points,
+          level: levelForPoints(points),
+          categories: asCoachCategories(user.coachCategories),
           notifications: {
             newAnnouncement: user.notifyNewAnnouncement,
             announcementResponse: user.notifyAnnouncementResponse,
@@ -304,6 +325,26 @@ export function authRoutes(app: FastifyInstance) {
         lastName: input.lastName.trim(),
         ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
       })
+      .where(eq(users.id, request.user.id))
+      .returning();
+    return toUserDto(updated);
+  });
+
+  /**
+   * Casquettes du coach — cumulables, et déclarées par lui seul.
+   *
+   * Une route à part de `/me/profile` : le formulaire d'identité s'enregistre
+   * en bloc, une case cochée doit prendre effet sur-le-champ. Le tableau reçu
+   * remplace l'ancien, ce qui rend le décochage aussi simple que le cochage.
+   */
+  app.patch("/me/categories", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
+    if (request.user.role !== "coach") throw new HttpError(403, "Réservé aux coachs");
+    const input = updateCoachCategoriesSchema.parse(request.body);
+    const [updated] = await db
+      .update(users)
+      // Dédoublonné à l'entrée : deux fois « joker » dans le corps de la requête
+      // ne doit pas se retrouver tel quel en base.
+      .set({ coachCategories: asCoachCategories(input.categories) })
       .where(eq(users.id, request.user.id))
       .returning();
     return toUserDto(updated);

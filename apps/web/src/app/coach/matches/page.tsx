@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ChevronRight, Clock3, Radar } from "lucide-react";
+import { AlertTriangle, ChevronRight, Radar, Trophy } from "lucide-react";
 import type { MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { groupMatches } from "@/lib/utils";
@@ -48,15 +48,15 @@ export default function CoachMatchesPage() {
             {section.items.map((match) => (
               <MatchCard key={match.id} match={match}>
                 <div className="flex items-center justify-between gap-2">
-                  {match.finalScoreDue ? (
+                  {/* La rencontre passe devant le score : elle se valide au
+                      stade, face à l'autre coach, et c'est elle qui rapporte. */}
+                  {match.encounterOpen && !match.encounterConfirmedAt ? (
+                    <span className="text-xs font-bold text-accent flex items-center gap-1.5">
+                      <Trophy size={13} className="shrink-0" /> Rencontre à valider
+                    </span>
+                  ) : match.finalScoreDue ? (
                     <span className="text-xs font-bold text-coral flex items-center gap-1.5">
                       <AlertTriangle size={13} className="shrink-0" /> Score final à saisir
-                    </span>
-                  ) : match.status === "awaiting_confirmation" ? (
-                    <span className="text-xs font-bold text-sun flex items-center gap-1.5">
-                      <Clock3 size={13} className="shrink-0" />
-                      {/* Le jeton n'est rendu qu'à celui qui a saisi : il attend, l'autre valide */}
-                      {match.confirmationToken ? "En attente de validation" : "À valider par vous"}
                     </span>
                   ) : (
                     <span />

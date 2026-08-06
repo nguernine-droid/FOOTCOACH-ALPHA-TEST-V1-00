@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, Trophy } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy } from "lucide-react";
 import type { ActivityDto, AnnouncementDto, MatchDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
@@ -78,8 +78,10 @@ export default function CoachDashboard() {
     loadAll();
   }
 
-  // Un match dont le score final reste à saisir ou à valider passe devant
-  const pending = matches?.filter((m) => m.finalScoreDue || m.status === "awaiting_confirmation") ?? [];
+  // Un match qui réclame un geste passe devant : rencontre à valider au stade,
+  // ou score final à saisir une fois rentré.
+  const pending =
+    matches?.filter((m) => (m.encounterOpen && !m.encounterConfirmedAt) || m.finalScoreDue) ?? [];
   const live = matches?.filter((m) => m.status === "live" && !m.finalScoreDue) ?? [];
   const upcoming = (matches?.filter((m) => m.status === "scheduled" && !m.finalScoreDue) ?? []).sort((a, b) =>
     `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`),
@@ -115,14 +117,13 @@ export default function CoachDashboard() {
         {featured ? (
           <section className="card p-5 space-y-4 animate-rise-in" aria-label="Prochain match">
             <div className="flex items-center justify-between gap-2">
-              {featured.finalScoreDue ? (
+              {featured.encounterOpen && !featured.encounterConfirmedAt ? (
+                <span className="chip bg-accent-surface text-accent">
+                  <Trophy size={12} /> Rencontre à valider
+                </span>
+              ) : featured.finalScoreDue ? (
                 <span className="chip bg-coral-soft text-coral">
                   <AlertTriangle size={12} /> Score final à saisir
-                </span>
-              ) : featured.status === "awaiting_confirmation" ? (
-                <span className="chip bg-sun-soft text-sun">
-                  <Clock3 size={12} />
-                  {featured.confirmationToken ? "En attente de validation" : "Score à valider"}
                 </span>
               ) : featured.status === "live" ? (
                 <span className="chip bg-coral-soft text-coral animate-soft-pulse">● En direct</span>
@@ -139,7 +140,7 @@ export default function CoachDashboard() {
             <div className="flex items-center gap-4">
               <TeamSide team={featured.homeTeam} />
               <div className="shrink-0 text-center px-2">
-                {featured.status === "live" || featured.status === "awaiting_confirmation" ? (
+                {featured.status === "live" || featured.status === "finished" ? (
                   <p className="display text-6xl tabular-nums leading-none text-primary">
                     {featured.homeScore}
                     <span className="text-ink-faint mx-2">–</span>

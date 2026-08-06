@@ -50,7 +50,6 @@ function toDto(
     status: announcement.status,
     isMine: team.id === myTeamId,
     createdAt: announcement.createdAt.toISOString(),
-    federationDeclared: announcement.federationDeclared,
     noticeDays: daysBetweenIso(announcement.createdAt.toISOString().slice(0, 10), announcement.date),
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
@@ -248,7 +247,8 @@ export function announcementRoutes(app: FastifyInstance) {
         level: input.level,
         format: input.format,
         comment: input.comment ?? null,
-        federationDeclared: input.federationDeclared,
+        // federationDeclared n'est plus renseigné : voir le commentaire de la
+        // colonne dans db/schema.ts. L'acceptation vit désormais sur le compte.
       })
       .returning();
     reply.code(201);

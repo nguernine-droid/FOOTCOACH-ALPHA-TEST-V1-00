@@ -4,8 +4,9 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PASSWORD_MIN_LENGTH, passwordProblem } from "@footcoach/shared";
+import { PASSWORD_MIN_LENGTH, passwordProblem, type MatchCategory } from "@footcoach/shared";
 import { register } from "@/lib/api";
+import { CategoryPicker } from "@/components/CategoryPicker";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
 import { LEGAL_LINKS } from "@/lib/legal";
@@ -68,7 +69,19 @@ function FieldError({ id, children }: { id: string; children: React.ReactNode })
 function CoachWizard({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", teamName: "", teamCity: "" });
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    teamName: "",
+    teamCity: "",
+    teamStadium: "",
+  });
+  // Hors de `form`, comme les acceptations : ce n'est pas une chaîne libre, et
+  // surtout elle ne part d'aucune valeur — présélectionner une catégorie
+  // reviendrait à en choisir une pour le coach.
+  const [teamCategory, setTeamCategory] = useState<MatchCategory | null>(null);
   // Les deux acceptations vivent hors de `form` : ce sont des booléens, et
   // surtout ils ne partent jamais d'une valeur « déjà donnée ».
   const [consent, setConsent] = useState({ responsibility: false, terms: false });
@@ -108,6 +121,8 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
     try {
       await register("/auth/register-coach", {
         ...form,
+        teamCategory,
+        teamStadium: form.teamStadium.trim() || undefined,
         acceptTerms: consent.terms,
         acceptResponsibility: consent.responsibility,
       });
@@ -175,7 +190,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              advance(3, !form.teamName.trim() || !form.teamCity.trim());
+              advance(3, !form.teamName.trim() || !form.teamCity.trim() || !teamCategory);
             }}
             className="space-y-4"
           >
@@ -186,8 +201,22 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
             </div>
             <div className="space-y-1.5">
               <label htmlFor="teamCity" className="text-xs font-bold text-ink-soft">Ville</label>
-              <input id="teamCity" autoComplete="address-level2" autoCapitalize="words" enterKeyHint="done" value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
+              <input id="teamCity" autoComplete="address-level2" autoCapitalize="words" enterKeyHint="next" value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
               {touched && !form.teamCity.trim() && <FieldError id="teamCity-error">Indiquez la ville de l&apos;équipe.</FieldError>}
+            </div>
+            {/* Catégorie et stade : demandés une fois ici, ils préremplissent
+                ensuite chaque annonce — d'où leur place dès l'inscription. */}
+            <CategoryPicker
+              value={teamCategory}
+              onChange={setTeamCategory}
+              idPrefix="register-category"
+              narrow
+              hint="Elle sera reprise dans vos annonces de match."
+            />
+            {touched && !teamCategory && <FieldError id="teamCategory-error">Choisissez la catégorie de l&apos;équipe.</FieldError>}
+            <div className="space-y-1.5">
+              <label htmlFor="teamStadium" className="text-xs font-bold text-ink-soft">Stade habituel (optionnel)</label>
+              <input id="teamStadium" autoComplete="off" autoCapitalize="words" enterKeyHint="done" maxLength={150} value={form.teamStadium} onChange={(e) => set("teamStadium", e.target.value)} className="field" placeholder="Stade municipal" />
             </div>
             <Button type="submit" size="lg" className="w-full">Continuer</Button>
           </form>

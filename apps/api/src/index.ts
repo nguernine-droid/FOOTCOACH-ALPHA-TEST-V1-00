@@ -8,6 +8,7 @@ import { env } from "./env.js";
 import { UPLOADS_DIR, ensureUploadsDir } from "./lib/uploads.js";
 import { MAX_AVATAR_BYTES } from "./lib/images.js";
 import { rateLimitOptions } from "./plugins/rateLimit.js";
+import { startSosRelay } from "./lib/sosRelay.js";
 import { runMigrations } from "./db/migrate.js";
 import { registerErrorHandler } from "./plugins/errors.js";
 import { authRoutes } from "./routes/auth.js";
@@ -122,6 +123,9 @@ app.register((instance) => locationRoutes(instance));
 try {
   await runMigrations();
   await app.listen({ port: env.API_PORT, host: "0.0.0.0" });
+  // Relance des SOS restés sans réponse. Tourne dans chaque réplique : la
+  // réclamation en base garantit qu'une annonce n'est relancée qu'une fois.
+  startSosRelay({ info: (msg) => app.log.info(msg), error: (err) => app.log.error(err) });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

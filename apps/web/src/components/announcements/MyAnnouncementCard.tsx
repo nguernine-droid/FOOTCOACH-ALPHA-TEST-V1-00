@@ -74,7 +74,8 @@ export function MyAnnouncementCard({
         </p>
       )}
 
-      {/* Conformité FFF : délai de déclaration et attestation du coach.
+      {/* Conformité FFF : le délai de déclaration, et lui seul — l'attestation
+          par annonce a laissé place à l'acceptation donnée à l'inscription.
           Une annonce repartie en SOS n'est pas réévaluée : la déclaration au
           district porte sur la tenue du match, pas sur l'identité de l'adversaire. */}
       <div className="flex flex-wrap gap-1.5">
@@ -93,11 +94,6 @@ export function MyAnnouncementCard({
         ) : (
           <span className="chip bg-success-soft text-success">
             <ShieldCheck size={11} /> Délai FFF respecté
-          </span>
-        )}
-        {!a.federationDeclared && (
-          <span className="chip bg-sun-soft text-sun">
-            <AlertTriangle size={11} /> Déclaration non attestée
           </span>
         )}
       </div>

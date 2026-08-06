@@ -6,6 +6,7 @@ import { Contact, Phone, QrCode, ScanLine, Trash2, UserPlus } from "lucide-react
 import { parseCoachQr, type CoachRelationDto } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
+import { CategoryBadges, LevelBadge } from "@/components/LevelBadge";
 import { QrScanner } from "@/components/matches/QrScanner";
 import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
@@ -187,8 +188,12 @@ export default function CoachRelationsPage() {
                   size={48}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold truncate">
-                    {relation.firstName} {relation.lastName}
+                  <p className="font-bold flex items-center gap-1.5 flex-wrap">
+                    <span className="truncate">
+                      {relation.firstName} {relation.lastName}
+                    </span>
+                    <LevelBadge level={relation.level} />
+                    <CategoryBadges categories={relation.categories} />
                   </p>
                   {relation.teams.length > 0 && (
                     <p className="text-xs text-ink-soft truncate">

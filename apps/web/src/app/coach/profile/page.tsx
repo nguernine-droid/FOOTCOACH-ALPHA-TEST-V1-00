@@ -2,9 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Users } from "lucide-react";
-import { coachQrPayload, type UserDto } from "@footcoach/shared";
+import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
+import {
+  coachQrPayload,
+  COACH_CATEGORIES,
+  COACH_CATEGORY_DESCRIPTIONS,
+  COACH_CATEGORY_LABELS,
+  type CoachCategory,
+  type UserDto,
+} from "@footcoach/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
 import { LocationCard } from "@/components/coach/LocationCard";
 import { NotificationsCard } from "@/components/coach/NotificationsCard";
@@ -44,6 +52,25 @@ export default function CoachProfilePage() {
   function apply(updated: UserDto) {
     setUser(updated);
     updateStoredUser(updated);
+  }
+
+  /**
+   * Casquettes : cochées et décochées à l'unité, enregistrées immédiatement.
+   * Pas de bouton « Enregistrer » — c'est un interrupteur, et un interrupteur
+   * qu'il faut confirmer laisse croire qu'on l'a actionné alors que non.
+   */
+  async function toggleCategory(category: CoachCategory) {
+    const current = user?.categories ?? [];
+    const next = current.includes(category)
+      ? current.filter((c) => c !== category)
+      : [...current, category];
+    setError(null);
+    setMessage(null);
+    try {
+      apply(await api<UserDto>("/me/categories", { method: "PATCH", body: JSON.stringify({ categories: next }) }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Enregistrement impossible");
+    }
   }
 
   async function saveProfile(e: React.FormEvent) {
@@ -245,6 +272,86 @@ export default function CoachProfilePage() {
           </p>
         )}
       </section>
+
+      {/* Casquettes : cumulables, et rien de coché est le cas ordinaire —
+          « simple coach » n'a pas de case, ce serait une case pour dire non. */}
+      {user.categories !== undefined && (
+        <section className="card p-5 space-y-3" aria-label="Mes casquettes">
+          <div className="space-y-1">
+            <h3 className="display text-lg">Mes casquettes</h3>
+            <p className="text-xs text-ink-soft">
+              Facultatives et cumulables. Sans aucune, vous restez un coach comme un autre — vos annonces et vos
+              matchs fonctionnent à l&apos;identique.
+            </p>
+          </div>
+          {COACH_CATEGORIES.map((category) => {
+            const on = user.categories?.includes(category) ?? false;
+            return (
+              <label
+                key={category}
+                htmlFor={`category-${category}`}
+                className={cn(
+                  "flex gap-3 items-start rounded-lg border px-4 py-3 cursor-pointer transition",
+                  on ? "border-accent bg-accent-surface" : "border-line bg-paper hover:border-accent/40",
+                )}
+              >
+                <input
+                  id={`category-${category}`}
+                  type="checkbox"
+                  checked={on}
+                  onChange={() => toggleCategory(category)}
+                  className="mt-0.5 w-5 h-5 shrink-0 accent-blue"
+                />
+                <span className="text-xs leading-relaxed">
+                  <span className="block font-bold text-ink">{COACH_CATEGORY_LABELS[category]}</span>
+                  <span className="text-ink-soft">{COACH_CATEGORY_DESCRIPTIONS[category]}</span>
+                </span>
+              </label>
+            );
+          })}
+        </section>
+      )}
+
+      {/* Palier : le seul endroit où le total chiffré est montré, et seulement
+          à son propriétaire. Ailleurs, seul le palier circule. */}
+      {user.level && (
+        <section className="card p-5 space-y-3" aria-label="Palier">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="display text-lg">Palier</h3>
+            <span className="chip bg-accent-surface text-accent shrink-0">
+              <Trophy size={11} aria-hidden /> {user.level.name}
+            </span>
+          </div>
+          <p className="text-xs text-ink-soft">
+            {user.points ?? 0} points gagnés en validant vos rencontres au stade, face au coach adverse.
+          </p>
+          {user.level.next != null ? (
+            <>
+              {/* Progression dans le palier courant, pas depuis zéro : c'est le
+                  chemin qui reste qui motive, pas le total accumulé. */}
+              <div
+                className="h-2 rounded-full bg-paper overflow-hidden"
+                role="progressbar"
+                aria-valuemin={user.level.min}
+                aria-valuemax={user.level.next}
+                aria-valuenow={user.points ?? 0}
+              >
+                <div
+                  className="h-full bg-accent-solid rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.round((((user.points ?? 0) - user.level.min) / (user.level.next - user.level.min)) * 100))}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[11px] text-ink-soft">
+                Encore {user.level.next - (user.points ?? 0)} points avant le palier suivant.
+              </p>
+            </>
+          ) : (
+            <p className="text-[11px] text-ink-soft">Vous êtes au palier le plus haut.</p>
+          )}
+        </section>
+      )}
 
       {/* Compte */}
       <section className="card p-5 space-y-3">

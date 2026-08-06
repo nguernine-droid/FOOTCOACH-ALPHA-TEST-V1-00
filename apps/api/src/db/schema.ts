@@ -15,6 +15,16 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const userRole = pgEnum("user_role", ["coach", "player", "parent", "supporter", "admin", "club"]);
+/**
+ * Casquettes qu'un coach se donne lui-même, cumulables. Distinctes de son rôle
+ * de compte : elles ne changent pas ses droits, elles disent ce qu'il accepte
+ * de faire pour les autres.
+ *
+ * `joker` a un effet immédiat — lui seul est alerté des SOS. `contributeur` est
+ * décoratif pour l'instant et prendra son sens en V2 ; il est modélisé dès
+ * maintenant pour que les coachs puissent se déclarer sans attendre.
+ */
+export const coachCategory = pgEnum("coach_category", ["joker", "contributeur"]);
 // Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs).
 export const teamCoachRole = pgEnum("team_coach_role", ["principal", "adjoint"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
@@ -27,6 +37,10 @@ export const matchStatus = pgEnum("match_status", [
 ]);
 // Motif du désistement d'un coach sur un match confirmé
 export const withdrawalReason = pgEnum("withdrawal_reason", ["blessure", "meteo", "terrain", "personnel"]);
+// Pourquoi des points ont été attribués. Le motif est stocké et non recalculé :
+// une annonce cesse d'être en SOS une fois pourvue, la raison du bonus doit
+// survivre à ce changement d'état.
+export const pointReason = pgEnum("point_reason", ["rencontre", "sos"]);
 export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"]);
 export const matchEventType = pgEnum("match_event_type", ["goal", "card", "substitution", "highlight"]);
 export const matchSide = pgEnum("match_side", ["home", "away"]);
@@ -61,6 +75,12 @@ export const users = pgTable("users", {
   phone: text("phone"),
   // Code personnel du coach : à dicter ou à faire scanner pour créer une relation
   coachCode: text("coach_code").unique(),
+  /**
+   * Casquettes du coach, cumulables. Tableau vide = « aucune », le cas courant :
+   * c'est une valeur en soi et non une donnée manquante, d'où le NOT NULL avec
+   * défaut `{}` plutôt qu'un NULL qu'il faudrait interpréter partout.
+   */
+  coachCategories: coachCategory("coach_categories").array().notNull().default([]),
   // Nom du fichier photo dans le volume d'uploads (NULL = initiales)
   avatarPath: text("avatar_path"),
   // Joueur : compte parent assigné (valide ses réservations de covoiturage)
@@ -179,6 +199,19 @@ export const teams = pgTable("teams", {
   // Coordonnées approximatives de la ville (annuaire statique, pas d'API externe)
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
+  // ————— Références reprises par les annonces —————
+  // Catégorie d'engagement (U13, Seniors…) et stade habituel : saisis une fois
+  // à la création, ils préremplissent chaque publication d'annonce. Ce sont des
+  // valeurs par défaut, pas des contraintes — l'annonce garde les siennes.
+  //
+  // Texte libre pour la catégorie, comme dans match_announcements : la liste
+  // (MATCH_CATEGORIES) est validée par zod à l'entrée, un enum PostgreSQL
+  // imposerait une migration à chaque catégorie ajoutée.
+  //
+  // NULL pour les équipes créées avant : on ne devine pas la catégorie d'un
+  // « FC Exemple », et le formulaire d'annonce doit pouvoir le constater.
+  category: text("category"),
+  stadium: text("stadium"),
   // Club propriétaire de l'équipe (NULL = équipe d'un coach indépendant, sans club)
   clubId: uuid("club_id").references(() => clubs.id),
   // Affectation des coachs : voir table team_coaches (une équipe peut avoir
@@ -246,32 +279,67 @@ export const clubAffiliationRequests = pgTable(
   (t) => [uniqueIndex("club_affiliation_pending_coach_idx").on(t.coachId).where(sql`status = 'pending'`)],
 );
 
-export const matchAnnouncements = pgTable("match_announcements", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  teamId: uuid("team_id")
-    .notNull()
-    .references(() => teams.id),
-  date: date("date").notNull(),
-  time: time("time").notNull(),
-  city: text("city").notNull(),
-  stadium: text("stadium").notNull(),
-  category: text("category").notNull(),
-  // NULL pour les annonces publiées avant l'ajout du genre : on ne devine pas
-  // rétroactivement le genre d'une équipe.
-  gender: matchGender("gender"),
-  level: matchLevel("level").notNull().default("loisir"),
-  format: matchFormat("format").notNull().default("11v11"),
-  comment: text("comment"),
-  status: announcementStatus("status").notNull().default("open"),
-  // Attestation du coach : le match amical a été déclaré à la fédération (délai FFF de 10 jours)
-  federationDeclared: boolean("federation_declared").notNull().default(false),
-  // SOS : l'annonce est repartie en recherche parce que l'adversaire s'est
-  // désisté. Elle passe en tête du radar, motif affiché aux autres coachs.
-  isSos: boolean("is_sos").notNull().default(false),
-  sosReason: withdrawalReason("sos_reason"),
-  sosDetails: text("sos_details"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const matchAnnouncements = pgTable(
+  "match_announcements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id),
+    date: date("date").notNull(),
+    time: time("time").notNull(),
+    city: text("city").notNull(),
+    stadium: text("stadium").notNull(),
+    category: text("category").notNull(),
+    // NULL pour les annonces publiées avant l'ajout du genre : on ne devine pas
+    // rétroactivement le genre d'une équipe.
+    gender: matchGender("gender"),
+    level: matchLevel("level").notNull().default("loisir"),
+    format: matchFormat("format").notNull().default("11v11"),
+    comment: text("comment"),
+    status: announcementStatus("status").notNull().default("open"),
+    /**
+     * Attestation « j'ai déclaré ce match à ma fédération », cochée annonce par
+     * annonce jusqu'à ce que l'acceptation de responsabilité soit demandée à
+     * l'inscription (users.terms_accepted_at). Elle y faisait double emploi.
+     *
+     * Colonne conservée mais PLUS ÉCRITE : elle garde la trace des attestations
+     * réellement données. Sur les annonces récentes, `false` veut dire « la
+     * question n'a pas été posée », et non « le coach a refusé d'attester » —
+     * ne pas la relire comme un manquement.
+     */
+    federationDeclared: boolean("federation_declared").notNull().default(false),
+    // SOS : l'annonce est repartie en recherche parce que l'adversaire s'est
+    // désisté. Elle passe en tête du radar, motif affiché aux autres coachs.
+    isSos: boolean("is_sos").notNull().default(false),
+    sosReason: withdrawalReason("sos_reason"),
+    sosDetails: text("sos_details"),
+    /**
+     * ————— Relance du SOS —————
+     * `sos_alerted_at` : instant où les jokers du secteur ont été alertés.
+     * `sos_widened_at` : instant où le filet a été élargi aux autres coachs,
+     * faute de réponse. NULL tant que la relance reste due.
+     *
+     * Les deux sont remis à zéro à chaque nouveau SOS sur la même annonce : un
+     * second désistement rouvre un cycle complet, il ne doit pas hériter de la
+     * relance déjà faite au précédent.
+     *
+     * `sos_widened_at` est aussi le VERROU de la relance : le balayeur la pose
+     * par un UPDATE conditionnel, si bien que deux répliques de l'API qui
+     * balaient en même temps n'envoient pas la notification deux fois.
+     */
+    sosAlertedAt: timestamp("sos_alerted_at", { withTimezone: true }),
+    sosWidenedAt: timestamp("sos_widened_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Index partiel pour le balayeur de relances : il tourne toutes les deux
+  // minutes dans chaque réplique, et sans lui il parcourrait toute la table des
+  // annonces pour n'en retenir au plus qu'une poignée. La clause reprend
+  // exactement son filtre — les lignes déjà relancées n'y entrent même pas.
+  (t) => [
+    index("sos_pending_relay_idx").on(t.sosAlertedAt).where(sql`is_sos and sos_widened_at is null`),
+  ],
+);
 
 // Proposition d'un coach sur une annonce. L'annonce reste "open" (visible au radar)
 // tant que le coach émetteur n'a pas accepté une proposition — c'est l'acceptation
@@ -314,12 +382,34 @@ export const matches = pgTable("matches", {
   // Conservée pour compatibilité : plus utilisée depuis que le score final
   // est saisi par l'un des deux coachs puis validé par l'autre.
   awayCoachCanEdit: boolean("away_coach_can_edit").notNull().default(false),
-  // Validation du score final : un coach saisit, l'autre valide en scannant le
-  // QR code. Le jeton est régénéré à chaque saisie (invalide le QR précédent).
+  // Qui a saisi le score final, et quand. Le score n'est plus contre-validé :
+  // c'est le scan de rencontre, plus haut dans la journée, qui atteste que les
+  // deux coachs se sont bien retrouvés.
   scoreSubmittedByTeamId: uuid("score_submitted_by_team_id").references(() => teams.id),
   scoreSubmittedAt: timestamp("score_submitted_at", { withTimezone: true }),
+  /**
+   * Ancienne double validation du score (un coach saisissait, l'autre scannait
+   * un QR). Colonnes conservées pour les matchs clos sous cette règle, PLUS
+   * ÉCRITES : `score_confirmed_at` à NULL sur un match récent ne veut pas dire
+   * que le score est contesté, seulement qu'il n'y a plus de contre-signature.
+   */
   scoreConfirmedAt: timestamp("score_confirmed_at", { withTimezone: true }),
   confirmationToken: text("confirmation_token"),
+  /**
+   * ————— Rencontre —————
+   * Le QR que l'équipe qui REÇOIT (celle dont l'annonce est à l'origine du
+   * match) montre à l'équipe qui s'est déplacée. Le scan atteste que les deux
+   * coachs se sont trouvés face à face, ce qu'aucun appui sur un bouton ne peut
+   * prouver — et c'est ce qui déclenche les points.
+   *
+   * Le jeton naît avec le match ; `encounter_token_coach_id` retient QUEL coach
+   * de l'équipe hôte l'a affiché, car une équipe en compte plusieurs et les
+   * points vont aux deux personnes qui se sont réellement rencontrées.
+   */
+  encounterToken: text("encounter_token"),
+  encounterTokenCoachId: uuid("encounter_token_coach_id").references(() => users.id),
+  encounterConfirmedAt: timestamp("encounter_confirmed_at", { withTimezone: true }),
+  encounterConfirmedByCoachId: uuid("encounter_confirmed_by_coach_id").references(() => users.id),
   // Désistement avant le coup d'envoi : qui a renoncé, pourquoi, et quand.
   withdrawnByTeamId: uuid("withdrawn_by_team_id").references(() => teams.id),
   withdrawalReason: withdrawalReason("withdrawal_reason"),
@@ -327,6 +417,38 @@ export const matches = pgTable("matches", {
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Points gagnés par un coach, une ligne par match et par coach.
+ *
+ * Un journal plutôt qu'un compteur sur `users` : le total se recalcule par
+ * somme, mais surtout il reste explicable — d'où viennent ces points, quand,
+ * sur quel match. Un compteur seul serait impossible à auditer le jour où un
+ * coach conteste son palier, et impossible à corriger sans tout refaire.
+ *
+ * L'unicité (match, coach) est la garantie qu'un même match ne peut pas payer
+ * deux fois : elle tient même si deux requêtes de scan arrivent en même temps.
+ */
+export const coachPoints = pgTable(
+  "coach_points",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    coachId: uuid("coach_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    points: integer("points").notNull(),
+    reason: pointReason("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("coach_points_match_coach_idx").on(t.matchId, t.coachId),
+    // Le total d'un coach est lu à chaque lecture de son compte
+    index("coach_points_coach_idx").on(t.coachId),
+  ],
+);
 
 export const attendances = pgTable(
   "attendances",

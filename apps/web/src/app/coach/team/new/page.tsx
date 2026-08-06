@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
-import type { CoachTeamDto } from "@footcoach/shared";
+import type { CoachTeamDto, MatchCategory } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
+import { CategoryPicker } from "@/components/CategoryPicker";
 import { Button } from "@/components/ui/Button";
 
 /** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
@@ -24,10 +25,14 @@ export default function NewTeamPage() {
   const { reloadTeams, setActiveTeam } = useActiveTeam();
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  // Aucune catégorie présélectionnée : en poser une reviendrait à décider à la
+  // place du coach, et cette valeur repartira ensuite dans toutes ses annonces.
+  const [category, setCategory] = useState<MatchCategory | null>(null);
+  const [stadium, setStadium] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const incomplete = name.trim().length < 2 || city.trim().length < 1;
+  const incomplete = name.trim().length < 2 || city.trim().length < 1 || !category;
   useQuickActionOverride({
     kind: "submit",
     formId: FORM_ID,
@@ -43,7 +48,12 @@ export default function NewTeamPage() {
     try {
       const team = await api<CoachTeamDto>("/coach/teams", {
         method: "POST",
-        body: JSON.stringify({ name: name.trim(), city: city.trim() }),
+        body: JSON.stringify({
+          name: name.trim(),
+          city: city.trim(),
+          category,
+          stadium: stadium.trim() || undefined,
+        }),
       });
       // La liste des équipes vit dans la session : sans ce rechargement, la
       // nouvelle équipe n'apparaîtrait qu'à la prochaine connexion.
@@ -111,7 +121,34 @@ export default function NewTeamPage() {
           </p>
         </div>
 
-        {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
+        <CategoryPicker
+          value={category}
+          onChange={setCategory}
+          idPrefix="team-category"
+          hint="Reprise à chaque annonce publiée au nom de cette équipe, et modifiable au cas par cas."
+        />
+
+        <div className="space-y-1.5">
+          <label htmlFor="team-stadium" className="text-xs font-bold text-ink-soft">
+            Stade habituel (optionnel)
+          </label>
+          <input
+            id="team-stadium"
+            maxLength={150}
+            autoComplete="off"
+            autoCapitalize="words"
+            enterKeyHint="done"
+            value={stadium}
+            onChange={(e) => setStadium(e.target.value)}
+            className="field"
+            placeholder="Stade municipal"
+          />
+          <p className="text-[11px] text-ink-soft">
+            Celui où vous recevez. Il sera proposé d&apos;office quand vous publierez une annonce.
+          </p>
+        </div>
+
+        {error &&<p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
 
         <Button type="submit" size="lg" className="w-full" disabled={loading || incomplete}>
           {loading ? "Création…" : "Créer l'équipe"}
