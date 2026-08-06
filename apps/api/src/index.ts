@@ -16,6 +16,7 @@ import { announcementRoutes } from "./routes/announcements.js";
 import { matchRoutes } from "./routes/matches.js";
 import { tournamentRoutes } from "./routes/tournaments.js";
 import { clubDirectoryRoutes } from "./routes/clubs.js";
+import { coachCardRoutes } from "./routes/coaches.js";
 import { registrationRoutes } from "./routes/registration.js";
 import { activityRoutes } from "./routes/activity.js";
 import { eventRoutes } from "./routes/events.js";
@@ -121,6 +122,7 @@ app.register((instance) => activityRoutes(instance));
 app.register((instance) => eventRoutes(instance));
 app.register((instance) => adminRoutes(instance));
 app.register((instance) => clubDirectoryRoutes(instance));
+app.register((instance) => coachCardRoutes(instance));
 app.register((instance) => relationRoutes(instance));
 app.register((instance) => locationRoutes(instance));
 

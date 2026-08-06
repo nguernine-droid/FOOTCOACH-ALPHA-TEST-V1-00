@@ -11,6 +11,7 @@ import {
   MATCH_POINTS,
   POINTS_COOLDOWN_DAYS,
   type EncounterResultDto,
+  type CoachRefDto,
   type MatchDetailDto,
   type MatchDto,
   type PointReason,
@@ -23,6 +24,7 @@ import { cityCoords } from "../lib/cities.js";
 import { pairOnCooldown, totalPointsOf } from "../lib/points.js";
 import { tokensMatch } from "../lib/tokens.js";
 import { notifyScoreRecorded, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
+import { representativeCoachesOf } from "../lib/coachCard.js";
 
 const homeTeam = alias(teams, "home_team");
 const awayTeam = alias(teams, "away_team");
@@ -56,11 +58,17 @@ function encounterDayReached(match: typeof matches.$inferSelect): boolean {
   return new Date(`${match.date}T00:00`).getTime() <= Date.now();
 }
 
-function toDto({ match, home, away }: MatchRow, viewerTeamId: string | null): MatchDto {
+function toDto(
+  { match, home, away }: MatchRow,
+  viewerTeamId: string | null,
+  coaches?: Map<string, CoachRefDto>,
+): MatchDto {
   return {
     id: match.id,
     homeTeam: { id: home.id, name: home.name, city: home.city },
     awayTeam: { id: away.id, name: away.name, city: away.city },
+    homeCoach: coaches?.get(home.id) ?? null,
+    awayCoach: coaches?.get(away.id) ?? null,
     date: match.date,
     time: match.time.slice(0, 5),
     location: match.location,
@@ -103,7 +111,11 @@ export function matchRoutes(app: FastifyInstance) {
     const rows = await baseSelect()
       .where(or(eq(matches.homeTeamId, teamId), eq(matches.awayTeamId, teamId)))
       .orderBy(desc(matches.date), desc(matches.time));
-    return rows.map((r) => toDto(r, teamId));
+    // Une seule lecture pour toutes les équipes de la liste : le coach d'en
+    // face s'affiche sur chaque carte, et une requête par match aurait suffi à
+    // rendre l'écran lent au bout d'une saison.
+    const coaches = await representativeCoachesOf(rows.flatMap((r) => [r.home.id, r.away.id]));
+    return rows.map((r) => toDto(r, teamId, coaches));
   });
 
   /**
@@ -121,7 +133,8 @@ export function matchRoutes(app: FastifyInstance) {
     const { id } = idParamSchema.parse(request.params);
     const row = await getMatchOr404(id);
     assertCoachOfMatch(row.match, request.user.teamId);
-    return toDto(row, request.user.teamId);
+    const coaches = await representativeCoachesOf([row.home.id, row.away.id]);
+    return toDto(row, request.user.teamId, coaches);
   });
 
   /**

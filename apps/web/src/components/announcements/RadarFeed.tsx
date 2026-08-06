@@ -513,9 +513,17 @@ export function RadarFeed() {
                   Proposition déclinée par le coach
                 </p>
               ) : (
-                <Button className="w-full" onClick={() => respond(a.id)} disabled={responding === a.id}>
-                  {responding === a.id ? "Envoi…" : "Proposer de jouer"}
-                </Button>
+                <div className="space-y-2">
+                  <Button className="w-full" onClick={() => respond(a.id)} disabled={responding === a.id}>
+                    {responding === a.id ? "Envoi…" : "Proposer de jouer"}
+                  </Button>
+                  {/* Le détail porte la carte du coach : on hésite moins à
+                      traverser le département quand on voit qui l'on va
+                      rencontrer. */}
+                  <ButtonLink href={`/coach/announcements/${a.id}`} variant="ghost" className="w-full">
+                    Voir le détail et le coach
+                  </ButtonLink>
+                </div>
               )}
             </div>
           ))}

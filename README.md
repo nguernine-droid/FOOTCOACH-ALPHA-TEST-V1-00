@@ -68,7 +68,7 @@ Le différé vit en base (`match_announcements.sos_alerted_at` / `sos_widened_at
 
 Les casquettes s'affichent sur les fiches de relations, à côté du palier.
 
-**Paliers.** Le total reste interne, seul le **palier** circule (Nouveau → Bronze 30 → Argent 100 → Or 250 → Platine 500, `COACH_LEVELS` dans `@footcoach/shared`). Il s'affiche sur les fiches de relations, comme repère de fiabilité avant de proposer un match à quelqu'un qu'on ne connaît pas. Le coach voit son total chiffré et sa progression sur **Mon profil**, et nulle part ailleurs.
+**Paliers.** Nouveau → Bronze 30 → Argent 100 → Or 250 → Platine 500 (`COACH_LEVELS` dans `@footcoach/shared`). Le palier s'affiche sur les fiches de relations, comme repère de fiabilité avant de proposer un match à quelqu'un qu'on ne connaît pas. Le **total chiffré** ne se lit que sur la **carte du coach** — la sienne dans **Mon profil**, celle d'un confrère quand on a le droit de l'ouvrir (voir plus bas).
 
 **Le score, lui, ne se contre-signe plus.** Il est saisi par l'un ou l'autre coach et clôt le match ; l'adversaire en est notifié et peut le corriger. C'est la rencontre qui est attestée, pas le résultat — un désaccord sur un but se règle entre coachs, pas par un refus de validation qui laissait le match ouvert indéfiniment.
 
@@ -395,6 +395,18 @@ Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Moi**.
 - **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.
 
 Les espaces **admin** et **club** suivent les mêmes règles : barre basse, feuille « Moi », et bouton « + » pour les créations (patron `?nouveau=1`).
+
+## La carte d'un confrère
+
+La même carte s'ouvre sur celle des autres, en feuille basse et sans quitter l'écran courant (`GET /coaches/:id/card`, `CoachCardSheet`). Trois portes, celles où l'on se demande justement **à qui on a affaire** :
+
+- **Mes relations** — tout le bloc d'identité est cliquable, c'est la cible la plus large sous le pouce ;
+- **le détail d'une annonce** (`/coach/announcements/:id`, ouvert depuis le radar) — section **« Le coach »**, avant de décider de traverser le département pour un inconnu ;
+- **la feuille de match** — section **« Les coachs »**, les deux côtés, celui qui reçoit et celui qui se déplace.
+
+**Qui a le droit de voir quoi** (`apps/api/src/lib/coachCard.ts`) : soi-même, ses relations, un coach avec qui on partage un match ou un tournoi, et un coach qui a une **annonce ouverte non expirée** — publier, c'est se montrer. Partout ailleurs l'API répond **404, pas 403** : on ne doit pas pouvoir énumérer les coachs de l'application identifiant par identifiant. La feuille affiche alors une explication, sans accuser personne.
+
+La carte d'un confrère montre son **total de points**, pas seulement son palier — c'est le chiffre qui donne sa valeur au geste de scanner le QR d'arrivée. Le **numéro de licence**, lui, ne sort jamais de son propriétaire.
 
 ## Ce qui a été retiré, et ce qui est seulement masqué
 

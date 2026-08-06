@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
+  ChevronRight,
   CheckCircle2,
   Clock3,
   Pencil,
@@ -26,7 +27,9 @@ import {
 } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
+import { Avatar } from "@/components/Avatar";
 import { MatchCard } from "@/components/MatchCard";
+import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
 import { QrScanner } from "@/components/matches/QrScanner";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -292,6 +295,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
   // du DTO à dessein : il ne doit sortir que quand on demande à l'afficher.
   const [encounterToken, setEncounterToken] = useState<string | null>(null);
   const [encounterResult, setEncounterResult] = useState<EncounterResultDto | null>(null);
+  /** Coach dont on regarde la carte, null quand la feuille est fermée */
+  const [cardOf, setCardOf] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -386,6 +391,47 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
       </Link>
 
       <MatchCard match={match} />
+
+      {/* ————— Les deux coachs —————
+          Placés juste sous la feuille : avant de se déplacer, on veut savoir
+          qui l'on va trouver en face — et c'est la première chose qu'on
+          cherche quand on rouvre un match passé. */}
+      {(match.homeCoach || match.awayCoach) && (
+        <section className="card p-5 space-y-3" aria-label="Les coachs">
+          <h3 className="display text-lg">Les coachs</h3>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { coach: match.homeCoach, team: match.homeTeam, side: "Reçoit" },
+              { coach: match.awayCoach, team: match.awayTeam, side: "Se déplace" },
+            ].map(({ coach, team, side }) =>
+              coach ? (
+                <button
+                  key={team.id}
+                  type="button"
+                  onClick={() => setCardOf(coach.id)}
+                  className="flex items-center gap-3 rounded-lg bg-paper px-4 py-3 text-left transition
+                    hover:bg-blue-faint active:bg-blue-soft"
+                >
+                  <Avatar firstName={coach.firstName} lastName={coach.lastName} avatarUrl={coach.avatarUrl} size={40} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold truncate">
+                      {coach.firstName} {coach.lastName}
+                    </span>
+                    <span className="block text-xs text-ink-soft truncate">
+                      {side} · {team.name}
+                    </span>
+                  </span>
+                  <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+                </button>
+              ) : (
+                <p key={team.id} className="rounded-lg bg-paper px-4 py-3 text-xs text-ink-soft">
+                  {team.name} — aucun coach déclaré
+                </p>
+              ),
+            )}
+          </div>
+        </section>
+      )}
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
@@ -588,6 +634,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
       )}
 
       {scanning && <QrScanner onResult={confirmEncounter} onClose={() => setScanning(false)} />}
+      {cardOf && <CoachCardSheet coachId={cardOf} onClose={() => setCardOf(null)} />}
 
       {withdrawing && (
         <WithdrawSheet

@@ -854,6 +854,12 @@ export interface AnnouncementDto {
   comment: string | null;
   status: AnnouncementStatus;
   isMine: boolean;
+  /**
+   * Coach qui représente l'équipe émettrice — de quoi ouvrir sa carte depuis
+   * l'annonce. Publier, c'est se montrer : le nom sort de l'anonymat le temps
+   * que l'annonce cherche un adversaire.
+   */
+  coach: CoachRefDto | null;
   createdAt: string;
   /** Jours entre la publication de l'annonce et la date du match (délai FFF : 10 minimum) */
   noticeDays: number;
@@ -900,6 +906,9 @@ export interface MatchDto {
   id: string;
   homeTeam: TeamDto;
   awayTeam: TeamDto;
+  /** Les deux coachs : la feuille de match les présente face à face */
+  homeCoach: CoachRefDto | null;
+  awayCoach: CoachRefDto | null;
   date: string;
   time: string;
   location: string;
@@ -1140,6 +1149,38 @@ export interface ClubAffiliationRequestDto {
 export interface CreateClubCoachResultDto {
   coach: { id: string; firstName: string; lastName: string; email: string };
   tempPassword: string;
+}
+
+/**
+ * De quoi désigner un coach et ouvrir sa carte. Posée sur les annonces et les
+ * feuilles de match : elle porte juste ce qu'il faut pour l'afficher en ligne,
+ * le reste vient de `GET /coaches/:id/card`.
+ */
+export interface CoachRefDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+}
+
+/**
+ * La carte d'un coach vue par un autre. Identique à la sienne, points compris :
+ * une carte de joueur qui cacherait sa note ne serait plus une carte.
+ *
+ * L'accès est en revanche restreint — voir `canSeeCoachCard` côté serveur. Un
+ * coach n'est pas visible de toute l'application : il l'est de ses relations,
+ * de ceux qu'il rencontre, et de ceux qui voient une annonce qu'il a publiée
+ * (publier, c'est se montrer).
+ */
+export interface CoachCardDto extends CoachRefDto {
+  /** Club, ou à défaut l'équipe — le libellé est décidé par le serveur */
+  clubLabel: string | null;
+  /** Catégorie d'âge de son équipe principale (U13…), null si non renseignée */
+  teamCategory: string | null;
+  level: CoachLevelDto;
+  points: number;
+  matchesPlayed: number;
+  categories: CoachCategory[];
 }
 
 /** Un coach du réseau de relations : contact + contexte sportif */
