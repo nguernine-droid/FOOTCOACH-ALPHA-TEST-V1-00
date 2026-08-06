@@ -351,6 +351,18 @@ mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
 
 L'étape « équipe » demande son nom, sa ville, sa **catégorie** (obligatoire) et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
 
+Le champ **nom de l'équipe** propose des **suggestions de clubs** tirées de l'annuaire public des entreprises (`recherche-entreprises.api.gouv.fr`, façade de la base SIRENE, filtrée sur le code NAF **93.12Z « Activités de clubs de sports »**). Retenir une suggestion remplit aussi la **ville**. Même champ dans **Mes équipes › Créer une équipe**.
+
+C'est une aide, jamais une contrainte :
+
+- le champ reste une **saisie libre** — beaucoup de clubs amateurs n'existent pas dans cet annuaire, et leur coach doit pouvoir s'inscrire sans se demander pourquoi son club « n'existe pas » ;
+- l'appel part du **serveur**, jamais du navigateur : l'adresse des coachs n'est pas communiquée au tiers, et le cache mémoire profite à tous ;
+- délai d'attente de 3 s, et **tout échec renvoie une liste vide** — un service indisponible ne se voit pas ;
+- le code 93.12Z couvre **tous les sports** : les résultats sont *triés* pour remonter les noms qui ressemblent à du football (`FOOT`, `FC`, `AS`, `Olympique`…), jamais filtrés — écarter les autres cacherait des clubs légitimes, et le coach reconnaît le sien mieux qu'il ne devine celui qui manque ;
+- `CLUB_DIRECTORY_URL` permet de pointer un miroir, ou de neutraliser la fonction sur un réseau fermé.
+
+> Le code NAF **93.12Z devient 93.12Y** dans la nomenclature 2025 : la constante `NAF_CLUBS_SPORTIFS` est à revoir le jour où l'annuaire basculera.
+
 L'étape « qui êtes-vous » accepte un **numéro de licence d'éducateur**, facultatif. Il n'est **servi qu'à son titulaire** : ni sur les fiches de relations, ni nulle part ailleurs — c'est une donnée administrative, pas un signe extérieur. Rien ne s'appuie dessus pour l'instant ; il est recueilli parce qu'un coach l'a sous la main en s'inscrivant et beaucoup moins le jour où il servira. Modifiable et effaçable ensuite dans **Mon profil** (vider le champ l'efface). Le format est volontairement permissif — chiffres, lettres, espaces, tirets et barres, 30 caractères — les districts n'ayant pas tous la même notation.
 
 ### Références d'équipe

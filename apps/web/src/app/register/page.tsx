@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { PASSWORD_MIN_LENGTH, passwordProblem, type MatchCategory } from "@footcoach/shared";
 import { register } from "@/lib/api";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { ClubNameField } from "@/components/ClubNameField";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
 import { LEGAL_LINKS } from "@/lib/legal";
@@ -208,7 +209,16 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
           >
             <div className="space-y-1.5">
               <label htmlFor="teamName" className="text-xs font-bold text-ink-soft">Nom de l&apos;équipe</label>
-              <input id="teamName" autoComplete="organization" autoCapitalize="words" enterKeyHint="next" value={form.teamName} onChange={(e) => set("teamName", e.target.value)} className="field" placeholder="FC Exemple" />
+              {/* Suggestions depuis l'annuaire public des entreprises. Choisir
+                  un club remplit aussi la ville — mais rien n'oblige à choisir,
+                  beaucoup de clubs amateurs n'y figurent pas. */}
+              <ClubNameField
+                id="teamName"
+                value={form.teamName}
+                onChange={(v) => set("teamName", v)}
+                onPickCity={(city) => set("teamCity", city)}
+                placeholder="FC Exemple"
+              />
               {touched && !form.teamName.trim() && <FieldError id="teamName-error">Donnez un nom à votre équipe.</FieldError>}
             </div>
             <div className="space-y-1.5">

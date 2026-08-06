@@ -804,6 +804,18 @@ export interface TeamDto {
   city: string;
 }
 
+/**
+ * Club proposé à la saisie, tiré de l'annuaire public des entreprises. Ce n'est
+ * qu'une SUGGESTION : rien n'oblige le coach à en retenir une, et aucune
+ * référence n'est conservée vers l'annuaire — seul le texte choisi est stocké.
+ */
+export interface ClubSuggestionDto {
+  name: string;
+  /** Commune du siège, pour distinguer deux clubs homonymes (null si absente) */
+  city: string | null;
+  postalCode: string | null;
+}
+
 /** Une équipe encadrée par le coach connecté, avec son rôle dessus (sélecteur "Mes équipes") */
 export interface CoachTeamDto {
   id: string;

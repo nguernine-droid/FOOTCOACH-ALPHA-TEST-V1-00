@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { ClubNameField } from "@/components/ClubNameField";
 import { Button } from "@/components/ui/Button";
 
 /** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
@@ -85,17 +86,17 @@ export default function NewTeamPage() {
           <label htmlFor="team-name" className="text-xs font-bold text-ink-soft">
             Nom de l&apos;équipe
           </label>
-          <input
+          {/* Mêmes suggestions qu'à l'inscription. Le coach ajoute lui-même la
+              catégorie au nom retenu : l'annuaire connaît « AS Lyon », pas
+              « AS Lyon U15 ». */}
+          <ClubNameField
             id="team-name"
             required
             minLength={2}
             maxLength={60}
-            autoComplete="off"
-            autoCapitalize="words"
-            enterKeyHint="next"
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="field"
+            onChange={setName}
+            onPickCity={setCity}
             placeholder="AS Lyon U15"
           />
         </div>

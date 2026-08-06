@@ -60,6 +60,14 @@ const envSchema = z
     // Contact exigé par la spec Web Push, transmis au service de notification
     VAPID_SUBJECT: z.string().default("mailto:contact@footcoach.local"),
     /**
+     * Annuaire public des entreprises (façade SIRENE), pour suggérer un nom de
+     * club à l'inscription. Gratuit et sans clé. Configurable pour pouvoir le
+     * remplacer par un miroir, ou le neutraliser sur un réseau fermé — une
+     * adresse injoignable dégrade seulement la suggestion, la saisie du nom
+     * reste libre.
+     */
+    CLUB_DIRECTORY_URL: z.string().url().default("https://recherche-entreprises.api.gouv.fr"),
+    /**
      * Lève les plafonds de débit, pour un test de charge sur un poste de
      * développement. Refusé en production (voir plus bas) : la limitation est
      * la seule protection contre la force brute sur les mots de passe.

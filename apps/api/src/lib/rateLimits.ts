@@ -79,3 +79,18 @@ export const registerRateLimit = {
     rateLimit: { max: off ? 100_000 : 5, timeWindow: "10 minutes", keyGenerator: ipRateLimitKey },
   },
 };
+
+/**
+ * Suggestion de nom de club. Route forcément ouverte — elle sert pendant
+ * l'inscription, avant tout compte — donc relayée vers un service tiers par
+ * un appelant anonyme : sans plafond, l'API deviendrait un proxy gratuit vers
+ * l'annuaire des entreprises, et c'est notre adresse qui s'y ferait bannir.
+ *
+ * Généreux malgré tout : le champ interroge à chaque frappe stabilisée, et
+ * remplir un formulaire d'inscription en consomme légitimement une dizaine.
+ */
+export const clubSearchRateLimit = {
+  config: {
+    rateLimit: { max: off ? 100_000 : 40, timeWindow: "1 minute", keyGenerator: ipRateLimitKey },
+  },
+};
