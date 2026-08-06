@@ -161,6 +161,9 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     ...(coachTeams ? { teams: coachTeams } : {}),
     ...(user.role === "coach"
       ? {
+          // Servi au titulaire seulement : `toUserDto` ne décrit que le compte
+          // connecté, les fiches de relations ont leur propre construction.
+          licenseNumber: user.coachLicenseNumber,
           coachCode: coachCode ?? null,
           clubName: clubName ?? null,
           pendingClubName: pendingClubName ?? null,
@@ -328,6 +331,11 @@ export function authRoutes(app: FastifyInstance) {
         firstName: input.firstName.trim(),
         lastName: input.lastName.trim(),
         ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
+        // Champ absent = inchangé ; vidé = effacé. C'est ce qui permet de
+        // retirer une licence saisie par erreur sans route dédiée.
+        ...(input.licenseNumber !== undefined
+          ? { coachLicenseNumber: input.licenseNumber?.trim() || null }
+          : {}),
       })
       .where(eq(users.id, request.user.id))
       .returning();

@@ -27,7 +27,12 @@ export default function CoachProfilePage() {
   const [user, setUser] = useState<UserDto | null>(() => getStoredUser());
   const [form, setForm] = useState(() => {
     const stored = getStoredUser();
-    return { firstName: stored?.firstName ?? "", lastName: stored?.lastName ?? "", phone: stored?.phone ?? "" };
+    return {
+      firstName: stored?.firstName ?? "",
+      lastName: stored?.lastName ?? "",
+      phone: stored?.phone ?? "",
+      licenseNumber: stored?.licenseNumber ?? "",
+    };
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -82,7 +87,13 @@ export default function CoachProfilePage() {
     try {
       const updated = await api<UserDto>("/me/profile", {
         method: "PATCH",
-        body: JSON.stringify({ ...form, phone: form.phone.trim() || null }),
+        body: JSON.stringify({
+          ...form,
+          phone: form.phone.trim() || null,
+          // `null` et non `undefined` : c'est ce qui distingue « effacé » de
+          // « non modifié » côté serveur.
+          licenseNumber: form.licenseNumber.trim() || null,
+        }),
       });
       apply(updated);
       setMessage("Profil enregistré");
@@ -206,6 +217,27 @@ export default function CoachProfilePage() {
             />
             <p className="text-[11px] text-ink-soft">
               Visible uniquement par les coachs de vos relations.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="licenseNumber" className="text-xs font-bold text-ink-soft">
+              Numéro de licence (optionnel)
+            </label>
+            <input
+              id="licenseNumber"
+              autoComplete="off"
+              autoCapitalize="characters"
+              enterKeyHint="done"
+              maxLength={30}
+              value={form.licenseNumber}
+              onChange={(e) => setForm((f) => ({ ...f, licenseNumber: e.target.value }))}
+              className="field"
+              placeholder="2543678901"
+            />
+            <p className="text-[11px] text-ink-soft">
+              Votre licence d&apos;éducateur. Contrairement au téléphone, elle n&apos;est visible que de vous —
+              videz le champ pour l&apos;effacer.
             </p>
           </div>
 

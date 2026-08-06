@@ -71,6 +71,7 @@ export function registrationRoutes(app: FastifyInstance) {
           // rapporte — sans elle, la trace ne prouverait rien de précis.
           termsAcceptedAt: new Date(),
           termsVersion: LEGAL_VERSION,
+          coachLicenseNumber: input.licenseNumber?.trim() || null,
         })
         .returning();
       const coords = cityCoords(input.teamCity);

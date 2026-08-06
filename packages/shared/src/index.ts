@@ -568,6 +568,22 @@ export const updateTeamReferencesSchema = teamReferencesSchema;
 const acceptedSchema = (subject: string) =>
   z.literal(true, { errorMap: () => ({ message: `Acceptation requise : ${subject}` }) });
 
+/**
+ * Numéro de licence d'éducateur. Volontairement permissif : les formats
+ * varient d'un district à l'autre, et rien ne s'appuie dessus pour l'instant —
+ * un contrôle strict n'écarterait que des numéros valides mal devinés.
+ * La chaîne vide vaut « pas de licence » et sera stockée `null`.
+ *
+ * Déclaré ici, avant les deux schémas qui l'utilisent (inscription et profil) :
+ * un `const` employé plus haut que sa définition lèverait à l'évaluation du
+ * module, pas au premier appel.
+ */
+export const coachLicenseSchema = z
+  .string()
+  .trim()
+  .max(30)
+  .regex(/^[A-Za-z0-9 .\-/]*$/, "Numéro de licence invalide");
+
 export const registerCoachSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
@@ -579,6 +595,9 @@ export const registerCoachSchema = z.object({
   // ailleurs (voir teamReferencesSchema), simplement préfixées « team ».
   teamCategory: z.enum(MATCH_CATEGORIES),
   teamStadium: z.string().trim().max(150).optional(),
+  // Facultatif : un coach l'a souvent sous la main en s'inscrivant, beaucoup
+  // moins le jour où il faudra le retrouver. Modifiable ensuite dans le profil.
+  licenseNumber: coachLicenseSchema.optional(),
   // Deux acceptations distinctes, et non une case unique fourre-tout : la
   // clause de responsabilité (déclaration à la fédération, licences, transport)
   // est celle qui protège réellement l'éditeur. Acceptée à part, elle ne peut
@@ -632,6 +651,7 @@ export type JoinRequestStatus = (typeof JOIN_REQUEST_STATUSES)[number];
 export const updateProfileSchema = z.object({
   firstName: z.string().min(1).max(50),
   lastName: z.string().min(1).max(50),
+  licenseNumber: coachLicenseSchema.nullable().optional(),
   // Partagé avec ses relations uniquement. Permissif : indicatifs, espaces, points.
   phone: z
     .string()
@@ -711,6 +731,12 @@ export interface UserDto {
   teams?: CoachTeamDto[];
   /** Téléphone du profil — visible de ses relations uniquement */
   phone: string | null;
+  /**
+   * Coach : son numéro de licence d'éducateur, facultatif. Servi au SEUL
+   * titulaire — il n'apparaît ni sur les fiches de relations, ni nulle part
+   * ailleurs. Donnée administrative, pas un signe extérieur.
+   */
+  licenseNumber?: string | null;
   /** Chemin de la photo de profil (null = initiales) */
   avatarUrl: string | null;
   /** Coach : son code personnel, à dicter ou faire scanner pour créer une relation */

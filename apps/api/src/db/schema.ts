@@ -89,6 +89,17 @@ export const users = pgTable("users", {
   clubId: uuid("club_id").references((): any => clubs.id),
   // Profil : partagés avec les coachs de son réseau de relations
   phone: text("phone"),
+  /**
+   * Numéro de licence d'éducateur, facultatif. Distinct de
+   * `driver_license_number` juste dessous, qui est un permis de conduire de
+   * parent conducteur — deux « licences » sans rapport, d'où le préfixe.
+   *
+   * Donnée administrative et identifiante : servie au seul titulaire, jamais
+   * aux autres coachs ni sur les fiches de relations. Rien ne s'appuie dessus
+   * pour l'instant ; elle est recueillie parce qu'un coach l'a sous la main à
+   * l'inscription et beaucoup moins le jour où elle servira.
+   */
+  coachLicenseNumber: text("coach_license_number"),
   // Code personnel du coach : à dicter ou à faire scanner pour créer une relation
   coachCode: text("coach_code").unique(),
   /**

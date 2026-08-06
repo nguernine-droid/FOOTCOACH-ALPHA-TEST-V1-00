@@ -77,6 +77,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
     teamName: "",
     teamCity: "",
     teamStadium: "",
+    licenseNumber: "",
   });
   // Hors de `form`, comme les acceptations : ce n'est pas une chaîne libre, et
   // surtout elle ne part d'aucune valeur — présélectionner une catégorie
@@ -123,6 +124,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         ...form,
         teamCategory,
         teamStadium: form.teamStadium.trim() || undefined,
+        licenseNumber: form.licenseNumber.trim() || undefined,
         acceptTerms: consent.terms,
         acceptResponsibility: consent.responsibility,
       });
@@ -155,6 +157,16 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
               <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">Nom</label>
               <input id="lastName" autoComplete="family-name" autoCapitalize="words" enterKeyHint="next" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className="field" placeholder="Martin" />
               {touched && !form.lastName.trim() && <FieldError id="lastName-error">Indiquez votre nom.</FieldError>}
+            </div>
+            {/* Facultatif, et à côté du nom parce que c'est une donnée de
+                personne : on l'a sous la main en s'inscrivant, beaucoup moins
+                le jour où il faudra la retrouver. */}
+            <div className="space-y-1.5">
+              <label htmlFor="licenseNumber" className="text-xs font-bold text-ink-soft">Numéro de licence (optionnel)</label>
+              <input id="licenseNumber" autoComplete="off" autoCapitalize="characters" enterKeyHint="done" maxLength={30} value={form.licenseNumber} onChange={(e) => set("licenseNumber", e.target.value)} className="field" placeholder="2543678901" />
+              <p className="text-[11px] text-ink-soft">
+                Votre licence d&apos;éducateur. Visible de vous seul, et modifiable plus tard dans Mon profil.
+              </p>
             </div>
             <Button type="submit" size="lg" className="w-full">Continuer</Button>
           </form>

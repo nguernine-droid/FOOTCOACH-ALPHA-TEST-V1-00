@@ -351,6 +351,8 @@ mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
 
 L'étape « équipe » demande son nom, sa ville, sa **catégorie** (obligatoire) et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
 
+L'étape « qui êtes-vous » accepte un **numéro de licence d'éducateur**, facultatif. Il n'est **servi qu'à son titulaire** : ni sur les fiches de relations, ni nulle part ailleurs — c'est une donnée administrative, pas un signe extérieur. Rien ne s'appuie dessus pour l'instant ; il est recueilli parce qu'un coach l'a sous la main en s'inscrivant et beaucoup moins le jour où il servira. Modifiable et effaçable ensuite dans **Mon profil** (vider le champ l'efface). Le format est volontairement permissif — chiffres, lettres, espaces, tirets et barres, 30 caractères — les districts n'ayant pas tous la même notation.
+
 ### Références d'équipe
 
 Chaque équipe porte une **catégorie** (U6 → Vétérans) et un **stade habituel**. Ils sont demandés à sa création — à l'inscription comme dans **Mes équipes › Créer une équipe** — et **préremplissent chaque annonce** publiée en son nom : catégorie, stade et ville arrivent déjà renseignés, il ne reste que la date, l'heure et le genre.
