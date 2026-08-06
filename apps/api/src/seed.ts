@@ -1,7 +1,17 @@
 import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
 import { MATCH_POINTS } from "@footcoach/shared";
-import { clubs, coachPoints, matchAnnouncements, matches, teamCoaches, teams, users } from "./db/schema.js";
+import {
+  clubs,
+  coachPoints,
+  matchAnnouncements,
+  matches,
+  teamCoaches,
+  teams,
+  tournamentRegistrations,
+  tournaments,
+  users,
+} from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { cityCoords } from "./lib/cities.js";
 import { SeedRefused, assertSeedAllowed } from "./seedGuard.js";
@@ -220,6 +230,31 @@ async function main() {
       { coachId: coachA.id, matchId: pastMatch.id, points: MATCH_POINTS.rencontre, reason: "rencontre" },
       { coachId: coachB.id, matchId: pastMatch.id, points: MATCH_POINTS.rencontre, reason: "rencontre" },
     ]);
+  }
+
+  // Tournoi de démonstration : sans affiche, pour montrer le visuel de repli.
+  // Une équipe inscrite, une place restante — de quoi voir l'inscription ET la
+  // jauge de places d'un seul coup d'œil.
+  const existingTournaments = await db.select().from(tournaments);
+  if (existingTournaments.length === 0) {
+    const [demo] = await db
+      .insert(tournaments)
+      .values({
+        teamId: teamB.id,
+        name: "Tournoi de printemps",
+        date: plusDays(21),
+        time: "09:00",
+        city: "Villeurbanne",
+        stadium: "Stade des Iris",
+        category: "U13",
+        gender: "masculin",
+        level: "loisir",
+        format: "8v8",
+        slots: 8,
+        comment: "Buvette sur place, quatre terrains. Engagement 30 € par équipe.",
+      })
+      .returning();
+    await db.insert(tournamentRegistrations).values({ tournamentId: demo.id, teamId: teamA.id });
   }
 
   const count = (await db.select().from(users)).length;

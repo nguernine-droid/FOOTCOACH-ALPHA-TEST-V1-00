@@ -2,7 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Clock3, Crosshair, MapPin, Navigation, Radar, UserMinus, X, XCircle } from "lucide-react";
+import {
+  CalendarDays,
+  Clock3,
+  Crosshair,
+  MapPin,
+  Navigation,
+  Radar,
+  Trophy,
+  UserMinus,
+  X,
+  XCircle,
+} from "lucide-react";
 import {
   categoryLabel,
   MATCH_CATEGORIES,
@@ -12,12 +23,14 @@ import {
   type AnnouncementDto,
   type MatchGender,
   type RadarDto,
+  type TournamentDto,
   type UserDto,
 } from "@footcoach/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { RADIUS_OPTIONS, RadarScope, toBlips } from "@/components/announcements/RadarScope";
+import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
@@ -50,6 +63,13 @@ function bySosThenProximity(a: AnnouncementDto, b: AnnouncementDto): number {
  */
 export function RadarFeed() {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
+  /**
+   * Tournois du même périmètre. Gardés dans leur propre état plutôt que fondus
+   * dans la liste des annonces : les filtres de catégorie et de date visent une
+   * recherche d'adversaire, et un tournoi qu'un filtre ferait disparaître sans
+   * qu'on l'ait voulu serait une occasion perdue.
+   */
+  const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   /** Annonces écartées par le périmètre : comptées par le serveur, jamais téléchargées */
   const [beyondRadius, setBeyondRadius] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +117,7 @@ export function RadarFeed() {
     try {
       const radar = await api<RadarDto>("/announcements/radar");
       setAnnouncements(radar.items);
+      setTournaments(radar.tournaments);
       setBeyondRadius(radar.beyondRadius);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -336,6 +357,32 @@ export function RadarFeed() {
       )}
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
+
+      {/* Tournois du secteur, avant les annonces : ils se préparent plus à
+          l'avance qu'un amical, et une place qui se libère part vite. Section
+          à part et non fondue dans la grille — un tournoi ne se « propose »
+          pas, il s'organise et on s'y inscrit. */}
+      <section className="space-y-3" aria-label="Tournois du secteur">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+            <Trophy size={13} aria-hidden /> Tournois du secteur
+          </h3>
+          <ButtonLink href="/coach/tournaments/new" size="sm" variant="soft" className="shrink-0">
+            Organiser
+          </ButtonLink>
+        </div>
+        {tournaments.length === 0 ? (
+          <p className="rounded-lg bg-paper px-4 py-4 text-xs text-ink-soft text-center">
+            Aucun tournoi annoncé autour de vous. Vous pouvez être le premier à en organiser un.
+          </p>
+        ) : (
+          <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
+            {tournaments.map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Vraiment rien à jouer, périmètre compris : inviter à publier. S'il y a
           des annonces plus loin, c'est l'écran suivant — élargir, pas publier. */}

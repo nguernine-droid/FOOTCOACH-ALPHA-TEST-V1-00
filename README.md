@@ -24,6 +24,18 @@ Le sens est imposé : l'API refuse que le visiteur affiche le QR (403) comme que
 
 **Barème.** 10 points pour chacun des deux coachs. Le coach qui répond à une annonce repartie en **SOS** en gagne 20 : c'est lui qui dépanne, en reprenant un match qu'un autre vient d'abandonner. L'hôte reste à 10. Une même **paire d'équipes** ne rapporte qu'une fois tous les 30 jours — les rencontres suivantes sont bien validées, elles ne paient plus. Sans ce plafond, deux coachs complices fabriqueraient un palier en une soirée.
 
+## Tournois
+
+L'application ne gère du tournoi **que sa visibilité et ses inscriptions** : ni poules, ni calendrier, ni résultats. Tout le reste se règle entre coachs, comme avant l'application.
+
+- **Organiser** (`/coach/tournaments/new`) : nom, dates (une journée ou plusieurs, 7 au maximum), lieu, catégorie, genre, format, nombre d'équipes attendues, et une **affiche** facultative — JPEG/PNG/WebP, 2 Mo, servie sous `/api/uploads/` comme les photos de profil. La catégorie et le stade sont préremplis depuis l'équipe active.
+- **Visibilité** : sur le **radar**, dans leur propre section au-dessus des annonces. Section à part et non fondue dans la grille — les filtres du radar cherchent un adversaire, et un tournoi qu'un filtre ferait disparaître serait une occasion perdue.
+- **Inscription directe** : le coach clique, il est pris. Aucune validation de l'organisateur. Les inscriptions se ferment d'elles-mêmes une fois le nombre d'équipes atteint ; la place est réservée dans une transaction qui recompte, pour que deux coachs ne prennent pas la même dernière place.
+- **Retrait et SOS** : une équipe qui se retire rouvre sa place, le tournoi passe en **SOS** et les **jokers** du secteur sont alertés — puis tout le secteur si personne ne répond, selon les mêmes délais que les annonces. La première inscription éteint le SOS : il ne dit pas « il reste des places », il dit « une place s'est rouverte ».
+- **Points** : le jour J, l'organisateur affiche un **QR d'arrivée** et chaque coach le scanne en arrivant — même sens que la rencontre d'un amical, et l'organisateur n'a rien à faire équipe par équipe. Le coach présent gagne 10 points, l'organisateur un forfait de 20 **une seule fois**, quel que soit le nombre d'équipes : sinon organiser deviendrait la façon la plus rapide de gravir les paliers.
+
+Le journal `coach_points` accepte les deux origines (`match_id` **ou** `tournament_id`, jamais les deux — contrainte `coach_points_une_origine`), pour que le total d'un coach reste une seule somme.
+
 ### Casquettes du coach
 
 Un coach peut se donner des casquettes, **cumulables**, depuis **Mon profil → Mes casquettes**. N'en cocher aucune est le cas ordinaire et se lit « simple coach » — il n'y a pas de case pour dire non.

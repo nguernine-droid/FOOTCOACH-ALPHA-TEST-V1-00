@@ -1,9 +1,16 @@
 import { and, eq, exists, gte, isNotNull, isNull, lt, not } from "drizzle-orm";
 import { daysBetweenIso, SOS_WIDEN_MIN_MINUTES, sosWidenDelayMinutes } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
+import {
+  announcementResponses,
+  matchAnnouncements,
+  matches,
+  teams,
+  tournamentRegistrations,
+  tournaments,
+} from "../db/schema.js";
 import { cityCoords } from "./cities.js";
-import { notifySosWidened, pushEnabled } from "./push.js";
+import { notifySosWidened, notifyTournamentSosWidened, pushEnabled } from "./push.js";
 
 /**
  * Fréquence du balayage. Deux minutes et non cinq : le délai le plus court est
@@ -118,6 +125,74 @@ export async function relayPendingSosAlerts(): Promise<number> {
 }
 
 /**
+ * Même règle pour les tournois dont une place est restée libre : délai propre à
+ * l'échéance, réclamation par UPDATE conditionnel, jokers d'abord puis tout le
+ * secteur. Une fonction jumelle et non un traitement générique — les deux
+ * lisent des tables différentes, et un abstracteur aurait coûté plus à
+ * comprendre qu'il n'économise de lignes.
+ *
+ * La relance s'annule d'elle-même dès qu'une équipe reprend la place : la route
+ * d'inscription remet `is_sos` à faux, ce qui sort le tournoi du filtre.
+ */
+export async function relayPendingTournamentSos(): Promise<number> {
+  if (!pushEnabled()) return 0;
+
+  const today = todayIso();
+  const freshest = new Date(Date.now() - SOS_WIDEN_MIN_MINUTES * 60_000);
+
+  const candidates = await db
+    .select({ tournament: tournaments, team: teams })
+    .from(tournaments)
+    .innerJoin(teams, eq(tournaments.teamId, teams.id))
+    .where(
+      and(
+        eq(tournaments.isSos, true),
+        eq(tournaments.status, "open"),
+        isNotNull(tournaments.sosAlertedAt),
+        isNull(tournaments.sosWidenedAt),
+        lt(tournaments.sosAlertedAt, freshest),
+        gte(tournaments.date, today),
+      ),
+    );
+
+  let relayed = 0;
+  for (const { tournament, team } of candidates) {
+    const delayMs = sosWidenDelayMinutes(daysBetweenIso(today, tournament.date)) * 60_000;
+    if (tournament.sosAlertedAt!.getTime() + delayMs > Date.now()) continue;
+
+    const [claimed] = await db
+      .update(tournaments)
+      .set({ sosWidenedAt: new Date() })
+      .where(and(eq(tournaments.id, tournament.id), isNull(tournaments.sosWidenedAt)))
+      .returning({ id: tournaments.id });
+    if (!claimed) continue;
+
+    // L'organisateur et les équipes déjà inscrites savent : les prévenir d'une
+    // place qu'elles occupent déjà n'aurait aucun sens.
+    const registered = await db
+      .select({ teamId: tournamentRegistrations.teamId })
+      .from(tournamentRegistrations)
+      .where(
+        and(
+          eq(tournamentRegistrations.tournamentId, tournament.id),
+          eq(tournamentRegistrations.status, "registered"),
+        ),
+      );
+    notifyTournamentSosWidened({
+      tournamentId: tournament.id,
+      tournamentName: tournament.name,
+      category: tournament.category,
+      city: tournament.city,
+      date: tournament.date,
+      venue: cityCoords(tournament.city),
+      excludeTeamIds: [...new Set([tournament.teamId, ...registered.map((r) => r.teamId)])],
+    });
+    relayed++;
+  }
+  return relayed;
+}
+
+/**
  * Démarre le balayage périodique. Une passe immédiate au démarrage rattrape ce
  * qui s'est accumulé pendant que l'API était arrêtée — un redéploiement ne doit
  * pas faire disparaître une relance due.
@@ -130,6 +205,10 @@ export function startSosRelay(log: { info: (msg: string) => void; error: (err: u
     try {
       const relayed = await relayPendingSosAlerts();
       if (relayed > 0) log.info(`[sos] ${relayed} annonce(s) élargie(s) aux coachs du secteur`);
+      const tournamentsRelayed = await relayPendingTournamentSos();
+      if (tournamentsRelayed > 0) {
+        log.info(`[sos] ${tournamentsRelayed} tournoi(s) élargi(s) aux coachs du secteur`);
+      }
     } catch (err) {
       log.error(err);
     }

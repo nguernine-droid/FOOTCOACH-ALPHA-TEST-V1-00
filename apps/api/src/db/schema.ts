@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -40,7 +41,22 @@ export const withdrawalReason = pgEnum("withdrawal_reason", ["blessure", "meteo"
 // Pourquoi des points ont été attribués. Le motif est stocké et non recalculé :
 // une annonce cesse d'être en SOS une fois pourvue, la raison du bonus doit
 // survivre à ce changement d'état.
-export const pointReason = pgEnum("point_reason", ["rencontre", "sos"]);
+//
+// `tournoi` : équipe venue et pointée à l'arrivée. `organisation` : le coach
+// qui a monté le tournoi, crédité une seule fois quel que soit le nombre
+// d'équipes — sinon organiser deviendrait la façon la plus rapide de monter
+// en palier.
+export const pointReason = pgEnum("point_reason", ["rencontre", "sos", "tournoi", "organisation"]);
+// Un tournoi ne se « matche » pas : il est ouvert aux inscriptions, ou annulé.
+// « Complet » n'est pas un état stocké — il se déduit du nombre d'inscrits, qui
+// varie à chaque désistement.
+export const tournamentStatus = pgEnum("tournament_status", ["open", "cancelled"]);
+// Inscription d'une équipe. La ligne est conservée après un retrait : c'est
+// elle qui garde la trace du désistement à l'origine d'un SOS.
+export const tournamentRegistrationStatus = pgEnum("tournament_registration_status", [
+  "registered",
+  "withdrawn",
+]);
 export const attendanceStatus = pgEnum("attendance_status", ["present", "absent"]);
 export const matchEventType = pgEnum("match_event_type", ["goal", "card", "substitution", "highlight"]);
 export const matchSide = pgEnum("match_side", ["home", "away"]);
@@ -419,6 +435,95 @@ export const matches = pgTable("matches", {
 });
 
 /**
+ * Tournoi. L'application n'en gère NI le déroulé, NI les poules, NI les
+ * résultats : elle le rend visible sur le radar et prend les inscriptions.
+ * Tout le reste se règle entre coachs, comme avant.
+ *
+ * Porté par une équipe (son organisateur), comme une annonce : c'est ce qui lui
+ * donne une ville, un point sur le radar et des coachs à prévenir.
+ */
+export const tournaments = pgTable(
+  "tournaments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id),
+    name: text("name").notNull(),
+    date: date("date").notNull(),
+    // Un tournoi tient souvent sur un week-end. NULL = une seule journée.
+    endDate: date("end_date"),
+    time: time("time").notNull(),
+    city: text("city").notNull(),
+    stadium: text("stadium").notNull(),
+    category: text("category").notNull(),
+    gender: matchGender("gender"),
+    level: matchLevel("level").notNull().default("loisir"),
+    format: matchFormat("format").notNull().default("8v8"),
+    /** Nombre d'équipes attendues — c'est lui qui ferme les inscriptions */
+    slots: integer("slots").notNull(),
+    /**
+     * Affiche du tournoi : nom du fichier dans le volume d'uploads, servi sous
+     * /api/uploads/… comme les photos de profil. NULL = aucune affiche, et la
+     * carte se rabat sur un visuel dessiné.
+     */
+    posterPath: text("poster_path"),
+    comment: text("comment"),
+    status: tournamentStatus("status").notNull().default("open"),
+    // SOS : une équipe s'est retirée, la place se rouvre. Même mécanique que
+    // les annonces, y compris la relance élargie (voir lib/sosRelay.ts).
+    isSos: boolean("is_sos").notNull().default(false),
+    sosReason: withdrawalReason("sos_reason"),
+    sosDetails: text("sos_details"),
+    sosAlertedAt: timestamp("sos_alerted_at", { withTimezone: true }),
+    sosWidenedAt: timestamp("sos_widened_at", { withTimezone: true }),
+    /**
+     * QR d'arrivée, affiché par l'organisateur le jour J : chaque coach présent
+     * le scanne, ce qui pointe son équipe et lui donne ses points. Même sens
+     * que la rencontre d'un amical — celui qui reçoit montre, celui qui vient
+     * scanne — et surtout l'organisateur n'a rien à faire équipe par équipe.
+     */
+    encounterToken: text("encounter_token"),
+    encounterTokenCoachId: uuid("encounter_token_coach_id").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Même index partiel que les annonces, pour le balayeur de relances SOS
+  (t) => [
+    index("tournaments_sos_pending_relay_idx")
+      .on(t.sosAlertedAt)
+      .where(sql`is_sos and sos_widened_at is null`),
+  ],
+);
+
+/**
+ * Inscription d'une équipe à un tournoi. Directe : pas de validation par
+ * l'organisateur, le coach clique et il est pris tant qu'il reste des places.
+ *
+ * La ligne survit au retrait (`status = 'withdrawn'`) au lieu d'être effacée :
+ * c'est elle qui explique pourquoi une place s'est rouverte, et elle empêche
+ * qu'un coach se réinscrive en boucle pour brouiller le compte.
+ */
+export const tournamentRegistrations = pgTable(
+  "tournament_registrations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    status: tournamentRegistrationStatus("status").notNull().default("registered"),
+    /** Pointage à l'arrivée : quand, et quel coach a scanné le QR de l'organisateur */
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+    checkedInByCoachId: uuid("checked_in_by_coach_id").references(() => users.id),
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("tournament_registrations_tournament_team_idx").on(t.tournamentId, t.teamId)],
+);
+
+/**
  * Points gagnés par un coach, une ligne par match et par coach.
  *
  * Un journal plutôt qu'un compteur sur `users` : le total se recalcule par
@@ -428,6 +533,11 @@ export const matches = pgTable("matches", {
  *
  * L'unicité (match, coach) est la garantie qu'un même match ne peut pas payer
  * deux fois : elle tient même si deux requêtes de scan arrivent en même temps.
+ *
+ * Un point de départ EXCLUSIF : soit un match, soit un tournoi. Un journal
+ * unique plutôt que deux tables, pour que le total d'un coach reste une seule
+ * somme — deux tables auraient imposé une union à chaque lecture de compte, et
+ * la première occasion de les désynchroniser.
  */
 export const coachPoints = pgTable(
   "coach_points",
@@ -436,17 +546,31 @@ export const coachPoints = pgTable(
     coachId: uuid("coach_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    matchId: uuid("match_id")
-      .notNull()
-      .references(() => matches.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id").references(() => matches.id, { onDelete: "cascade" }),
+    tournamentId: uuid("tournament_id").references(() => tournaments.id, { onDelete: "cascade" }),
     points: integer("points").notNull(),
     reason: pointReason("reason").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("coach_points_match_coach_idx").on(t.matchId, t.coachId),
+    // Unicités partielles : une ligne par (match, coach) ET une par (tournoi,
+    // coach). Sur des colonnes nullables, un index unique ordinaire laisserait
+    // passer autant de NULL qu'on veut — d'où la clause.
+    uniqueIndex("coach_points_match_coach_idx")
+      .on(t.matchId, t.coachId)
+      .where(sql`match_id is not null`),
+    uniqueIndex("coach_points_tournament_coach_idx")
+      .on(t.tournamentId, t.coachId)
+      .where(sql`tournament_id is not null`),
     // Le total d'un coach est lu à chaque lecture de son compte
     index("coach_points_coach_idx").on(t.coachId),
+    // Exactement une origine. La règle vit en base et pas seulement dans le
+    // code : une ligne orpheline fausserait un palier sans qu'on sache d'où
+    // elle vient, et rien ne permettrait de la rattacher après coup.
+    check(
+      "coach_points_une_origine",
+      sql`(match_id is not null) <> (tournament_id is not null)`,
+    ),
   ],
 );
 

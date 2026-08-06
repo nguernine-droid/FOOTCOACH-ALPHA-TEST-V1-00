@@ -237,6 +237,15 @@ export const MATCH_POINTS = {
   rencontre: 10,
   /** Coach venu répondre à une annonce repartie en SOS (remplace les 10, ne s'y ajoute pas) */
   sosResponder: 20,
+  /** Équipe venue au tournoi et pointée à l'arrivée — même effort qu'un amical */
+  tournoi: 10,
+  /**
+   * Organisateur du tournoi, crédité UNE SEULE FOIS au premier pointage, et
+   * non par équipe accueillie : monter un tournoi à seize équipes deviendrait
+   * sinon la façon la plus rapide de gravir les paliers. Le forfait vaut le
+   * double d'une venue, parce qu'organiser coûte plus que se déplacer.
+   */
+  organisation: 20,
 } as const;
 
 /**
@@ -250,8 +259,69 @@ export const MATCH_POINTS = {
  */
 export const POINTS_COOLDOWN_DAYS = 30;
 
-export const POINT_REASONS = ["rencontre", "sos"] as const;
+export const POINT_REASONS = ["rencontre", "sos", "tournoi", "organisation"] as const;
 export type PointReason = (typeof POINT_REASONS)[number];
+
+// ---------- Tournois ----------
+
+/**
+ * L'application ne gère du tournoi QUE sa visibilité et ses inscriptions :
+ * pas de poules, pas de calendrier, pas de résultats. Tout le reste se règle
+ * entre coachs, comme avant l'application.
+ */
+export const TOURNAMENT_STATUSES = ["open", "cancelled"] as const;
+export type TournamentStatus = (typeof TOURNAMENT_STATUSES)[number];
+
+/** Bornes du nombre d'équipes attendues — un tournoi en dessous de 3 est un amical */
+export const TOURNAMENT_MIN_SLOTS = 3;
+export const TOURNAMENT_MAX_SLOTS = 64;
+
+/** Durée maximale d'un tournoi, en jours. Au-delà, c'est un championnat. */
+export const TOURNAMENT_MAX_DAYS = 7;
+
+export const createTournamentSchema = z
+  .object({
+    name: z.string().trim().min(3).max(80),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    /** Absente = tournoi d'une seule journée */
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    time: z.string().regex(/^\d{2}:\d{2}$/),
+    city: z.string().trim().min(1).max(100),
+    stadium: z.string().trim().min(1).max(150),
+    category: z.enum(MATCH_CATEGORIES),
+    gender: z.enum(MATCH_GENDERS),
+    level: z.enum(MATCH_LEVELS),
+    format: z.enum(MATCH_FORMATS),
+    slots: z.number().int().min(TOURNAMENT_MIN_SLOTS).max(TOURNAMENT_MAX_SLOTS),
+    comment: z.string().trim().max(1000).optional(),
+  })
+  // Vérifiée ici et pas seulement dans le formulaire : une date de fin
+  // antérieure au début donnerait un tournoi impossible à afficher.
+  .refine((t) => !t.endDate || t.endDate >= t.date, {
+    message: "La date de fin ne peut pas précéder le début",
+    path: ["endDate"],
+  })
+  .refine((t) => !t.endDate || daysBetweenIso(t.date, t.endDate) < TOURNAMENT_MAX_DAYS, {
+    message: `Un tournoi ne peut pas durer plus de ${TOURNAMENT_MAX_DAYS} jours`,
+    path: ["endDate"],
+  });
+export type CreateTournamentInput = z.infer<typeof createTournamentSchema>;
+
+/** Retrait d'une équipe inscrite — même motifs imposés qu'un désistement de match */
+export const withdrawTournamentSchema = z.object({
+  reason: z.enum(WITHDRAWAL_REASONS),
+  details: z.string().trim().max(140).optional(),
+});
+export type WithdrawTournamentInput = z.infer<typeof withdrawTournamentSchema>;
+
+/** Pointage à l'arrivée : le jeton vient du QR affiché par l'organisateur */
+export const checkInTournamentSchema = z.object({
+  token: z.string().min(10).max(100),
+});
+export type CheckInTournamentInput = z.infer<typeof checkInTournamentSchema>;
 
 /**
  * Paliers affichés sur la fiche d'un coach. Le total brut reste interne : un
@@ -778,6 +848,13 @@ export interface AnnouncementDto {
  */
 export interface RadarDto {
   items: AnnouncementDto[];
+  /**
+   * Tournois du même périmètre, servis à part plutôt que fondus dans `items` :
+   * les deux se présentent ensemble à l'écran, mais ils n'ont ni les mêmes
+   * champs ni les mêmes actions, et une liste hétérogène aurait obligé chaque
+   * lecteur d'annonce à se demander sur quoi il tombe.
+   */
+  tournaments: TournamentDto[];
   beyondRadius: number;
 }
 
@@ -822,7 +899,76 @@ export interface MatchDto {
 
 export type MatchDetailDto = MatchDto;
 
-/** Réponse au scan de rencontre : ce qui a été validé, et ce qu'il a rapporté */
+export const TOURNAMENT_REGISTRATION_STATUSES = ["registered", "withdrawn"] as const;
+export type TournamentRegistrationStatus = (typeof TOURNAMENT_REGISTRATION_STATUSES)[number];
+
+/** Une équipe inscrite à un tournoi */
+export interface TournamentRegistrationDto {
+  id: string;
+  team: TeamDto;
+  status: TournamentRegistrationStatus;
+  /** Horodatage du pointage à l'arrivée (null tant qu'elle n'est pas venue) */
+  checkedInAt: string | null;
+  createdAt: string;
+}
+
+export interface TournamentDto {
+  id: string;
+  /** Équipe organisatrice */
+  team: TeamDto;
+  name: string;
+  date: string;
+  /** null = tournoi d'une seule journée */
+  endDate: string | null;
+  time: string;
+  city: string;
+  stadium: string;
+  category: string;
+  gender: MatchGender | null;
+  level: MatchLevel;
+  format: MatchFormat;
+  /** Nombre d'équipes attendues */
+  slots: number;
+  /** Inscrites et non retirées */
+  registeredCount: number;
+  /** Places restantes — 0 = complet, plus aucune inscription possible */
+  slotsLeft: number;
+  /** URL de l'affiche, servie par l'API (null = aucune affiche) */
+  posterUrl: string | null;
+  comment: string | null;
+  status: TournamentStatus;
+  /** Une équipe s'est retirée : la place rouverte passe le tournoi en tête du radar */
+  isSos: boolean;
+  sosReason: WithdrawalReason | null;
+  sosDetails: string | null;
+  /** Organisé par une de mes équipes */
+  isMine: boolean;
+  /** Inscription de mon équipe active, null si elle n'est pas inscrite */
+  myRegistration: TournamentRegistrationDto | null;
+  /** Distance et direction du LIEU du tournoi, comme pour une annonce */
+  distanceKm: number | null;
+  bearingDeg: number | null;
+  createdAt: string;
+  /**
+   * Jeton du QR d'arrivée, servi au seul organisateur et seulement lorsqu'il
+   * demande à l'afficher. Toujours null pour les équipes inscrites : c'est le
+   * scan qui le leur apporte.
+   */
+  checkInToken: string | null;
+  /** true à partir du jour du tournoi : avant, il n'y a personne à pointer */
+  checkInOpen: boolean;
+}
+
+/** Un tournoi et la liste de ses équipes — la page du tournoi */
+export interface TournamentDetailDto extends TournamentDto {
+  registrations: TournamentRegistrationDto[];
+}
+
+/**
+ * Réponse à un scan qui rapporte des points : ce qui a été validé, et ce qu'il
+ * a rapporté. Partagée par la rencontre d'un amical et le pointage à l'arrivée
+ * d'un tournoi — c'est le même geste, et le coach y attend la même réponse.
+ */
 export interface EncounterResultDto {
   /** Points crédités au coach qui vient de scanner (0 si le plafond s'applique) */
   pointsAwarded: number;
@@ -831,7 +977,8 @@ export interface EncounterResultDto {
    * true quand la rencontre est bien validée mais ne rapporte rien : ces deux
    * équipes se sont déjà rencontrées dans les trente derniers jours. Dit
    * explicitement plutôt que déduit d'un `pointsAwarded` à zéro, qu'on
-   * confondrait avec une erreur.
+   * confondrait avec une erreur. Toujours false sur un tournoi : le plafond
+   * porte sur une paire d'équipes, un tournoi n'en est pas une.
    */
   cappedByCooldown: boolean;
   /** Nouveau total et nouveau palier du coach qui a scanné */

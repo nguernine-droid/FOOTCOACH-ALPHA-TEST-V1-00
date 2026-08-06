@@ -23,6 +23,14 @@ export type ImageExtension = (typeof IMAGE_EXTENSIONS)[number];
  *  déclarée deux fois, dans index.ts et dans la route, libres de diverger. */
 export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
+/**
+ * Taille maximale d'une affiche de tournoi. Volontairement identique à celle
+ * des photos : le plugin multipart est enregistré une fois pour toute l'API
+ * avec `MAX_AVATAR_BYTES`, une limite plus haute ici serait tronquée en amont
+ * sans que personne comprenne pourquoi.
+ */
+export const MAX_POSTER_BYTES = MAX_AVATAR_BYTES;
+
 /** Types déclarés acceptés, et l'extension qu'ils devraient porter. */
 export const ALLOWED_IMAGE_TYPES: Record<string, ImageExtension> = {
   "image/jpeg": "jpg",

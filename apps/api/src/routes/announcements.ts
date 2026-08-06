@@ -18,6 +18,7 @@ import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
 import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
+import { tournamentsInRadar } from "./tournaments.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -228,7 +229,13 @@ export function announcementRoutes(app: FastifyInstance) {
       if (radiusKm !== null && dto.distanceKm !== null && dto.distanceKm > radiusKm) beyondRadius++;
       else items.push(dto);
     }
-    return { items, beyondRadius };
+
+    // Les tournois du même périmètre voyagent avec le radar : le coach y
+    // cherche « quoi jouer », et un tournoi est une occasion de jouer autant
+    // qu'une annonce. Servis à part, parce qu'ils ne portent ni les mêmes
+    // champs ni les mêmes actions.
+    const tournamentItems = await tournamentsInRadar(myTeamId, unplayable, myCoords, radiusKm);
+    return { items, tournaments: tournamentItems, beyondRadius };
   });
 
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {

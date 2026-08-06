@@ -75,6 +75,11 @@ function fireAndForget(task: Promise<void>): void {
   void task.catch((err) => console.error("[push] notification abandonnée", err));
 }
 
+/** « 14 août » — la date telle qu'elle apparaît dans le corps des notifications */
+function formatDay(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
+
 /**
  * Coachs abonnés au push pour un type de notification donné, avec leur point
  * de rayonnement. Une seule requête, dédoublonnée par compte : un coach peut
@@ -290,15 +295,87 @@ export function notifySosAnnouncement(input: {
         if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
         targets.push(user.id);
       }
-      const day = new Date(`${input.date}T00:00:00`).toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-      });
+      const day = formatDay(input.date);
       await sendToUsers(targets, {
         title: `SOS — ${input.teamName} cherche un adversaire`,
         body: `Match du ${day} à ${input.city} · ${input.category} · ${input.format} — l'adversaire s'est désisté.`,
         url: "/coach",
         tag: "sos",
+      });
+    })(),
+  );
+}
+
+/**
+ * Une place se rouvre dans un tournoi après le retrait d'une équipe. Même
+ * ciblage qu'un SOS d'annonce — les jokers du secteur d'abord — et la relance
+ * élargie suit la même règle si personne ne se manifeste.
+ */
+export function notifyTournamentSos(input: {
+  tournamentId: string;
+  tournamentName: string;
+  organizerTeamName: string;
+  category: string;
+  city: string;
+  date: string;
+  venue: { lat: number; lng: number } | null;
+  excludeTeamIds: string[];
+}): void {
+  if (!pushEnabled() || !input.venue) return;
+  fireAndForget(
+    (async () => {
+      const excluded = await coachIdsOfTeams(input.excludeTeamIds);
+      const targets: string[] = [];
+      for (const { user, team } of await jokerCandidates()) {
+        if (excluded.has(user.id)) continue;
+        const origin = originOf(user, team);
+        if (!origin) continue;
+        const km = haversineKm(origin, input.venue!);
+        if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
+        targets.push(user.id);
+      }
+      await sendToUsers(targets, {
+        title: `Place libre — ${input.tournamentName}`,
+        body: `${formatDay(input.date)} à ${input.city} · ${input.category} — une équipe s'est retirée du tournoi de ${input.organizerTeamName}.`,
+        url: `/coach/tournaments/${input.tournamentId}`,
+        tag: `tournoi-sos-${input.tournamentId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Le SOS d'un tournoi n'a trouvé personne chez les jokers : on élargit aux
+ * autres coachs du secteur, aux mêmes conditions que pour une annonce.
+ */
+export function notifyTournamentSosWidened(input: {
+  tournamentId: string;
+  tournamentName: string;
+  category: string;
+  city: string;
+  date: string;
+  venue: { lat: number; lng: number } | null;
+  excludeTeamIds: string[];
+}): void {
+  if (!pushEnabled() || !input.venue) return;
+  fireAndForget(
+    (async () => {
+      const excluded = await coachIdsOfTeams(input.excludeTeamIds);
+      const jokers = new Set((await jokerCandidates()).map(({ user }) => user.id));
+      const targets: string[] = [];
+      for (const { user, team } of await candidates("notifyNewAnnouncement")) {
+        if (excluded.has(user.id) || jokers.has(user.id)) continue;
+        const origin = originOf(user, team);
+        if (!origin) continue;
+        const km = haversineKm(origin, input.venue!);
+        if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
+        targets.push(user.id);
+      }
+      await sendToUsers(targets, {
+        title: `${input.tournamentName} cherche encore une équipe`,
+        body: `${formatDay(input.date)} à ${input.city} · ${input.category} — la place est toujours libre.`,
+        url: `/coach/tournaments/${input.tournamentId}`,
+        tag: `tournoi-relance-${input.tournamentId}`,
       });
     })(),
   );
@@ -342,10 +419,7 @@ export function notifySosWidened(input: {
         if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
         targets.push(user.id);
       }
-      const day = new Date(`${input.date}T00:00:00`).toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-      });
+      const day = formatDay(input.date);
       await sendToUsers(targets, {
         title: `${input.teamName} cherche toujours un adversaire`,
         body: `Match du ${day} à ${input.city} · ${input.category} · ${input.format} — personne n'a encore répondu.`,
