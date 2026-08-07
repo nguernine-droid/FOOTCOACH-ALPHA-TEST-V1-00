@@ -18,6 +18,7 @@ import {
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
 } from "@footcoach/shared";
+import { todayIso } from "@/lib/time";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
@@ -52,7 +53,7 @@ export function MyAnnouncementCard({
   const noticeShort = a.noticeDays < FFF_NOTICE_DAYS;
   // La date est passée : le serveur a retiré l'annonce du radar et refuse les
   // propositions. Le délai FFF n'a plus de sens (il serait négatif).
-  const past = a.date < new Date().toISOString().slice(0, 10);
+  const past = a.date < todayIso();
 
   const body = (
     <div

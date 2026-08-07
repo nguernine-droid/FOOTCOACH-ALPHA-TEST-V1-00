@@ -16,6 +16,16 @@ export function kickoffDate(date: string, time: string): Date {
   return new Date(`${date}T${time}`);
 }
 
+/**
+ * Le jour même, au format des dates de l'API (YYYY-MM-DD), dans le fuseau de
+ * l'appareil — et non en UTC : à 23 h à Paris, `toISOString()` donnerait déjà
+ * demain, et le match du soir serait rangé dans le passé.
+ */
+export function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 /** "2j 4h", "1h 45m", "12m 30s" — null si l'échéance est passée. */
 export function formatCountdown(ms: number): string | null {
   if (ms <= 0) return null;

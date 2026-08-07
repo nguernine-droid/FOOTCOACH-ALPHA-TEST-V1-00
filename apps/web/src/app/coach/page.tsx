@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy } from "lucide-react";
-import type { ActivityDto, AnnouncementDto, MatchDto } from "@footcoach/shared";
+import type { ActivityDto, AnnouncementDto, MatchDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
-import { formatCountdown, kickoffDate, timeAgo, useNow } from "@/lib/time";
+import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
+import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { RadarFeed } from "@/components/announcements/RadarFeed";
 import { NoMatchCard } from "@/components/coach/NoMatchCard";
 import { ButtonLink } from "@/components/ui/Button";
@@ -31,6 +32,7 @@ export default function CoachDashboard() {
   const now = useNow(1000);
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
+  const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,11 +41,19 @@ export default function CoachDashboard() {
       api<MatchDto[]>("/matches"),
       api<AnnouncementDto[]>("/announcements/mine"),
       api<ActivityDto[]>("/activity"),
+      // Les tournois que j'organise tiennent la même place que mes annonces :
+      // c'est publié par moi, ça attend des équipes, et ça se suit d'ici.
+      api<TournamentDto[]>("/tournaments/mine").catch(() => [] as TournamentDto[]),
     ])
-      .then(([m, a, act]) => {
+      .then(([m, a, act, t]) => {
         setMatches(m);
         setAnnouncements(a.filter((x) => x.status !== "cancelled"));
         setActivity(act);
+        // Ceux que j'organise seulement, et seulement s'ils sont à venir : le
+        // tableau de bord dit ce qui reste à faire, pas ce qui a eu lieu.
+        setTournaments(
+          t.filter((x) => x.isMine && x.status !== "cancelled" && (x.endDate ?? x.date) >= todayIso()),
+        );
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -199,7 +209,7 @@ export default function CoachDashboard() {
             </ButtonLink>
           </div>
 
-          {announcements.length === 0 && (
+          {announcements.length === 0 && tournaments.length === 0 && (
             <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
               Aucune annonce en cours. Publiez-en une pour trouver un adversaire.
             </p>
@@ -215,9 +225,17 @@ export default function CoachDashboard() {
             />
           ))}
 
-          {announcements.length > 0 && (
+          {/* Les tournois que j'organise, sous les annonces : ils se préparent
+              plus à l'avance, et une place vide s'y voit d'un coup d'œil. */}
+          {tournaments.map((t) => (
+            <TournamentCard key={t.id} tournament={t} />
+          ))}
+
+          {(announcements.length > 0 || tournaments.length > 0) && (
+            // Vers « Mes annonces » et non l'onglet du même nom : celui-ci
+            // montre désormais les annonces des autres.
             <Link
-              href="/coach/announcements"
+              href="/coach/announcements/mine"
               className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-blue
                 transition hover:text-blue-dark active:bg-blue-soft"
             >

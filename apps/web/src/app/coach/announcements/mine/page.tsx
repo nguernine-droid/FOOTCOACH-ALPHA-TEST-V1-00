@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Megaphone, Trophy } from "lucide-react";
 import { FFF_NOTICE_DAYS, type AnnouncementDto, type TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
+import { todayIso } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
 import { MyAnnouncementSheet } from "@/components/announcements/MyAnnouncementSheet";
@@ -19,10 +20,6 @@ const BUCKETS: { key: Bucket; label: string }[] = [
   { key: "confirmed", label: "Confirmées" },
   { key: "past", label: "Passées" },
 ];
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 /**
  * Dans quel casier tombe une de mes annonces.

@@ -15,6 +15,7 @@ import {
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
 } from "@footcoach/shared";
+import { todayIso } from "@/lib/time";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -40,7 +41,7 @@ export function MyAnnouncementSheet({
   onAccept: (announcementId: string, responseId: string) => void;
   onDecline: (announcementId: string, responseId: string) => void;
 }) {
-  const past = a.date < new Date().toISOString().slice(0, 10);
+  const past = a.date < todayIso();
   const decidable = a.status === "open" && !past;
 
   return (
