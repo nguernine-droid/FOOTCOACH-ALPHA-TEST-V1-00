@@ -160,40 +160,21 @@ export function AccountSheet({
 
   return (
     <BottomSheet label="Mon compte" onClose={onClose} footer={footer}>
-      {/* Identité — mène à la carte du coach. Les autres rôles n'en ont pas :
-          la carte parle de points et de matchs encadrés. */}
-      {isCoach ? (
-        <Link
-          href="/coach/card"
-          onClick={onClose}
-          className="flex items-center gap-3 px-5 py-4 w-full text-left transition hover:bg-paper active:bg-paper"
-        >
-          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-black truncate">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="text-xs text-ink-soft font-semibold truncate">
-              {ROLE_LABELS[user.role]}
-              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
-            </p>
-          </div>
-          <span className="chip bg-accent-surface text-accent shrink-0">Ma carte</span>
-        </Link>
-      ) : (
-        <div className="flex items-center gap-3 px-5 py-4">
-          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
-          <div className="min-w-0">
-            <p className="text-base font-black truncate">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="text-xs text-ink-soft font-semibold truncate">
-              {ROLE_LABELS[user.role]}
-              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
-            </p>
-          </div>
+      {/* Identité, en lecture seule : la carte du coach s'ouvre désormais par la
+          photo du header, présente sur tous les écrans. Deux portes vers la
+          même carte, dont une cachée dans un menu, n'en valaient qu'une. */}
+      <div className="flex items-center gap-3 px-5 py-4">
+        <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
+        <div className="min-w-0">
+          <p className="text-base font-black truncate">
+            {user.firstName} {user.lastName}
+          </p>
+          <p className="text-xs text-ink-soft font-semibold truncate">
+            {ROLE_LABELS[user.role]}
+            {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Équipe active : la bascule n'a de sens qu'à partir de deux équipes */}
       {isCoach && teams.length > 1 && (
@@ -245,6 +226,10 @@ export function AccountSheet({
       <div className="border-t border-line py-1">
         {isCoach && (
           <>
+            {/* En tête des raccourcis : c'est ce qu'un coach vient vérifier le
+                plus souvent — qui a répondu à ce qu'il a publié. L'onglet
+                « Annonces » montre désormais celles des autres. */}
+            <Row icon={Megaphone} label="Mes annonces" href="/coach/announcements/mine" onClick={onClose} />
             <Row icon={CircleUserRound} label="Mon profil" href="/coach/profile" onClick={onClose} />
             <Row icon={Contact} label="Mes relations" href="/coach/relations" onClick={onClose} />
             <Row icon={Users} label="Mes équipes" href="/coach/team" onClick={onClose} />

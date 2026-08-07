@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, CalendarX, CheckCircle2, MapPin, ShieldCheck, Trash2, UserMinus } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarX,
+  CheckCircle2,
+  ChevronRight,
+  MapPin,
+  ShieldCheck,
+  Trash2,
+  UserMinus,
+} from "lucide-react";
 import {
   categoryLabel,
   FFF_NOTICE_DAYS,
@@ -24,12 +33,20 @@ export function MyAnnouncementCard({
   onDecline,
   onCancel,
   showLocation = false,
+  onOpenDetail,
 }: {
   announcement: AnnouncementDto;
   onAccept: (announcementId: string, responseId: string) => void;
   onDecline: (announcementId: string, responseId: string) => void;
   onCancel: (announcementId: string) => void;
   showLocation?: boolean;
+  /**
+   * Ouvre le détail complet. Fourni, il remplace le lien vers la feuille de
+   * match qui enveloppait la carte : une carte entièrement cliquable qui
+   * contient elle-même des boutons est un piège — on vise « Décliner » et on
+   * change d'écran.
+   */
+  onOpenDetail?: () => void;
 }) {
   const pending = a.responses.filter((r) => r.status === "pending");
   const noticeShort = a.noticeDays < FFF_NOTICE_DAYS;
@@ -164,10 +181,22 @@ export function MyAnnouncementCard({
       )}
 
       {a.status === "cancelled" && <p className="text-xs font-semibold text-ink-faint">Annonce annulée</p>}
+
+      {onOpenDetail && (
+        <button
+          type="button"
+          onClick={onOpenDetail}
+          className="w-full min-h-11 -mb-1 flex items-center justify-between gap-2 rounded-lg px-1
+            text-xs font-bold text-blue transition hover:bg-blue-faint active:bg-blue-soft"
+        >
+          Détail et participants
+          <ChevronRight size={14} aria-hidden />
+        </button>
+      )}
     </div>
   );
 
-  return a.status === "matched" && a.matchId ? (
+  return a.status === "matched" && a.matchId && !onOpenDetail ? (
     <Link href={`/coach/matches/${a.matchId}`} className="block">
       {body}
     </Link>

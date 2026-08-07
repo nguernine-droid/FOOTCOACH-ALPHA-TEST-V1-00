@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
@@ -52,8 +53,9 @@ export function RoleGuard({
   // Équipe active du coach : init synchrone depuis le localStorage (déjà posé à la
   // connexion), pour que le premier fetch parte avec le bon X-Team-Id sans re-render.
   const [activeTeamId, setActiveTeamIdState] = useState<string | null>(() => getActiveTeamId());
-  // Le fil d'activité n'existe que pour le coach
+  // Le fil d'activité et la carte n'existent que pour le coach
   const hasNotifications = role === "coach";
+  const isCoach = role === "coach";
 
   useEffect(() => {
     const stored = getStoredUser();
@@ -156,10 +158,11 @@ export function RoleGuard({
             verre flouté la nuit, où le halo et le tracé du terrain se
             poursuivent dessous au lieu de s'arrêter net. */}
         <div className="app-header sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
-          {/* Le header ne porte plus aucune action : contexte et titre seulement.
-              Tout ce qui était dans le coin haut-droit vit maintenant dans la
-              feuille « Moi », ouverte depuis la barre basse (et depuis l'avatar
-              sur desktop, où la barre basse n'existe pas). */}
+          {/* Le header porte UNE action, et une seule : la photo, qui ouvre la
+              carte du coach. C'est un revirement assumé de la règle « header
+              sans action » — la carte est ce qu'on montre de soi, sa place est
+              là où l'on se reconnaît, pas au fond d'un menu. Le reste du
+              compte vit toujours dans la feuille « Moi ». */}
           <header className="text-on-structure">
             <div className={cn(SHELL_WIDTH, "h-16 flex items-center justify-between gap-4")}>
               <div className="flex items-center gap-3 min-w-0">
@@ -175,37 +178,63 @@ export function RoleGuard({
                 </div>
               </div>
 
-              {/* Desktop uniquement : la barre d'onglets y est en haut, il faut
-                  donc un accès au compte ailleurs que dans la barre basse. */}
-              <button
-                type="button"
-                onClick={() => setSheetOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={sheetOpen}
-                aria-label={`Menu de ${user.firstName}`}
-                className="hidden min-[960px]:flex items-center gap-2 rounded-lg px-2 py-1.5 shrink-0 hover:bg-white/10 transition"
-              >
-                <span className="relative">
-                  <Avatar
-                    firstName={user.firstName}
-                    lastName={user.lastName}
-                    avatarUrl={user.avatarUrl}
-                    size={36}
-                    className="border border-white/20"
-                  />
-                  {unread && (
-                    <span
-                      className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent-solid ring-2 ring-structure-2"
-                      aria-label="Nouvelles activités"
+              <div className="flex items-center gap-1 shrink-0">
+                {/* La carte n'existe que pour le coach : elle parle de points et
+                    de matchs encadrés. Les autres rôles gardent l'avatar dans
+                    le bouton de compte, comme avant. */}
+                {isCoach && (
+                  <Link
+                    href="/coach/card"
+                    aria-label="Ma carte de coach"
+                    className="p-1 rounded-lg transition hover:bg-white/10 active:scale-95"
+                  >
+                    <Avatar
+                      firstName={user.firstName}
+                      lastName={user.lastName}
+                      avatarUrl={user.avatarUrl}
+                      size={36}
+                      className="border border-white/20"
+                    />
+                  </Link>
+                )}
+
+                {/* Desktop uniquement : la barre d'onglets y est en haut, il faut
+                    donc un accès au compte ailleurs que dans la barre basse. */}
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={sheetOpen}
+                  aria-label={`Menu de ${user.firstName}`}
+                  className="hidden min-[960px]:flex items-center gap-2 rounded-lg px-2 py-1.5 shrink-0 hover:bg-white/10 transition"
+                >
+                  {!isCoach && (
+                    <Avatar
+                      firstName={user.firstName}
+                      lastName={user.lastName}
+                      avatarUrl={user.avatarUrl}
+                      size={36}
+                      className="border border-white/20"
                     />
                   )}
-                </span>
-                <span className="text-left leading-tight">
-                  <span className="block text-sm font-bold">Bonjour {user.firstName}</span>
-                  <span className="block text-[11px] text-white/60 font-semibold">{ROLE_SPACES[user.role]}</span>
-                </span>
-                <ChevronDown size={14} className="text-white/60" aria-hidden />
-              </button>
+                  <span className="text-left leading-tight">
+                    <span className="block text-sm font-bold">Bonjour {user.firstName}</span>
+                    <span className="block text-[11px] text-white/60 font-semibold">{ROLE_SPACES[user.role]}</span>
+                  </span>
+                  <span className="relative">
+                    <ChevronDown size={14} className="text-white/60" aria-hidden />
+                    {/* La pastille suit le menu, pas la photo : c'est là que se
+                        lisent les activités. Sur mobile, elle est portée par
+                        l'onglet « Moi » de la barre basse. */}
+                    {unread && (
+                      <span
+                        className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-accent-solid ring-2 ring-structure-2"
+                        aria-label="Nouvelles activités"
+                      />
+                    )}
+                  </span>
+                </button>
+              </div>
             </div>
           </header>
 

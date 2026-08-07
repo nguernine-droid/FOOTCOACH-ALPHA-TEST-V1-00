@@ -1,36 +1,34 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Megaphone, Radar, ShieldCheck } from "lucide-react";
-import { FFF_NOTICE_DAYS, type AnnouncementDto } from "@footcoach/shared";
+import { Megaphone, Radar, Trophy } from "lucide-react";
+import type { RadarDto, AnnouncementDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
-import { cn } from "@/lib/utils";
-import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
+import { SectorAnnouncementCard } from "@/components/announcements/SectorAnnouncementCard";
+import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
-type Filter = "open" | "matched" | "cancelled";
-
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "open", label: "En recherche" },
-  { key: "matched", label: "Confirmées" },
-  { key: "cancelled", label: "Annulées" },
-];
-
 /**
- * Espace « Annonces » du coach : le cœur de la V1 — publier une recherche
- * d'adversaire, suivre les propositions reçues et confirmer le match amical.
+ * Ce que les autres coachs publient, en deux listes : les matchs amicaux et
+ * les tournois.
+ *
+ * L'onglet montrait « mes annonces » — elles ont leur écran à elles, dans la
+ * feuille « Moi ». Ici on vient chercher un adversaire, pas relire ce qu'on a
+ * écrit : c'est la même matière que le radar, sans la carte ni les filtres,
+ * pour qui préfère lire une liste que viser un maillot.
+ *
+ * Le périmètre reste celui du radar, réglé sur le tableau de bord : deux
+ * réglages de portée qui pourraient diverger seraient un piège.
  */
 export default function AnnouncementsPage() {
-  const router = useRouter();
-  const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
+  const [radar, setRadar] = useState<RadarDto | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>("open");
+  const [responding, setResponding] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setAnnouncements(await api<AnnouncementDto[]>("/announcements/mine"));
+      setRadar(await api<RadarDto>("/announcements/radar"));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de chargement");
@@ -41,133 +39,116 @@ export default function AnnouncementsPage() {
     load();
   }, [load]);
 
-  // Accepter une proposition crée le match : on enchaîne sur sa feuille de match
-  async function accept(announcementId: string, responseId: string) {
+  async function respond(id: string) {
+    setResponding(id);
+    setError(null);
     try {
-      const { matchId } = await api<{ matchId: string }>(
-        `/announcements/${announcementId}/responses/${responseId}/accept`,
-        { method: "POST" },
-      );
-      router.push(`/coach/matches/${matchId}`);
+      await api(`/announcements/${id}/respond`, { method: "POST" });
+      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'accepter cette proposition");
+      setError(err instanceof Error ? err.message : "Impossible de répondre");
       load();
+    } finally {
+      setResponding(null);
     }
   }
 
-  async function decline(announcementId: string, responseId: string) {
-    await api(`/announcements/${announcementId}/responses/${responseId}/decline`, { method: "POST" }).catch(
-      () => undefined,
-    );
-    load();
+  async function withdraw(id: string) {
+    setResponding(id);
+    setError(null);
+    try {
+      await api(`/announcements/${id}/respond`, { method: "DELETE" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de retirer la proposition");
+      load();
+    } finally {
+      setResponding(null);
+    }
   }
 
-  async function cancel(id: string) {
-    await api(`/announcements/${id}`, { method: "DELETE" }).catch(() => undefined);
-    load();
-  }
+  if (!radar) return <CardGridSkeleton cards={3} />;
 
-  if (!announcements) return <CardGridSkeleton cards={3} />;
-
-  const counts: Record<Filter, number> = {
-    open: announcements.filter((a) => a.status === "open").length,
-    matched: announcements.filter((a) => a.status === "matched").length,
-    cancelled: announcements.filter((a) => a.status === "cancelled").length,
-  };
-  const shown = announcements
-    .filter((a) => a.status === filter)
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const pendingTotal = announcements
-    .filter((a) => a.status === "open")
-    .reduce((n, a) => n + a.responses.filter((r) => r.status === "pending").length, 0);
+  // Les plus proches d'abord, les distances inconnues à la fin : c'est l'ordre
+  // dans lequel on décide de se déplacer.
+  const announcements = [...radar.items].sort((a: AnnouncementDto, b: AnnouncementDto) => {
+    if (a.distanceKm === null) return b.distanceKm === null ? a.date.localeCompare(b.date) : 1;
+    if (b.distanceKm === null) return -1;
+    return a.distanceKm - b.distanceKm || a.date.localeCompare(b.date);
+  });
+  const tournaments = [...radar.tournaments].sort((a: TournamentDto, b: TournamentDto) =>
+    a.date.localeCompare(b.date),
+  );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="hero-pitch p-5 flex flex-wrap items-center gap-4">
         <span className="w-12 h-12 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
           <Megaphone size={22} />
         </span>
-        {/* min-w assez large pour que le bouton passe à la ligne au lieu d'écraser le texte */}
         <div className="min-w-[14rem] flex-1">
-          <h2 className="display text-lg">Mes annonces</h2>
+          <h2 className="display text-lg">Annonces du secteur</h2>
           <p className="text-xs text-white/80">
-            {pendingTotal > 0
-              ? `${pendingTotal} proposition${pendingTotal > 1 ? "s" : ""} d'adversaire à valider.`
-              : "Publiez une recherche d'adversaire : elle apparaît sur le radar des autres coachs."}
+            Ce que les coachs autour de vous cherchent et organisent. Vos propres annonces sont dans
+            « Moi › Mes annonces ».
           </p>
         </div>
-        <ButtonLink href="/coach/announcements/new" variant="accent" className="shrink-0 w-full sm:w-auto">
-          <Megaphone size={14} /> Publier une annonce
+        <ButtonLink href="/coach" variant="accent" className="shrink-0 w-full sm:w-auto">
+          <Radar size={14} /> Voir sur la carte
         </ButtonLink>
-      </div>
-
-      <div className="rounded-lg surface border border-line px-4 py-3 flex gap-2.5">
-        <ShieldCheck size={15} className="text-blue shrink-0 mt-0.5" aria-hidden />
-        <p className="text-xs text-ink-soft">
-          Un match amical doit être déclaré à votre district au moins{" "}
-          <span className="font-bold text-ink">{FFF_NOTICE_DAYS} jours</span> avant la rencontre. Chaque annonce
-          indique si le délai est tenu.
-        </p>
-      </div>
-
-      {/* Trois filtres qui se partagent la largeur : cible large, pas de repli */}
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Filtrer mes annonces">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            role="tab"
-            aria-selected={filter === f.key}
-            onClick={() => setFilter(f.key)}
-            className={cn("chip-choice", filter === f.key ? "chip-choice-on" : "chip-choice-off")}
-          >
-            <span className="truncate">{f.label}</span> ({counts[f.key]})
-          </button>
-        ))}
       </div>
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
-      {shown.length === 0 ? (
-        <div className="card p-10 text-center space-y-3">
-          <span className="w-12 h-12 rounded-lg bg-blue-soft text-blue flex items-center justify-center mx-auto">
-            <Megaphone size={22} />
-          </span>
-          <p className="text-sm font-bold">
-            {filter === "open"
-              ? "Aucune annonce en recherche"
-              : filter === "matched"
-                ? "Aucun match confirmé pour l'instant"
-                : "Aucune annonce annulée"}
-          </p>
-          {filter === "open" && (
-            <>
-              <p className="text-xs text-ink-soft">
-                Publiez une annonce, ou répondez à une équipe depuis le radar du tableau de bord.
-              </p>
-              <div className="grid gap-2 sm:flex sm:justify-center">
-                <ButtonLink href="/coach/announcements/new">Publier une annonce</ButtonLink>
-                <ButtonLink href="/coach" variant="soft">
-                  <Radar size={14} /> Ouvrir le radar
-                </ButtonLink>
-              </div>
-            </>
-          )}
-        </div>
-      ) : (
-        <div className="stagger grid gap-3 md:grid-cols-2 xl:grid-cols-3 items-start">
-          {shown.map((a) => (
-            <MyAnnouncementCard
-              key={a.id}
-              announcement={a}
-              onAccept={accept}
-              onDecline={decline}
-              onCancel={cancel}
-              showLocation
-            />
-          ))}
-        </div>
-      )}
+      <section className="space-y-3" aria-label="Matchs amicaux du secteur">
+        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+          <Megaphone size={13} aria-hidden /> Matchs amicaux ({announcements.length})
+        </h3>
+        {announcements.length === 0 ? (
+          <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
+            <p className="text-sm font-bold">Aucun match cherché autour de vous</p>
+            <p className="text-xs text-ink-soft">
+              Publiez le vôtre : il apparaîtra chez les autres coachs du secteur.
+            </p>
+            <ButtonLink href="/coach/announcements/new" variant="soft" className="w-full sm:w-auto">
+              Publier une annonce
+            </ButtonLink>
+          </div>
+        ) : (
+          <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
+            {announcements.map((a) => (
+              <SectorAnnouncementCard
+                key={a.id}
+                announcement={a}
+                responding={responding === a.id}
+                onRespond={respond}
+                onWithdraw={withdraw}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3" aria-label="Tournois du secteur">
+        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+          <Trophy size={13} aria-hidden /> Tournois ({tournaments.length})
+        </h3>
+        {tournaments.length === 0 ? (
+          <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
+            <p className="text-sm font-bold">Aucun tournoi annoncé autour de vous</p>
+            <p className="text-xs text-ink-soft">Vous pouvez être le premier à en organiser un.</p>
+            <ButtonLink href="/coach/tournaments/new" variant="soft" className="w-full sm:w-auto">
+              Organiser un tournoi
+            </ButtonLink>
+          </div>
+        ) : (
+          <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
+            {tournaments.map((t) => (
+              <TournamentCard key={t.id} tournament={t} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
