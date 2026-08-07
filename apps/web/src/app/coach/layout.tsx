@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, LayoutDashboard, Megaphone } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
+import { SwipeTabs } from "@/components/SwipeTabs";
 import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
 
 // V1 recentrée sur la gestion des matchs amicaux entre coachs.
@@ -72,7 +73,9 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
         role="coach"
         nav={<AppTabs tabs={TABS} action={action} ariaLabel="Sections de l'espace coach" />}
       >
-        {children}
+        {/* Au téléphone, le pouce passe d'un onglet à l'autre d'un glissé —
+            dans l'ordre de la barre basse, celui qu'on a déjà en tête. */}
+        <SwipeTabs hrefs={TABS.map((t) => t.href)}>{children}</SwipeTabs>
       </RoleGuard>
     </QuickActionProvider>
   );
