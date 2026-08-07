@@ -5,8 +5,13 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, LayoutDashboard, Megaphone } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
-import { SwipeTabs } from "@/components/SwipeTabs";
+import { TabPager, type Pane } from "@/components/TabPager";
 import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
+// Les trois écrans d'onglet sont montés ensemble par le carrousel du téléphone :
+// il faut donc les composants eux-mêmes, et pas seulement leurs routes.
+import CoachDashboard from "./page";
+import AnnouncementsPage from "./announcements/page";
+import CoachMatchesPage from "./matches/page";
 
 // V1 recentrée sur la gestion des matchs amicaux entre coachs.
 // Le radar vit désormais dans le tableau de bord ; les sections secondaires
@@ -18,6 +23,18 @@ const TABS: AppTab[] = [
   { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true, badge: "activity" },
   { href: "/coach/announcements", label: "Annonces", icon: Megaphone },
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
+];
+
+/**
+ * Les mêmes écrans, dans le même ordre, pour le carrousel du téléphone. Les
+ * éléments sont créés une fois pour toutes : recréés à chaque rendu de la mise
+ * en page, ils resteraient équivalents pour React, mais autant ne pas lui
+ * donner l'occasion d'y regarder à deux fois pendant un glissé.
+ */
+const PANES: Pane[] = [
+  { href: "/coach", node: <CoachDashboard /> },
+  { href: "/coach/announcements", node: <AnnouncementsPage /> },
+  { href: "/coach/matches", node: <CoachMatchesPage /> },
 ];
 
 /**
@@ -73,9 +90,11 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
         role="coach"
         nav={<AppTabs tabs={TABS} action={action} ariaLabel="Sections de l'espace coach" />}
       >
-        {/* Au téléphone, le pouce passe d'un onglet à l'autre d'un glissé —
-            dans l'ordre de la barre basse, celui qu'on a déjà en tête. */}
-        <SwipeTabs hrefs={TABS.map((t) => t.href)}>{children}</SwipeTabs>
+        {/* Au téléphone, les trois onglets sont montés côte à côte et suivent le
+            doigt : on voit les deux écrans pendant le glissé. Ailleurs — sur une
+            sous-page, ou au-delà de 960 px — c'est la route courante, comme
+            partout. */}
+        <TabPager panes={PANES} fallback={children} />
       </RoleGuard>
     </QuickActionProvider>
   );

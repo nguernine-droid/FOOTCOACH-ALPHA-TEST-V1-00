@@ -53,6 +53,16 @@ export function navigationDirection(from: string, to: string): -1 | 0 | 1 {
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
+/**
+ * Le carrousel des onglets change l'URL alors que l'écran est DÉJÀ arrivé à sa
+ * place : il a suivi le doigt. Rejouer l'entrée par-dessus le ferait clignoter.
+ * Le drapeau est consommé par la première transition qui suit, et une seule.
+ */
+let skipOnce = false;
+export function skipNextPageTransition() {
+  skipOnce = true;
+}
+
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const ref = useRef<HTMLDivElement>(null);
@@ -66,6 +76,10 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     previous.current = pathname;
     // Premier rendu : l'entrée est déjà assurée par la silhouette du shell
     if (from === null || from === pathname) return;
+    if (skipOnce) {
+      skipOnce = false;
+      return;
+    }
 
     const node = ref.current;
     if (!node?.animate) return;
