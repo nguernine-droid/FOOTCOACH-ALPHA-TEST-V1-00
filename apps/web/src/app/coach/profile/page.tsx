@@ -3,17 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
-import {
-  coachQrPayload,
-  COACH_CATEGORIES,
-  COACH_CATEGORY_DESCRIPTIONS,
-  COACH_CATEGORY_LABELS,
-  type CoachCategory,
-  type UserDto,
-} from "@footcoach/shared";
+import { coachQrPayload, type CoachCategory, type UserDto } from "@footcoach/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
+import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { LocationCard } from "@/components/coach/LocationCard";
 import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
@@ -316,31 +309,7 @@ export default function CoachProfilePage() {
               matchs fonctionnent à l&apos;identique.
             </p>
           </div>
-          {COACH_CATEGORIES.map((category) => {
-            const on = user.categories?.includes(category) ?? false;
-            return (
-              <label
-                key={category}
-                htmlFor={`category-${category}`}
-                className={cn(
-                  "flex gap-3 items-start rounded-lg border px-4 py-3 cursor-pointer transition",
-                  on ? "border-accent bg-accent-surface" : "border-line bg-paper hover:border-accent/40",
-                )}
-              >
-                <input
-                  id={`category-${category}`}
-                  type="checkbox"
-                  checked={on}
-                  onChange={() => toggleCategory(category)}
-                  className="mt-0.5 w-5 h-5 shrink-0 accent-blue"
-                />
-                <span className="text-xs leading-relaxed">
-                  <span className="block font-bold text-ink">{COACH_CATEGORY_LABELS[category]}</span>
-                  <span className="text-ink-soft">{COACH_CATEGORY_DESCRIPTIONS[category]}</span>
-                </span>
-              </label>
-            );
-          })}
+          <CoachCategoryPicker value={user.categories ?? []} onToggle={toggleCategory} />
         </section>
       )}
 

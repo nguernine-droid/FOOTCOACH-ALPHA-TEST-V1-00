@@ -2,6 +2,7 @@
 import type { FastifyInstance } from "fastify";
 import { and, eq } from "drizzle-orm";
 import {
+  asCoachCategories,
   asMatchCategory,
   createTeamSchema,
   idParamSchema,
@@ -72,6 +73,9 @@ export function registrationRoutes(app: FastifyInstance) {
           termsAcceptedAt: new Date(),
           termsVersion: LEGAL_VERSION,
           coachLicenseNumber: input.licenseNumber?.trim() || null,
+          // Dédoublonnées ici comme partout ailleurs : la colonne est un
+          // tableau, rien en base n'empêcherait deux fois « joker ».
+          coachCategories: asCoachCategories(input.categories),
         })
         .returning();
       const coords = cityCoords(input.teamCity);

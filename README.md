@@ -38,12 +38,12 @@ Le journal `coach_points` accepte les deux origines (`match_id` **ou** `tourname
 
 ### Casquettes du coach
 
-Un coach peut se donner des casquettes, **cumulables**, depuis **Mon profil → Mes casquettes**. N'en cocher aucune est le cas ordinaire et se lit « simple coach » — il n'y a pas de case pour dire non.
+Un coach se donne ses casquettes, **cumulables**, **à l'inscription** (une étape à elle seule, entre l'équipe et les acceptations) puis à volonté depuis **Mon profil → Mes casquettes**. N'en cocher aucune est le cas ordinaire et se lit « simple coach » — il n'y a pas de case pour dire non, et l'étape d'inscription se franchit sans rien cocher.
 
 | Casquette | Effet |
 |---|---|
 | **Joker** | Il accepte d'être alerté quand un coach de son secteur se retrouve sans adversaire. **Les alertes SOS ne partent qu'aux jokers**, et seulement à ceux dont le rayon couvre le lieu : se dire disponible n'est pas se dire ubiquiste. |
-| **Contributeur** | Décoratif pour l'instant — un badge sur sa fiche. La casquette prendra son sens en V2, elle est modélisée dès maintenant pour que les coachs puissent se déclarer sans attendre. |
+| **Contributeur** | Il publie régulièrement des annonces, sans attendre qu'on lui en propose — ce sont elles qui donnent aux autres des matchs à trouver. Décoratif pour l'instant (un badge sur sa fiche), la casquette prendra son sens en V2 ; elle est demandée dès l'inscription pour que les coachs puissent se déclarer sans attendre. |
 
 Se déclarer joker **est** l'abonnement aux SOS : le ciblage ne recoupe pas la préférence « nouvelle annonce », qui répond à une autre question. Un coach qui a coupé le flot des annonces neuves mais s'est déclaré joker veut précisément cela — n'être dérangé que quand quelqu'un est en panne.
 
@@ -347,9 +347,11 @@ mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
 
 ### Créer un compte coach (sans compte de démo)
 
-« Créer un compte coach » — 3 petites étapes (nom → identifiants → équipe). L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
+« Créer un compte coach » — 4 petites étapes (nom → identifiants → équipe → casquettes), plus les acceptations. L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
 
 L'étape « équipe » demande son nom, sa ville, sa **catégorie** (obligatoire) et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
+
+L'étape « casquettes » propose **joker** et **contributeur**, chacune expliquée par ce qu'elle engage (voir « Casquettes du coach »). Aucune n'est obligatoire ; le serveur reçoit un tableau qui peut être vide, et une inscription qui ne l'envoie pas du tout reste valable.
 
 Le champ **nom de l'équipe** propose des **suggestions de clubs** tirées de l'annuaire public des entreprises (`recherche-entreprises.api.gouv.fr`, façade de la base SIRENE, filtrée sur le code NAF **93.12Z « Activités de clubs de sports »**). Retenir une suggestion remplit aussi la **ville**. Même champ dans **Mes équipes › Créer une équipe**.
 

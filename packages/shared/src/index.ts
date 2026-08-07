@@ -205,7 +205,7 @@ export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
   joker:
     "Vous acceptez d'être alerté quand un coach de votre secteur se retrouve sans adversaire. Ces alertes SOS ne partent qu'aux jokers.",
   contributeur:
-    "Vous faites vivre l'application : retours, idées, signalements. Sans effet pour l'instant — la casquette prendra son sens dans une prochaine version.",
+    "Vous publiez régulièrement des annonces, sans attendre qu'on vous en propose : c'est ce qui donne aux autres des matchs à trouver.",
 };
 
 /** Choix des casquettes par le coach lui-même. Tableau vide = aucune. */
@@ -598,6 +598,10 @@ export const registerCoachSchema = z.object({
   // Facultatif : un coach l'a souvent sous la main en s'inscrivant, beaucoup
   // moins le jour où il faudra le retrouver. Modifiable ensuite dans le profil.
   licenseNumber: coachLicenseSchema.optional(),
+  // Casquettes choisies à l'inscription. Absentes ou vides = aucune, le cas
+  // ordinaire : le défaut évite qu'un client plus ancien, qui ne les envoie
+  // pas, se voie refuser l'inscription. Modifiables ensuite dans le profil.
+  categories: z.array(z.enum(COACH_CATEGORIES)).max(COACH_CATEGORIES.length).default([]),
   // Deux acceptations distinctes, et non une case unique fourre-tout : la
   // clause de responsabilité (déclaration à la fédération, licences, transport)
   // est celle qui protège réellement l'éditeur. Acceptée à part, elle ne peut

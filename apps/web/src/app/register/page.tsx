@@ -4,10 +4,16 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PASSWORD_MIN_LENGTH, passwordProblem, type MatchCategory } from "@footcoach/shared";
+import {
+  PASSWORD_MIN_LENGTH,
+  passwordProblem,
+  type CoachCategory,
+  type MatchCategory,
+} from "@footcoach/shared";
 import { register } from "@/lib/api";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { ClubNameField } from "@/components/ClubNameField";
+import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
 import { LEGAL_LINKS } from "@/lib/legal";
@@ -84,6 +90,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   // surtout elle ne part d'aucune valeur — présélectionner une catégorie
   // reviendrait à en choisir une pour le coach.
   const [teamCategory, setTeamCategory] = useState<MatchCategory | null>(null);
+  // Casquettes : aucune au départ, et aucune est une réponse valable — l'étape
+  // se franchit sans rien cocher.
+  const [categories, setCategories] = useState<CoachCategory[]>([]);
   // Les deux acceptations vivent hors de `form` : ce sont des booléens, et
   // surtout ils ne partent jamais d'une valeur « déjà donnée ».
   const [consent, setConsent] = useState({ responsibility: false, terms: false });
@@ -93,6 +102,12 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleCategory(category: CoachCategory) {
+    setCategories((current) =>
+      current.includes(category) ? current.filter((c) => c !== category) : [...current, category],
+    );
   }
 
   // Chaque étape se valide sous ses champs plutôt que par une bulle native,
@@ -124,6 +139,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       await register("/auth/register-coach", {
         ...form,
         teamCategory,
+        categories,
         teamStadium: form.teamStadium.trim() || undefined,
         licenseNumber: form.licenseNumber.trim() || undefined,
         acceptTerms: consent.terms,
@@ -138,7 +154,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-4">
-      <Dots total={4} current={step} />
+      <Dots total={5} current={step} />
       {step === 0 && (
         <StepCard title="Qui êtes-vous ?" subtitle="Commençons par votre nom." onBack={onBack}>
           <form
@@ -246,9 +262,31 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       )}
       {step === 3 && (
         <StepCard
+          title="Vos casquettes"
+          subtitle="Deux façons d'aider les autres coachs. Aucune n'est obligatoire."
+          onBack={() => setStep(2)}
+        >
+          {/* Étape à part entière, et non une ligne de plus au milieu des
+              champs de l'équipe : ce sont deux engagements à lire, pas deux
+              cases à expédier. Rien de coché reste une réponse — d'où le
+              bouton « Continuer » toujours actif. */}
+          <div className="space-y-4">
+            <CoachCategoryPicker value={categories} onToggle={toggleCategory} idPrefix="register-casquette" />
+            <p className="text-[11px] text-ink-soft">
+              Sans aucune, vous restez un coach comme un autre : vos annonces et vos matchs fonctionnent à
+              l&apos;identique. Vous pourrez les cocher ou les retirer plus tard dans Mon profil.
+            </p>
+            <Button type="button" size="lg" className="w-full" onClick={() => advance(4, false)}>
+              Continuer
+            </Button>
+          </div>
+        </StepCard>
+      )}
+      {step === 4 && (
+        <StepCard
           title="À savoir avant de commencer"
           subtitle="Ce que l'application fait — et ce qu'elle ne fait pas à votre place."
-          onBack={() => setStep(2)}
+          onBack={() => setStep(3)}
         >
           <form onSubmit={finish} noValidate className="space-y-4">
             <LegalConsent

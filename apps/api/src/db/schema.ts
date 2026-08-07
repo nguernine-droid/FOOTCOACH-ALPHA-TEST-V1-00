@@ -21,9 +21,11 @@ export const userRole = pgEnum("user_role", ["coach", "player", "parent", "suppo
  * de compte : elles ne changent pas ses droits, elles disent ce qu'il accepte
  * de faire pour les autres.
  *
- * `joker` a un effet immédiat — lui seul est alerté des SOS. `contributeur` est
- * décoratif pour l'instant et prendra son sens en V2 ; il est modélisé dès
- * maintenant pour que les coachs puissent se déclarer sans attendre.
+ * `joker` a un effet immédiat — lui seul est alerté des SOS. `contributeur`
+ * annonce un coach qui publie beaucoup : c'est une intention affichée, sans
+ * effet technique pour l'instant, que la V2 pourra reconnaître.
+ *
+ * Les deux se choisissent à l'inscription et se rechangent au profil.
  */
 export const coachCategory = pgEnum("coach_category", ["joker", "contributeur"]);
 // Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs).
