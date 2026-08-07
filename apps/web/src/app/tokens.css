@@ -178,6 +178,10 @@
   /* Marqueurs : le contour doit tenir sur le fond de carte du thème */
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
+  /* Le tournoi est vert, et non doré comme sa pastille d'agenda : sur cette
+     carte l'orange dit « SOS », et deux marqueurs orange à distinguer d'un
+     coup d'œil se valent moins qu'un écart avec le reste de l'application. */
+  --pin-tournament: var(--success);
   --pin-stroke: #0B0B0C;
   --pin-shadow: rgba(11, 11, 12, 0.35);
   --pin-lift: drop-shadow(0 3px 4px rgba(11, 11, 12, 0.3));
@@ -330,6 +334,7 @@
   --map-ring: var(--accent);
   --pin-free: #FFFFFF;
   --pin-seeking: var(--accent-solid);
+  --pin-tournament: var(--success);
   --pin-stroke: #0B0B0C;
   --pin-shadow: rgba(0, 0, 0, 0.45);
   --pin-lift: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));

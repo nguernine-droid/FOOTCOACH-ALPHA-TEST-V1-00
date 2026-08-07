@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   ChevronDown,
@@ -32,7 +33,7 @@ import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { LocationCard } from "@/components/coach/LocationCard";
-import { RADIUS_OPTIONS, RadarScope, toBlips } from "@/components/announcements/RadarScope";
+import { RADIUS_OPTIONS, RadarScope, toBlips, toTournamentBlips } from "@/components/announcements/RadarScope";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -65,6 +66,7 @@ function bySosThenProximity(a: AnnouncementDto, b: AnnouncementDto): number {
  * Affiché dans le tableau de bord du coach — le cœur de la V1.
  */
 export function RadarFeed() {
+  const router = useRouter();
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   /**
    * Tournois du même périmètre. Gardés dans leur propre état plutôt que fondus
@@ -201,10 +203,22 @@ export function RadarFeed() {
   const inRange = useMemo(() => [...matchesFilters].sort(bySosThenProximity), [matchesFilters]);
   const unknownCount = inRange.filter((a) => a.distanceKm === null).length;
 
-  // Sans limite, le cercle extérieur se cale sur l'annonce la plus lointaine
-  const farthest = Math.max(0, ...inRange.map((a) => a.distanceKm ?? 0));
+  // Sans limite, le cercle extérieur se cale sur le point le plus lointain —
+  // tournois compris, sans quoi celui qui dépasse toutes les annonces serait
+  // ramené sur le cercle extérieur, plus près qu'il n'est réellement.
+  const farthest = Math.max(
+    0,
+    ...inRange.map((a) => a.distanceKm ?? 0),
+    ...tournaments.map((t) => t.distanceKm ?? 0),
+  );
   const scaleKm = radiusKm ?? Math.max(10, Math.ceil(farthest / 10) * 10);
   const blips = useMemo(() => toBlips(inRange, scaleKm), [inRange, scaleKm]);
+  /**
+   * Les tournois échappent aux filtres de catégorie, de genre et de date, comme
+   * dans leur section : ils y échappent donc aussi sur la carte. Un tournoi que
+   * le filtre d'un amical ferait disparaître serait une occasion perdue.
+   */
+  const tournamentBlips = useMemo(() => toTournamentBlips(tournaments, scaleKm), [tournaments, scaleKm]);
 
   // L'annonce dont la feuille est ouverte. Relue dans la liste courante plutôt
   // que copiée : un rechargement (réponse envoyée, retrait) la met à jour, et
@@ -258,9 +272,13 @@ export function RadarFeed() {
 
       <RadarScope
         blips={blips}
+        tournamentBlips={tournamentBlips}
         scaleKm={scaleKm}
         unknownCount={unknownCount}
         onSelect={openDetail}
+        // Un tournoi n'a pas de feuille intermédiaire : sa fiche porte les
+        // places restantes et l'inscription, c'est là qu'on veut aller.
+        onSelectTournament={(id) => router.push(`/coach/tournaments/${id}`)}
         selectedId={selectedId}
       />
 

@@ -1,7 +1,7 @@
 "use client";
 
-import type { AnnouncementDto } from "@footcoach/shared";
-import { JerseyPin } from "@/components/announcements/mapArt";
+import type { AnnouncementDto, TournamentDto } from "@footcoach/shared";
+import { JerseyPin, TrophyPin } from "@/components/announcements/mapArt";
 import { cn } from "@/lib/utils";
 
 /** Rayons proposés, en km. `null` = aucune limite.
@@ -13,41 +13,55 @@ export const RADIUS_OPTIONS: { value: number | null; label: string }[] = [
   { value: null, label: "Illimité" },
 ];
 
-export type Blip = {
-  /**
-   * Annonces qui tombent exactement au même endroit — même ville, donc même
-   * distance et même relèvement. Un seul maillot les porte, avec leur nombre.
-   */
-  announcements: AnnouncementDto[];
+/** Ce qu'il faut d'un objet pour le poser sur la carte */
+type Placeable = { distanceKm: number | null; bearingDeg: number | null };
+
+type Group<T> = {
+  items: T[];
   /** 0 au centre, 1 sur le cercle extérieur */
   radius: number;
   bearing: number;
 };
 
 /**
- * Place les annonces sur la carte à partir de leur distance et de leur
- * relèvement. Les annonces sans coordonnées (ville absente de l'annuaire) sont
- * écartées : mieux vaut ne pas les afficher que les afficher au mauvais endroit.
+ * Place des objets sur la carte à partir de leur distance et de leur
+ * relèvement. Ceux sans coordonnées (ville absente de l'annuaire) sont écartés :
+ * mieux vaut ne pas les afficher que les afficher au mauvais endroit.
  *
  * Les clubs d'une même ville partagent des coordonnées à la virgule près : les
  * placer un par un les empilait au pixel près, et la carte d'un secteur dense
  * n'affichait qu'un marqueur là où il y avait huit équipes. On les réunit sous
  * un marqueur compté plutôt que de les disperser — un marqueur déplacé
  * mentirait sur la direction, ce que cet écran ne fait jamais.
+ *
+ * Les annonces et les tournois sont groupés SÉPARÉMENT : ils ne se lisent pas
+ * de la même façon, et un marqueur mixte ne saurait dire lequel des deux il
+ * représente. Superposés, c'est la hauteur du trophée qui les démêle.
  */
-export function toBlips(announcements: AnnouncementDto[], scaleKm: number): Blip[] {
-  const groups = new Map<string, Blip>();
-  for (const a of announcements) {
-    if (a.distanceKm === null || a.bearingDeg === null) continue;
-    // Plancher à 8 % : les annonces de ma propre ville se poseraient sinon
+function group<T extends Placeable>(items: T[], scaleKm: number): Group<T>[] {
+  const groups = new Map<string, Group<T>>();
+  for (const item of items) {
+    if (item.distanceKm === null || item.bearingDeg === null) continue;
+    // Plancher à 8 % : ce qui se passe dans ma propre ville se poserait sinon
     // exactement sur le point « moi ».
-    const radius = Math.min(1, Math.max(0.08, a.distanceKm / scaleKm));
-    const key = `${radius.toFixed(4)}|${a.bearingDeg.toFixed(1)}`;
-    const group = groups.get(key);
-    if (group) group.announcements.push(a);
-    else groups.set(key, { announcements: [a], radius, bearing: a.bearingDeg });
+    const radius = Math.min(1, Math.max(0.08, item.distanceKm / scaleKm));
+    const key = `${radius.toFixed(4)}|${item.bearingDeg.toFixed(1)}`;
+    const existing = groups.get(key);
+    if (existing) existing.items.push(item);
+    else groups.set(key, { items: [item], radius, bearing: item.bearingDeg });
   }
   return [...groups.values()];
+}
+
+export type Blip = Group<AnnouncementDto>;
+export type TournamentBlip = Group<TournamentDto>;
+
+export function toBlips(announcements: AnnouncementDto[], scaleKm: number): Blip[] {
+  return group(announcements, scaleKm);
+}
+
+export function toTournamentBlips(tournaments: TournamentDto[], scaleKm: number): TournamentBlip[] {
+  return group(tournaments, scaleKm);
 }
 
 /** Coordonnées en pourcentage du cadre de la carte, nord en haut, sens horaire */
@@ -84,26 +98,37 @@ const CARDINALS = [
  */
 export function RadarScope({
   blips,
+  tournamentBlips,
   scaleKm,
   unknownCount,
   onSelect,
+  onSelectTournament,
   selectedId,
 }: {
   blips: Blip[];
+  tournamentBlips: TournamentBlip[];
   /** Distance représentée par le cercle extérieur */
   scaleKm: number;
   /** Annonces non plaçables (ville inconnue), signalées sous la carte */
   unknownCount: number;
   onSelect: (announcementId: string) => void;
+  onSelectTournament: (tournamentId: string) => void;
   selectedId: string | null;
 }) {
   // Le résumé compte les annonces, pas les marqueurs : plusieurs équipes
   // peuvent se partager un même maillot.
-  const detected = blips.reduce((n, b) => n + b.announcements.length, 0);
-  const summary =
+  const detected = blips.reduce((n, b) => n + b.items.length, 0);
+  const tournamentCount = tournamentBlips.reduce((n, b) => n + b.items.length, 0);
+  const teamsPart =
     detected === 0
       ? `Aucune équipe détectée dans un rayon de ${scaleKm} km`
       : `${detected} équipe${detected > 1 ? "s" : ""} détectée${detected > 1 ? "s" : ""} dans un rayon de ${scaleKm} km`;
+  // Les tournois s'ajoutent au résumé : ils sont sur la carte, ils doivent être
+  // dans ce qu'on en lit à voix haute comme dans la légende sous l'image.
+  const summary =
+    tournamentCount === 0
+      ? teamsPart
+      : `${teamsPart}, et ${tournamentCount} tournoi${tournamentCount > 1 ? "s" : ""}`;
 
   return (
     <div className="space-y-2">
@@ -186,8 +211,37 @@ export function RadarScope({
             </span>
           ))}
 
+          {/* Les tournois d'abord : posés sous les maillots, ils dépassent par
+              le haut là où les deux tombent au même endroit. Un maillot caché
+              par un trophée serait pire — c'est un adversaire qu'on cherche
+              d'abord sur cette carte. */}
+          {tournamentBlips.map(({ items, radius, bearing }) => {
+            const first = items[0];
+            const count = items.length;
+            const km = first.distanceKm!.toLocaleString("fr-FR");
+            return (
+              <button
+                key={`t-${radius}-${bearing}`}
+                type="button"
+                onClick={() => onSelectTournament(first.id)}
+                style={position(bearing, radius)}
+                className="map-pin absolute w-11 flex justify-center rounded-lg focus-visible:!outline-accent"
+                // Même tournure que le maillot — « nom — quoi, où, à combien » —
+                // et surtout pas « Tournoi <nom> » : la moitié des tournois
+                // s'appellent « Tournoi de… », ça bégayait.
+                aria-label={
+                  count === 1
+                    ? `${first.name} — tournoi à ${first.city}, à ${km} km`
+                    : `${count} tournois à ${first.city}, à ${km} km — ouvre le premier, les autres sont dans la liste`
+                }
+              >
+                <TrophyPin count={count} />
+              </button>
+            );
+          })}
+
           {/* Une équipe détectée, ou plusieurs au même endroit */}
-          {blips.map(({ announcements, radius, bearing }) => {
+          {blips.map(({ items: announcements, radius, bearing }) => {
             const first = announcements[0];
             const count = announcements.length;
             const km = first.distanceKm!.toLocaleString("fr-FR");
