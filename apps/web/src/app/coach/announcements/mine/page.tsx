@@ -39,11 +39,16 @@ function bucketOfAnnouncement(a: AnnouncementDto): Bucket {
   return "ongoing";
 }
 
-/** Même règle pour un tournoi que j'organise : une équipe inscrite le confirme. */
+/**
+ * Un tournoi ne se confirme pas comme une annonce : il est « en cours » tant
+ * qu'il reste une place. Une seule équipe inscrite sur huit attendues, ce n'est
+ * pas un tournoi qui tient — c'est un tournoi qui cherche encore. Il ne passe en
+ * confirmé qu'une fois complet.
+ */
 function bucketOfTournament(t: TournamentDto): Bucket {
   const lastDay = t.endDate ?? t.date;
   if (lastDay < todayIso() || t.status === "cancelled") return "past";
-  return t.slots - t.slotsLeft > 0 ? "confirmed" : "ongoing";
+  return t.slotsLeft === 0 ? "confirmed" : "ongoing";
 }
 
 /**
