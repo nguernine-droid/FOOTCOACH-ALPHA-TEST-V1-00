@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CalendarDays,
+  ChevronDown,
   Clock3,
   Crosshair,
   MapPin,
   Navigation,
   Radar,
+  SlidersHorizontal,
   Trophy,
   UserMinus,
   X,
@@ -77,6 +79,9 @@ export function RadarFeed() {
   const [category, setCategory] = useState<string | null>(null);
   const [gender, setGender] = useState<MatchGender | null>(null);
   const [date, setDate] = useState("");
+  // Réglages repliés au départ : la carte et les annonces passent devant. Ils
+  // restent dépliés une fois ouverts — on règle rarement un seul filtre.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // `null` = sans limite. Réglage conservé côté serveur : il sert aussi à
   // décider quelles annonces déclenchent une notification push.
   const stored = getStoredUser();
@@ -200,6 +205,23 @@ export function RadarFeed() {
   // une annonce qui disparaît referme la feuille au lieu de la figer.
   const detail = detailId ? (announcements ?? []).find((a) => a.id === detailId) ?? null : null;
 
+  /**
+   * Ce que les filtres repliés retirent de la liste. Le périmètre n'en fait pas
+   * partie : il est appliqué par le serveur, il se règle une fois et il est
+   * rappelé en toutes lettres — il n'y a rien à « effacer » là.
+   */
+  const activeFilters = [
+    category ? categoryLabel(category) : null,
+    gender ? MATCH_GENDER_LABELS[gender] : null,
+    date ? formatDate(date) : null,
+  ].filter((label): label is string => label !== null);
+
+  function clearFilters() {
+    setCategory(null);
+    setGender(null);
+    setDate("");
+  }
+
   const header = (
     <div className="flex items-center gap-2.5">
       <span className="w-9 h-9 rounded-lg bg-accent-surface border border-defined text-accent flex items-center justify-center shrink-0">
@@ -255,26 +277,150 @@ export function RadarFeed() {
         <span className="text-[11px] font-bold text-blue shrink-0">Modifier</span>
       </Link>
 
-      {/* Périmètre balayé */}
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Périmètre autour de moi</p>
-        <div className="grid grid-cols-4 gap-2" role="group" aria-label="Périmètre du radar">
-          {RADIUS_OPTIONS.map((option) => (
-            <button
-              key={option.label}
-              type="button"
-              onClick={() => changeRadius(option.value)}
-              aria-pressed={radiusKm === option.value}
-              className={cn(
-                // px resserré : quatre pastilles doivent tenir sur une rangée
-                "chip-choice !px-2",
-                radiusKm === option.value ? "chip-choice-on" : "chip-choice-off",
+      {/* Réglages du radar, repliés derrière un bouton : le coach vient voir la
+          carte et les annonces, pas quatre rangées de pastilles. Ce qui est
+          actif est réécrit sous le bouton — un filtre qu'on ne voit plus est un
+          filtre dont on oublie qu'il cache des annonces. */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+            aria-controls="radar-filters"
+            className={cn(
+              "chip-choice flex-1 min-[960px]:flex-none justify-between gap-3",
+              filtersOpen || activeFilters.length > 0 ? "chip-choice-on" : "chip-choice-off",
+            )}
+          >
+            <span className="inline-flex items-center gap-2">
+              <SlidersHorizontal size={15} aria-hidden />
+              Filtrer
+              {activeFilters.length > 0 && (
+                <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-white/25 text-[11px] font-black">
+                  {activeFilters.length}
+                </span>
               )}
-            >
-              <span className="truncate">{option.label}</span>
-            </button>
-          ))}
+            </span>
+            <ChevronDown
+              size={15}
+              aria-hidden
+              className={cn("transition-transform", filtersOpen && "rotate-180")}
+            />
+          </button>
+          {activeFilters.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0">
+              Effacer
+            </Button>
+          )}
         </div>
+
+        {/* Résumé de ce qui est appliqué, seulement une fois replié : panneau
+            ouvert, les pastilles le disent déjà. Le périmètre ouvre la ligne —
+            c'est lui qui décide de ce que le radar a le droit de montrer, y
+            compris quand rien n'est filtré. */}
+        {!filtersOpen && (
+          <p className="text-[11px] text-ink-soft">
+            {radiusKm === null ? "Sans limite de distance" : `${radiusKm} km autour de moi`}
+            {activeFilters.map((label) => ` · ${label}`)}
+          </p>
+        )}
+
+        {/* Toujours dans le DOM, masqué : `aria-controls` doit désigner quelque
+            chose, et l'attribut `hidden` suffit à le sortir du parcours clavier. */}
+        <div id="radar-filters" hidden={!filtersOpen} className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Périmètre autour de moi</p>
+            <div className="grid grid-cols-4 gap-2" role="group" aria-label="Périmètre du radar">
+              {RADIUS_OPTIONS.map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => changeRadius(option.value)}
+                  aria-pressed={radiusKm === option.value}
+                  className={cn(
+                    // px resserré : quatre pastilles doivent tenir sur une rangée
+                    "chip-choice !px-2",
+                    radiusKm === option.value ? "chip-choice-on" : "chip-choice-off",
+                  )}
+                >
+                  <span className="truncate">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {announcements.length > 0 && (
+            <div className="space-y-2">
+              {/* Rangée de catégories qui défile horizontalement plutôt que de se
+                  replier : dix-huit pastilles de 44 px ne tiennent sur aucun écran
+                  de téléphone sans le manger entièrement. */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setCategory(null)}
+                  aria-pressed={category === null}
+                  className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
+                >
+                  Toutes
+                </button>
+                {MATCH_CATEGORIES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCategory(category === c ? null : c)}
+                    aria-pressed={category === c}
+                    className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
+                  >
+                    {categoryLabel(c)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Genre : quatre choix seulement, donc une grille pleine largeur */}
+              <div className="grid grid-cols-4 gap-2" role="group" aria-label="Filtrer par genre">
+                <button
+                  type="button"
+                  onClick={() => setGender(null)}
+                  aria-pressed={gender === null}
+                  className={cn("chip-choice !px-2", gender === null ? "chip-choice-on" : "chip-choice-off")}
+                >
+                  <span className="truncate">Tous</span>
+                </button>
+                {MATCH_GENDERS.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGender(gender === g ? null : g)}
+                    aria-pressed={gender === g}
+                    className={cn("chip-choice !px-2", gender === g ? "chip-choice-on" : "chip-choice-off")}
+                  >
+                    <span className="truncate">{MATCH_GENDER_LABELS[g]}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 min-[960px]:max-w-64">
+                <div className="flex-1 min-w-0">
+                  <DateField value={date} onChange={setDate} placeholder="Toutes les dates" />
+                </div>
+                {date && (
+                  <button
+                    type="button"
+                    onClick={() => setDate("")}
+                    className="icon-btn text-ink-soft hover:text-coral hover:bg-coral-soft"
+                    aria-label="Effacer le filtre de date"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Hors du panneau : ce n'est pas un réglage mais une explication du
+            résultat — « il y en a d'autres, plus loin ». La cacher derrière le
+            bouton reviendrait à cacher la raison pour laquelle on l'ouvre. */}
         {beyondRadius > 0 && (
           <p className="text-[11px] text-ink-soft">
             {beyondRadius} annonce{beyondRadius > 1 ? "s" : ""} au-delà de {radiusKm} km, hors du périmètre.{" "}
@@ -288,73 +434,6 @@ export function RadarFeed() {
           </p>
         )}
       </div>
-
-      {announcements.length > 0 && (
-        <div className="space-y-2">
-          {/* Rangée de catégories qui défile horizontalement plutôt que de se
-              replier : dix-huit pastilles de 44 px ne tiennent sur aucun écran
-              de téléphone sans le manger entièrement. */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
-            <button
-              type="button"
-              onClick={() => setCategory(null)}
-              aria-pressed={category === null}
-              className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
-            >
-              Toutes
-            </button>
-            {MATCH_CATEGORIES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(category === c ? null : c)}
-                aria-pressed={category === c}
-                className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
-              >
-                {categoryLabel(c)}
-              </button>
-            ))}
-          </div>
-
-          {/* Genre : quatre choix seulement, donc une grille pleine largeur */}
-          <div className="grid grid-cols-4 gap-2" role="group" aria-label="Filtrer par genre">
-            <button
-              type="button"
-              onClick={() => setGender(null)}
-              aria-pressed={gender === null}
-              className={cn("chip-choice !px-2", gender === null ? "chip-choice-on" : "chip-choice-off")}
-            >
-              <span className="truncate">Tous</span>
-            </button>
-            {MATCH_GENDERS.map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => setGender(gender === g ? null : g)}
-                aria-pressed={gender === g}
-                className={cn("chip-choice !px-2", gender === g ? "chip-choice-on" : "chip-choice-off")}
-              >
-                <span className="truncate">{MATCH_GENDER_LABELS[g]}</span>
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 min-[960px]:max-w-64">
-            <div className="flex-1 min-w-0">
-              <DateField value={date} onChange={setDate} placeholder="Toutes les dates" />
-            </div>
-            {date && (
-              <button
-                type="button"
-                onClick={() => setDate("")}
-                className="icon-btn text-ink-soft hover:text-coral hover:bg-coral-soft"
-                aria-label="Effacer le filtre de date"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
@@ -406,8 +485,9 @@ export function RadarFeed() {
           <Button
             variant="ghost"
             onClick={() => {
-              setCategory(null);
-              setDate("");
+              // Tous les filtres, genre compris : repliés, ils ne se voient plus
+              // — un bouton qui promet d'élargir doit en lever la totalité.
+              clearFilters();
               changeRadius(null);
             }}
           >
