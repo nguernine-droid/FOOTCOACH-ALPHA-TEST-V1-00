@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
   CalendarDays,
   ChevronDown,
   Clock3,
   Crosshair,
   MapPin,
+  Megaphone,
   Navigation,
   Radar,
   SlidersHorizontal,
@@ -31,6 +31,7 @@ import {
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { LocationCard } from "@/components/coach/LocationCard";
 import { RADIUS_OPTIONS, RadarScope, toBlips } from "@/components/announcements/RadarScope";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -88,7 +89,12 @@ export function RadarFeed() {
   const [radiusKm, setRadiusKm] = useState<number | null>(
     stored?.radarRadiusKm === undefined ? DEFAULT_RADIUS_KM : stored.radarRadiusKm,
   );
-  const [origin, setOrigin] = useState(stored?.location ?? null);
+  // Le compte entier, pas seulement son point d'origine : la feuille de réglage
+  // de la position s'appuie dessus.
+  const [me, setMe] = useState<UserDto | null>(stored);
+  const origin = me?.location ?? null;
+  /** Feuille « Ma position », ouverte depuis la ligne du centre de balayage */
+  const [locationOpen, setLocationOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   /** Annonce dont la feuille de détail est ouverte, depuis un maillot de la carte */
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -99,7 +105,7 @@ export function RadarFeed() {
     api<UserDto>("/me")
       .then((fresh) => {
         updateStoredUser(fresh);
-        setOrigin(fresh.location ?? null);
+        setMe(fresh);
         if (fresh.radarRadiusKm !== undefined) setRadiusKm(fresh.radarRadiusKm);
       })
       .catch(() => undefined);
@@ -258,10 +264,18 @@ export function RadarFeed() {
         selectedId={selectedId}
       />
 
-      {/* D'où l'on balaie : le coach doit pouvoir le corriger d'un tap */}
-      <Link
-        href="/coach/profile"
-        className="flex items-center gap-2.5 min-h-12 rounded-lg bg-paper px-4 transition active:bg-blue-soft hover:bg-blue-faint"
+      {/* D'où l'on balaie. Le réglage s'ouvre ici même plutôt que d'envoyer au
+          profil : c'est en regardant la carte qu'on s'aperçoit qu'elle est
+          centrée au mauvais endroit, et il faut pouvoir la recentrer sans
+          perdre l'écran de vue. */}
+      <button
+        type="button"
+        onClick={() => setLocationOpen(true)}
+        disabled={!me}
+        aria-haspopup="dialog"
+        aria-expanded={locationOpen}
+        className="w-full flex items-center gap-2.5 min-h-12 rounded-lg bg-paper px-4 text-left
+          transition active:bg-blue-soft hover:bg-blue-faint disabled:opacity-60"
       >
         <Crosshair size={15} className="text-blue shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 text-xs">
@@ -275,7 +289,7 @@ export function RadarFeed() {
           )}
         </span>
         <span className="text-[11px] font-bold text-blue shrink-0">Modifier</span>
-      </Link>
+      </button>
 
       {/* Réglages du radar, repliés derrière un bouton : le coach vient voir la
           carte et les annonces, pas quatre rangées de pastilles. Ce qui est
@@ -442,14 +456,12 @@ export function RadarFeed() {
           à part et non fondue dans la grille — un tournoi ne se « propose »
           pas, il s'organise et on s'y inscrit. */}
       <section className="space-y-3" aria-label="Tournois du secteur">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
-            <Trophy size={13} aria-hidden /> Tournois du secteur
-          </h3>
-          <ButtonLink href="/coach/tournaments/new" size="sm" variant="soft" className="shrink-0">
-            Organiser
-          </ButtonLink>
-        </div>
+        {/* Plus de bouton « Organiser » ici : le « + » de la barre le propose
+            désormais partout, et deux portes pour la même création se
+            disputaient l'attention au-dessus d'une liste à lire. */}
+        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+          <Trophy size={13} aria-hidden /> Tournois du secteur
+        </h3>
         {tournaments.length === 0 ? (
           <p className="rounded-lg bg-paper px-4 py-4 text-xs text-ink-soft text-center">
             Aucun tournoi annoncé autour de vous. Vous pouvez être le premier à en organiser un.
@@ -463,151 +475,191 @@ export function RadarFeed() {
         )}
       </section>
 
-      {/* Vraiment rien à jouer, périmètre compris : inviter à publier. S'il y a
-          des annonces plus loin, c'est l'écran suivant — élargir, pas publier. */}
-      {announcements.length === 0 && beyondRadius === 0 ? (
-        <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
-          <p className="text-sm font-bold">Aucun match autour de vous</p>
-          <p className="text-xs text-ink-soft">
-            Publiez une annonce : elle apparaîtra sur le radar des autres coachs.
-          </p>
-          <ButtonLink href="/coach/announcements/new" variant="soft" className="w-full sm:w-auto">
-            Publier une annonce
-          </ButtonLink>
-        </div>
-      ) : inRange.length === 0 ? (
-        <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
-          <p className="text-sm font-bold">
-            {beyondRadius > 0
-              ? `Aucune équipe dans un rayon de ${radiusKm} km`
-              : "Aucune annonce ne correspond aux filtres"}
-          </p>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              // Tous les filtres, genre compris : repliés, ils ne se voient plus
-              // — un bouton qui promet d'élargir doit en lever la totalité.
-              clearFilters();
-              changeRadius(null);
-            }}
-          >
-            Élargir la recherche
-          </Button>
-        </div>
-      ) : (
-        <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
-          {inRange.map((a) => (
-            <div
-              key={a.id}
-              ref={(node) => {
-                if (node) cardRefs.current.set(a.id, node);
-                else cardRefs.current.delete(a.id);
+      {/* Les amicaux, titrés comme les tournois : deux listes se suivent, et la
+          seconde n'était annoncée par rien — on ne savait pas où finissaient
+          les tournois. */}
+      <section className="space-y-3" aria-label="Matchs amicaux du secteur">
+        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
+          <Megaphone size={13} aria-hidden /> Matchs amicaux du secteur
+        </h3>
+
+        {/* Vraiment rien à jouer, périmètre compris : inviter à publier. S'il y a
+            des annonces plus loin, c'est l'écran suivant — élargir, pas publier. */}
+        {announcements.length === 0 && beyondRadius === 0 ? (
+          <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
+            <p className="text-sm font-bold">Aucun match autour de vous</p>
+            <p className="text-xs text-ink-soft">
+              Publiez une annonce : elle apparaîtra sur le radar des autres coachs.
+            </p>
+            <ButtonLink href="/coach/announcements/new" variant="soft" className="w-full sm:w-auto">
+              Publier une annonce
+            </ButtonLink>
+          </div>
+        ) : inRange.length === 0 ? (
+          <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
+            <p className="text-sm font-bold">
+              {beyondRadius > 0
+                ? `Aucune équipe dans un rayon de ${radiusKm} km`
+                : "Aucune annonce ne correspond aux filtres"}
+            </p>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                // Tous les filtres, genre compris : repliés, ils ne se voient plus
+                // — un bouton qui promet d'élargir doit en lever la totalité.
+                clearFilters();
+                changeRadius(null);
               }}
-              className={cn(
-                "rounded-lg border p-4 space-y-3 transition",
-                selectedId === a.id
-                  ? "border-blue ring-2 ring-blue/15"
-                  : a.isSos
-                    ? "border-coral"
-                    : "border-line",
-              )}
             >
-              {/* Un match qui existe déjà et qu'il faut sauver : l'annonce le dit
-                  d'entrée, avec le motif — le coach juge s'il peut dépanner. */}
-              {a.isSos && (
-                <p className="-m-4 mb-0 rounded-t-lg bg-coral-soft px-4 py-2.5 text-xs font-bold text-coral flex items-start gap-2">
-                  <UserMinus size={14} className="shrink-0 mt-px" aria-hidden />
-                  <span>
-                    SOS — l&apos;adversaire s&apos;est désisté
-                    {a.sosReason && ` (${WITHDRAWAL_REASON_LABELS[a.sosReason].toLowerCase()})`}
-                    {a.sosDetails && <span className="block font-semibold text-ink-soft">{a.sosDetails}</span>}
-                  </span>
-                </p>
-              )}
-
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span
-                    className={cn(
-                      "w-10 h-10 rounded-full text-white flex items-center justify-center text-xs font-black shrink-0",
-                      teamColor(a.team),
-                    )}
-                  >
-                    {teamInitials(a.team.name)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-bold text-sm truncate">{a.team.name}</p>
-                    <p className="text-xs text-ink-soft truncate">{a.team.city}</p>
-                  </div>
-                </div>
-                {a.distanceKm !== null && (
-                  <span className="chip bg-blue-soft text-primary shrink-0">
-                    <Navigation size={11} /> à {a.distanceKm.toLocaleString("fr-FR")} km
-                  </span>
+              Élargir la recherche
+            </Button>
+          </div>
+        ) : (
+          <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
+            {inRange.map((a) => (
+              <div
+                key={a.id}
+                ref={(node) => {
+                  if (node) cardRefs.current.set(a.id, node);
+                  else cardRefs.current.delete(a.id);
+                }}
+                className={cn(
+                  "rounded-lg border p-4 space-y-3 transition",
+                  selectedId === a.id
+                    ? "border-blue ring-2 ring-blue/15"
+                    : a.isSos
+                      ? "border-coral"
+                      : "border-line",
                 )}
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
-                {a.gender && (
-                  <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>
-                )}
-                <span className="chip bg-pitch-soft text-primary">{a.format}</span>
-                <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[a.level]}</span>
-              </div>
-
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft font-semibold">
-                <span className="flex items-center gap-1.5 capitalize">
-                  <CalendarDays size={13} className="text-pitch" /> {formatDate(a.date)} à {a.time}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <MapPin size={13} className="text-pitch" /> {a.stadium}, {a.city}
-                </span>
-              </div>
-
-              {a.comment && (
-                <div className="text-xs bg-paper rounded-lg px-4 py-3 space-y-0.5">
-                  <p className="font-bold text-ink-soft">Informations pratiques</p>
-                  <p className="text-ink-soft">{a.comment}</p>
-                </div>
-              )}
-
-              {a.myResponseStatus === "pending" ? (
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
-                    <Clock3 size={14} className="shrink-0" />
-                    Proposition envoyée — en attente de validation du coach
+              >
+                {/* Un match qui existe déjà et qu'il faut sauver : l'annonce le dit
+                    d'entrée, avec le motif — le coach juge s'il peut dépanner. */}
+                {a.isSos && (
+                  <p className="-m-4 mb-0 rounded-t-lg bg-coral-soft px-4 py-2.5 text-xs font-bold text-coral flex items-start gap-2">
+                    <UserMinus size={14} className="shrink-0 mt-px" aria-hidden />
+                    <span>
+                      SOS — l&apos;adversaire s&apos;est désisté
+                      {a.sosReason && ` (${WITHDRAWAL_REASON_LABELS[a.sosReason].toLowerCase()})`}
+                      {a.sosDetails && <span className="block font-semibold text-ink-soft">{a.sosDetails}</span>}
+                    </span>
                   </p>
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => withdrawResponse(a.id)}
-                    disabled={responding === a.id}
-                  >
-                    {responding === a.id ? "Retrait…" : "Retirer ma proposition"}
-                  </Button>
+                )}
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={cn(
+                        "w-10 h-10 rounded-full text-white flex items-center justify-center text-xs font-black shrink-0",
+                        teamColor(a.team),
+                      )}
+                    >
+                      {teamInitials(a.team.name)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm truncate">{a.team.name}</p>
+                      <p className="text-xs text-ink-soft truncate">{a.team.city}</p>
+                    </div>
+                  </div>
+                  {a.distanceKm !== null && (
+                    <span className="chip bg-blue-soft text-primary shrink-0">
+                      <Navigation size={11} /> à {a.distanceKm.toLocaleString("fr-FR")} km
+                    </span>
+                  )}
                 </div>
-              ) : a.myResponseStatus === "declined" ? (
-                <p className="text-xs font-bold text-coral bg-coral-soft rounded-lg px-4 py-3 flex items-center gap-2">
-                  <XCircle size={14} className="shrink-0" />
-                  Proposition déclinée par le coach
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  <Button className="w-full" onClick={() => respond(a.id)} disabled={responding === a.id}>
-                    {responding === a.id ? "Envoi…" : "Proposer de jouer"}
-                  </Button>
-                  {/* Le détail porte la carte du coach : on hésite moins à
-                      traverser le département quand on voit qui l'on va
-                      rencontrer. */}
-                  <ButtonLink href={`/coach/announcements/${a.id}`} variant="ghost" className="w-full">
-                    Voir le détail et le coach
-                  </ButtonLink>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
+                  {a.gender && (
+                    <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>
+                  )}
+                  <span className="chip bg-pitch-soft text-primary">{a.format}</span>
+                  <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[a.level]}</span>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft font-semibold">
+                  <span className="flex items-center gap-1.5 capitalize">
+                    <CalendarDays size={13} className="text-pitch" /> {formatDate(a.date)} à {a.time}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <MapPin size={13} className="text-pitch" /> {a.stadium}, {a.city}
+                  </span>
+                </div>
+
+                {a.comment && (
+                  <div className="text-xs bg-paper rounded-lg px-4 py-3 space-y-0.5">
+                    <p className="font-bold text-ink-soft">Informations pratiques</p>
+                    <p className="text-ink-soft">{a.comment}</p>
+                  </div>
+                )}
+
+                {a.myResponseStatus === "pending" ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
+                      <Clock3 size={14} className="shrink-0" />
+                      Proposition envoyée — en attente de validation du coach
+                    </p>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => withdrawResponse(a.id)}
+                      disabled={responding === a.id}
+                    >
+                      {responding === a.id ? "Retrait…" : "Retirer ma proposition"}
+                    </Button>
+                  </div>
+                ) : a.myResponseStatus === "declined" ? (
+                  <p className="text-xs font-bold text-coral bg-coral-soft rounded-lg px-4 py-3 flex items-center gap-2">
+                    <XCircle size={14} className="shrink-0" />
+                    Proposition déclinée par le coach
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    <Button className="w-full" onClick={() => respond(a.id)} disabled={responding === a.id}>
+                      {responding === a.id ? "Envoi…" : "Proposer de jouer"}
+                    </Button>
+                    {/* Le détail porte la carte du coach : on hésite moins à
+                        traverser le département quand on voit qui l'on va
+                        rencontrer. */}
+                    <ButtonLink href={`/coach/announcements/${a.id}`} variant="ghost" className="w-full">
+                      Voir le détail et le coach
+                    </ButtonLink>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Réglage de la position, sur place. Le même composant qu'au profil :
+          une position se règle de deux façons (l'appareil, une adresse) et il
+          n'y a aucune raison qu'elles diffèrent selon l'écran d'où l'on vient. */}
+      {locationOpen && me && (
+        <BottomSheet
+          label="Ma position"
+          onClose={() => setLocationOpen(false)}
+          footer={
+            <Button variant="ghost" className="w-full" onClick={() => setLocationOpen(false)}>
+              Fermer
+            </Button>
+          }
+        >
+          <div className="px-5 pt-1 pb-4">
+            <LocationCard
+              user={me}
+              bare
+              onChange={(updated) => {
+                setMe(updated);
+                updateStoredUser(updated);
+                // Les distances sont mesurées par le serveur depuis ce point :
+                // en changer impose de rebalayer.
+                setSelectedId(null);
+                setAnnouncements(null);
+                load();
+              }}
+            />
+          </div>
+        </BottomSheet>
       )}
 
       {/* Détail de l'équipe touchée sur la carte. La feuille ne double pas la
