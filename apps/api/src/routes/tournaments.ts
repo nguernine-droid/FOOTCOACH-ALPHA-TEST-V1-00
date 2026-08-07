@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import {
   checkInTournamentSchema,
   createTournamentSchema,
@@ -14,7 +14,7 @@ import {
   type TournamentRegistrationDto,
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { coachPoints, teams, tournamentRegistrations, tournaments } from "../db/schema.js";
+import { coachPoints, teamCoaches, teams, tournamentRegistrations, tournaments } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
@@ -204,10 +204,24 @@ export function tournamentRoutes(app: FastifyInstance) {
     };
   }
 
-  /** Les tournois que j'organise, et ceux auxquels je suis inscrit */
+  /**
+   * Les tournois que j'organise, et ceux auxquels je suis inscrit.
+   *
+   * Ceux que J'ORGANISE sont cherchés sur TOUTES mes équipes, pas seulement
+   * l'équipe active : un coach qui en encadre trois a monté son tournoi avec
+   * l'une d'elles, et il vient le retrouver sans se souvenir laquelle. Les
+   * INSCRIPTIONS, elles, restent celles de l'équipe active — c'est une équipe
+   * précise qui est inscrite, pas le coach.
+   */
   app.get("/tournaments/mine", { preHandler: requireRole("coach") }, async (request): Promise<TournamentDto[]> => {
     const myTeamId = request.user.teamId;
     if (!myTeamId) return [];
+    const myTeams = await db
+      .select({ teamId: teamCoaches.teamId })
+      .from(teamCoaches)
+      .where(eq(teamCoaches.coachId, request.user.id));
+    const myTeamIds = [...new Set([myTeamId, ...myTeams.map((t) => t.teamId)])];
+
     const registered = await db
       .select({ tournamentId: tournamentRegistrations.tournamentId })
       .from(tournamentRegistrations)
@@ -222,16 +236,18 @@ export function tournamentRoutes(app: FastifyInstance) {
       .innerJoin(teams, eq(tournaments.teamId, teams.id))
       .where(
         ids.length > 0
-          ? sql`${tournaments.teamId} = ${myTeamId}::uuid or ${tournaments.id} in (${sql.join(
-              ids.map((id) => sql`${id}::uuid`),
-              sql`, `,
-            )})`
-          : eq(tournaments.teamId, myTeamId),
+          ? or(inArray(tournaments.teamId, myTeamIds), inArray(tournaments.id, ids))
+          : inArray(tournaments.teamId, myTeamIds),
       )
       .orderBy(desc(tournaments.date));
 
     const registrations = await loadRegistrations(rows.map((r) => r.tournament.id));
-    return rows.map((r) => toTournamentDto(r, registrations.get(r.tournament.id) ?? [], myTeamId));
+    return rows.map((r) => ({
+      ...toTournamentDto(r, registrations.get(r.tournament.id) ?? [], myTeamId),
+      // `isMine` est calculé ailleurs sur la seule équipe active ; ici il dit
+      // « c'est moi qui l'organise », quelle que soit l'équipe qui le porte.
+      isMine: myTeamIds.includes(r.tournament.teamId),
+    }));
   });
 
   app.get("/tournaments/:id", async (request): Promise<TournamentDetailDto> => {

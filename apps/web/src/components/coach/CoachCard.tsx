@@ -134,6 +134,65 @@ export function CoachCard({
   );
 }
 
+/**
+ * Le DOS de la même carte : le QR à faire scanner, et le code en toutes lettres
+ * dessous pour les jours où l'appareil photo d'en face ne veut rien savoir.
+ *
+ * Mêmes dimensions et même habillage que le recto — c'est une seule carte qu'on
+ * retourne, pas deux objets qui se succèdent. Le QR est posé sur une plaque
+ * blanche : un code sombre sur fond sombre ne se scanne pas.
+ */
+export function CoachCardBack({
+  firstName,
+  lastName,
+  coachCode,
+  children,
+}: {
+  firstName: string;
+  lastName: string;
+  coachCode: string | null;
+  /** Le QR lui-même, rendu par l'appelant (composant client) */
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      className="relative w-full max-w-[340px] mx-auto aspect-[5/7] rounded-2xl overflow-hidden
+        text-on-structure shadow-pop select-none flex flex-col items-center justify-center gap-4 px-6"
+      style={{
+        backgroundImage:
+          "linear-gradient(160deg, var(--structure-3) 0%, var(--structure-1) 45%, var(--structure-2) 100%)",
+      }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 rounded-2xl border-2 pointer-events-none"
+        style={{ borderColor: "color-mix(in srgb, var(--accent-solid) 55%, transparent)" }}
+      />
+
+      <div className="text-center space-y-1">
+        <p className="display text-lg leading-none">Ajoutez-moi</p>
+        <p className="text-[11px] font-semibold text-white/60">
+          {firstName} {lastName}
+        </p>
+      </div>
+
+      {coachCode ? (
+        <>
+          <div className="rounded-xl bg-white p-3">{children}</div>
+          <div className="text-center">
+            <p className="display text-2xl tracking-[0.3em] text-accent-solid">{coachCode}</p>
+            <p className="mt-1 text-[10px] font-bold tracking-wider text-white/50 uppercase">Code coach</p>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-white/70 text-center">
+          Votre code sera généré à votre prochaine connexion.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** Un compteur du pied de carte. La valeur est une chaîne : « 12 » comme « Argent ». */
 function Stat({ label, value }: { label: string; value: string }) {
   return (

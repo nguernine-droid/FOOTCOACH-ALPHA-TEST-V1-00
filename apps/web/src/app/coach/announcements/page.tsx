@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Megaphone, Radar, Trophy } from "lucide-react";
 import type { RadarDto, AnnouncementDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { SectorAnnouncementCard } from "@/components/announcements/SectorAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { ButtonLink } from "@/components/ui/Button";
@@ -25,6 +26,8 @@ export default function AnnouncementsPage() {
   const [radar, setRadar] = useState<RadarDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
+  /** Amicaux d'abord : c'est ce qu'on cherche neuf fois sur dix */
+  const [kind, setKind] = useState<"matches" | "tournaments">("matches");
 
   const load = useCallback(async () => {
     try {
@@ -98,12 +101,35 @@ export default function AnnouncementsPage() {
         </ButtonLink>
       </div>
 
+      {/* Deux catégories, en haut, l'une OU l'autre : les deux listes empilées
+          obligeaient à faire défiler tout un secteur d'amicaux pour savoir s'il
+          y avait un tournoi. On vient chercher l'un ou l'autre, rarement les
+          deux à la fois. */}
+      <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Catégorie d'annonces">
+        {(
+          [
+            { key: "matches", label: "Matchs amicaux", icon: Megaphone, count: announcements.length },
+            { key: "tournaments", label: "Tournois", icon: Trophy, count: tournaments.length },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={kind === t.key}
+            onClick={() => setKind(t.key)}
+            className={cn("chip-choice", kind === t.key ? "chip-choice-on" : "chip-choice-off")}
+          >
+            <t.icon size={13} aria-hidden />
+            <span className="truncate">{t.label}</span> ({t.count})
+          </button>
+        ))}
+      </div>
+
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
-      <section className="space-y-3" aria-label="Matchs amicaux du secteur">
-        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
-          <Megaphone size={13} aria-hidden /> Matchs amicaux ({announcements.length})
-        </h3>
+      {kind === "matches" && (
+        <section className="space-y-3" aria-label="Matchs amicaux du secteur">
         {announcements.length === 0 ? (
           <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
             <p className="text-sm font-bold">Aucun match cherché autour de vous</p>
@@ -127,12 +153,11 @@ export default function AnnouncementsPage() {
             ))}
           </div>
         )}
-      </section>
+        </section>
+      )}
 
-      <section className="space-y-3" aria-label="Tournois du secteur">
-        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
-          <Trophy size={13} aria-hidden /> Tournois ({tournaments.length})
-        </h3>
+      {kind === "tournaments" && (
+        <section className="space-y-3" aria-label="Tournois du secteur">
         {tournaments.length === 0 ? (
           <div className="rounded-lg bg-paper px-4 py-8 text-center space-y-3">
             <p className="text-sm font-bold">Aucun tournoi annoncé autour de vous</p>
@@ -148,7 +173,8 @@ export default function AnnouncementsPage() {
             ))}
           </div>
         )}
-      </section>
+        </section>
+      )}
     </div>
   );
 }
