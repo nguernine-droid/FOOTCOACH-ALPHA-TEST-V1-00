@@ -5,7 +5,13 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, LayoutDashboard, Megaphone } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
+import { TabPager, type Pane } from "@/components/TabPager";
 import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
+// Les trois écrans d'onglet sont montés ensemble par le carrousel du téléphone :
+// il faut donc les composants eux-mêmes, et pas seulement leurs routes.
+import CoachDashboard from "./page";
+import AnnouncementsPage from "./announcements/page";
+import CoachMatchesPage from "./matches/page";
 
 // V1 recentrée sur la gestion des matchs amicaux entre coachs.
 // Le radar vit désormais dans le tableau de bord ; les sections secondaires
@@ -19,7 +25,45 @@ const TABS: AppTab[] = [
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
 ];
 
-const PUBLISH: QuickAction = { kind: "link", href: "/coach/announcements/new", label: "Publier une annonce" };
+/**
+ * Les mêmes écrans, dans le même ordre, pour le carrousel du téléphone. Les
+ * éléments sont créés une fois pour toutes : recréés à chaque rendu de la mise
+ * en page, ils resteraient équivalents pour React, mais autant ne pas lui
+ * donner l'occasion d'y regarder à deux fois pendant un glissé.
+ */
+const PANES: Pane[] = [
+  { href: "/coach", node: <CoachDashboard /> },
+  { href: "/coach/announcements", node: <AnnouncementsPage /> },
+  { href: "/coach/matches", node: <CoachMatchesPage /> },
+];
+
+/**
+ * Le « + » ne crée plus directement une annonce : il demande laquelle des deux
+ * créations le coach a en tête. Un tournoi ne se trouvait qu'en descendant
+ * jusqu'à sa section du radar, alors que c'est la même intention — organiser
+ * quelque chose et le faire savoir.
+ *
+ * L'annonce reste en premier : c'est le geste courant, le tournoi est
+ * l'exception.
+ */
+const CREATE: QuickAction = {
+  kind: "choice",
+  label: "Créer",
+  options: [
+    {
+      href: "/coach/announcements/new",
+      label: "Match amical",
+      description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
+      icon: "announcement",
+    },
+    {
+      href: "/coach/tournaments/new",
+      label: "Tournoi",
+      description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
+      icon: "tournament",
+    },
+  ],
+};
 
 /** Ce que crée le bouton central selon la page ouverte */
 function defaultAction(pathname: string): QuickAction | null {
@@ -31,7 +75,7 @@ function defaultAction(pathname: string): QuickAction | null {
   if (pathname.startsWith("/coach/team")) {
     return { kind: "link", href: "/coach/team/new", label: "Créer une équipe" };
   }
-  return PUBLISH;
+  return CREATE;
 }
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
@@ -46,7 +90,11 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
         role="coach"
         nav={<AppTabs tabs={TABS} action={action} ariaLabel="Sections de l'espace coach" />}
       >
-        {children}
+        {/* Au téléphone, les trois onglets sont montés côte à côte et suivent le
+            doigt : on voit les deux écrans pendant le glissé. Ailleurs — sur une
+            sous-page, ou au-delà de 960 px — c'est la route courante, comme
+            partout. */}
+        <TabPager panes={PANES} fallback={children} />
       </RoleGuard>
     </QuickActionProvider>
   );

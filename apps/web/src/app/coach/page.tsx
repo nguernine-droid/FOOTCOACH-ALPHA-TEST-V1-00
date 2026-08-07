@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, ChevronRight, Clock3, MapPin, Megaphone, Trophy } from "lucide-react";
-import type { ActivityDto, AnnouncementDto, MatchDto } from "@footcoach/shared";
+import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy } from "lucide-react";
+import type { ActivityDto, AnnouncementDto, MatchDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
-import { formatCountdown, kickoffDate, timeAgo, useNow } from "@/lib/time";
+import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
+import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { RadarFeed } from "@/components/announcements/RadarFeed";
 import { NoMatchCard } from "@/components/coach/NoMatchCard";
 import { ButtonLink } from "@/components/ui/Button";
@@ -31,6 +32,7 @@ export default function CoachDashboard() {
   const now = useNow(1000);
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
+  const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,11 +41,19 @@ export default function CoachDashboard() {
       api<MatchDto[]>("/matches"),
       api<AnnouncementDto[]>("/announcements/mine"),
       api<ActivityDto[]>("/activity"),
+      // Les tournois que j'organise tiennent la même place que mes annonces :
+      // c'est publié par moi, ça attend des équipes, et ça se suit d'ici.
+      api<TournamentDto[]>("/tournaments/mine").catch(() => [] as TournamentDto[]),
     ])
-      .then(([m, a, act]) => {
+      .then(([m, a, act, t]) => {
         setMatches(m);
         setAnnouncements(a.filter((x) => x.status !== "cancelled"));
         setActivity(act);
+        // Ceux que j'organise seulement, et seulement s'ils sont à venir : le
+        // tableau de bord dit ce qui reste à faire, pas ce qui a eu lieu.
+        setTournaments(
+          t.filter((x) => x.isMine && x.status !== "cancelled" && (x.endDate ?? x.date) >= todayIso()),
+        );
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -78,8 +88,10 @@ export default function CoachDashboard() {
     loadAll();
   }
 
-  // Un match dont le score final reste à saisir ou à valider passe devant
-  const pending = matches?.filter((m) => m.finalScoreDue || m.status === "awaiting_confirmation") ?? [];
+  // Un match qui réclame un geste passe devant : rencontre à valider au stade,
+  // ou score final à saisir une fois rentré.
+  const pending =
+    matches?.filter((m) => (m.encounterOpen && !m.encounterConfirmedAt) || m.finalScoreDue) ?? [];
   const live = matches?.filter((m) => m.status === "live" && !m.finalScoreDue) ?? [];
   const upcoming = (matches?.filter((m) => m.status === "scheduled" && !m.finalScoreDue) ?? []).sort((a, b) =>
     `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`),
@@ -115,14 +127,13 @@ export default function CoachDashboard() {
         {featured ? (
           <section className="card p-5 space-y-4 animate-rise-in" aria-label="Prochain match">
             <div className="flex items-center justify-between gap-2">
-              {featured.finalScoreDue ? (
+              {featured.encounterOpen && !featured.encounterConfirmedAt ? (
+                <span className="chip bg-accent-surface text-accent">
+                  <Trophy size={12} /> Rencontre à valider
+                </span>
+              ) : featured.finalScoreDue ? (
                 <span className="chip bg-coral-soft text-coral">
                   <AlertTriangle size={12} /> Score final à saisir
-                </span>
-              ) : featured.status === "awaiting_confirmation" ? (
-                <span className="chip bg-sun-soft text-sun">
-                  <Clock3 size={12} />
-                  {featured.confirmationToken ? "En attente de validation" : "Score à valider"}
                 </span>
               ) : featured.status === "live" ? (
                 <span className="chip bg-coral-soft text-coral animate-soft-pulse">● En direct</span>
@@ -139,7 +150,7 @@ export default function CoachDashboard() {
             <div className="flex items-center gap-4">
               <TeamSide team={featured.homeTeam} />
               <div className="shrink-0 text-center px-2">
-                {featured.status === "live" || featured.status === "awaiting_confirmation" ? (
+                {featured.status === "live" || featured.status === "finished" ? (
                   <p className="display text-6xl tabular-nums leading-none text-primary">
                     {featured.homeScore}
                     <span className="text-ink-faint mx-2">–</span>
@@ -198,7 +209,7 @@ export default function CoachDashboard() {
             </ButtonLink>
           </div>
 
-          {announcements.length === 0 && (
+          {announcements.length === 0 && tournaments.length === 0 && (
             <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
               Aucune annonce en cours. Publiez-en une pour trouver un adversaire.
             </p>
@@ -214,9 +225,17 @@ export default function CoachDashboard() {
             />
           ))}
 
-          {announcements.length > 0 && (
+          {/* Les tournois que j'organise, sous les annonces : ils se préparent
+              plus à l'avance, et une place vide s'y voit d'un coup d'œil. */}
+          {tournaments.map((t) => (
+            <TournamentCard key={t.id} tournament={t} />
+          ))}
+
+          {(announcements.length > 0 || tournaments.length > 0) && (
+            // Vers « Mes annonces » et non l'onglet du même nom : celui-ci
+            // montre désormais les annonces des autres.
             <Link
-              href="/coach/announcements"
+              href="/coach/announcements/mine"
               className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-blue
                 transition hover:text-blue-dark active:bg-blue-soft"
             >

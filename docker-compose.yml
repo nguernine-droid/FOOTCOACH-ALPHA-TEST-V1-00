@@ -47,6 +47,10 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:contact@footcoach.local}
+      # Annuaire public des entreprises, pour suggérer un nom de club à
+      # l'inscription. Une adresse injoignable dégrade la suggestion sans rien
+      # casser — la saisie du nom reste libre.
+      CLUB_DIRECTORY_URL: ${CLUB_DIRECTORY_URL:-https://recherche-entreprises.api.gouv.fr}
       # Lève les plafonds de débit pour la simulation de charge, qui joue cent
       # coachs depuis une seule adresse. Refusé si NODE_ENV=production.
       RATE_LIMIT_DISABLED: ${RATE_LIMIT_DISABLED:-}

@@ -157,6 +157,15 @@ async function register(i) {
     password: PASSWORD,
     teamName: name,
     teamCity: city,
+    // Références de l'équipe : obligatoire pour la catégorie, un club sur cinq
+    // sans stade attitré — de quoi éprouver le préremplissage ET son absence.
+    teamCategory: pick(CATEGORIES),
+    teamStadium: chance(0.8) ? `Stade ${pick(["Municipal","des Sports","Jean Jaurès","du Parc","de la Plaine"])}` : undefined,
+    // Exigées par l'API depuis que l'inscription demande les deux acceptations :
+    // sans elles, chaque inscription simulée repartait en 400 et la simulation
+    // ne jouait plus rien du tout.
+    acceptTerms: true,
+    acceptResponsibility: true,
   }, [200, 201]);
   if (!res.data?.accessToken) return null;
   return {
@@ -175,7 +184,10 @@ const stats = {
   equipesCreees: 0,
   annonces: 0, propositions: 0, retraits: 0, acceptations: 0, refus: 0,
   desistementsInvite: 0, desistementsHote: 0, annulations: 0,
-  matchsJoues: 0, scoresValides: 0, sosGeneres: 0,
+  matchsJoues: 0, sosGeneres: 0, jokers: 0,
+  // Rencontres validées au QR, points distribués, et celles qui n'ont rien
+  // rapporté parce que les deux équipes s'étaient déjà croisées ce mois-ci.
+  rencontresValidees: 0, pointsDistribues: 0, rencontresPlafonnees: 0,
 };
 
 /** Un coach sur cinq encadre une seconde équipe (les U13 et les U15) */
@@ -183,6 +195,8 @@ async function createSecondTeam(coach) {
   const res = await call(coach, "POST", "/coach/teams", {
     name: `${coach.name} B`.slice(0, 60),
     city: coach.city,
+    category: pick(CATEGORIES),
+    stadium: `Stade ${pick(["Municipal","des Sports","Jean Jaurès","du Parc","de la Plaine"])}`,
   }, [200, 201, 400]);
   if (res.data?.id) {
     coach.teams.push(res.data.id);
@@ -212,7 +226,6 @@ async function publish(coach) {
     level: pick(LEVELS),
     format: pick(FORMATS),
     comment: chance(0.2) ? LONG_COMMENT : chance(0.4) ? "Prévoir les deux jeux de maillots." : undefined,
-    federationDeclared: true,
     // Le coach multi-équipes publie tantôt pour l'une, tantôt pour l'autre
   }, [200, 201], coach.teams.length > 1 ? pick(coach.teams) : undefined);
   if (res.data?.id) {
@@ -280,21 +293,39 @@ async function playOrWithdraw(coach) {
       continue;
     }
 
-    // Le match a eu lieu : coup d'envoi, score, puis validation par l'adversaire
+    /**
+     * Le jour du match : les deux coachs valident leur rencontre au stade —
+     * l'hôte affiche son QR, le visiteur le scanne — puis le score se saisit.
+     *
+     * Le sens est imposé par l'API, la simulation le respecte : c'est le coach
+     * de l'équipe DOMICILE qui affiche, celui de l'EXTÉRIEUR qui scanne.
+     */
+    if (m.encounterOpen && !m.encounterConfirmedAt && chance(0.75)) {
+      const host = coaches.find((c) => c.teams.includes(m.homeTeam.id));
+      const visitor = coaches.find((c) => c.teams.includes(m.awayTeam.id));
+      if (host && visitor) {
+        const qr = await call(host, "POST", `/matches/${m.id}/encounter-qr`, null, [200, 400, 403], m.homeTeam.id);
+        if (qr.data?.token) {
+          const ok = await call(
+            visitor, "POST", `/matches/${m.id}/confirm-encounter`,
+            { token: qr.data.token }, [200, 400, 403], m.awayTeam.id,
+          );
+          if (ok.status === 200) {
+            stats.rencontresValidees++;
+            stats.pointsDistribues += ok.data?.pointsAwarded ?? 0;
+            if (ok.data?.cappedByCooldown) stats.rencontresPlafonnees++;
+          }
+        }
+      }
+    }
+
+    // Le score clôt le match, saisi par l'un ou l'autre — plus de contre-signature
     if (m.finalScoreDue && chance(0.7)) {
       if (m.status === "scheduled") await call(coach, "POST", `/matches/${m.id}/kickoff`, null, [200, 400]);
       const fs = await call(coach, "POST", `/matches/${m.id}/final-score`, {
         homeScore: int(0, 5), awayScore: int(0, 4),
       }, [200, 400]);
-      if (fs.data?.token) {
-        stats.matchsJoues++;
-        // Le coach adverse scanne le QR : c'est LUI qui valide
-        const other = coaches.find((c) => c.teamId === (m.mySide === "home" ? m.awayTeam.id : m.homeTeam.id));
-        if (other) {
-          const cs = await call(other, "POST", `/matches/${m.id}/confirm-score`, { token: fs.data.token }, [200, 400, 403]);
-          if (cs.status === 200) stats.scoresValides++;
-        }
-      }
+      if (fs.status === 200) stats.matchsJoues++;
     }
   }
 }
@@ -348,6 +379,19 @@ const created = await pool([...Array(COACHES).keys()], 8, register);
 coaches.push(...created.filter(Boolean));
 console.log(`  ${coaches.length} comptes créés`);
 
+// Casquettes : un coach sur quatre se déclare joker, un sur dix contributeur.
+// Proportion volontairement basse — c'est justement ce qui met à l'épreuve le
+// ciblage des SOS, qui ne réveille plus que les jokers du secteur.
+await pool(coaches, 8, async (coach) => {
+  const categories = [];
+  if (chance(0.25)) categories.push("joker");
+  if (chance(0.1)) categories.push("contributeur");
+  if (categories.length === 0) return;
+  await call(coach, "PATCH", "/me/categories", { categories }, [200]);
+  if (categories.includes("joker")) stats.jokers++;
+});
+console.log(`  ${stats.jokers} jokers déclarés`);
+
 for (let day = 0; day < DAYS; day++) {
   const t0 = Date.now();
   // Deuxième jour : un coach sur cinq déclare la seconde équipe qu'il encadre
@@ -392,7 +436,7 @@ if (aff.status !== 404) controles.affiliationOuverte++;
 // Le contrat de publication : genre obligatoire, catégorie fermée
 const base = {
   date: iso(12), time: "15:00", city: "Lyon", stadium: "Contrôle",
-  level: "loisir", format: "11v11", federationDeclared: true,
+  level: "loisir", format: "11v11",
 };
 const sansGenre = await call(coaches[0], "POST", "/announcements", { ...base, category: "U13" }, [400]);
 const categorieInconnue = await call(coaches[0], "POST", "/announcements", { ...base, category: "U21", gender: "masculin" }, [400]);

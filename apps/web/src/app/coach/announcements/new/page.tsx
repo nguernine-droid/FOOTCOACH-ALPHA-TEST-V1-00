@@ -4,16 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Megaphone, ShieldCheck } from "lucide-react";
 import {
-  categoryLabel,
   FFF_NOTICE_DAYS,
-  MATCH_CATEGORIES,
   MATCH_GENDERS,
   MATCH_GENDER_LABELS,
   daysBetweenIso,
+  type MatchCategory,
   type MatchGender,
 } from "@footcoach/shared";
 import { api } from "@/lib/api";
+import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
+import { CategoryPicker } from "@/components/CategoryPicker";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { TimeField } from "@/components/ui/TimeField";
@@ -21,6 +22,15 @@ import { cn } from "@/lib/utils";
 
 /** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
 const FORM_ID = "publier-annonce";
+
+/**
+ * « catégorie, stade et ville ». Énumération placée APRÈS le verbe dans la
+ * phrase (« Repris de X : … ») : l'accord du participe dépendrait sinon du
+ * genre des mots listés, qui varie avec ce que l'équipe a renseigné.
+ */
+function enumerate(items: string[]): string {
+  return items.length > 1 ? `${items.slice(0, -1).join(", ")} et ${items[items.length - 1]}` : items[0];
+}
 
 const LEVELS = [
   { value: "loisir", label: "Loisir" },
@@ -30,24 +40,43 @@ const FORMATS = ["5v5", "8v8", "11v11"] as const;
 
 export default function NewAnnouncementPage() {
   const router = useRouter();
+  /**
+   * Références de l'équipe active : catégorie, stade habituel et ville. Elles
+   * ne sont que des valeurs de départ — un déplacement se joue ailleurs, et un
+   * amical peut se caler sur une autre catégorie. Le formulaire reste entier.
+   *
+   * Lues une seule fois, à l'initialisation de l'état : changer d'équipe
+   * remonte toute la page (RoleGuard la re-monte par sa clé), donc un
+   * formulaire à moitié rempli ne se fait jamais réécrire sous les doigts.
+   */
+  const { activeTeam } = useActiveTeam();
   const [form, setForm] = useState({
     date: "",
     time: "",
-    city: "",
-    stadium: "",
-    category: "U13",
+    city: activeTeam?.city ?? "",
+    stadium: activeTeam?.stadium ?? "",
+    // Équipes créées avant les références : rien à reprendre, on retombe sur la
+    // catégorie la plus courante plutôt que sur un formulaire bloqué.
+    category: (activeTeam?.category ?? "U13") as MatchCategory,
     level: "loisir",
     format: "8v8",
     comment: "",
   });
+  // Ce qui a RÉELLEMENT été repris — annoncer un stade que l'équipe n'a pas
+  // ferait douter du reste du formulaire. La ville en fait toujours partie dès
+  // qu'une équipe est active : c'est le seul des trois qui ne manque jamais.
+  const fromTeam = [
+    activeTeam?.category ? "catégorie" : null,
+    activeTeam?.stadium ? "stade" : null,
+    activeTeam ? "ville" : null,
+  ].filter((v): v is string => v !== null);
   // Aucun genre présélectionné : le supposer reviendrait à publier une annonce
   // masculine par défaut pour une équipe qui ne l'est pas.
   const [gender, setGender] = useState<MatchGender | null>(null);
-  const [federationDeclared, setFederationDeclared] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function set<K extends keyof typeof form>(key: K, value: string) {
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -61,7 +90,7 @@ export default function NewAnnouncementPage() {
     kind: "submit",
     formId: FORM_ID,
     label: "Publier l'annonce",
-    disabled: loading || !federationDeclared || !gender,
+    disabled: loading || !gender,
   });
 
   async function submit(e: React.FormEvent) {
@@ -72,7 +101,7 @@ export default function NewAnnouncementPage() {
     try {
       await api("/announcements", {
         method: "POST",
-        body: JSON.stringify({ ...form, gender, comment: form.comment || undefined, federationDeclared }),
+        body: JSON.stringify({ ...form, gender, comment: form.comment || undefined }),
       });
       router.push("/coach/announcements");
     } catch (err) {
@@ -133,27 +162,16 @@ export default function NewAnnouncementPage() {
 
         {/* Grilles plutôt que rangées repliées : chaque choix garde une cible
             pleine et régulière, même à 390 px de large. */}
-        {/* Dix-sept catégories : quatre par rangée au pouce, px resserré pour
-            que « Vétérans » tienne sans être tronqué. */}
-        <div className="space-y-1.5">
-          <span className="text-xs font-bold text-ink-soft">Catégorie</span>
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            {MATCH_CATEGORIES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                aria-pressed={form.category === c}
-                onClick={() => set("category", c)}
-                className={cn(
-                  "chip-choice !px-2",
-                  form.category === c ? "chip-choice-on" : "chip-choice-off",
-                )}
-              >
-                <span className="truncate">{categoryLabel(c)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <CategoryPicker
+          value={form.category}
+          onChange={(c) => set("category", c)}
+          idPrefix="announcement-category"
+          hint={
+            activeTeam && fromTeam.length > 1
+              ? `Repris de ${activeTeam.name} : ${enumerate(fromTeam)} — modifiables si ce match fait exception.`
+              : undefined
+          }
+        />
 
         <div className="space-y-1.5">
           <span className="text-xs font-bold text-ink-soft">Genre</span>
@@ -224,32 +242,13 @@ export default function NewAnnouncementPage() {
           <textarea id="comment" value={form.comment} onChange={(e) => set("comment", e.target.value)} className="field resize-none" rows={3} placeholder="Terrain synthétique, vestiaires dispo, ambiance conviviale…" />
         </div>
 
-        {/* Attestation obligatoire : la déclaration à la fédération reste à la charge du coach */}
-        <label
-          htmlFor="federationDeclared"
-          className={cn(
-            "flex gap-3 items-start rounded-lg border px-4 py-3 cursor-pointer transition",
-            federationDeclared ? "border-blue bg-blue-faint" : "border-line bg-paper hover:border-blue/40",
-          )}
-        >
-          <input
-            id="federationDeclared"
-            type="checkbox"
-            required
-            checked={federationDeclared}
-            onChange={(e) => setFederationDeclared(e.target.checked)}
-            className="mt-0.5 w-5 h-5 shrink-0 accent-blue"
-          />
-          <span className="text-xs text-ink-soft leading-relaxed">
-            <span className="font-bold text-ink">
-              J&apos;atteste avoir déclaré ce match amical à ma fédération (district / ligue).
-            </span>{" "}
-            La déclaration préalable relève de la responsabilité du club ; FootCoach en conserve seulement la trace.
-          </span>
-        </label>
+        {/* Plus d'attestation à cocher ici : la responsabilité de déclarer le
+            match à la fédération est acceptée une fois pour toutes à
+            l'inscription (voir LegalConsent). La redemander à chaque annonce
+            n'ajoutait rien — le rappel du délai FFF plus haut suffit. */}
 
         {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
-        <Button type="submit" size="lg" className="w-full" disabled={loading || !federationDeclared || !gender}>
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !gender}>
           {loading ? "Publication…" : noticeTooShort ? "Publier quand même" : "Publier l'annonce"}
         </Button>
       </form>

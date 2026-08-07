@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
+  ChevronRight,
   CheckCircle2,
   Clock3,
   Pencil,
@@ -12,25 +13,30 @@ import {
   QrCode,
   Radar,
   ScanLine,
+  Trophy,
   UserMinus,
 } from "lucide-react";
 import {
   FFF_NOTICE_DAYS,
+  POINTS_COOLDOWN_DAYS,
   WITHDRAWAL_REASONS,
   WITHDRAWAL_REASON_LABELS,
+  type EncounterResultDto,
   type MatchDetailDto,
   type WithdrawalReason,
 } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
+import { Avatar } from "@/components/Avatar";
 import { MatchCard } from "@/components/MatchCard";
+import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
 import { QrScanner } from "@/components/matches/QrScanner";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-/** Saisie du score final : deux compteurs, puis émission du QR de validation */
+/** Saisie du score final : deux compteurs, et le match est clos */
 function FinalScoreForm({
   match,
   onSubmitted,
@@ -104,10 +110,10 @@ function FinalScoreForm({
         {counter(match.awayTeam.name, away, setAway)}
       </div>
       <Button type="submit" size="lg" className="w-full" disabled={busy}>
-        {busy ? "Enregistrement…" : "Valider le score et afficher le QR code"}
+        {busy ? "Enregistrement…" : "Enregistrer le score final"}
       </Button>
       <p className="text-xs text-ink-soft text-center">
-        Le coach adverse devra scanner le QR code pour confirmer ce score.
+        Le coach adverse en est averti et peut le corriger si vous vous êtes trompé.
       </p>
     </form>
   );
@@ -237,6 +243,46 @@ function WithdrawSheet({
   );
 }
 
+/**
+ * Ce que le scan vient de rapporter. Affiché au seul coach qui a scanné, juste
+ * après son geste : c'est le moment où la récompense a un sens.
+ *
+ * Le plafond est annoncé en toutes lettres. Un « 0 point » sans explication
+ * passerait pour une panne, alors que la rencontre est bien validée.
+ */
+function EncounterReward({ result }: { result: EncounterResultDto }) {
+  if (result.cappedByCooldown) {
+    return (
+      <div className="rounded-lg bg-paper px-4 py-3 flex items-start gap-2.5">
+        <Trophy size={15} className="text-ink-soft shrink-0 mt-0.5" aria-hidden />
+        <p className="text-xs text-ink-soft">
+          <span className="font-bold text-ink">Pas de points cette fois.</span> Vous avez déjà rencontré cette équipe
+          au cours des {POINTS_COOLDOWN_DAYS} derniers jours — les points reviennent au-delà, avec elle comme avec
+          les autres.
+        </p>
+      </div>
+    );
+  }
+  const progress =
+    result.level.next != null
+      ? `Encore ${result.level.next - result.totalPoints} points avant le palier suivant.`
+      : "Vous êtes au palier le plus haut.";
+  return (
+    <div className="rounded-lg bg-accent-surface border border-accent/20 px-4 py-3 flex items-start gap-2.5">
+      <Trophy size={15} className="text-accent shrink-0 mt-0.5" aria-hidden />
+      <div className="text-xs space-y-0.5">
+        <p className="font-bold text-accent">
+          +{result.pointsAwarded} points
+          {result.reason === "sos" && " — dépannage SOS"}
+        </p>
+        <p className="text-ink-soft">
+          Palier {result.level.name}. {progress}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function CoachMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [match, setMatch] = useState<MatchDetailDto | null>(null);
@@ -245,6 +291,12 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
   const [correcting, setCorrecting] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Jeton du QR de rencontre, obtenu à la demande par le coach qui reçoit. Hors
+  // du DTO à dessein : il ne doit sortir que quand on demande à l'afficher.
+  const [encounterToken, setEncounterToken] = useState<string | null>(null);
+  const [encounterResult, setEncounterResult] = useState<EncounterResultDto | null>(null);
+  /** Coach dont on regarde la carte, null quand la feuille est fermée */
+  const [cardOf, setCardOf] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -258,12 +310,13 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
     load();
   }, [load]);
 
-  // Le coach en attente de validation rafraîchit pour voir la confirmation arriver
+  // Le coach qui montre son QR voit la validation arriver sans rien toucher :
+  // il a le téléphone tendu vers l'autre, il ne peut pas tirer pour rafraîchir.
   useEffect(() => {
-    if (match?.status !== "awaiting_confirmation" || !match.confirmationToken) return;
-    const timer = setInterval(load, 5000);
+    if (!encounterToken || match?.encounterConfirmedAt) return;
+    const timer = setInterval(load, 4000);
     return () => clearInterval(timer);
-  }, [match?.status, match?.confirmationToken, load]);
+  }, [encounterToken, match?.encounterConfirmedAt, load]);
 
   async function kickoff() {
     setBusy(true);
@@ -278,13 +331,32 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const confirmWithToken = useCallback(
+  /** Coach qui reçoit : demande son QR (l'appel retient que c'est lui qui l'affiche) */
+  async function showEncounterQr() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { token } = await api<{ token: string }>(`/matches/${id}/encounter-qr`, { method: "POST" });
+      setEncounterToken(token);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible d'afficher le QR code");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Coach qui s'est déplacé : le scan valide la rencontre et crédite les points */
+  const confirmEncounter = useCallback(
     async (token: string) => {
       setScanning(false);
       setBusy(true);
       setError(null);
       try {
-        await api(`/matches/${id}/confirm-score`, { method: "POST", body: JSON.stringify({ token }) });
+        const result = await api<EncounterResultDto>(`/matches/${id}/confirm-encounter`, {
+          method: "POST",
+          body: JSON.stringify({ token }),
+        });
+        setEncounterResult(result);
         await load();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Validation impossible");
@@ -300,9 +372,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
   }
   if (!match) return <Skeleton className="h-96" />;
 
-  const iSubmitted = match.confirmationToken != null;
-  const awaiting = match.status === "awaiting_confirmation";
   const cancelled = match.status === "cancelled";
+  const encounterDone = match.encounterConfirmedAt != null;
   const iWithdrew =
     match.withdrawnByTeamId !== null &&
     match.withdrawnByTeamId === (match.mySide === "home" ? match.homeTeam.id : match.awayTeam.id);
@@ -320,6 +391,47 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
       </Link>
 
       <MatchCard match={match} />
+
+      {/* ————— Les deux coachs —————
+          Placés juste sous la feuille : avant de se déplacer, on veut savoir
+          qui l'on va trouver en face — et c'est la première chose qu'on
+          cherche quand on rouvre un match passé. */}
+      {(match.homeCoach || match.awayCoach) && (
+        <section className="card p-5 space-y-3" aria-label="Les coachs">
+          <h3 className="display text-lg">Les coachs</h3>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { coach: match.homeCoach, team: match.homeTeam, side: "Reçoit" },
+              { coach: match.awayCoach, team: match.awayTeam, side: "Se déplace" },
+            ].map(({ coach, team, side }) =>
+              coach ? (
+                <button
+                  key={team.id}
+                  type="button"
+                  onClick={() => setCardOf(coach.id)}
+                  className="flex items-center gap-3 rounded-lg bg-paper px-4 py-3 text-left transition
+                    hover:bg-blue-faint active:bg-blue-soft"
+                >
+                  <Avatar firstName={coach.firstName} lastName={coach.lastName} avatarUrl={coach.avatarUrl} size={40} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold truncate">
+                      {coach.firstName} {coach.lastName}
+                    </span>
+                    <span className="block text-xs text-ink-soft truncate">
+                      {side} · {team.name}
+                    </span>
+                  </span>
+                  <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+                </button>
+              ) : (
+                <p key={team.id} className="rounded-lg bg-paper px-4 py-3 text-xs text-ink-soft">
+                  {team.name} — aucun coach déclaré
+                </p>
+              ),
+            )}
+          </div>
+        </section>
+      )}
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
@@ -387,82 +499,106 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
             </div>
           )}
 
-        {/* ————— Score final et sa validation ————— */}
-        <section className="card p-5 space-y-4" aria-label="Score final">
-          <h3 className="display text-lg">Score final</h3>
+        {/* ————— Rencontre : le face-à-face au stade —————
+            Placée AVANT le score : c'est ce qui se passe en premier dans la
+            journée, et c'est elle qui atteste que le match a eu lieu. */}
+        <section className="card p-5 space-y-4" aria-label="Validation de la rencontre">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className="display text-lg">Rencontre</h3>
+            {!encounterDone && match.encounterOpen && (
+              <span className="chip bg-accent-surface text-accent shrink-0">
+                <Trophy size={11} /> {match.mySide === "away" ? "Jusqu'à 20 points" : "10 points"}
+              </span>
+            )}
+          </div>
 
-          {match.status === "finished" ? (
-            <div className="rounded-lg bg-success-soft px-4 py-4 flex items-center gap-3">
-              <CheckCircle2 size={18} className="text-success shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-success">Score validé par les deux coachs</p>
-                <p className="text-xs text-ink-soft">
-                  {match.homeTeam.name} {match.homeScore} – {match.awayScore} {match.awayTeam.name}
-                </p>
-              </div>
-            </div>
-          ) : awaiting && iSubmitted ? (
-            <div className="space-y-4">
-              <div className="rounded-lg bg-sun-soft px-4 py-3 flex items-center gap-2.5">
-                <Clock3 size={16} className="text-sun shrink-0" />
-                <p className="text-xs font-bold text-sun">
-                  En attente de validation par {match.mySide === "home" ? match.awayTeam.name : match.homeTeam.name}
-                </p>
-              </div>
-              <div className="flex flex-col items-center gap-3">
-                <p className="display text-5xl tabular-nums text-primary">
-                  {match.homeScore}
-                  <span className="text-ink-faint mx-2">–</span>
-                  {match.awayScore}
-                </p>
-                <QrCodeCanvas value={match.confirmationToken!} label="QR code de validation du score" />
-                <p className="text-xs text-ink-soft text-center max-w-xs">
-                  Montrez ce QR code au coach adverse : il le scanne depuis son compte pour valider le score.
-                </p>
-              </div>
-              {/* Un <details> laissait un « summary » de 16 px de haut comme seule
-                  cible : remplacé par un bouton pleine largeur. */}
-              {correcting ? (
-                <div className="border-t border-line pt-4 space-y-2">
-                  <FinalScoreForm
-                    match={match}
-                    onSubmitted={(message) => {
-                      setError(message);
-                      setCorrecting(false);
-                      load();
-                    }}
-                  />
-                  <p className="text-[11px] text-ink-soft text-center">
-                    Une correction génère un nouveau QR code : l&apos;ancien cesse de fonctionner.
+          {encounterDone ? (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-success-soft px-4 py-4 flex items-center gap-3">
+                <CheckCircle2 size={18} className="text-success shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-success">Rencontre validée par les deux coachs</p>
+                  <p className="text-xs text-ink-soft">
+                    Les deux équipes se sont bien retrouvées au stade.
                   </p>
-                  <Button variant="ghost" className="w-full" onClick={() => setCorrecting(false)}>
-                    Annuler la correction
-                  </Button>
+                </div>
+              </div>
+              {/* Le résultat n'existe que dans la session du coach qui vient de
+                  scanner : c'est à lui, et à ce moment-là, que les points parlent. */}
+              {encounterResult && <EncounterReward result={encounterResult} />}
+            </div>
+          ) : !match.encounterOpen ? (
+            <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
+              Le jour du match, {match.mySide === "home" ? "vous afficherez ici un QR code" : "vous scannerez ici le QR code"}{" "}
+              {match.mySide === "home"
+                ? "que le coach adverse scannera à son arrivée."
+                : "affiché par le coach qui vous reçoit."}{" "}
+              C&apos;est ce qui atteste que la rencontre a bien eu lieu.
+            </p>
+          ) : match.mySide === "home" ? (
+            <div className="space-y-4">
+              <p className="text-xs text-ink-soft">
+                Vous recevez : montrez ce QR code au coach adverse quand il arrive. C&apos;est lui qui le scanne.
+              </p>
+              {encounterToken ? (
+                <div className="flex flex-col items-center gap-3">
+                  <QrCodeCanvas value={encounterToken} label="QR code de validation de la rencontre" />
+                  <p className="text-xs text-ink-soft text-center max-w-xs flex items-center gap-1.5">
+                    <Clock3 size={13} className="shrink-0" /> En attente de son scan…
+                  </p>
                 </div>
               ) : (
-                <Button variant="ghost" className="w-full" onClick={() => setCorrecting(true)}>
-                  <Pencil size={14} /> Corriger le score
+                <Button size="lg" className="w-full" onClick={showEncounterQr} disabled={busy}>
+                  <QrCode size={16} /> Afficher le QR code
                 </Button>
               )}
             </div>
-          ) : awaiting ? (
+          ) : (
             <div className="space-y-4">
-              <div className="rounded-lg bg-sun-soft px-4 py-3 flex items-start gap-2.5">
-                <QrCode size={16} className="text-sun shrink-0 mt-0.5" />
-                <p className="text-xs text-ink-soft">
-                  <span className="font-bold text-sun">
-                    {match.mySide === "home" ? match.awayTeam.name : match.homeTeam.name} a saisi le score.
-                  </span>{" "}
-                  Scannez le QR code affiché sur son écran pour le valider.
-                </p>
-              </div>
-              <p className="display text-5xl tabular-nums text-primary text-center">
-                {match.homeScore}
-                <span className="text-ink-faint mx-2">–</span>
-                {match.awayScore}
+              <p className="text-xs text-ink-soft">
+                Vous vous déplacez : scannez le QR code affiché par le coach qui vous reçoit. Impossible à distance —
+                c&apos;est ce qui donne sa valeur à l&apos;attestation.
               </p>
               <Button size="lg" className="w-full" onClick={() => setScanning(true)} disabled={busy}>
                 <ScanLine size={16} /> Scanner le QR code
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {/* ————— Score final ————— */}
+        <section className="card p-5 space-y-4" aria-label="Score final">
+          <h3 className="display text-lg">Score final</h3>
+
+          {match.status === "finished" && !correcting ? (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-success-soft px-4 py-4 flex items-center gap-3">
+                <CheckCircle2 size={18} className="text-success shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-success">Score enregistré</p>
+                  <p className="text-xs text-ink-soft">
+                    {match.homeTeam.name} {match.homeScore} – {match.awayScore} {match.awayTeam.name}
+                  </p>
+                </div>
+              </div>
+              {/* Corrigeable par l'un comme par l'autre : sans contre-signature,
+                  une erreur de saisie n'a plus de raison d'être définitive. */}
+              <Button variant="ghost" className="w-full" onClick={() => setCorrecting(true)}>
+                <Pencil size={14} /> Corriger le score
+              </Button>
+            </div>
+          ) : correcting ? (
+            <div className="space-y-2">
+              <FinalScoreForm
+                match={match}
+                onSubmitted={(message) => {
+                  setError(message);
+                  setCorrecting(false);
+                  load();
+                }}
+              />
+              <Button variant="ghost" className="w-full" onClick={() => setCorrecting(false)}>
+                Annuler la correction
               </Button>
             </div>
           ) : match.finalScoreDue ? (
@@ -470,8 +606,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
               <div className="rounded-lg bg-coral-soft px-4 py-3 flex items-start gap-2.5">
                 <AlertTriangle size={16} className="text-coral shrink-0 mt-0.5" />
                 <p className="text-xs text-ink-soft">
-                  <span className="font-bold text-coral">Le match a eu lieu.</span> Saisissez le score final : il devra
-                  être validé par le coach adverse.
+                  <span className="font-bold text-coral">Le match a eu lieu.</span> Saisissez le score final —
+                  l&apos;un ou l&apos;autre coach peut le faire.
                 </p>
               </div>
               <FinalScoreForm
@@ -484,9 +620,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-ink-soft">
-                Le score final se saisit à la fin de la rencontre, puis se valide avec le coach adverse.
-              </p>
+              <p className="text-xs text-ink-soft">Le score final se saisit à la fin de la rencontre.</p>
               {match.status === "scheduled" && (
                 <Button variant="soft" size="lg" className="w-full" onClick={kickoff} disabled={busy}>
                   <Play size={16} /> Donner le coup d&apos;envoi
@@ -499,7 +633,8 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         </>
       )}
 
-      {scanning && <QrScanner onResult={confirmWithToken} onClose={() => setScanning(false)} />}
+      {scanning && <QrScanner onResult={confirmEncounter} onClose={() => setScanning(false)} />}
+      {cardOf && <CoachCardSheet coachId={cardOf} onClose={() => setCardOf(null)} />}
 
       {withdrawing && (
         <WithdrawSheet

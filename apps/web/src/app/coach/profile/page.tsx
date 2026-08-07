@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Users } from "lucide-react";
-import { coachQrPayload, type UserDto } from "@footcoach/shared";
+import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
+import { coachQrPayload, type CoachCategory, type UserDto } from "@footcoach/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
+import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { LocationCard } from "@/components/coach/LocationCard";
 import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
@@ -19,7 +20,12 @@ export default function CoachProfilePage() {
   const [user, setUser] = useState<UserDto | null>(() => getStoredUser());
   const [form, setForm] = useState(() => {
     const stored = getStoredUser();
-    return { firstName: stored?.firstName ?? "", lastName: stored?.lastName ?? "", phone: stored?.phone ?? "" };
+    return {
+      firstName: stored?.firstName ?? "",
+      lastName: stored?.lastName ?? "",
+      phone: stored?.phone ?? "",
+      licenseNumber: stored?.licenseNumber ?? "",
+    };
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -46,6 +52,25 @@ export default function CoachProfilePage() {
     updateStoredUser(updated);
   }
 
+  /**
+   * Casquettes : cochées et décochées à l'unité, enregistrées immédiatement.
+   * Pas de bouton « Enregistrer » — c'est un interrupteur, et un interrupteur
+   * qu'il faut confirmer laisse croire qu'on l'a actionné alors que non.
+   */
+  async function toggleCategory(category: CoachCategory) {
+    const current = user?.categories ?? [];
+    const next = current.includes(category)
+      ? current.filter((c) => c !== category)
+      : [...current, category];
+    setError(null);
+    setMessage(null);
+    try {
+      apply(await api<UserDto>("/me/categories", { method: "PATCH", body: JSON.stringify({ categories: next }) }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Enregistrement impossible");
+    }
+  }
+
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
@@ -55,7 +80,13 @@ export default function CoachProfilePage() {
     try {
       const updated = await api<UserDto>("/me/profile", {
         method: "PATCH",
-        body: JSON.stringify({ ...form, phone: form.phone.trim() || null }),
+        body: JSON.stringify({
+          ...form,
+          phone: form.phone.trim() || null,
+          // `null` et non `undefined` : c'est ce qui distingue « effacé » de
+          // « non modifié » côté serveur.
+          licenseNumber: form.licenseNumber.trim() || null,
+        }),
       });
       apply(updated);
       setMessage("Profil enregistré");
@@ -182,6 +213,27 @@ export default function CoachProfilePage() {
             </p>
           </div>
 
+          <div className="space-y-1.5">
+            <label htmlFor="licenseNumber" className="text-xs font-bold text-ink-soft">
+              Numéro de licence (optionnel)
+            </label>
+            <input
+              id="licenseNumber"
+              autoComplete="off"
+              autoCapitalize="characters"
+              enterKeyHint="done"
+              maxLength={30}
+              value={form.licenseNumber}
+              onChange={(e) => setForm((f) => ({ ...f, licenseNumber: e.target.value }))}
+              className="field"
+              placeholder="2543678901"
+            />
+            <p className="text-[11px] text-ink-soft">
+              Votre licence d&apos;éducateur. Contrairement au téléphone, elle n&apos;est visible que de vous —
+              videz le champ pour l&apos;effacer.
+            </p>
+          </div>
+
           {error && (
             <p className="animate-message text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">
               {error}
@@ -245,6 +297,62 @@ export default function CoachProfilePage() {
           </p>
         )}
       </section>
+
+      {/* Casquettes : cumulables, et rien de coché est le cas ordinaire —
+          « simple coach » n'a pas de case, ce serait une case pour dire non. */}
+      {user.categories !== undefined && (
+        <section className="card p-5 space-y-3" aria-label="Mes casquettes">
+          <div className="space-y-1">
+            <h3 className="display text-lg">Mes casquettes</h3>
+            <p className="text-xs text-ink-soft">
+              Facultatives et cumulables. Sans aucune, vous restez un coach comme un autre — vos annonces et vos
+              matchs fonctionnent à l&apos;identique.
+            </p>
+          </div>
+          <CoachCategoryPicker value={user.categories ?? []} onToggle={toggleCategory} />
+        </section>
+      )}
+
+      {/* Palier : le seul endroit où le total chiffré est montré, et seulement
+          à son propriétaire. Ailleurs, seul le palier circule. */}
+      {user.level && (
+        <section className="card p-5 space-y-3" aria-label="Palier">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="display text-lg">Palier</h3>
+            <span className="chip bg-accent-surface text-accent shrink-0">
+              <Trophy size={11} aria-hidden /> {user.level.name}
+            </span>
+          </div>
+          <p className="text-xs text-ink-soft">
+            {user.points ?? 0} points gagnés en validant vos rencontres au stade, face au coach adverse.
+          </p>
+          {user.level.next != null ? (
+            <>
+              {/* Progression dans le palier courant, pas depuis zéro : c'est le
+                  chemin qui reste qui motive, pas le total accumulé. */}
+              <div
+                className="h-2 rounded-full bg-paper overflow-hidden"
+                role="progressbar"
+                aria-valuemin={user.level.min}
+                aria-valuemax={user.level.next}
+                aria-valuenow={user.points ?? 0}
+              >
+                <div
+                  className="h-full bg-accent-solid rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.round((((user.points ?? 0) - user.level.min) / (user.level.next - user.level.min)) * 100))}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[11px] text-ink-soft">
+                Encore {user.level.next - (user.points ?? 0)} points avant le palier suivant.
+              </p>
+            </>
+          ) : (
+            <p className="text-[11px] text-ink-soft">Vous êtes au palier le plus haut.</p>
+          )}
+        </section>
+      )}
 
       {/* Compte */}
       <section className="card p-5 space-y-3">

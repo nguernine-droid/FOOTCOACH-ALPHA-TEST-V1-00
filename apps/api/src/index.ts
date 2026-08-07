@@ -8,11 +8,15 @@ import { env } from "./env.js";
 import { UPLOADS_DIR, ensureUploadsDir } from "./lib/uploads.js";
 import { MAX_AVATAR_BYTES } from "./lib/images.js";
 import { rateLimitOptions } from "./plugins/rateLimit.js";
+import { startSosRelay } from "./lib/sosRelay.js";
 import { runMigrations } from "./db/migrate.js";
 import { registerErrorHandler } from "./plugins/errors.js";
 import { authRoutes } from "./routes/auth.js";
 import { announcementRoutes } from "./routes/announcements.js";
 import { matchRoutes } from "./routes/matches.js";
+import { tournamentRoutes } from "./routes/tournaments.js";
+import { clubDirectoryRoutes } from "./routes/clubs.js";
+import { coachCardRoutes } from "./routes/coaches.js";
 import { registrationRoutes } from "./routes/registration.js";
 import { activityRoutes } from "./routes/activity.js";
 import { eventRoutes } from "./routes/events.js";
@@ -111,17 +115,23 @@ app.get("/health", async () => ({ status: "ok" }));
 app.register((instance) => authRoutes(instance));
 app.register((instance) => announcementRoutes(instance));
 app.register((instance) => matchRoutes(instance));
+app.register((instance) => tournamentRoutes(instance));
+app.register((instance) => clubRoutes(instance));
 app.register((instance) => registrationRoutes(instance));
 app.register((instance) => activityRoutes(instance));
 app.register((instance) => eventRoutes(instance));
 app.register((instance) => adminRoutes(instance));
-app.register((instance) => clubRoutes(instance));
+app.register((instance) => clubDirectoryRoutes(instance));
+app.register((instance) => coachCardRoutes(instance));
 app.register((instance) => relationRoutes(instance));
 app.register((instance) => locationRoutes(instance));
 
 try {
   await runMigrations();
   await app.listen({ port: env.API_PORT, host: "0.0.0.0" });
+  // Relance des SOS restés sans réponse. Tourne dans chaque réplique : la
+  // réclamation en base garantit qu'une annonce n'est relancée qu'une fois.
+  startSosRelay({ info: (msg) => app.log.info(msg), error: (err) => app.log.error(err) });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

@@ -25,8 +25,8 @@ export const THEME_LABELS: Record<ThemeChoice, string> = {
 /** Couleur de la barre du navigateur, par thème résolu. Doit rester alignée
  *  sur `--browser-chrome` de `tokens.css`. */
 const BROWSER_CHROME: Record<ResolvedTheme, string> = {
-  light: "#071B3F",
-  dark: "#0A1330",
+  light: "#0B0B0C",
+  dark: "#0B0B0C",
 };
 
 function isChoice(value: unknown): value is ThemeChoice {

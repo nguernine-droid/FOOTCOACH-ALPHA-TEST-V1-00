@@ -4,8 +4,16 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PASSWORD_MIN_LENGTH, passwordProblem } from "@footcoach/shared";
+import {
+  PASSWORD_MIN_LENGTH,
+  passwordProblem,
+  type CoachCategory,
+  type MatchCategory,
+} from "@footcoach/shared";
 import { register } from "@/lib/api";
+import { CategoryPicker } from "@/components/CategoryPicker";
+import { ClubNameField } from "@/components/ClubNameField";
+import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
 import { LEGAL_LINKS } from "@/lib/legal";
@@ -68,7 +76,23 @@ function FieldError({ id, children }: { id: string; children: React.ReactNode })
 function CoachWizard({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", teamName: "", teamCity: "" });
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    teamName: "",
+    teamCity: "",
+    teamStadium: "",
+    licenseNumber: "",
+  });
+  // Hors de `form`, comme les acceptations : ce n'est pas une chaîne libre, et
+  // surtout elle ne part d'aucune valeur — présélectionner une catégorie
+  // reviendrait à en choisir une pour le coach.
+  const [teamCategory, setTeamCategory] = useState<MatchCategory | null>(null);
+  // Casquettes : aucune au départ, et aucune est une réponse valable — l'étape
+  // se franchit sans rien cocher.
+  const [categories, setCategories] = useState<CoachCategory[]>([]);
   // Les deux acceptations vivent hors de `form` : ce sont des booléens, et
   // surtout ils ne partent jamais d'une valeur « déjà donnée ».
   const [consent, setConsent] = useState({ responsibility: false, terms: false });
@@ -78,6 +102,12 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleCategory(category: CoachCategory) {
+    setCategories((current) =>
+      current.includes(category) ? current.filter((c) => c !== category) : [...current, category],
+    );
   }
 
   // Chaque étape se valide sous ses champs plutôt que par une bulle native,
@@ -108,6 +138,10 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
     try {
       await register("/auth/register-coach", {
         ...form,
+        teamCategory,
+        categories,
+        teamStadium: form.teamStadium.trim() || undefined,
+        licenseNumber: form.licenseNumber.trim() || undefined,
         acceptTerms: consent.terms,
         acceptResponsibility: consent.responsibility,
       });
@@ -120,7 +154,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="space-y-4">
-      <Dots total={4} current={step} />
+      <Dots total={5} current={step} />
       {step === 0 && (
         <StepCard title="Qui êtes-vous ?" subtitle="Commençons par votre nom." onBack={onBack}>
           <form
@@ -140,6 +174,16 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
               <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">Nom</label>
               <input id="lastName" autoComplete="family-name" autoCapitalize="words" enterKeyHint="next" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className="field" placeholder="Martin" />
               {touched && !form.lastName.trim() && <FieldError id="lastName-error">Indiquez votre nom.</FieldError>}
+            </div>
+            {/* Facultatif, et à côté du nom parce que c'est une donnée de
+                personne : on l'a sous la main en s'inscrivant, beaucoup moins
+                le jour où il faudra la retrouver. */}
+            <div className="space-y-1.5">
+              <label htmlFor="licenseNumber" className="text-xs font-bold text-ink-soft">Numéro de licence (optionnel)</label>
+              <input id="licenseNumber" autoComplete="off" autoCapitalize="characters" enterKeyHint="done" maxLength={30} value={form.licenseNumber} onChange={(e) => set("licenseNumber", e.target.value)} className="field" placeholder="2543678901" />
+              <p className="text-[11px] text-ink-soft">
+                Votre licence d&apos;éducateur. Visible de vous seul, et modifiable plus tard dans Mon profil.
+              </p>
             </div>
             <Button type="submit" size="lg" className="w-full">Continuer</Button>
           </form>
@@ -175,19 +219,42 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              advance(3, !form.teamName.trim() || !form.teamCity.trim());
+              advance(3, !form.teamName.trim() || !form.teamCity.trim() || !teamCategory);
             }}
             className="space-y-4"
           >
             <div className="space-y-1.5">
               <label htmlFor="teamName" className="text-xs font-bold text-ink-soft">Nom de l&apos;équipe</label>
-              <input id="teamName" autoComplete="organization" autoCapitalize="words" enterKeyHint="next" value={form.teamName} onChange={(e) => set("teamName", e.target.value)} className="field" placeholder="FC Exemple" />
+              {/* Suggestions depuis l'annuaire public des entreprises. Choisir
+                  un club remplit aussi la ville — mais rien n'oblige à choisir,
+                  beaucoup de clubs amateurs n'y figurent pas. */}
+              <ClubNameField
+                id="teamName"
+                value={form.teamName}
+                onChange={(v) => set("teamName", v)}
+                onPickCity={(city) => set("teamCity", city)}
+                placeholder="FC Exemple"
+              />
               {touched && !form.teamName.trim() && <FieldError id="teamName-error">Donnez un nom à votre équipe.</FieldError>}
             </div>
             <div className="space-y-1.5">
               <label htmlFor="teamCity" className="text-xs font-bold text-ink-soft">Ville</label>
-              <input id="teamCity" autoComplete="address-level2" autoCapitalize="words" enterKeyHint="done" value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
+              <input id="teamCity" autoComplete="address-level2" autoCapitalize="words" enterKeyHint="next" value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
               {touched && !form.teamCity.trim() && <FieldError id="teamCity-error">Indiquez la ville de l&apos;équipe.</FieldError>}
+            </div>
+            {/* Catégorie et stade : demandés une fois ici, ils préremplissent
+                ensuite chaque annonce — d'où leur place dès l'inscription. */}
+            <CategoryPicker
+              value={teamCategory}
+              onChange={setTeamCategory}
+              idPrefix="register-category"
+              narrow
+              hint="Elle sera reprise dans vos annonces de match."
+            />
+            {touched && !teamCategory && <FieldError id="teamCategory-error">Choisissez la catégorie de l&apos;équipe.</FieldError>}
+            <div className="space-y-1.5">
+              <label htmlFor="teamStadium" className="text-xs font-bold text-ink-soft">Stade habituel (optionnel)</label>
+              <input id="teamStadium" autoComplete="off" autoCapitalize="words" enterKeyHint="done" maxLength={150} value={form.teamStadium} onChange={(e) => set("teamStadium", e.target.value)} className="field" placeholder="Stade municipal" />
             </div>
             <Button type="submit" size="lg" className="w-full">Continuer</Button>
           </form>
@@ -195,9 +262,31 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       )}
       {step === 3 && (
         <StepCard
+          title="Vos casquettes"
+          subtitle="Deux façons d'aider les autres coachs. Aucune n'est obligatoire."
+          onBack={() => setStep(2)}
+        >
+          {/* Étape à part entière, et non une ligne de plus au milieu des
+              champs de l'équipe : ce sont deux engagements à lire, pas deux
+              cases à expédier. Rien de coché reste une réponse — d'où le
+              bouton « Continuer » toujours actif. */}
+          <div className="space-y-4">
+            <CoachCategoryPicker value={categories} onToggle={toggleCategory} idPrefix="register-casquette" />
+            <p className="text-[11px] text-ink-soft">
+              Sans aucune, vous restez un coach comme un autre : vos annonces et vos matchs fonctionnent à
+              l&apos;identique. Vous pourrez les cocher ou les retirer plus tard dans Mon profil.
+            </p>
+            <Button type="button" size="lg" className="w-full" onClick={() => advance(4, false)}>
+              Continuer
+            </Button>
+          </div>
+        </StepCard>
+      )}
+      {step === 4 && (
+        <StepCard
           title="À savoir avant de commencer"
           subtitle="Ce que l'application fait — et ce qu'elle ne fait pas à votre place."
-          onBack={() => setStep(2)}
+          onBack={() => setStep(3)}
         >
           <form onSubmit={finish} noValidate className="space-y-4">
             <LegalConsent

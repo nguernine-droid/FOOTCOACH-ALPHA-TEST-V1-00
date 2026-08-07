@@ -8,6 +8,7 @@ import {
   MATCH_GENDER_LABELS,
   type AnnouncementDto,
   type AnnouncementResponseDto,
+  type CoachRefDto,
   type RadarDto,
   type TeamDto,
 } from "@footcoach/shared";
@@ -18,6 +19,8 @@ import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
 import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
+import { tournamentsInRadar } from "./tournaments.js";
+import { representativeCoachesOf } from "../lib/coachCard.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -26,6 +29,8 @@ function toDto(
   myCoords?: { lat: number; lng: number } | null,
   responses?: AnnouncementResponseDto[],
   myResponseStatus?: AnnouncementResponseDto["status"] | null,
+  /** Coach représentant l'équipe émettrice, quand l'appelant l'a chargé */
+  coach?: CoachRefDto | null,
 ): AnnouncementDto {
   const { announcement, team } = row;
   // Position relative du LIEU DU MATCH, pas du siège du club : une annonce
@@ -49,8 +54,8 @@ function toDto(
     comment: announcement.comment,
     status: announcement.status,
     isMine: team.id === myTeamId,
+    coach: coach ?? null,
     createdAt: announcement.createdAt.toISOString(),
-    federationDeclared: announcement.federationDeclared,
     noticeDays: daysBetweenIso(announcement.createdAt.toISOString().slice(0, 10), announcement.date),
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
@@ -167,10 +172,44 @@ export function announcementRoutes(app: FastifyInstance) {
       rows.filter((r) => r.announcement.status === "matched").map((r) => r.announcement.id),
     );
     const responsesByAnn = await loadResponses(rows.map((r) => r.announcement.id));
+    const coaches = await representativeCoachesOf(rows.map((r) => r.team.id));
     return rows.map((r) => {
       const responses = (responsesByAnn.get(r.announcement.id) ?? []).map(({ teamId: _teamId, ...dto }) => dto);
-      return toDto(r, myTeamId, links.get(r.announcement.id), null, responses, null);
+      return toDto(r, myTeamId, links.get(r.announcement.id), null, responses, null, coaches.get(r.team.id));
     });
+  });
+
+  /**
+   * Détail d'une annonce — l'écran qu'on ouvre depuis le radar avant de
+   * proposer un match. Il porte la carte du coach émetteur : publier, c'est se
+   * montrer, et l'on choisit plus volontiers un adversaire dont on voit qui il
+   * est.
+   *
+   * Lisible par tout coach : une annonce est faite pour être vue. Les
+   * propositions reçues, elles, restent à son seul émetteur — c'est son
+   * information, pas celle des candidats.
+   */
+  app.get("/announcements/:id", { preHandler: requireRole("coach") }, async (request): Promise<AnnouncementDto> => {
+    const { id } = idParamSchema.parse(request.params);
+    const [row] = await db
+      .select({ announcement: matchAnnouncements, team: teams })
+      .from(matchAnnouncements)
+      .innerJoin(teams, eq(matchAnnouncements.teamId, teams.id))
+      .where(eq(matchAnnouncements.id, id));
+    if (!row) throw new HttpError(404, "Annonce introuvable");
+
+    const myTeamId = request.user.teamId;
+    const isMine = row.team.id === myTeamId;
+    const links = await loadMatchLinks([id]);
+    const responses = isMine
+      ? (await loadResponses([id])).get(id)?.map(({ teamId: _teamId, ...dto }) => dto)
+      : [];
+    const myStatus = myTeamId
+      ? ((await loadResponses([id])).get(id)?.find((r) => r.teamId === myTeamId)?.status ?? null)
+      : null;
+    const myCoords = await loadOrigin(request.user.id, myTeamId);
+    const coaches = await representativeCoachesOf([row.team.id]);
+    return toDto(row, myTeamId, links.get(id), myCoords, responses, myStatus, coaches.get(row.team.id));
   });
 
   /**
@@ -222,14 +261,29 @@ export function announcementRoutes(app: FastifyInstance) {
       : [];
     const myStatusByAnn = new Map(myResponses.map((r) => [r.announcementId, r.status]));
 
+    const coaches = await representativeCoachesOf(rows.map((r) => r.team.id));
     const items: AnnouncementDto[] = [];
     let beyondRadius = 0;
     for (const row of rows) {
-      const dto = toDto(row, myTeamId, undefined, myCoords, [], myStatusByAnn.get(row.announcement.id) ?? null);
+      const dto = toDto(
+        row,
+        myTeamId,
+        undefined,
+        myCoords,
+        [],
+        myStatusByAnn.get(row.announcement.id) ?? null,
+        coaches.get(row.team.id),
+      );
       if (radiusKm !== null && dto.distanceKm !== null && dto.distanceKm > radiusKm) beyondRadius++;
       else items.push(dto);
     }
-    return { items, beyondRadius };
+
+    // Les tournois du même périmètre voyagent avec le radar : le coach y
+    // cherche « quoi jouer », et un tournoi est une occasion de jouer autant
+    // qu'une annonce. Servis à part, parce qu'ils ne portent ni les mêmes
+    // champs ni les mêmes actions.
+    const tournamentItems = await tournamentsInRadar(myTeamId, unplayable, myCoords, radiusKm);
+    return { items, tournaments: tournamentItems, beyondRadius };
   });
 
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {
@@ -248,7 +302,8 @@ export function announcementRoutes(app: FastifyInstance) {
         level: input.level,
         format: input.format,
         comment: input.comment ?? null,
-        federationDeclared: input.federationDeclared,
+        // federationDeclared n'est plus renseigné : voir le commentaire de la
+        // colonne dans db/schema.ts. L'acceptation vit désormais sur le compte.
       })
       .returning();
     reply.code(201);

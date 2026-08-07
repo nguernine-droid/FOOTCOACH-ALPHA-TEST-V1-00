@@ -1,16 +1,23 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, Plus, type LucideIcon } from "lucide-react";
-import type { QuickAction } from "@/components/QuickActionContext";
+import { Check, ChevronRight, Megaphone, Plus, Trophy, type LucideIcon } from "lucide-react";
+import type { QuickAction, QuickChoice } from "@/components/QuickActionContext";
 import { useAccountEntry } from "@/components/AccountSheetContext";
 import { Avatar } from "@/components/Avatar";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 export type { QuickAction };
+
+/** Les clés d'icône des choix, résolues ici — là où les composants existent */
+const CHOICE_ICONS: Record<QuickChoice["icon"], LucideIcon> = {
+  announcement: Megaphone,
+  tournament: Trophy,
+};
 
 export type AppTab = {
   href: string;
@@ -52,19 +59,37 @@ export function AppTabs({
   const pathname = usePathname();
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
   const account = useAccountEntry();
-  // `document.body` n'existe pas au rendu serveur : le portail n'est posé
-  // qu'une fois le composant monté côté client (voir BottomSheet).
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  /** Feuille des créations possibles, quand le « + » en propose plusieurs */
+  const [choosing, setChoosing] = useState(false);
 
-  // Même bouton dans les deux barres : lien de création, ou validation du
-  // formulaire ouvert (associé par l'attribut `form`, donc à distance).
-  const ActionButton = ({ className, children }: { className: string; children: React.ReactNode }) =>
-    !action ? null : action.kind === "link" ? (
-      <Link href={action.href} aria-label={action.label} title={action.label} className={className}>
-        {children}
-      </Link>
-    ) : (
+  // Même bouton dans les deux barres : lien de création, choix entre plusieurs,
+  // ou validation du formulaire ouvert (associé par l'attribut `form`, donc à
+  // distance).
+  const ActionButton = ({ className, children }: { className: string; children: React.ReactNode }) => {
+    if (!action) return null;
+    if (action.kind === "link") {
+      return (
+        <Link href={action.href} aria-label={action.label} title={action.label} className={className}>
+          {children}
+        </Link>
+      );
+    }
+    if (action.kind === "choice") {
+      return (
+        <button
+          type="button"
+          onClick={() => setChoosing(true)}
+          aria-haspopup="dialog"
+          aria-expanded={choosing}
+          aria-label={action.label}
+          title={action.label}
+          className={className}
+        >
+          {children}
+        </button>
+      );
+    }
+    return (
       <button
         type="submit"
         form={action.formId}
@@ -76,6 +101,7 @@ export function AppTabs({
         {children}
       </button>
     );
+  };
 
   const isSubmit = action?.kind === "submit";
 
@@ -163,25 +189,17 @@ export function AppTabs({
         </nav>
       </div>
 
-      {/* Mobile : barre fixe en bas de l'écran, rendue dans `document.body` par
-          un portail. `RoleGuard` rend `{nav}` à l'intérieur de `.app-header`,
-          qui porte un `backdrop-filter` — un ancêtre filtré ou transformé
-          devient le référentiel d'un descendant `fixed` (même piège que
-          `BottomSheet`). Sans portail, la barre se collerait au bas du
-          header au lieu du bas de l'écran, un comportement que Safari applique
-          strictement et que certains outils d'émulation ne reproduisent pas.
-
+      {/* Mobile : barre fixe en bas de l'écran.
           Le fond, la bordure et le floutage appartiennent entièrement à
           `.app-tabbar` — aucun utilitaire de couleur ici, sans quoi il
           gagnerait sur la recette du thème (les utilitaires priment sur la
           couche `components`) et la barre ne suivrait plus. */}
-      {mounted && createPortal(
-        <nav
-          role="tablist"
-          aria-label={ariaLabel}
-          className="app-tabbar min-[960px]:hidden fixed bottom-0 inset-x-0 z-40
-            pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
-        >
+      <nav
+        role="tablist"
+        aria-label={ariaLabel}
+        className="app-tabbar min-[960px]:hidden fixed bottom-0 inset-x-0 z-40
+          pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+      >
         {/* Les deux moitiés sont des frères flex-1 de part et d'autre du « + » :
             chaque onglet garde ainsi la même largeur des deux côtés. */}
         <div className="flex items-stretch">
@@ -281,8 +299,49 @@ export function AppTabs({
             </Fragment>
           ))}
         </div>
-        </nav>,
-        document.body,
+      </nav>
+
+      {/* Deux créations derrière un seul « + ». La feuille plutôt qu'un menu
+          déroulant : elle s'ouvre dans la zone du pouce, juste au-dessus du
+          bouton pressé, et le même rendu sert au clic sur desktop. */}
+      {action?.kind === "choice" && choosing && (
+        <BottomSheet
+          label={action.label}
+          onClose={() => setChoosing(false)}
+          footer={
+            <Button variant="ghost" className="w-full" onClick={() => setChoosing(false)}>
+              Annuler
+            </Button>
+          }
+        >
+          <div className="px-5 pt-1 pb-4 space-y-2">
+            <h2 className="display text-lg">{action.label}</h2>
+            {action.options.map((option) => {
+              const Icon = CHOICE_ICONS[option.icon];
+              return (
+                <Link
+                  key={option.href}
+                  href={option.href}
+                  // Fermeture explicite : la barre d'onglets vit dans la mise en
+                  // page, elle ne se démonte pas en changeant de page — sans ça
+                  // la feuille resterait ouverte par-dessus l'écran de création.
+                  onClick={() => setChoosing(false)}
+                  className="flex items-center gap-3 rounded-lg border border-line bg-paper px-4 py-3.5
+                    transition hover:border-accent/40 active:scale-[0.985]"
+                >
+                  <span className="w-10 h-10 rounded-lg bg-accent-surface text-accent flex items-center justify-center shrink-0">
+                    <Icon size={18} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold">{option.label}</span>
+                    <span className="block text-xs text-ink-soft">{option.description}</span>
+                  </span>
+                  <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+                </Link>
+              );
+            })}
+          </div>
+        </BottomSheet>
       )}
     </>
   );

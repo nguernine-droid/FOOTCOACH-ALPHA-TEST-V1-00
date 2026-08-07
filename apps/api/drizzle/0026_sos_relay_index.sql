@@ -1,0 +1,1 @@
+CREATE INDEX "sos_pending_relay_idx" ON "match_announcements" USING btree ("sos_alerted_at") WHERE is_sos and sos_widened_at is null;

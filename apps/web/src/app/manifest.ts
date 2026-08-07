@@ -25,8 +25,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#071B3F",
-    theme_color: "#071B3F",
+    background_color: "#0B0B0C",
+    theme_color: "#0B0B0C",
     icons: [
       { src: "/icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
       // Fond blanc et marque à 72 % : le masque circulaire ou en squircle du

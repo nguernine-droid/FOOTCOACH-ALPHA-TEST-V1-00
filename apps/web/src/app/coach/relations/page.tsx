@@ -6,6 +6,8 @@ import { Contact, Phone, QrCode, ScanLine, Trash2, UserPlus } from "lucide-react
 import { parseCoachQr, type CoachRelationDto } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
+import { CategoryBadges, LevelBadge } from "@/components/LevelBadge";
+import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
 import { QrScanner } from "@/components/matches/QrScanner";
 import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
@@ -18,6 +20,8 @@ export default function CoachRelationsPage() {
   const [relations, setRelations] = useState<CoachRelationDto[] | null>(null);
   const [code, setCode] = useState("");
   const [scanning, setScanning] = useState(false);
+  /** Coach dont on regarde la carte, null quand la feuille est fermée */
+  const [cardOf, setCardOf] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
@@ -180,22 +184,36 @@ export default function CoachRelationsPage() {
           {relations.map((relation) => (
             <div key={relation.id} className="card p-4 space-y-3">
               <div className="flex items-center gap-3">
-                <Avatar
-                  firstName={relation.firstName}
-                  lastName={relation.lastName}
-                  avatarUrl={relation.avatarUrl}
-                  size={48}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold truncate">
-                    {relation.firstName} {relation.lastName}
-                  </p>
-                  {relation.teams.length > 0 && (
-                    <p className="text-xs text-ink-soft truncate">
-                      {relation.teams.map((t) => t.name).join(" · ")} — {relation.teams[0].city}
-                    </p>
-                  )}
-                </div>
+                {/* Toute l'identité ouvre la carte : c'est la cible la plus
+                    large, et celle qu'on vise naturellement du pouce. */}
+                <button
+                  type="button"
+                  onClick={() => setCardOf(relation.id)}
+                  className="flex items-center gap-3 min-w-0 flex-1 text-left rounded-lg -m-1 p-1
+                    transition active:bg-paper hover:bg-paper"
+                  aria-label={`Voir la carte de ${relation.firstName} ${relation.lastName}`}
+                >
+                  <Avatar
+                    firstName={relation.firstName}
+                    lastName={relation.lastName}
+                    avatarUrl={relation.avatarUrl}
+                    size={48}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="font-bold flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate">
+                        {relation.firstName} {relation.lastName}
+                      </span>
+                      <LevelBadge level={relation.level} />
+                      <CategoryBadges categories={relation.categories} />
+                    </span>
+                    {relation.teams.length > 0 && (
+                      <span className="block text-xs text-ink-soft truncate">
+                        {relation.teams.map((t) => t.name).join(" · ")} — {relation.teams[0].city}
+                      </span>
+                    )}
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setConfirmRemove(confirmRemove === relation.id ? null : relation.id)}
@@ -240,6 +258,7 @@ export default function CoachRelationsPage() {
       )}
 
       {scanning && <QrScanner onResult={onScan} onClose={() => setScanning(false)} />}
+      {cardOf && <CoachCardSheet coachId={cardOf} onClose={() => setCardOf(null)} />}
     </div>
   );
 }

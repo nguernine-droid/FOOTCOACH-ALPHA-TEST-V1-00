@@ -2,8 +2,12 @@
 import type { FastifyInstance } from "fastify";
 import { and, eq } from "drizzle-orm";
 import {
+  asCoachCategories,
+  asMatchCategory,
   createTeamSchema,
+  idParamSchema,
   registerCoachSchema,
+  updateTeamReferencesSchema,
   LEGAL_VERSION,
   type AuthResponseDto,
   type CoachTeamDto,
@@ -18,6 +22,15 @@ import { registerRateLimit } from "../lib/rateLimits.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateCode } from "../lib/codes.js";
 import { hashPassword } from "../lib/passwordHash.js";
+
+/**
+ * Un stade vide vaut « aucun ». Sans cette normalisation, un champ effacé
+ * repartirait en base comme une chaîne vide, que le formulaire d'annonce
+ * préremplirait ensuite par du vide en croyant tenir une référence.
+ */
+function stadiumOrNull(stadium: string | undefined): string | null {
+  return stadium?.trim() ? stadium.trim() : null;
+}
 
 async function assertEmailFree(email: string) {
   const [existing] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
@@ -59,6 +72,10 @@ export function registrationRoutes(app: FastifyInstance) {
           // rapporte — sans elle, la trace ne prouverait rien de précis.
           termsAcceptedAt: new Date(),
           termsVersion: LEGAL_VERSION,
+          coachLicenseNumber: input.licenseNumber?.trim() || null,
+          // Dédoublonnées ici comme partout ailleurs : la colonne est un
+          // tableau, rien en base n'empêcherait deux fois « joker ».
+          coachCategories: asCoachCategories(input.categories),
         })
         .returning();
       const coords = cityCoords(input.teamCity);
@@ -71,6 +88,8 @@ export function registrationRoutes(app: FastifyInstance) {
           joinCode: generateCode(),
           lat: coords?.lat ?? null,
           lng: coords?.lng ?? null,
+          category: input.teamCategory,
+          stadium: stadiumOrNull(input.teamStadium),
         })
         .returning();
       // Affectation coach ↔ équipe (source de vérité multi-équipes)
@@ -116,11 +135,55 @@ export function registrationRoutes(app: FastifyInstance) {
         coachId: request.user.id,
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
+        category: input.category,
+        stadium: stadiumOrNull(input.stadium),
       });
       await db.insert(teamCoaches).values({ teamId: team.id, coachId: request.user.id, role: "principal" });
 
       reply.code(201);
-      return { id: team.id, name: team.name, city: team.city, role: "principal" };
+      return {
+        id: team.id,
+        name: team.name,
+        city: team.city,
+        role: "principal",
+        category: asMatchCategory(team.category),
+        stadium: team.stadium,
+      };
+    });
+
+    /**
+     * Régler les références d'une équipe déjà créée — le seul moyen, pour les
+     * équipes nées avant elles, d'alimenter le préremplissage des annonces.
+     *
+     * Réservé aux encadrants de l'équipe, adjoints compris : ce sont eux qui
+     * publient en son nom, la référence les concerne tous. Le contrôle porte
+     * sur team_coaches et non sur l'équipe active du jeton — un coach ne peut
+     * donc régler que les équipes qu'il encadre réellement.
+     */
+    coach.patch("/coach/teams/:id", async (request): Promise<CoachTeamDto> => {
+      const { id } = idParamSchema.parse(request.params);
+      const input = updateTeamReferencesSchema.parse(request.body);
+
+      const [assignment] = await db
+        .select({ role: teamCoaches.role })
+        .from(teamCoaches)
+        .where(and(eq(teamCoaches.teamId, id), eq(teamCoaches.coachId, request.user.id)));
+      if (!assignment) throw new HttpError(404, "Équipe introuvable parmi celles que vous encadrez");
+
+      const [team] = await db
+        .update(teams)
+        .set({ category: input.category, stadium: stadiumOrNull(input.stadium) })
+        .where(eq(teams.id, id))
+        .returning();
+
+      return {
+        id: team.id,
+        name: team.name,
+        city: team.city,
+        role: assignment.role,
+        category: asMatchCategory(team.category),
+        stadium: team.stadium,
+      };
     });
   });
 }

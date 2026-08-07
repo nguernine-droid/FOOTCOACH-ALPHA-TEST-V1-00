@@ -504,6 +504,37 @@
     .map-beacon { opacity: 0; }
     .map-pin { opacity: 1; transform: translate(-50%, -100%); }
   }
+
+  /* ————— Retournement de la carte du coach —————
+     Le QR n'est pas une fenêtre posée par-dessus la carte : c'est son DOS. On
+     la retourne comme on retourne une carte à jouer, les deux faces occupent
+     donc exactement la même place et la même épaisseur.
+
+     `perspective` va sur le parent, jamais sur l'élément qui pivote : porté par
+     lui-même, il ne produirait aucune profondeur. */
+  .flip-scene {
+    perspective: 1200px;
+  }
+  .flip-inner {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 620ms var(--ease-app);
+  }
+  .flip-inner.is-flipped {
+    transform: rotateY(180deg);
+  }
+  /* Sans `backface-visibility`, les deux faces restent visibles en même temps
+     et le dos s'affiche en miroir par-dessus le recto. */
+  .flip-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  /* Le dos part déjà retourné : la rotation du parent le remet à l'endroit. */
+  .flip-back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+  }
 }
 
 /* Accessibilité — respect de la préférence "réduire les animations" */

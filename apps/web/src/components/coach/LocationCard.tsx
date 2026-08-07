@@ -5,6 +5,7 @@ import { Crosshair, MapPin, Search, Users, X } from "lucide-react";
 import type { GeoSuggestionDto, UserDto } from "@footcoach/shared";
 import { coarseCoord } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 
 const SOURCE_LABELS = {
@@ -21,7 +22,16 @@ const SOURCE_LABELS = {
  * saisie d'adresse pour ceux qui la refusent ou qui rayonnent depuis ailleurs
  * que leur position du moment.
  */
-export function LocationCard({ user, onChange }: { user: UserDto; onChange: (updated: UserDto) => void }) {
+export function LocationCard({
+  user,
+  onChange,
+  bare = false,
+}: {
+  user: UserDto;
+  onChange: (updated: UserDto) => void;
+  /** Sans l'habillage de carte : la feuille du radar le fournit déjà */
+  bare?: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<GeoSuggestionDto[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -128,7 +138,7 @@ export function LocationCard({ user, onChange }: { user: UserDto; onChange: (upd
   }
 
   return (
-    <section className="card p-5 space-y-4" aria-label="Ma position">
+    <section className={cn("space-y-4", !bare && "card p-5")} aria-label="Ma position">
       <div className="flex items-center gap-2.5">
         <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
           <MapPin size={18} />
@@ -184,6 +194,15 @@ export function LocationCard({ user, onChange }: { user: UserDto; onChange: (upd
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            // Entrée retient la première suggestion. Sans ça, taper son adresse
+            // puis valider ne faisait rien : le champ cherche, il n'enregistre
+            // pas — et le coach repartait en croyant sa position changée.
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              const first = suggestions?.[0];
+              if (first) save(first.lat, first.lng, first.label, "address");
+            }}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
@@ -202,6 +221,14 @@ export function LocationCard({ user, onChange }: { user: UserDto; onChange: (upd
             </button>
           )}
         </div>
+
+        {/* Dit dès la première frappe ce que le champ attend : c'est le choix
+            d'une suggestion qui enregistre, jamais le texte saisi. */}
+        {query.trim().length > 0 && !searching && (
+          <p className="text-[11px] text-ink-soft px-1">
+            Choisissez une adresse dans la liste pour l&apos;enregistrer.
+          </p>
+        )}
 
         {searching && <p className="text-xs text-ink-soft animate-soft-pulse px-1">Recherche…</p>}
 

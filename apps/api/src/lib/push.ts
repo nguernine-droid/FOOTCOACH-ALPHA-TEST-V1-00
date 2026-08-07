@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { WITHDRAWAL_REASON_LABELS, type WithdrawalReason } from "@footcoach/shared";
 import { env } from "../env.js";
 import { db } from "../db/client.js";
@@ -73,6 +73,11 @@ async function sendToUsers(userIds: string[], payload: PushPayload): Promise<voi
 /** Lance l'envoi sans bloquer la requête en cours. */
 function fireAndForget(task: Promise<void>): void {
   void task.catch((err) => console.error("[push] notification abandonnée", err));
+}
+
+/** « 14 août » — la date telle qu'elle apparaît dans le corps des notifications */
+function formatDay(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
 }
 
 /**
@@ -229,9 +234,43 @@ export function notifyWithdrawal(input: {
 }
 
 /**
- * Une annonce repart en SOS après un désistement : même ciblage qu'une annonce
- * neuve (coachs dont le périmètre couvre le lieu), mais le message dit
- * l'urgence — ces matchs sont souvent à quelques jours.
+ * Coachs **jokers** abonnés au push, avec leur point de rayonnement.
+ *
+ * Se déclarer joker EST l'abonnement aux SOS : on ne le recoupe pas avec la
+ * préférence « nouvelle annonce », qui répond à une autre question. Un coach
+ * qui a coupé le flot des annonces neuves mais s'est déclaré joker veut
+ * précisément cela — n'être dérangé que quand quelqu'un est en panne.
+ */
+async function jokerCandidates() {
+  const rows = await db
+    .select({ user: users, team: teams })
+    .from(users)
+    .innerJoin(pushSubscriptions, eq(pushSubscriptions.userId, users.id))
+    .leftJoin(teamCoaches, eq(teamCoaches.coachId, users.id))
+    .leftJoin(teams, eq(teams.id, teamCoaches.teamId))
+    .where(
+      and(
+        eq(users.role, "coach"),
+        isNull(users.disabledAt),
+        // `@>` : le tableau des casquettes contient 'joker'
+        sql`${users.coachCategories} @> ARRAY['joker']::coach_category[]`,
+      ),
+    );
+
+  const byUser = new Map<string, { user: typeof users.$inferSelect; team: typeof teams.$inferSelect | null }>();
+  for (const row of rows) if (!byUser.has(row.user.id)) byUser.set(row.user.id, row);
+  return [...byUser.values()];
+}
+
+/**
+ * Une annonce repart en SOS après un désistement. À la différence d'une annonce
+ * neuve, elle ne réveille que les coachs qui se sont déclarés **jokers** — et
+ * seulement ceux dont le périmètre couvre le lieu : un joker lillois n'a rien à
+ * faire d'un match à Marseille, se dire disponible n'est pas se dire ubiquiste.
+ *
+ * Sans joker à portée, ce premier appel ne réveille personne — mais l'annonce
+ * n'est pas perdue pour autant : passé le délai, `notifySosWidened` élargit à
+ * tous les coachs du secteur (voir lib/sosRelay.ts).
  */
 export function notifySosAnnouncement(input: {
   teamName: string;
@@ -248,7 +287,7 @@ export function notifySosAnnouncement(input: {
     (async () => {
       const excluded = await coachIdsOfTeams(input.excludeTeamIds);
       const targets: string[] = [];
-      for (const { user, team } of await candidates("notifyNewAnnouncement")) {
+      for (const { user, team } of await jokerCandidates()) {
         if (excluded.has(user.id)) continue;
         const origin = originOf(user, team);
         if (!origin) continue;
@@ -256,10 +295,7 @@ export function notifySosAnnouncement(input: {
         if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
         targets.push(user.id);
       }
-      const day = new Date(`${input.date}T00:00:00`).toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-      });
+      const day = formatDay(input.date);
       await sendToUsers(targets, {
         title: `SOS — ${input.teamName} cherche un adversaire`,
         body: `Match du ${day} à ${input.city} · ${input.category} · ${input.format} — l'adversaire s'est désisté.`,
@@ -270,18 +306,147 @@ export function notifySosAnnouncement(input: {
   );
 }
 
-/** Score saisi par l'adversaire, en attente de ma validation par QR code. */
-export function notifyScoreToConfirm(input: {
+/**
+ * Une place se rouvre dans un tournoi après le retrait d'une équipe. Même
+ * ciblage qu'un SOS d'annonce — les jokers du secteur d'abord — et la relance
+ * élargie suit la même règle si personne ne se manifeste.
+ */
+export function notifyTournamentSos(input: {
+  tournamentId: string;
+  tournamentName: string;
+  organizerTeamName: string;
+  category: string;
+  city: string;
+  date: string;
+  venue: { lat: number; lng: number } | null;
+  excludeTeamIds: string[];
+}): void {
+  if (!pushEnabled() || !input.venue) return;
+  fireAndForget(
+    (async () => {
+      const excluded = await coachIdsOfTeams(input.excludeTeamIds);
+      const targets: string[] = [];
+      for (const { user, team } of await jokerCandidates()) {
+        if (excluded.has(user.id)) continue;
+        const origin = originOf(user, team);
+        if (!origin) continue;
+        const km = haversineKm(origin, input.venue!);
+        if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
+        targets.push(user.id);
+      }
+      await sendToUsers(targets, {
+        title: `Place libre — ${input.tournamentName}`,
+        body: `${formatDay(input.date)} à ${input.city} · ${input.category} — une équipe s'est retirée du tournoi de ${input.organizerTeamName}.`,
+        url: `/coach/tournaments/${input.tournamentId}`,
+        tag: `tournoi-sos-${input.tournamentId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Le SOS d'un tournoi n'a trouvé personne chez les jokers : on élargit aux
+ * autres coachs du secteur, aux mêmes conditions que pour une annonce.
+ */
+export function notifyTournamentSosWidened(input: {
+  tournamentId: string;
+  tournamentName: string;
+  category: string;
+  city: string;
+  date: string;
+  venue: { lat: number; lng: number } | null;
+  excludeTeamIds: string[];
+}): void {
+  if (!pushEnabled() || !input.venue) return;
+  fireAndForget(
+    (async () => {
+      const excluded = await coachIdsOfTeams(input.excludeTeamIds);
+      const jokers = new Set((await jokerCandidates()).map(({ user }) => user.id));
+      const targets: string[] = [];
+      for (const { user, team } of await candidates("notifyNewAnnouncement")) {
+        if (excluded.has(user.id) || jokers.has(user.id)) continue;
+        const origin = originOf(user, team);
+        if (!origin) continue;
+        const km = haversineKm(origin, input.venue!);
+        if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
+        targets.push(user.id);
+      }
+      await sendToUsers(targets, {
+        title: `${input.tournamentName} cherche encore une équipe`,
+        body: `${formatDay(input.date)} à ${input.city} · ${input.category} — la place est toujours libre.`,
+        url: `/coach/tournaments/${input.tournamentId}`,
+        tag: `tournoi-relance-${input.tournamentId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Le SOS n'a trouvé personne chez les jokers : on élargit à tous les coachs du
+ * secteur, aux mêmes conditions de périmètre qu'une annonce neuve.
+ *
+ * Les jokers sont écartés — ils ont déjà reçu le premier appel et ne l'ont pas
+ * saisi ; les rappeler à l'ordre une heure plus tard, c'est punir ceux qui se
+ * sont portés volontaires. La préférence « nouvelle annonce » redevient en
+ * revanche le bon filtre : ces coachs-là n'ont rien demandé de particulier,
+ * c'est leur réglage ordinaire qui décide.
+ *
+ * Un `tag` distinct de « sos » : sur les téléphones, deux notifications de même
+ * étiquette se remplacent, et la relance effacerait l'appel initial encore
+ * affiché chez un joker.
+ */
+export function notifySosWidened(input: {
+  teamName: string;
+  category: string;
+  format: string;
+  city: string;
+  date: string;
+  announcementId: string;
+  venue: { lat: number; lng: number } | null;
+  excludeTeamIds: string[];
+}): void {
+  if (!pushEnabled() || !input.venue) return;
+  fireAndForget(
+    (async () => {
+      const excluded = await coachIdsOfTeams(input.excludeTeamIds);
+      const jokers = new Set((await jokerCandidates()).map(({ user }) => user.id));
+      const targets: string[] = [];
+      for (const { user, team } of await candidates("notifyNewAnnouncement")) {
+        if (excluded.has(user.id) || jokers.has(user.id)) continue;
+        const origin = originOf(user, team);
+        if (!origin) continue;
+        const km = haversineKm(origin, input.venue!);
+        if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
+        targets.push(user.id);
+      }
+      const day = formatDay(input.date);
+      await sendToUsers(targets, {
+        title: `${input.teamName} cherche toujours un adversaire`,
+        body: `Match du ${day} à ${input.city} · ${input.category} · ${input.format} — personne n'a encore répondu.`,
+        url: "/coach",
+        tag: `sos-relance-${input.announcementId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Score enregistré par l'adversaire. Purement informatif depuis que le score
+ * n'est plus contre-signé : il n'y a rien à valider, mais le coach adverse doit
+ * apprendre ce qui a été inscrit — c'est ce qui lui permet de le contester.
+ */
+export function notifyScoreRecorded(input: {
   opponentTeamId: string;
   submittedByTeamName: string;
+  score: string;
   matchId: string;
 }): void {
   if (!pushEnabled()) return;
   fireAndForget(
     (async () => {
       await sendToUsers(await teamCoachesToNotify(input.opponentTeamId, "notifyScore"), {
-        title: "Score à valider",
-        body: `${input.submittedByTeamName} a saisi le score final. Scannez son QR code pour le valider.`,
+        title: "Score enregistré",
+        body: `${input.submittedByTeamName} a saisi le score final : ${input.score}.`,
         url: `/coach/matches/${input.matchId}`,
         tag: `score-${input.matchId}`,
       });
