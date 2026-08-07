@@ -1047,13 +1047,19 @@ export interface ActivityDto {
   createdAt: string;
 }
 
-/** Occurrence d'agenda : événement d'équipe OU match projeté */
+/**
+ * Occurrence d'agenda : événement d'équipe, match projeté, ou journée de
+ * tournoi. Les trois sortes se rangent dans la même liste — une date occupée
+ * l'est quelle qu'en soit la raison.
+ */
 export interface AgendaItemDto {
   /** Clé unique d'occurrence (affichage React uniquement — ne pas parser) */
   id: string;
-  kind: "match" | "event";
+  kind: "match" | "event" | "tournament";
   matchId: string | null;
   eventId: string | null;
+  /** Tournoi d'origine : celui que l'équipe organise, ou auquel elle est inscrite */
+  tournamentId: string | null;
   occurrenceDate: string;
   type: EventType;
   title: string;

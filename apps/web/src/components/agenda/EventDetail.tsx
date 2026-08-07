@@ -85,6 +85,13 @@ export function EventDetail({
                 Feuille de match <ChevronRight size={14} />
               </ButtonLink>
             )}
+            {/* Ni modification ni suppression : une journée de tournoi se retire
+                de l'agenda en se désinscrivant, sur la fiche du tournoi. */}
+            {item.kind === "tournament" && item.tournamentId && (
+              <ButtonLink href={`/coach/tournaments/${item.tournamentId}`} variant="soft" className="w-full">
+                Voir le tournoi <ChevronRight size={14} />
+              </ButtonLink>
+            )}
             {item.kind === "event" && (
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="soft" onClick={() => onEdit(item)}>

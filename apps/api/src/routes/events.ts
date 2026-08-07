@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { alias } from "drizzle-orm/pg-core";
-import { and, eq, gte, lte, ne, or } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, ne, or, sql } from "drizzle-orm";
 import { createEventSchema, idParamSchema, type AgendaItemDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
-import { matches, teamEvents, teams } from "../db/schema.js";
+import { matches, teamEvents, teams, tournamentRegistrations, tournaments } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
@@ -82,6 +82,33 @@ export function eventRoutes(app: FastifyInstance) {
         ),
       );
 
+    // 3. Tournois qui occupent l'équipe : ceux qu'elle organise et ceux où elle
+    // est inscrite. Une inscription retirée libère la date, comme un match
+    // annulé — c'est la ligne qui reste, pas l'occupation.
+    const registered = await db
+      .select({ id: tournamentRegistrations.tournamentId })
+      .from(tournamentRegistrations)
+      .where(
+        and(eq(tournamentRegistrations.teamId, teamId), eq(tournamentRegistrations.status, "registered")),
+      );
+    const registeredIds = registered.map((r) => r.id);
+    const mine = registeredIds.length
+      ? or(eq(tournaments.teamId, teamId), inArray(tournaments.id, registeredIds))
+      : eq(tournaments.teamId, teamId);
+    // Un tournoi occupe [date, end_date] : il entre dans la fenêtre dès qu'il
+    // la chevauche, même commencé avant `from`.
+    const tournamentRows = await db
+      .select()
+      .from(tournaments)
+      .where(
+        and(
+          mine,
+          ne(tournaments.status, "cancelled"),
+          lte(tournaments.date, to),
+          sql`coalesce(${tournaments.endDate}, ${tournaments.date}) >= ${from}`,
+        ),
+      );
+
     const items: AgendaItemDto[] = [];
 
     for (const { match, home, away } of matchRows) {
@@ -91,6 +118,7 @@ export function eventRoutes(app: FastifyInstance) {
         kind: "match",
         matchId: match.id,
         eventId: null,
+        tournamentId: null,
         occurrenceDate: match.date,
         type: "match",
         title: `Match vs ${opponent.name}`,
@@ -104,6 +132,37 @@ export function eventRoutes(app: FastifyInstance) {
       });
     }
 
+    // Un tournoi de deux jours occupe deux journées d'agenda, numérotées : deux
+    // lignes du même nom, sans rien pour les distinguer, se liraient comme un
+    // doublon. L'heure est celle du tournoi — la seule connue, celle du coup
+    // d'envoi ; le détail du programme se lit sur sa fiche, à un tap d'ici.
+    for (const tournament of tournamentRows) {
+      const lastDay = tournament.endDate ?? tournament.date;
+      const days = Math.max(1, daysBetween(tournament.date, lastDay) + 1);
+      const organiser = tournament.teamId === teamId;
+      for (let day = 0; day < days; day++) {
+        const date = addDays(tournament.date, day);
+        if (date < from || date > to) continue;
+        items.push({
+          id: `tournament-${tournament.id}@${date}`,
+          kind: "tournament",
+          matchId: null,
+          eventId: null,
+          tournamentId: tournament.id,
+          occurrenceDate: date,
+          type: "tournoi",
+          title: days > 1 ? `${tournament.name} — jour ${day + 1}/${days}` : tournament.name,
+          startTime: tournament.time.slice(0, 5),
+          endTime: null,
+          location: `${tournament.stadium}, ${tournament.city}`,
+          description: organiser ? "Vous organisez ce tournoi." : "Votre équipe y est inscrite.",
+          recurrence: "none",
+          recurrenceUntil: null,
+          matchStatus: null,
+        });
+      }
+    }
+
     for (const event of events) {
       for (const date of occurrencesOf(event, from, to)) {
         items.push({
@@ -111,6 +170,7 @@ export function eventRoutes(app: FastifyInstance) {
           kind: "event",
           matchId: null,
           eventId: event.id,
+          tournamentId: null,
           occurrenceDate: date,
           type: event.type,
           title: event.title,
