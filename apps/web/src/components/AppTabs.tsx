@@ -1,15 +1,23 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, Plus, type LucideIcon } from "lucide-react";
-import type { QuickAction } from "@/components/QuickActionContext";
+import { Check, ChevronRight, Megaphone, Plus, Trophy, type LucideIcon } from "lucide-react";
+import type { QuickAction, QuickChoice } from "@/components/QuickActionContext";
 import { useAccountEntry } from "@/components/AccountSheetContext";
 import { Avatar } from "@/components/Avatar";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
 export type { QuickAction };
+
+/** Les clés d'icône des choix, résolues ici — là où les composants existent */
+const CHOICE_ICONS: Record<QuickChoice["icon"], LucideIcon> = {
+  announcement: Megaphone,
+  tournament: Trophy,
+};
 
 export type AppTab = {
   href: string;
@@ -51,15 +59,37 @@ export function AppTabs({
   const pathname = usePathname();
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
   const account = useAccountEntry();
+  /** Feuille des créations possibles, quand le « + » en propose plusieurs */
+  const [choosing, setChoosing] = useState(false);
 
-  // Même bouton dans les deux barres : lien de création, ou validation du
-  // formulaire ouvert (associé par l'attribut `form`, donc à distance).
-  const ActionButton = ({ className, children }: { className: string; children: React.ReactNode }) =>
-    !action ? null : action.kind === "link" ? (
-      <Link href={action.href} aria-label={action.label} title={action.label} className={className}>
-        {children}
-      </Link>
-    ) : (
+  // Même bouton dans les deux barres : lien de création, choix entre plusieurs,
+  // ou validation du formulaire ouvert (associé par l'attribut `form`, donc à
+  // distance).
+  const ActionButton = ({ className, children }: { className: string; children: React.ReactNode }) => {
+    if (!action) return null;
+    if (action.kind === "link") {
+      return (
+        <Link href={action.href} aria-label={action.label} title={action.label} className={className}>
+          {children}
+        </Link>
+      );
+    }
+    if (action.kind === "choice") {
+      return (
+        <button
+          type="button"
+          onClick={() => setChoosing(true)}
+          aria-haspopup="dialog"
+          aria-expanded={choosing}
+          aria-label={action.label}
+          title={action.label}
+          className={className}
+        >
+          {children}
+        </button>
+      );
+    }
+    return (
       <button
         type="submit"
         form={action.formId}
@@ -71,6 +101,7 @@ export function AppTabs({
         {children}
       </button>
     );
+  };
 
   const isSubmit = action?.kind === "submit";
 
@@ -269,6 +300,49 @@ export function AppTabs({
           ))}
         </div>
       </nav>
+
+      {/* Deux créations derrière un seul « + ». La feuille plutôt qu'un menu
+          déroulant : elle s'ouvre dans la zone du pouce, juste au-dessus du
+          bouton pressé, et le même rendu sert au clic sur desktop. */}
+      {action?.kind === "choice" && choosing && (
+        <BottomSheet
+          label={action.label}
+          onClose={() => setChoosing(false)}
+          footer={
+            <Button variant="ghost" className="w-full" onClick={() => setChoosing(false)}>
+              Annuler
+            </Button>
+          }
+        >
+          <div className="px-5 pt-1 pb-4 space-y-2">
+            <h2 className="display text-lg">{action.label}</h2>
+            {action.options.map((option) => {
+              const Icon = CHOICE_ICONS[option.icon];
+              return (
+                <Link
+                  key={option.href}
+                  href={option.href}
+                  // Fermeture explicite : la barre d'onglets vit dans la mise en
+                  // page, elle ne se démonte pas en changeant de page — sans ça
+                  // la feuille resterait ouverte par-dessus l'écran de création.
+                  onClick={() => setChoosing(false)}
+                  className="flex items-center gap-3 rounded-lg border border-line bg-paper px-4 py-3.5
+                    transition hover:border-accent/40 active:scale-[0.985]"
+                >
+                  <span className="w-10 h-10 rounded-lg bg-accent-surface text-accent flex items-center justify-center shrink-0">
+                    <Icon size={18} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold">{option.label}</span>
+                    <span className="block text-xs text-ink-soft">{option.description}</span>
+                  </span>
+                  <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+                </Link>
+              );
+            })}
+          </div>
+        </BottomSheet>
+      )}
     </>
   );
 }

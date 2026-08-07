@@ -19,7 +19,33 @@ const TABS: AppTab[] = [
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
 ];
 
-const PUBLISH: QuickAction = { kind: "link", href: "/coach/announcements/new", label: "Publier une annonce" };
+/**
+ * Le « + » ne crée plus directement une annonce : il demande laquelle des deux
+ * créations le coach a en tête. Un tournoi ne se trouvait qu'en descendant
+ * jusqu'à sa section du radar, alors que c'est la même intention — organiser
+ * quelque chose et le faire savoir.
+ *
+ * L'annonce reste en premier : c'est le geste courant, le tournoi est
+ * l'exception.
+ */
+const CREATE: QuickAction = {
+  kind: "choice",
+  label: "Créer",
+  options: [
+    {
+      href: "/coach/announcements/new",
+      label: "Match amical",
+      description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
+      icon: "announcement",
+    },
+    {
+      href: "/coach/tournaments/new",
+      label: "Tournoi",
+      description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
+      icon: "tournament",
+    },
+  ],
+};
 
 /** Ce que crée le bouton central selon la page ouverte */
 function defaultAction(pathname: string): QuickAction | null {
@@ -31,7 +57,7 @@ function defaultAction(pathname: string): QuickAction | null {
   if (pathname.startsWith("/coach/team")) {
     return { kind: "link", href: "/coach/team/new", label: "Créer une équipe" };
   }
-  return PUBLISH;
+  return CREATE;
 }
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
