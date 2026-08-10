@@ -5,8 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, ChevronRight, Megaphone, Plus, Trophy, type LucideIcon } from "lucide-react";
 import type { QuickAction, QuickChoice } from "@/components/QuickActionContext";
-import { useAccountEntry } from "@/components/AccountSheetContext";
-import { Avatar } from "@/components/Avatar";
+import { useTabBadges } from "@/components/TabBadgesContext";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -28,10 +27,13 @@ export type AppTab = {
   /** Actif uniquement sur correspondance exacte (racines d'espace) */
   exact?: boolean;
   /**
-   * Pastille de notification portée par cet onglet. `activity` = il reste des
-   * activités non lues — l'onglet désigné est celui qui les affiche.
+   * Pastille de notification portée par cet onglet.
+   * - `activity` : point rouge tant qu'il reste des activités non lues ;
+   * - `messages` : nombre de messages reçus et non lus, chiffré — on ne répond
+   *   pas de la même façon à « il s'est passé quelque chose » et à « trois
+   *   confrères attendent votre réponse ».
    */
-  badge?: "activity";
+  badge?: "activity" | "messages";
 };
 
 /**
@@ -43,9 +45,9 @@ export type AppTab = {
  * `action` ajoute un bouton « + » doré — surélevé au centre sur mobile, à droite
  * des onglets sur desktop — dont la cible dépend de la page en cours.
  *
- * Un dernier emplacement « Moi » ouvre la feuille de compte (profil, équipe
- * active, agenda, notifications, déconnexion). Il n'existe qu'en mobile : sur
- * desktop, cet accès est porté par l'avatar du header.
+ * La barre ne porte QUE des destinations. Le compte, lui, s'ouvre par la photo
+ * du header : un menu n'est pas un onglet, il n'a rien à faire dans une rangée
+ * qui dit où l'on est.
  */
 export function AppTabs({
   tabs,
@@ -58,7 +60,7 @@ export function AppTabs({
 }) {
   const pathname = usePathname();
   const isActive = (tab: AppTab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href));
-  const account = useAccountEntry();
+  const badges = useTabBadges();
   /** Feuille des créations possibles, quand le « + » en propose plusieurs */
   const [choosing, setChoosing] = useState(false);
 
@@ -137,6 +139,21 @@ export function AppTabs({
   const split = Math.ceil(tabs.length / 2);
   const mobileGroups = action ? [tabs.slice(0, split), tabs.slice(split)] : [tabs];
 
+  /** Ce que cet onglet a à signaler : un point, un nombre, ou rien */
+  const alertOf = (tab: AppTab): "dot" | number | null => {
+    if (!badges) return null;
+    if (tab.badge === "activity") return badges.activity ? "dot" : null;
+    if (tab.badge === "messages") return badges.messages > 0 ? badges.messages : null;
+    return null;
+  };
+
+  /** Le libellé de l'onglet tel que l'entend un lecteur d'écran, pastille comprise */
+  const labelWithAlert = (tab: AppTab, alert: "dot" | number | null) => {
+    if (alert === null) return tab.label;
+    if (alert === "dot") return `${tab.label} — nouvelles activités`;
+    return `${tab.label} — ${alert} message${alert > 1 ? "s" : ""} non lu${alert > 1 ? "s" : ""}`;
+  };
+
   // Onglet retenu : icône ET libellé passent à l'or, sans pastille de fond —
   // sur un fond de verre, un aplat derrière l'icône alourdit la barre.
   const tabClassName = (active: boolean) =>
@@ -146,13 +163,27 @@ export function AppTabs({
       active ? "text-accent-solid" : "text-on-structure/55 hover:text-on-structure",
     );
 
-  /** Point rouge de notification, en haut à droite de l'icône d'un onglet */
-  const NotificationDot = () => (
-    <span
-      aria-hidden
-      className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-alert ring-2 ring-structure-1/70"
-    />
-  );
+  /**
+   * Pastille de notification, en haut à droite de l'icône d'un onglet. Un point
+   * nu quand il n'y a rien à compter, le nombre dès qu'il y a des messages —
+   * au-delà de neuf, « 9+ » : le chiffre exact ne change plus rien à la
+   * décision d'y aller.
+   */
+  const NotificationDot = ({ count }: { count?: number }) =>
+    count === undefined ? (
+      <span
+        aria-hidden
+        className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-alert ring-2 ring-structure-1/70"
+      />
+    ) : (
+      <span
+        aria-hidden
+        className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-alert text-white
+          text-[10px] font-black leading-none flex items-center justify-center ring-2 ring-structure-1/70"
+      >
+        {count > 9 ? "9+" : count}
+      </span>
+    );
 
   return (
     <>
@@ -166,18 +197,33 @@ export function AppTabs({
           <div className="flex min-w-0 overflow-x-auto no-scrollbar">
             {tabs.map((tab) => {
               const active = isActive(tab);
+              const alert = alertOf(tab);
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
                   role="tab"
                   aria-selected={active}
+                  aria-label={labelWithAlert(tab, alert)}
                   className={cn(
                     "inline-flex items-center gap-1.5 px-3.5 py-3 text-xs font-bold whitespace-nowrap border-b-2 -mb-px transition focus-visible:!outline-accent-solid",
                     active ? "text-on-structure border-accent-solid" : "text-on-structure/55 border-transparent hover:text-on-structure",
                   )}
                 >
                   <tab.icon size={14} /> {tab.label}
+                  {/* Sur cette rangée, la pastille SUIT le libellé au lieu de
+                      se poser sur l'icône : les onglets y sont écrits en toutes
+                      lettres, une pastille superposée mordrait la première. */}
+                  {alert === "dot" && <span className="w-1.5 h-1.5 rounded-full bg-alert" aria-hidden />}
+                  {typeof alert === "number" && (
+                    <span
+                      aria-hidden
+                      className="min-w-[16px] h-4 px-1 rounded-full bg-alert text-white text-[10px] font-black
+                        flex items-center justify-center"
+                    >
+                      {alert > 9 ? "9+" : alert}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -210,21 +256,18 @@ export function AppTabs({
                 // Chaque moitié grandit au prorata du nombre de cases qu'elle
                 // porte : sans ça, une moitié d'un seul onglet le rendait deux
                 // fois plus large que ses voisins.
-                style={{
-                  flexGrow: group.length + (account && groupIndex === mobileGroups.length - 1 ? 1 : 0),
-                  flexBasis: 0,
-                }}
+                style={{ flexGrow: group.length, flexBasis: 0 }}
               >
                 {group.map((tab) => {
                   const active = isActive(tab);
-                  const flagged = tab.badge === "activity" && Boolean(account?.unread);
+                  const alert = alertOf(tab);
                   return (
                     <Link
                       key={tab.href}
                       href={tab.href}
                       role="tab"
                       aria-selected={active}
-                      aria-label={flagged ? `${tab.label} — nouvelles activités` : tab.label}
+                      aria-label={labelWithAlert(tab, alert)}
                       className={tabClassName(active)}
                     >
                       {/* Barre dorée qui se déploie sous l'onglet retenu */}
@@ -241,7 +284,8 @@ export function AppTabs({
                           aria-hidden
                           className={cn("transition-transform", active && "-translate-y-px scale-110")}
                         />
-                        {flagged && <NotificationDot />}
+                        {alert === "dot" && <NotificationDot />}
+                        {typeof alert === "number" && <NotificationDot count={alert} />}
                       </span>
                       <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">
                         {tab.shortLabel ?? tab.label}
@@ -249,36 +293,6 @@ export function AppTabs({
                     </Link>
                   );
                 })}
-
-                {/* Dernier emplacement de la moitié droite : la feuille « Moi ».
-                    L'avatar tient lieu d'icône ; il prend un liseré doré tant que
-                    la feuille est ouverte, comme un onglet retenu. */}
-                {account && groupIndex === mobileGroups.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={account.open}
-                    aria-haspopup="dialog"
-                    aria-expanded={account.isOpen}
-                    aria-label="Mon compte"
-                    className={tabClassName(account.isOpen)}
-                  >
-                    <span className="relative flex items-center justify-center">
-                      <Avatar
-                        firstName={account.firstName}
-                        lastName={account.lastName}
-                        avatarUrl={account.avatarUrl}
-                        size={24}
-                        className={cn(
-                          "transition",
-                          account.isOpen
-                            ? "ring-2 ring-accent-solid ring-offset-1 ring-offset-transparent"
-                            : "border border-white/25",
-                        )}
-                      />
-                    </span>
-                    <span className="text-[10px] font-bold leading-none">Moi</span>
-                  </button>
-                )}
               </div>
 
               {/* Bouton de création, surélevé entre les deux moitiés d'onglets.

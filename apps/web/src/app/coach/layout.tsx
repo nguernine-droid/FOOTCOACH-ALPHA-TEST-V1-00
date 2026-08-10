@@ -2,27 +2,31 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, LayoutDashboard, Megaphone } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Megaphone, MessageCircle } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
 import { TabPager, type Pane } from "@/components/TabPager";
 import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
-// Les trois écrans d'onglet sont montés ensemble par le carrousel du téléphone :
+// Les écrans d'onglet sont montés ensemble par le carrousel du téléphone :
 // il faut donc les composants eux-mêmes, et pas seulement leurs routes.
 import CoachDashboard from "./page";
 import AnnouncementsPage from "./announcements/page";
 import CoachMatchesPage from "./matches/page";
+import CoachMessagesPage from "./messages/page";
 
 // V1 recentrée sur la gestion des matchs amicaux entre coachs.
 // Le radar vit désormais dans le tableau de bord ; les sections secondaires
 // (agenda, relations, mes équipes, profil) sont rassemblées dans la feuille
-// « Moi » de la barre basse ; le covoiturage est masqué.
+// « Moi », qui s'ouvre par la photo du header ; le covoiturage est masqué.
+// La barre basse ne porte donc que des destinations, dont les messages : les
+// conversations naissent des matchs convenus, elles ont leur place à côté d'eux.
 // `badge: "activity"` : le tableau de bord porte le fil d'activité, c'est donc
 // lui qui signale qu'il s'est passé quelque chose depuis la dernière visite.
 const TABS: AppTab[] = [
   { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true, badge: "activity" },
   { href: "/coach/announcements", label: "Annonces", icon: Megaphone },
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
+  { href: "/coach/messages", label: "Messages", icon: MessageCircle, badge: "messages" },
 ];
 
 /**
@@ -35,6 +39,7 @@ const PANES: Pane[] = [
   { href: "/coach", node: <CoachDashboard /> },
   { href: "/coach/announcements", node: <AnnouncementsPage /> },
   { href: "/coach/matches", node: <CoachMatchesPage /> },
+  { href: "/coach/messages", node: <CoachMessagesPage /> },
 ];
 
 /**
@@ -90,7 +95,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
         role="coach"
         nav={<AppTabs tabs={TABS} action={action} ariaLabel="Sections de l'espace coach" />}
       >
-        {/* Au téléphone, les trois onglets sont montés côte à côte et suivent le
+        {/* Au téléphone, les onglets sont montés côte à côte et suivent le
             doigt : on voit les deux écrans pendant le glissé. Ailleurs — sur une
             sous-page, ou au-delà de 960 px — c'est la route courante, comme
             partout. */}

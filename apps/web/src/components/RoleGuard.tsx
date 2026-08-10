@@ -1,9 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import {
   api,
@@ -15,7 +13,7 @@ import {
   setActiveTeamId,
 } from "@/lib/api";
 import { AccountSheet } from "@/components/AccountSheet";
-import { AccountSheetContext } from "@/components/AccountSheetContext";
+import { TabBadgesContext } from "@/components/TabBadgesContext";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
 import { Logo } from "@/components/Logo";
@@ -46,6 +44,7 @@ export function RoleGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<UserDto | null>(null);
   const [activities, setActivities] = useState<ActivityDto[] | null>(null);
   const [activitySeen, setActivitySeen] = useState<string | null>(null);
@@ -53,7 +52,9 @@ export function RoleGuard({
   // Équipe active du coach : init synchrone depuis le localStorage (déjà posé à la
   // connexion), pour que le premier fetch parte avec le bon X-Team-Id sans re-render.
   const [activeTeamId, setActiveTeamIdState] = useState<string | null>(() => getActiveTeamId());
-  // Le fil d'activité et la carte n'existent que pour le coach
+  /** Messages reçus et non lus, tous fils confondus — la pastille de l'onglet */
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  // Le fil d'activité, la carte et la messagerie n'existent que pour le coach
   const hasNotifications = role === "coach";
   const isCoach = role === "coach";
 
@@ -103,6 +104,29 @@ export function RoleGuard({
       .catch(() => setActivities([]));
   }, [user, hasNotifications]);
 
+  /**
+   * Compteur de messages non lus, relu à chaque changement d'écran et, à
+   * défaut, toutes les minutes.
+   *
+   * Le changement d'écran est ce qui compte : sans lui, la pastille resterait
+   * allumée jusqu'à une minute après qu'on a lu le fil, ce qui donnerait le
+   * sentiment de ne jamais en venir à bout. La minute n'est là que pour le
+   * coach qui laisse son téléphone ouvert sur le même écran.
+   */
+  const readUnreadMessages = useCallback(() => {
+    if (!isCoach) return;
+    api<{ count: number }>("/conversations/unread")
+      .then(({ count }) => setUnreadMessages(count))
+      .catch(() => undefined);
+  }, [isCoach]);
+
+  useEffect(() => {
+    if (!user || !isCoach) return;
+    readUnreadMessages();
+    const timer = setInterval(readUnreadMessages, 60_000);
+    return () => clearInterval(timer);
+  }, [user, isCoach, pathname, readUnreadMessages]);
+
   const teamLabel = activeTeam?.name ?? user?.teamName ?? null;
   const unread = Boolean(activities?.[0] && (!activitySeen || activities[0].createdAt > activitySeen));
   const markNotificationsSeen = useCallback(() => {
@@ -119,8 +143,13 @@ export function RoleGuard({
       <div className="min-h-dvh" aria-busy aria-label="Chargement">
         <AppBackdrop />
         <header className="app-header sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
+          {/* Même gabarit que le header définitif — photo à gauche comprise —
+              pour que le titre ne se déplace pas une fois le compte chargé. */}
           <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
-            <Logo size={34} />
+            <span className="shrink-0 -ml-1 p-1">
+              <span className="block w-9 h-9 rounded-full bg-white/10" />
+            </span>
+            <Logo size={30} className="hidden min-[380px]:inline-flex" />
             <p className="display text-xl leading-none select-none">
               FOOT<span className="text-accent-solid">COACH</span>
             </p>
@@ -139,15 +168,8 @@ export function RoleGuard({
   }
 
   return (
-    <AccountSheetContext.Provider
-      value={{
-        open: () => setSheetOpen(true),
-        isOpen: sheetOpen,
-        unread,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        avatarUrl: user.avatarUrl,
-      }}
+    <TabBadgesContext.Provider
+      value={{ activity: unread, messages: unreadMessages, refreshMessages: readUnreadMessages }}
     >
       <div className="min-h-dvh">
         <AppBackdrop />
@@ -158,82 +180,50 @@ export function RoleGuard({
             verre flouté la nuit, où le halo et le tracé du terrain se
             poursuivent dessous au lieu de s'arrêter net. */}
         <div className="app-header sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
-          {/* Le header porte UNE action, et une seule : la photo, qui ouvre la
-              carte du coach. C'est un revirement assumé de la règle « header
-              sans action » — la carte est ce qu'on montre de soi, sa place est
-              là où l'on se reconnaît, pas au fond d'un menu. Le reste du
-              compte vit toujours dans la feuille « Moi ». */}
+          {/* Le header porte UNE action, et une seule : la photo, tout à gauche,
+              qui ouvre le menu « Moi ». C'est le geste appris ailleurs — sa
+              propre tête en haut à gauche ouvre son compte — et il vaut à toutes
+              les largeurs, ce qui évite d'avoir deux portes différentes vers le
+              même menu selon la taille de l'écran. La carte du coach, elle, a
+              rejoint le menu : elle s'ouvre par son nom, en tête de feuille. */}
           <header className="text-on-structure">
-            <div className={cn(SHELL_WIDTH, "h-16 flex items-center justify-between gap-4")}>
-              <div className="flex items-center gap-3 min-w-0">
-                <Logo size={34} />
-                <div className="min-w-0 leading-tight">
-                  <p className="display text-xl leading-none select-none">
-                    FOOT<span className="text-accent-solid">COACH</span>
-                  </p>
-                  <p className="text-[11px] text-white/60 font-semibold truncate">
-                    {teamLabel ? `${teamLabel} · ` : ""}
-                    {ROLE_SPACES[user.role]}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                {/* La carte n'existe que pour le coach : elle parle de points et
-                    de matchs encadrés. Les autres rôles gardent l'avatar dans
-                    le bouton de compte, comme avant. */}
-                {isCoach && (
-                  <Link
-                    href="/coach/card"
-                    aria-label="Ma carte de coach"
-                    className="p-1 rounded-lg transition hover:bg-white/10 active:scale-95"
-                  >
-                    <Avatar
-                      firstName={user.firstName}
-                      lastName={user.lastName}
-                      avatarUrl={user.avatarUrl}
-                      size={36}
-                      className="border border-white/20"
-                    />
-                  </Link>
-                )}
-
-                {/* Desktop uniquement : la barre d'onglets y est en haut, il faut
-                    donc un accès au compte ailleurs que dans la barre basse. */}
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(true)}
-                  aria-haspopup="dialog"
-                  aria-expanded={sheetOpen}
-                  aria-label={`Menu de ${user.firstName}`}
-                  className="hidden min-[960px]:flex items-center gap-2 rounded-lg px-2 py-1.5 shrink-0 hover:bg-white/10 transition"
-                >
-                  {!isCoach && (
-                    <Avatar
-                      firstName={user.firstName}
-                      lastName={user.lastName}
-                      avatarUrl={user.avatarUrl}
-                      size={36}
-                      className="border border-white/20"
-                    />
+            <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
+              <button
+                type="button"
+                onClick={() => setSheetOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={sheetOpen}
+                aria-label={`Menu de ${user.firstName}`}
+                className="shrink-0 -ml-1 p-1 rounded-full transition hover:bg-white/10 active:scale-95
+                  focus-visible:outline-accent"
+              >
+                <Avatar
+                  firstName={user.firstName}
+                  lastName={user.lastName}
+                  avatarUrl={user.avatarUrl}
+                  size={36}
+                  className={cn(
+                    "transition",
+                    sheetOpen
+                      ? "ring-2 ring-accent-solid ring-offset-2 ring-offset-transparent"
+                      : "border border-white/20",
                   )}
-                  <span className="text-left leading-tight">
-                    <span className="block text-sm font-bold">Bonjour {user.firstName}</span>
-                    <span className="block text-[11px] text-white/60 font-semibold">{ROLE_SPACES[user.role]}</span>
-                  </span>
-                  <span className="relative">
-                    <ChevronDown size={14} className="text-white/60" aria-hidden />
-                    {/* La pastille suit le menu, pas la photo : c'est là que se
-                        lisent les activités. Sur mobile, elle est portée par
-                        l'onglet « Moi » de la barre basse. */}
-                    {unread && (
-                      <span
-                        className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 rounded-full bg-accent-solid ring-2 ring-structure-2"
-                        aria-label="Nouvelles activités"
-                      />
-                    )}
-                  </span>
-                </button>
+                />
+              </button>
+
+              <Logo size={30} className="hidden min-[380px]:inline-flex" />
+
+              {/* Le nom de l'application cède la place avant la photo sur les
+                  très petits écrans : on sait toujours où l'on est, la marque
+                  se rappelle par son blason. */}
+              <div className="min-w-0 leading-tight">
+                <p className="display text-xl leading-none select-none">
+                  FOOT<span className="text-accent-solid">COACH</span>
+                </p>
+                <p className="text-[11px] text-white/60 font-semibold truncate">
+                  {teamLabel ? `${teamLabel} · ` : ""}
+                  {ROLE_SPACES[user.role]}
+                </p>
               </div>
             </div>
           </header>
@@ -279,6 +269,6 @@ export function RoleGuard({
           />
         )}
       </div>
-    </AccountSheetContext.Provider>
+    </TabBadgesContext.Provider>
   );
 }

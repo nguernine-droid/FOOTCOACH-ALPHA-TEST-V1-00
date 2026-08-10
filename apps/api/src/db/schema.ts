@@ -138,6 +138,7 @@ export const users = pgTable("users", {
   notifyAnnouncementResponse: boolean("notify_announcement_response").notNull().default(true),
   notifyResponseDecision: boolean("notify_response_decision").notNull().default(true),
   notifyScore: boolean("notify_score").notNull().default(true),
+  notifyMessage: boolean("notify_message").notNull().default(true),
   // Compte désactivé par l'admin : connexion et refresh refusés
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   // ————— Acceptation des conditions —————
@@ -383,6 +384,15 @@ export const announcementResponses = pgTable(
     teamId: uuid("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    /**
+     * Le coach qui a proposé, en personne. L'équipe seule ne suffit plus depuis
+     * qu'une conversation s'ouvre à l'acceptation : elle relie deux personnes,
+     * et une équipe en compte parfois plusieurs.
+     *
+     * NULL sur les propositions envoyées avant cette colonne — on retombe alors
+     * sur le coach qui représente l'équipe.
+     */
+    coachId: uuid("coach_id").references(() => users.id, { onDelete: "set null" }),
     status: responseStatus("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -753,4 +763,84 @@ export const coachRelations = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("coach_relations_pair_idx").on(t.coachId, t.relatedCoachId)],
+);
+
+/**
+ * Conversation entre DEUX coachs. Elle naît d'une acceptation d'annonce : à
+ * partir du moment où un match est convenu, les deux coachs ont à se parler
+ * (l'heure exacte, le vestiaire, la couleur des maillots) et n'ont plus à
+ * s'échanger un numéro pour le faire.
+ *
+ * Une seule conversation par paire, jamais une par match : deux coachs qui se
+ * retrouvent la saison suivante reprennent le même fil. `match_id` garde
+ * seulement la rencontre qui l'a ouverte, pour pouvoir le raconter.
+ *
+ * La paire est ORDONNÉE (`coach_a_id < coach_b_id`, garanti par la contrainte)
+ * pour que l'index unique suffise : sans cet ordre, (A,B) et (B,A) seraient
+ * deux lignes distinctes et la même paire pourrait avoir deux fils.
+ */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    coachAId: uuid("coach_a_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    coachBId: uuid("coach_b_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Match à l'origine du fil (NULL si le match a été supprimé depuis) */
+    matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
+    /**
+     * Dernier message, dupliqué ici : c'est le tri de la liste des
+     * conversations, et le recalculer par un MAX sur les messages à chaque
+     * ouverture de l'écran coûterait un balayage par fil.
+     */
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("conversations_pair_idx").on(t.coachAId, t.coachBId),
+    // Les deux lectures de la liste : « mes conversations », d'un côté ou de l'autre
+    index("conversations_coach_a_idx").on(t.coachAId, t.lastMessageAt),
+    index("conversations_coach_b_idx").on(t.coachBId, t.lastMessageAt),
+    check("conversations_paire_ordonnee", sql`coach_a_id < coach_b_id`),
+  ],
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    senderId: uuid("sender_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Un fil se lit toujours en entier et dans l'ordre
+  (t) => [index("messages_conversation_idx").on(t.conversationId, t.createdAt)],
+);
+
+/**
+ * Jusqu'où chaque coach a lu son fil. Une ligne par (conversation, coach),
+ * posée à la première ouverture : son absence veut dire « jamais ouvert », donc
+ * tout est non lu — un défaut juste, et non une donnée manquante.
+ */
+export const conversationReads = pgTable(
+  "conversation_reads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    coachId: uuid("coach_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("conversation_reads_conv_coach_idx").on(t.conversationId, t.coachId)],
 );

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   CircleUserRound,
   Contact,
+  IdCard,
   LogOut,
   Megaphone,
   Trophy,
@@ -76,9 +77,12 @@ function Row({
 }
 
 /**
- * Feuille « Moi » : tout ce qui vivait dans le coin haut-droit du header
- * (équipe active, profil, agenda, notifications, déconnexion) rassemblé dans
- * la zone du pouce, ouvert depuis la barre d'onglets basse.
+ * Feuille « Moi » : l'identité, l'équipe active, le profil, l'agenda, les
+ * notifications et la déconnexion, rassemblés dans la zone du pouce.
+ *
+ * Ouverte par la photo du header, en haut à gauche, à toutes les largeurs. Elle
+ * n'occupe plus d'emplacement dans la barre basse : celle-ci ne porte que des
+ * destinations, et la place libérée est allée aux messages.
  */
 export function AccountSheet({
   user,
@@ -160,21 +164,45 @@ export function AccountSheet({
 
   return (
     <BottomSheet label="Mon compte" onClose={onClose} footer={footer}>
-      {/* Identité, en lecture seule : la carte du coach s'ouvre désormais par la
-          photo du header, présente sur tous les écrans. Deux portes vers la
-          même carte, dont une cachée dans un menu, n'en valaient qu'une. */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
-        <div className="min-w-0">
-          <p className="text-base font-black truncate">
-            {user.firstName} {user.lastName}
-          </p>
-          <p className="text-xs text-ink-soft font-semibold truncate">
-            {ROLE_LABELS[user.role]}
-            {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
-          </p>
+      {/* Identité en tête de feuille, et c'est la porte de la carte : la photo
+          du header ouvre désormais ce menu, la carte se prend donc ici, sur son
+          nom — le premier endroit où l'on se reconnaît. Les autres rôles n'ont
+          pas de carte : leur identité reste un simple bandeau. */}
+      {isCoach ? (
+        <Link
+          href="/coach/card"
+          onClick={onClose}
+          className="flex items-center gap-3 px-5 py-4 transition active:bg-paper hover:bg-paper"
+        >
+          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-black truncate">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="text-xs text-ink-soft font-semibold truncate">
+              {ROLE_LABELS[user.role]}
+              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
+            </p>
+          </div>
+          <span className="shrink-0 flex items-center gap-0.5 text-xs font-bold text-blue">
+            <IdCard size={14} aria-hidden /> Ma carte
+          </span>
+          <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3 px-5 py-4">
+          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
+          <div className="min-w-0">
+            <p className="text-base font-black truncate">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="text-xs text-ink-soft font-semibold truncate">
+              {ROLE_LABELS[user.role]}
+              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Équipe active : la bascule n'a de sens qu'à partir de deux équipes */}
       {isCoach && teams.length > 1 && (

@@ -20,7 +20,8 @@ import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
 import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
 import { tournamentsInRadar } from "./tournaments.js";
-import { representativeCoachesOf } from "../lib/coachCard.js";
+import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard.js";
+import { openConversation } from "../lib/conversations.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -362,7 +363,7 @@ export function announcementRoutes(app: FastifyInstance) {
 
     const [created] = await db
       .insert(announcementResponses)
-      .values({ announcementId: id, teamId: responderTeamId })
+      .values({ announcementId: id, teamId: responderTeamId, coachId: request.user.id })
       .returning();
 
     const [responderTeam] = await db.select().from(teams).where(eq(teams.id, responderTeamId));
@@ -460,6 +461,21 @@ export function announcementRoutes(app: FastifyInstance) {
             location: `${announcement.stadium}, ${announcement.city}`,
           })
           .returning();
+
+        /**
+         * Le match convenu ouvre la conversation entre les deux coachs. Dans la
+         * même transaction que le match : un match sans fil obligerait à
+         * s'échanger un numéro pour convenir de l'heure exacte, ce que
+         * l'acceptation était précisément censée éviter.
+         *
+         * Deux personnes, pas deux équipes : celui qui vient d'accepter, et
+         * celui qui a proposé — à défaut (proposition antérieure à cette
+         * colonne) le coach qui représente l'équipe candidate.
+         */
+        const responderCoachId = response.coachId ?? (await representativeCoachOf(response.teamId))?.id ?? null;
+        if (responderCoachId) {
+          await openConversation(tx, request.user.id, responderCoachId, created.id);
+        }
         return created;
       });
 

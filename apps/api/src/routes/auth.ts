@@ -178,6 +178,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
             announcementResponse: user.notifyAnnouncementResponse,
             responseDecision: user.notifyResponseDecision,
             score: user.notifyScore,
+            message: user.notifyMessage,
           },
         }
       : {}),

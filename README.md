@@ -4,7 +4,7 @@ La **V1 est volontairement restreinte à la gestion des matchs amicaux entre coa
 
 | Rôle | Ce qu'il peut faire |
 |---|---|
-| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé), **valider la rencontre au stade** en se scannant avec le coach adverse (ce qui rapporte des points), puis saisir le **score final** |
+| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé **et une conversation avec l'autre coach**), **valider la rencontre au stade** en se scannant avec le coach adverse (ce qui rapporte des points), puis saisir le **score final** |
 | **Admin** | Gérer les comptes coachs (réinitialisation de mot de passe, désactivation), consulter les statistiques |
 
 Il n'y a **pas de comptes joueur ni parent** : tout ce qui en dépendait (effectif, présences, composition d'équipe, covoiturage, temps forts) a été retiré. Les rôles **supporter et club** restent implémentés mais **masqués** : leur connexion est refusée par l'API. Voir « Ce qui est masqué en V1 » plus bas.
@@ -113,7 +113,7 @@ Le géocodage passe par l'**API Adresse de l'État** (`api-adresse.data.gouv.fr`
 
 ## Notifications push
 
-Le coach peut être prévenu **même l'application fermée**. Les quatre premiers sont désactivables dans **Mon profil → Notifications** ; le cinquième dépend de la casquette **joker** et de rien d'autre :
+Le coach peut être prévenu **même l'application fermée**. Les cinq premiers sont désactivables dans **Mon profil → Notifications** ; le sixième dépend de la casquette **joker** et de rien d'autre :
 
 | Déclencheur | Ciblage |
 |---|---|
@@ -121,6 +121,7 @@ Le coach peut être prévenu **même l'application fermée**. Les quatre premier
 | Une équipe propose de jouer mon annonce | Coachs de l'équipe émettrice |
 | Ma proposition est acceptée ou déclinée | Coachs de l'équipe qui a proposé |
 | Score final enregistré par l'adversaire | Coachs de l'équipe adverse |
+| Message d'un confrère | Le **destinataire** du message, et lui seul (aperçu tronqué à 120 caractères — une notification se lit par-dessus l'épaule) |
 | **SOS** — un coach se retrouve sans adversaire | **Jokers** dont le rayon couvre le lieu (voir « Casquettes ») |
 | **SOS sans réponse** (10 à 60 min selon l'urgence) | Tous les autres coachs du secteur (jokers exclus, ils ont déjà été appelés) |
 
@@ -157,7 +158,8 @@ Sur iPhone : Safari → Partager → « Sur l'écran d'accueil ». L'app s'ouvre
 
 L'app est pensée pour le pouce, pas pour la souris. Les règles ci-dessous sont des **contraintes de conception à ne pas défaire** :
 
-- **Le header ne porte aucune action.** Logo, wordmark, équipe active, espace : lecture seule. Tout ce qui vivait dans le coin haut-droit (profil, agenda, notifications, bascule d'équipe, déconnexion) est dans la **feuille « Moi »**, ouverte depuis la barre basse.
+- **Le header ne porte qu'UNE action : la photo, en haut à gauche**, qui ouvre la **feuille « Moi »** (identité et carte, équipe active, profil, relations, équipes, agenda, notifications, déconnexion). C'est le geste appris ailleurs — sa propre tête ouvre son compte — et il vaut à **toutes les largeurs** : pas deux portes différentes vers le même menu selon la taille de l'écran. Le reste du header (logo, wordmark, équipe active, espace) reste en lecture seule.
+- **La barre basse ne porte que des destinations.** Un menu n'est pas un onglet : il n'a rien à faire dans une rangée qui dit où l'on est.
 - **Toute action primaire est dans le tiers bas**, en pleine largeur sous 960 px.
 - **Aucune modale centrée** : `BottomSheet` partout — poignée, fermeture par glissé vers le bas, par le fond, par Échap ou par un bouton en pied, safe-area respectée, défilement d'arrière-plan bloqué. Au-delà de 960 px elle redevient une boîte centrée.
 - **Cibles ≥ 44 px** : `Button` (44/48/52), `.field` (16 px de police — en dessous iOS zoome au focus — et 48 px de haut), `.icon-btn` (44 px visibles, 48 px touchés), `.chip-choice` pour toute pastille cliquable.
@@ -388,23 +390,39 @@ Dans **Mon profil**, le coach personnalise son compte : photo, nom, prénom, té
 
 ## Navigation de l'espace coach
 
-Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Moi**.
+Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Messages**.
 
 - Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets. Sur un formulaire de création, il **pivote pour devenir un « ✓ »** qui valide — grisé tant que le genre de l'équipe n'est pas choisi.
-- La feuille **« Moi »** rassemble l'identité, l'**équipe active**, **Mon profil**, **Mes relations**, **Mes équipes**, l'**agenda** et les **notifications** (avec pastille de non-lus). Sur desktop, où la barre basse n'existe pas, l'avatar du header ouvre la même feuille.
+- L'onglet **Messages** porte le **nombre** de messages non lus, là où le tableau de bord ne porte qu'un point : on ne répond pas de la même façon à « il s'est passé quelque chose » et à « trois confrères attendent votre réponse ».
+- La feuille **« Moi »** rassemble l'identité, l'**équipe active**, **Mon profil**, **Mes relations**, **Mes équipes**, l'**agenda** et les **notifications** (avec pastille de non-lus). Elle s'ouvre par la **photo du header**, en haut à gauche, à toutes les largeurs — elle n'occupe plus d'emplacement dans la barre basse.
 - Le **bloc d'identité en haut de la feuille** mène à la **carte du coach** (`/coach/card`) : photo au centre, points à la place de la note, catégorie d'âge de l'équipe à celle du poste, nom, club, puis matchs joués et palier. Les casquettes s'y affichent en pastilles. Format portrait 5/7 — c'est ce rapport qui la fait lire comme une carte et non comme une fiche. Les autres rôles n'en ont pas : elle parle de points et de matchs encadrés.
 - Le **radar** vit dans le **tableau de bord** ; `/coach/radar` y redirige.
 - **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.
 
-Les espaces **admin** et **club** suivent les mêmes règles : barre basse, feuille « Moi », et bouton « + » pour les créations (patron `?nouveau=1`).
+Les espaces **admin** et **club** suivent les mêmes règles : barre basse, feuille « Moi » ouverte par la photo du header, et bouton « + » pour les créations (patron `?nouveau=1`).
+
+## Messagerie entre coachs
+
+Deux coachs qui viennent de convenir d'un match ont aussitôt des choses à se dire : l'heure d'arrivée, la couleur des maillots, le vestiaire. La messagerie sert **cela**, et rien d'autre.
+
+**Une conversation ne se crée pas à la demande.** Elle naît de l'**acceptation d'une proposition** — quand j'accepte, ou quand la mienne est acceptée. Il n'y a donc aucun bouton « nouveau message » : on écrit aux confrères avec qui on a quelque chose à organiser, et le carnet d'adresses ne devient jamais un moyen de démarcher tous les coachs du secteur.
+
+- **Une conversation par PAIRE de coachs**, jamais une par match : deux équipes qui se retrouvent la saison suivante reprennent le même fil. `conversations.match_id` garde seulement la rencontre qui l'a ouverte. La paire est **ordonnée en base** (`coach_a_id < coach_b_id`, contrainte `conversations_paire_ordonnee`) pour qu'un index unique suffise à interdire deux fils pour les mêmes deux personnes.
+- **Deux personnes, pas deux équipes** : le coach qui accepte et celui qui a proposé (`announcement_responses.coach_id`, renseigné à la proposition ; à défaut, le coach qui représente l'équipe). Le fil naît **dans la transaction du match** — un match sans fil obligerait à s'échanger un numéro, ce que l'acceptation devait précisément éviter.
+- **Non-lus** : `conversation_reads` retient jusqu'où chacun a lu. Pas de ligne = fil jamais ouvert, donc tout est non lu. Envoyer vaut lire.
+- **Rafraîchissement** : le fil ouvert se relit toutes les **10 s** (suspendu quand l'app passe à l'arrière-plan), la pastille de l'onglet toutes les **60 s** (`GET /conversations/unread`, servi à part pour que la barre n'ait pas à charger toutes les conversations). Rien n'est poussé en temps réel : une messagerie d'organisation n'en a pas besoin.
+- **Reprise de l'existant** : la migration `0029_messagerie` ouvre les fils des matchs **déjà convenus**, sans quoi la règle aurait été fausse pour tout ce qui a été accepté avant sa mise en service.
+
+Routes : `GET /conversations`, `GET /conversations/unread`, `GET /conversations/:id`, `POST /conversations/:id/messages`, `POST /conversations/:id/read` — toutes réservées au rôle **coach**, et **404 (pas 403)** sur un fil dont on n'est pas membre : l'API ne dit pas à un tiers qu'une conversation existe entre deux autres coachs.
 
 ## La carte d'un confrère
 
-La même carte s'ouvre sur celle des autres, en feuille basse et sans quitter l'écran courant (`GET /coaches/:id/card`, `CoachCardSheet`). Trois portes, celles où l'on se demande justement **à qui on a affaire** :
+La même carte s'ouvre sur celle des autres, en feuille basse et sans quitter l'écran courant (`GET /coaches/:id/card`, `CoachCardSheet`). Quatre portes, celles où l'on se demande justement **à qui on a affaire** :
 
 - **Mes relations** — tout le bloc d'identité est cliquable, c'est la cible la plus large sous le pouce ;
 - **le détail d'une annonce** (`/coach/announcements/:id`, ouvert depuis le radar) — section **« Le coach »**, avant de décider de traverser le département pour un inconnu ;
-- **la feuille de match** — section **« Les coachs »**, les deux côtés, celui qui reçoit et celui qui se déplace.
+- **la feuille de match** — section **« Les coachs »**, les deux côtés, celui qui reçoit et celui qui se déplace ;
+- **une conversation** — l'en-tête du fil, où l'on se demande vite à qui l'on est en train d'écrire.
 
 **Qui a le droit de voir quoi** (`apps/api/src/lib/coachCard.ts`) : soi-même, ses relations, un coach avec qui on partage un match ou un tournoi, et un coach qui a une **annonce ouverte non expirée** — publier, c'est se montrer. Partout ailleurs l'API répond **404, pas 403** : on ne doit pas pouvoir énumérer les coachs de l'application identifiant par identifiant. La feuille affiche alors une explication, sans accuser personne.
 
@@ -437,7 +455,7 @@ Tables conservées mais plus lues : `attendances`, `lineups`, `match_events`, `c
 1. **Coach A** règle sa position dans **Mon profil → Ma position** (« Utiliser ma position », ou une adresse), puis choisit son périmètre sur le radar.
 2. Il publie une annonce depuis le bouton « + » : catégorie, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date (à plus de 10 jours → badge « Délai FFF respecté »), l'heure et le genre.
 3. **Coach B** (navigation privée) voit apparaître l'annonce **sur le radar de son tableau de bord**, à sa vraie distance et dans sa vraie direction, et clique « Proposer de jouer ». S'il a activé les notifications, il a été prévenu à la publication.
-4. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé.
+4. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé, et une **conversation s'ouvre entre les deux coachs** : elle apparaît dans l'onglet **Messages** de chacun, où ils calent l'heure d'arrivée et la couleur des maillots.
 5. Le jour du match, les deux coachs voient **« Rencontre à valider »**. Coach A, qui reçoit, ouvre la feuille de match et clique **« Afficher le QR code »**.
 6. **Coach B** ouvre le même match, clique **« Scanner le QR code »** et vise l'écran de coach A → la rencontre est validée et chacun gagne 10 points, annoncés à coach B juste après son scan.
 7. Après le coup de sifflet final, l'un des deux saisit le score avec les compteurs : le match passe en « Terminé », l'autre en est notifié.

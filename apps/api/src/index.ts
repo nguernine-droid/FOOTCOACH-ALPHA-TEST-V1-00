@@ -23,6 +23,7 @@ import { eventRoutes } from "./routes/events.js";
 import { adminRoutes } from "./routes/admin.js";
 import { clubRoutes } from "./routes/club.js";
 import { relationRoutes } from "./routes/relations.js";
+import { messageRoutes } from "./routes/messages.js";
 import { locationRoutes } from "./routes/location.js";
 
 const app = Fastify({
@@ -124,6 +125,7 @@ app.register((instance) => adminRoutes(instance));
 app.register((instance) => clubDirectoryRoutes(instance));
 app.register((instance) => coachCardRoutes(instance));
 app.register((instance) => relationRoutes(instance));
+app.register((instance) => messageRoutes(instance));
 app.register((instance) => locationRoutes(instance));
 
 try {

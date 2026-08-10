@@ -673,6 +673,19 @@ export const addRelationSchema = z.object({
 export type AddRelationInput = z.infer<typeof addRelationSchema>;
 
 /**
+ * Longueur maximale d'un message entre coachs. Large de quoi caler une heure de
+ * rendez-vous et expliquer un imprévu, court de quoi rester lisible dans une
+ * bulle — au-delà, c'est un appel téléphonique qu'il faut passer.
+ */
+export const MESSAGE_MAX_LENGTH = 2000;
+
+/** Envoi d'un message dans une conversation */
+export const sendMessageSchema = z.object({
+  body: z.string().trim().min(1, "Écrivez votre message").max(MESSAGE_MAX_LENGTH),
+});
+export type SendMessageInput = z.infer<typeof sendMessageSchema>;
+
+/**
  * Préfixe du QR code d'un coach : `FOOTCOACH:COACH:<code>`. Il permet au
  * scanner de reconnaître un code FootCoach et d'écarter tout autre QR.
  */
@@ -783,6 +796,8 @@ export interface NotificationPrefsDto {
   responseDecision: boolean;
   /** Score final à saisir, ou saisi par l'adversaire et en attente de ma validation */
   score: boolean;
+  /** Un coach m'écrit dans une conversation */
+  message: boolean;
 }
 
 /** Une suggestion d'adresse renvoyée par la recherche géographique */
@@ -1208,6 +1223,44 @@ export interface CoachRelationDto {
   level: CoachLevelDto;
   /** Ses casquettes : savoir qu'un confrère est joker sert le jour d'un désistement */
   categories: CoachCategory[];
+}
+
+// ---------- Messagerie entre coachs ----------
+
+/**
+ * Un fil de discussion avec un confrère, tel qu'il apparaît dans la liste.
+ *
+ * Une conversation par PAIRE de coachs, et non par match : deux coachs qui se
+ * retrouvent une seconde fois reprennent le fil là où ils l'avaient laissé,
+ * comme dans n'importe quelle messagerie. `match` dit seulement quelle
+ * rencontre l'a ouverte — c'est le contexte de la première ligne, pas une clé.
+ */
+export interface ConversationDto {
+  id: string;
+  /** L'AUTRE coach : celui à qui l'on parle, jamais soi-même */
+  coach: CoachRefDto;
+  /** Son équipe, pour situer un homonyme (null s'il n'en encadre aucune) */
+  teamName: string | null;
+  /** Dernier message échangé — null tant que personne n'a écrit */
+  lastMessage: { body: string; createdAt: string; mine: boolean } | null;
+  /** Messages de l'autre coach reçus depuis ma dernière lecture */
+  unread: number;
+  /** Dernier message, ou création du fil : ce qui ordonne la liste */
+  updatedAt: string;
+}
+
+export interface MessageDto {
+  id: string;
+  body: string;
+  /** true si c'est moi qui l'ai écrit — c'est ce qui décide du côté de la bulle */
+  mine: boolean;
+  createdAt: string;
+}
+
+/** Une conversation ouverte : son en-tête et ses messages, du plus ancien au plus récent */
+export interface ConversationThreadDto {
+  conversation: ConversationDto;
+  messages: MessageDto[];
 }
 
 export interface AuthResponseDto {
