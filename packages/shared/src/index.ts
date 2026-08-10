@@ -584,9 +584,19 @@ export const coachLicenseSchema = z
   .max(30)
   .regex(/^[A-Za-z0-9 .\-/]*$/, "Numéro de licence invalide");
 
+/**
+ * Surnom du coach : l'identité qu'il montre aux autres. Obligatoire — c'est LE
+ * nom d'affichage — quand le prénom et le nom, eux, sont devenus facultatifs.
+ */
+export const nicknameSchema = z.string().trim().min(1, "Choisissez un surnom").max(30);
+
 export const registerCoachSchema = z.object({
-  firstName: z.string().min(1).max(50),
-  lastName: z.string().min(1).max(50),
+  nickname: nicknameSchema,
+  // Facultatifs depuis l'arrivée du surnom : ils ne s'affichent qu'au
+  // titulaire (profil) et aux gestionnaires (admin, club), jamais aux
+  // confrères. Chaîne vide = non renseigné — pas un NULL à interpréter.
+  firstName: z.string().trim().max(50).default(""),
+  lastName: z.string().trim().max(50).default(""),
   email: z.string().email(),
   password: chosenPasswordSchema,
   teamName: z.string().min(2).max(60),
@@ -653,8 +663,9 @@ export type JoinRequestStatus = (typeof JOIN_REQUEST_STATUSES)[number];
 
 /** Profil du coach : ce qu'il peut personnaliser lui-même */
 export const updateProfileSchema = z.object({
-  firstName: z.string().min(1).max(50),
-  lastName: z.string().min(1).max(50),
+  nickname: nicknameSchema,
+  firstName: z.string().trim().max(50).default(""),
+  lastName: z.string().trim().max(50).default(""),
   licenseNumber: coachLicenseSchema.nullable().optional(),
   // Partagé avec ses relations uniquement. Permissif : indicatifs, espaces, points.
   phone: z
@@ -752,6 +763,9 @@ export interface UserDto {
   id: string;
   email: string;
   role: Role;
+  /** Surnom : l'identité affichée partout dans l'application */
+  nickname: string;
+  /** Facultatifs (chaîne vide = non renseigné) : visibles du seul titulaire et des gestionnaires */
   firstName: string;
   lastName: string;
   /** Équipe active/principale. Coach : première de `teams`. Autres rôles : leur équipe. */
@@ -1120,6 +1134,8 @@ export interface AdminStatsDto {
 
 export interface AdminAccountDto {
   id: string;
+  nickname: string;
+  /** État civil, s'il a été renseigné — l'admin gère des comptes, il lui faut les deux */
   firstName: string;
   lastName: string;
   email: string;
@@ -1196,8 +1212,8 @@ export interface CreateClubCoachResultDto {
  */
 export interface CoachRefDto {
   id: string;
-  firstName: string;
-  lastName: string;
+  /** Le surnom est la SEULE identité servie entre coachs — jamais l'état civil */
+  nickname: string;
   avatarUrl: string | null;
 }
 
@@ -1224,8 +1240,7 @@ export interface CoachCardDto extends CoachRefDto {
 /** Un coach du réseau de relations : contact + contexte sportif */
 export interface CoachRelationDto {
   id: string;
-  firstName: string;
-  lastName: string;
+  nickname: string;
   /** null si le coach n'a pas renseigné son numéro */
   phone: string | null;
   avatarUrl: string | null;

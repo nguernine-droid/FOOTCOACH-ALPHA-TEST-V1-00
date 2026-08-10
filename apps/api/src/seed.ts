@@ -31,17 +31,26 @@ function plusDays(days: number): string {
 async function upsertUser(input: {
   email: string;
   role: "coach" | "player" | "parent" | "supporter" | "admin" | "club";
+  /** Surnom affiché — à défaut, le prénom, comme le backfill de la migration */
+  nickname?: string;
   firstName: string;
   lastName: string;
   teamId?: string | null;
 }) {
   const passwordHash = await hashPassword(PASSWORD);
+  const nickname = input.nickname ?? input.firstName;
   const [user] = await db
     .insert(users)
-    .values({ ...input, passwordHash, teamId: input.teamId ?? null })
+    .values({ ...input, nickname, passwordHash, teamId: input.teamId ?? null })
     .onConflictDoUpdate({
       target: users.email,
-      set: { role: input.role, firstName: input.firstName, lastName: input.lastName, teamId: input.teamId ?? null },
+      set: {
+        role: input.role,
+        nickname,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        teamId: input.teamId ?? null,
+      },
     })
     .returning();
   return user;
@@ -87,8 +96,10 @@ async function main() {
 
   await runMigrations();
 
-  const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", firstName: "Alexandre", lastName: "Martin" });
-  const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", firstName: "Bruno", lastName: "Silva" });
+  // Des surnoms distincts de l'état civil : les comptes de démo doivent montrer
+  // que c'est bien le surnom, et lui seul, que les confrères voient.
+  const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", nickname: "Coach Alex", firstName: "Alexandre", lastName: "Martin" });
+  const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", nickname: "Bruno S.", firstName: "Bruno", lastName: "Silva" });
   const teamA = await upsertTeam("FC Nexus U13", "Lyon", coachA.id, "DEMOA1", {
     category: "U13",
     stadium: "Plaine des Jeux de Gerland",

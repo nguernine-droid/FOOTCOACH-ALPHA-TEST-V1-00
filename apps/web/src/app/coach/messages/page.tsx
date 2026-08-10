@@ -94,8 +94,7 @@ export default function CoachMessagesPage() {
               className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-paper active:bg-paper"
             >
               <Avatar
-                firstName={c.coach.firstName}
-                lastName={c.coach.lastName}
+                name={c.coach.nickname}
                 avatarUrl={c.coach.avatarUrl}
                 size={48}
                 className="shrink-0"
@@ -103,7 +102,7 @@ export default function CoachMessagesPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <p className={cn("truncate text-sm", c.unread > 0 ? "font-black" : "font-bold")}>
-                    {c.coach.firstName} {c.coach.lastName}
+                    {c.coach.nickname}
                   </p>
                   <span className="ml-auto shrink-0 text-[11px] text-ink-faint font-semibold">
                     {timeAgo(c.lastMessage?.createdAt ?? c.updatedAt, now)}

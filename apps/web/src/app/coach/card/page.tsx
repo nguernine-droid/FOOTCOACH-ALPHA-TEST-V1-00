@@ -61,8 +61,7 @@ export default function CoachCardPage() {
         >
           <span className="flip-face block">
             <CoachCard
-              firstName={user.firstName}
-              lastName={user.lastName}
+              name={user.nickname}
               avatarUrl={user.avatarUrl}
               // Aucun club n'est rattaché en V1 : l'équipe active tient ce rôle,
               // c'est elle que les autres coachs voient sur le radar.
@@ -76,7 +75,7 @@ export default function CoachCardPage() {
           </span>
 
           <span className="flip-face flip-back block">
-            <CoachCardBack firstName={user.firstName} lastName={user.lastName} coachCode={user.coachCode ?? null}>
+            <CoachCardBack name={user.nickname} coachCode={user.coachCode ?? null}>
               {user.coachCode && (
                 <QrCodeCanvas value={coachQrPayload(user.coachCode)} label="Mon QR code coach" size={150} />
               )}

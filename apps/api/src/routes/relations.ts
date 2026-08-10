@@ -28,7 +28,8 @@ async function buildRelations(coachIds: string[], createdAtById: Map<string, Dat
     .select()
     .from(users)
     .where(inArray(users.id, coachIds))
-    .orderBy(asc(users.lastName), asc(users.firstName));
+    // Par surnom : c'est le seul nom que la liste affiche
+    .orderBy(asc(users.nickname));
 
   const clubIds = [...new Set(coachRows.map((c) => c.clubId).filter((id): id is string => id != null))];
   const clubRows = clubIds.length ? await db.select().from(clubs).where(inArray(clubs.id, clubIds)) : [];
@@ -46,8 +47,7 @@ async function buildRelations(coachIds: string[], createdAtById: Map<string, Dat
 
   return coachRows.map((c) => ({
     id: c.id,
-    firstName: c.firstName,
-    lastName: c.lastName,
+    nickname: c.nickname,
     phone: c.phone,
     avatarUrl: avatarUrlOf(c.avatarPath),
     clubName: c.clubId ? (clubById.get(c.clubId) ?? null) : null,
@@ -172,7 +172,7 @@ export function relationRoutes(app: FastifyInstance) {
         .select()
         .from(coachRelations)
         .where(and(eq(coachRelations.coachId, request.user.id), eq(coachRelations.relatedCoachId, target.id)));
-      if (existing) throw new HttpError(400, `${target.firstName} ${target.lastName} fait déjà partie de vos relations`);
+      if (existing) throw new HttpError(400, `${target.nickname} fait déjà partie de vos relations`);
 
       await db.transaction(async (tx) => {
         await tx

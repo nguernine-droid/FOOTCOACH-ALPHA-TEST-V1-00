@@ -69,6 +69,9 @@ export function RoleGuard({
       return;
     }
     setUser(stored);
+    // Session d'avant le surnom : le compte stocké ne le porte pas encore.
+    // Une relecture silencieuse le complète, sans forcer la reconnexion.
+    if (!stored.nickname) refreshSession().then((fresh) => fresh && setUser(fresh));
   }, [role, router]);
 
   // Réconcilie l'équipe active avec les équipes réelles du coach (sélection
@@ -208,13 +211,12 @@ export function RoleGuard({
                 onClick={() => setSheetOpen(true)}
                 aria-haspopup="dialog"
                 aria-expanded={sheetOpen}
-                aria-label={`Menu de ${user.firstName}`}
+                aria-label={`Menu de ${user.nickname}`}
                 className="shrink-0 ml-auto -mr-1 p-1 rounded-full transition hover:bg-white/10 active:scale-95
                   focus-visible:outline-accent"
               >
                 <Avatar
-                  firstName={user.firstName}
-                  lastName={user.lastName}
+                  name={user.nickname}
                   avatarUrl={user.avatarUrl}
                   size={36}
                   className={cn(

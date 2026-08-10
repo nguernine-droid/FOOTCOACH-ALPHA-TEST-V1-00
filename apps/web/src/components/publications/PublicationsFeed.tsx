@@ -160,8 +160,7 @@ export function PublicationsFeedView({ feed }: { feed: PublicationsFeed }) {
             <article key={p.id} className="px-4 py-3.5 space-y-2">
               <div className="flex items-center gap-3">
                 <Avatar
-                  firstName={p.author.firstName}
-                  lastName={p.author.lastName}
+                  name={p.author.nickname}
                   avatarUrl={p.author.avatarUrl}
                   size={40}
                   className="shrink-0"
@@ -172,7 +171,7 @@ export function PublicationsFeedView({ feed }: { feed: PublicationsFeed }) {
                       menu « Moi », et ce serait une porte de plus vers soi. */}
                   {p.mine ? (
                     <p className="text-sm font-bold truncate">
-                      {p.author.firstName} {p.author.lastName}
+                      {p.author.nickname}
                     </p>
                   ) : (
                     <button
@@ -181,7 +180,7 @@ export function PublicationsFeedView({ feed }: { feed: PublicationsFeed }) {
                       className="block max-w-full text-sm font-bold truncate transition hover:text-blue
                         focus-visible:outline-accent rounded"
                     >
-                      {p.author.firstName} {p.author.lastName}
+                      {p.author.nickname}
                     </button>
                   )}
                   <p className="text-[11px] text-ink-faint font-semibold truncate">

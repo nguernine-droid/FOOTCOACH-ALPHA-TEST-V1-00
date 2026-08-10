@@ -152,6 +152,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     id: user.id,
     email: user.email,
     role: user.role,
+    nickname: user.nickname,
     firstName: user.firstName,
     lastName: user.lastName,
     teamId,
@@ -329,8 +330,9 @@ export function authRoutes(app: FastifyInstance) {
     const [updated] = await db
       .update(users)
       .set({
-        firstName: input.firstName.trim(),
-        lastName: input.lastName.trim(),
+        nickname: input.nickname,
+        firstName: input.firstName,
+        lastName: input.lastName,
         ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
         // Champ absent = inchangé ; vidé = effacé. C'est ce qui permet de
         // retirer une licence saisie par erreur sans route dédiée.

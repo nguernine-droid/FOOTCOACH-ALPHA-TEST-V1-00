@@ -21,6 +21,7 @@ export default function CoachProfilePage() {
   const [form, setForm] = useState(() => {
     const stored = getStoredUser();
     return {
+      nickname: stored?.nickname ?? "",
       firstName: stored?.firstName ?? "",
       lastName: stored?.lastName ?? "",
       phone: stored?.phone ?? "",
@@ -137,10 +138,10 @@ export default function CoachProfilePage() {
       {/* Photo + identité */}
       <section className="card p-5 space-y-4">
         <div className="flex items-center gap-4">
-          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={72} />
+          <Avatar name={user.nickname} avatarUrl={user.avatarUrl} size={72} />
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-base font-black truncate">
-              {user.firstName} {user.lastName}
+              {user.nickname}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="soft" onClick={() => fileRef.current?.click()} disabled={uploading}>
@@ -167,12 +168,32 @@ export default function CoachProfilePage() {
         />
 
         <form onSubmit={saveProfile} className="space-y-4 border-t border-line pt-4">
+          {/* Le surnom d'abord : c'est LE nom que les autres coachs voient.
+              L'état civil suit, facultatif — il ne sort jamais du compte. */}
+          <div className="space-y-1.5">
+            <label htmlFor="nickname" className="text-xs font-bold text-ink-soft">Surnom</label>
+            <input
+              id="nickname"
+              required
+              maxLength={30}
+              autoComplete="nickname"
+              enterKeyHint="next"
+              value={form.nickname}
+              onChange={(e) => setForm((f) => ({ ...f, nickname: e.target.value }))}
+              className="field"
+              placeholder="Coach Alex"
+            />
+            <p className="text-[11px] text-ink-faint font-semibold">
+              C&apos;est le nom que les autres coachs voient — partout.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label htmlFor="firstName" className="text-xs font-bold text-ink-soft">Prénom</label>
+              <label htmlFor="firstName" className="text-xs font-bold text-ink-soft">
+                Prénom <span className="text-ink-faint font-semibold">(facultatif)</span>
+              </label>
               <input
                 id="firstName"
-                required
                 autoComplete="given-name"
                 autoCapitalize="words"
                 enterKeyHint="next"
@@ -182,10 +203,11 @@ export default function CoachProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">Nom</label>
+              <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">
+                Nom <span className="text-ink-faint font-semibold">(facultatif)</span>
+              </label>
               <input
                 id="lastName"
-                required
                 autoComplete="family-name"
                 autoCapitalize="words"
                 enterKeyHint="next"

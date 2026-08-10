@@ -412,10 +412,10 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                   className="flex items-center gap-3 rounded-lg bg-paper px-4 py-3 text-left transition
                     hover:bg-blue-faint active:bg-blue-soft"
                 >
-                  <Avatar firstName={coach.firstName} lastName={coach.lastName} avatarUrl={coach.avatarUrl} size={40} />
+                  <Avatar name={coach.nickname} avatarUrl={coach.avatarUrl} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block font-bold truncate">
-                      {coach.firstName} {coach.lastName}
+                      {coach.nickname}
                     </span>
                     <span className="block text-xs text-ink-soft truncate">
                       {side} · {team.name}

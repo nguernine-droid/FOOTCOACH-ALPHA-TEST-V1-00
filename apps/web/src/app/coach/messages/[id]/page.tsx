@@ -182,13 +182,13 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
       <button
         type="button"
         onClick={() => setCardOpen(true)}
-        aria-label={`Voir la carte de ${coach.firstName} ${coach.lastName}`}
+        aria-label={`Voir la carte de ${coach.nickname}`}
         className="card w-full p-4 flex items-center gap-3 text-left transition hover:border-accent/40 active:scale-[0.995]"
       >
-        <Avatar firstName={coach.firstName} lastName={coach.lastName} avatarUrl={coach.avatarUrl} size={44} />
+        <Avatar name={coach.nickname} avatarUrl={coach.avatarUrl} size={44} />
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-black truncate">
-            {coach.firstName} {coach.lastName}
+            {coach.nickname}
           </span>
           <span className="block text-xs text-ink-soft font-semibold truncate">
             {teamName ?? "Coach"} — voir sa carte

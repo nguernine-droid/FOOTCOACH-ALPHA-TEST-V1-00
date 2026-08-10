@@ -87,8 +87,19 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: userRole("role").notNull(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
+  /**
+   * Surnom choisi à l'inscription : l'identité affichée aux autres coachs —
+   * la seule qui sorte du compte. Backfillé depuis `first_name` pour les
+   * comptes antérieurs (migration 0032).
+   */
+  nickname: text("nickname").notNull(),
+  /**
+   * État civil, facultatif depuis l'arrivée du surnom (chaîne vide = non
+   * renseigné, pas un NULL à interpréter). Visible du seul titulaire et des
+   * gestionnaires de comptes (admin, club) — jamais des confrères.
+   */
+  firstName: text("first_name").notNull().default(""),
+  lastName: text("last_name").notNull().default(""),
   teamId: uuid("team_id"),
   // Coach : club auquel il est affilié (NULL = coach indépendant, sans club)
   clubId: uuid("club_id").references((): any => clubs.id),

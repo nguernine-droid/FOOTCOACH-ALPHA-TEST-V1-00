@@ -77,6 +77,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
+    nickname: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -156,24 +157,38 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
     <div className="space-y-4">
       <Dots total={5} current={step} />
       {step === 0 && (
-        <StepCard title="Qui êtes-vous ?" subtitle="Commençons par votre nom." onBack={onBack}>
+        <StepCard title="Qui êtes-vous ?" subtitle="Choisissez le nom que les autres coachs verront." onBack={onBack}>
           <form
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              advance(1, !form.firstName.trim() || !form.lastName.trim());
+              advance(1, !form.nickname.trim());
             }}
             className="space-y-4"
           >
+            {/* Le surnom est LA seule identité montrée aux confrères : c'est
+                donc lui qui est obligatoire. L'état civil suit, facultatif —
+                il ne sort jamais du compte. */}
             <div className="space-y-1.5">
-              <label htmlFor="firstName" className="text-xs font-bold text-ink-soft">Prénom</label>
-              <input id="firstName" autoComplete="given-name" autoCapitalize="words" enterKeyHint="next" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className="field" placeholder="Alexandre" />
-              {touched && !form.firstName.trim() && <FieldError id="firstName-error">Indiquez votre prénom.</FieldError>}
+              <label htmlFor="nickname" className="text-xs font-bold text-ink-soft">Surnom</label>
+              <input id="nickname" autoComplete="nickname" enterKeyHint="next" maxLength={30} value={form.nickname} onChange={(e) => set("nickname", e.target.value)} className="field" placeholder="Coach Alex" />
+              {touched && !form.nickname.trim() ? (
+                <FieldError id="nickname-error">Choisissez un surnom.</FieldError>
+              ) : (
+                <p className="text-[11px] text-ink-soft">
+                  C&apos;est le nom que les autres coachs verront — sur vos annonces, vos messages, votre carte.
+                </p>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">Nom</label>
-              <input id="lastName" autoComplete="family-name" autoCapitalize="words" enterKeyHint="next" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className="field" placeholder="Martin" />
-              {touched && !form.lastName.trim() && <FieldError id="lastName-error">Indiquez votre nom.</FieldError>}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label htmlFor="firstName" className="text-xs font-bold text-ink-soft">Prénom <span className="text-ink-faint font-semibold">(optionnel)</span></label>
+                <input id="firstName" autoComplete="given-name" autoCapitalize="words" enterKeyHint="next" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className="field" placeholder="Alexandre" />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">Nom <span className="text-ink-faint font-semibold">(optionnel)</span></label>
+                <input id="lastName" autoComplete="family-name" autoCapitalize="words" enterKeyHint="next" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className="field" placeholder="Martin" />
+              </div>
             </div>
             {/* Facultatif, et à côté du nom parce que c'est une donnée de
                 personne : on l'a sous la main en s'inscrivant, beaucoup moins

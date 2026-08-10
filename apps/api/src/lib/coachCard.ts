@@ -132,8 +132,7 @@ export async function representativeCoachOf(teamId: string): Promise<CoachRefDto
   const [row] = await db
     .select({
       id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
+      nickname: users.nickname,
       avatarPath: users.avatarPath,
       role: teamCoaches.role,
     })
@@ -146,8 +145,7 @@ export async function representativeCoachOf(teamId: string): Promise<CoachRefDto
   if (!row) return null;
   return {
     id: row.id,
-    firstName: row.firstName,
-    lastName: row.lastName,
+    nickname: row.nickname,
     avatarUrl: avatarUrlOf(row.avatarPath),
   };
 }
@@ -160,8 +158,7 @@ export async function representativeCoachesOf(teamIds: string[]): Promise<Map<st
     .select({
       teamId: teamCoaches.teamId,
       id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
+      nickname: users.nickname,
       avatarPath: users.avatarPath,
       role: teamCoaches.role,
     })
@@ -175,8 +172,7 @@ export async function representativeCoachesOf(teamIds: string[]): Promise<Map<st
     if (byTeam.has(row.teamId)) continue;
     byTeam.set(row.teamId, {
       id: row.id,
-      firstName: row.firstName,
-      lastName: row.lastName,
+      nickname: row.nickname,
       avatarUrl: avatarUrlOf(row.avatarPath),
     });
   }
@@ -200,8 +196,7 @@ export async function buildCoachCard(coachId: string): Promise<CoachCardDto | nu
   const [points, matchesPlayed] = await Promise.all([totalPointsOf(coachId), matchesPlayedBy(coachId)]);
   return {
     id: coach.id,
-    firstName: coach.firstName,
-    lastName: coach.lastName,
+    nickname: coach.nickname,
     avatarUrl: avatarUrlOf(coach.avatarPath),
     // Aucun club n'est rattaché en V1 : l'équipe tient ce rôle sur la carte
     clubLabel: team?.name ?? null,

@@ -12,6 +12,7 @@ import { asCoachCategories, registerCoachSchema } from "@footcoach/shared";
  */
 
 const INSCRIPTION = {
+  nickname: "Alex",
   firstName: "Alex",
   lastName: "Martin",
   email: "alex@exemple.fr",

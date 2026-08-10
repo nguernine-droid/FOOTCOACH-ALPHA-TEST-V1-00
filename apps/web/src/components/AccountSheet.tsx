@@ -174,10 +174,10 @@ export function AccountSheet({
           onClick={onClose}
           className="flex items-center gap-3 px-5 py-4 transition active:bg-paper hover:bg-paper"
         >
-          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
+          <Avatar name={user.nickname} avatarUrl={user.avatarUrl} size={52} />
           <div className="min-w-0 flex-1">
             <p className="text-base font-black truncate">
-              {user.firstName} {user.lastName}
+              {user.nickname}
             </p>
             <p className="text-xs text-ink-soft font-semibold truncate">
               {ROLE_LABELS[user.role]}
@@ -191,10 +191,10 @@ export function AccountSheet({
         </Link>
       ) : (
         <div className="flex items-center gap-3 px-5 py-4">
-          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
+          <Avatar name={user.nickname} avatarUrl={user.avatarUrl} size={52} />
           <div className="min-w-0">
             <p className="text-base font-black truncate">
-              {user.firstName} {user.lastName}
+              {user.nickname}
             </p>
             <p className="text-xs text-ink-soft font-semibold truncate">
               {ROLE_LABELS[user.role]}

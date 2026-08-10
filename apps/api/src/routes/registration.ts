@@ -65,6 +65,7 @@ export function registrationRoutes(app: FastifyInstance) {
           email: input.email.toLowerCase(),
           passwordHash,
           role: "coach",
+          nickname: input.nickname,
           firstName: input.firstName,
           lastName: input.lastName,
           // Horodatage pris ici, à l'insertion : c'est l'instant où le compte

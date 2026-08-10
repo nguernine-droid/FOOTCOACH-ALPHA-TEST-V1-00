@@ -49,8 +49,7 @@ export function publicationRoutes(app: FastifyInstance) {
         body: publications.body,
         createdAt: publications.createdAt,
         authorId: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
+        nickname: users.nickname,
         avatarPath: users.avatarPath,
       })
       .from(publications)
@@ -63,8 +62,7 @@ export function publicationRoutes(app: FastifyInstance) {
       id: r.id,
       author: {
         id: r.authorId,
-        firstName: r.firstName,
-        lastName: r.lastName,
+        nickname: r.nickname,
         avatarUrl: avatarUrlOf(r.avatarPath),
       },
       teamName: teamNames.get(r.authorId) ?? null,
@@ -80,8 +78,7 @@ export function publicationRoutes(app: FastifyInstance) {
 
     const [author] = await db
       .select({
-        firstName: users.firstName,
-        lastName: users.lastName,
+        nickname: users.nickname,
         avatarPath: users.avatarPath,
         coachCategories: users.coachCategories,
       })
@@ -99,8 +96,7 @@ export function publicationRoutes(app: FastifyInstance) {
       id: created.id,
       author: {
         id: me,
-        firstName: author.firstName,
-        lastName: author.lastName,
+        nickname: author.nickname,
         avatarUrl: avatarUrlOf(author.avatarPath),
       },
       teamName: teamNames.get(me) ?? null,

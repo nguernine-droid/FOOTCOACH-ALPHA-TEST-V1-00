@@ -151,6 +151,7 @@ async function register(i) {
     ? `Entente Sportive et Culturelle de ${city} et des Communes Voisines`.slice(0, 60)
     : `${pick(PREFIX)} ${city.charAt(0).toUpperCase() + city.slice(1)}`;
   const res = await call(null, "POST", "/auth/register-coach", {
+    nickname: pick(["Alex","Bruno","Camille","David","Élodie","Farid","Gaëlle","Hugo","Inès","Julien","Karim","Léa"]),
     firstName: pick(["Alex","Bruno","Camille","David","Élodie","Farid","Gaëlle","Hugo","Inès","Julien","Karim","Léa"]),
     lastName: pick(["Martin","Bernard","Dubois","Thomas","Robert","Petit","Durand","Leroy","Moreau","Simon"]),
     email: `sim${i}@${EMAIL_DOMAIN}`,

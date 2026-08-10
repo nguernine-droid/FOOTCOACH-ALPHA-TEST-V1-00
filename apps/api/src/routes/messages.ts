@@ -42,8 +42,7 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
     db
       .select({
         id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
+        nickname: users.nickname,
         avatarPath: users.avatarPath,
       })
       .from(users)
@@ -106,8 +105,7 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
         id: row.id,
         coach: {
           id: other.id,
-          firstName: other.firstName,
-          lastName: other.lastName,
+          nickname: other.nickname,
           avatarUrl: avatarUrlOf(other.avatarPath),
         },
         teamName: teamByCoach.get(other.id) ?? null,
@@ -245,12 +243,12 @@ export function messageRoutes(app: FastifyInstance) {
 
     const recipientId = row.coachAId === me ? row.coachBId : row.coachAId;
     const [sender] = await db
-      .select({ firstName: users.firstName, lastName: users.lastName })
+      .select({ nickname: users.nickname })
       .from(users)
       .where(eq(users.id, me));
     notifyNewMessage({
       recipientCoachId: recipientId,
-      senderName: `${sender.firstName} ${sender.lastName}`,
+      senderName: sender.nickname,
       preview: body,
       conversationId: id,
     });

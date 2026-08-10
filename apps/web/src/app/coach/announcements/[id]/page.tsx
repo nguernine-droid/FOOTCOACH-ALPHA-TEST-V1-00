@@ -177,14 +177,13 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
               hover:bg-blue-faint active:bg-blue-soft"
           >
             <Avatar
-              firstName={a.coach.firstName}
-              lastName={a.coach.lastName}
+              name={a.coach.nickname}
               avatarUrl={a.coach.avatarUrl}
               size={44}
             />
             <span className="min-w-0 flex-1">
               <span className="block font-bold truncate">
-                {a.coach.firstName} {a.coach.lastName}
+                {a.coach.nickname}
               </span>
               <span className="block text-xs text-ink-soft truncate">{a.team.name}</span>
             </span>
