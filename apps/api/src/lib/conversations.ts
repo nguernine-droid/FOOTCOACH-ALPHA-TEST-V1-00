@@ -1,6 +1,6 @@
 import { and, eq, or } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { conversationReads, conversations } from "../db/schema.js";
+import { conversationReads, conversations, messages } from "../db/schema.js";
 
 /**
  * Une transaction ou la base elle-même : `openConversation` est appelée depuis
@@ -53,6 +53,34 @@ export async function openConversation(
   return existing?.id ?? null;
 }
 
+/**
+ * Inscrit dans le fil un message **de l'application** : le match convenu, avec
+ * de quoi le reconnaître. Sans expéditeur — personne ne l'a écrit.
+ *
+ * C'est ce qui répond à « qui est qui, et pour quel match ? » : deux coachs ont
+ * parfois plusieurs rencontres ensemble, et plusieurs annonces peuvent être
+ * acceptées le même jour. Le fil devient alors la chronologie de ce qu'ils ont
+ * convenu, et non une liste de noms.
+ *
+ * Le fil remonte en tête de liste : une conversation qui s'ouvre sur un match
+ * confirmé est ce qu'il y a de plus frais à lire.
+ */
+export async function postSystemMessage(
+  executor: Executor,
+  conversationId: string,
+  body: string,
+  matchId: string | null,
+): Promise<void> {
+  const [message] = await executor
+    .insert(messages)
+    .values({ conversationId, senderId: null, kind: "system", matchId, body })
+    .returning({ createdAt: messages.createdAt });
+  await executor
+    .update(conversations)
+    .set({ lastMessageAt: message.createdAt })
+    .where(eq(conversations.id, conversationId));
+}
+
 /** La conversation, si ce coach en est bien l'un des deux membres. */
 export async function conversationForMember(conversationId: string, coachId: string) {
   const [row] = await db
@@ -68,11 +96,17 @@ export async function conversationForMember(conversationId: string, coachId: str
 }
 
 /**
- * Marque le fil comme lu jusqu'à maintenant. Posé à l'ouverture de l'écran et à
- * chaque envoi — écrire, c'est avoir lu ce qui précède.
+ * Marque le fil comme lu jusqu'à maintenant. Posé à l'ouverture de l'écran, à
+ * chaque envoi — écrire, c'est avoir lu ce qui précède — et pour le coach qui
+ * vient d'accepter une proposition : le message qui annonce le match, c'est lui
+ * qui l'a provoqué, il n'a pas à le retrouver en non-lu.
  */
-export async function markRead(conversationId: string, coachId: string): Promise<void> {
-  await db
+export async function markRead(
+  executor: Executor,
+  conversationId: string,
+  coachId: string,
+): Promise<void> {
+  await executor
     .insert(conversationReads)
     .values({ conversationId, coachId, lastReadAt: new Date() })
     .onConflictDoUpdate({

@@ -18,6 +18,13 @@ import { avatarUrlOf } from "./auth.js";
 type ConversationRow = typeof conversations.$inferSelect;
 
 /**
+ * Ce qui peut m'être compté comme non lu : ce que l'autre a écrit, et ce que
+ * l'application a inscrit (un match convenu n'a pas d'expéditeur, mais il faut
+ * bien qu'il s'annonce). Mes propres messages ne le sont jamais.
+ */
+const notFromMe = (me: string) => or(isNull(messages.senderId), ne(messages.senderId, me));
+
+/**
  * Les fils demandés, vus par ce coach : son interlocuteur, le dernier message
  * échangé, et ce qu'il n'a pas encore lu.
  *
@@ -55,6 +62,7 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
       .selectDistinctOn([messages.conversationId], {
         conversationId: messages.conversationId,
         body: messages.body,
+        kind: messages.kind,
         senderId: messages.senderId,
         createdAt: messages.createdAt,
       })
@@ -74,7 +82,7 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
       .where(
         and(
           inArray(messages.conversationId, ids),
-          ne(messages.senderId, me),
+          notFromMe(me),
           or(isNull(conversationReads.lastReadAt), gt(messages.createdAt, conversationReads.lastReadAt)),
         ),
       )
@@ -104,7 +112,12 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
         },
         teamName: teamByCoach.get(other.id) ?? null,
         lastMessage: last
-          ? { body: last.body, createdAt: last.createdAt.toISOString(), mine: last.senderId === me }
+          ? {
+              body: last.body,
+              createdAt: last.createdAt.toISOString(),
+              mine: last.kind === "coach" && last.senderId === me,
+              kind: last.kind,
+            }
           : null,
         unread: unreadByConversation.get(row.id) ?? 0,
         updatedAt: row.lastMessageAt.toISOString(),
@@ -153,7 +166,7 @@ export function messageRoutes(app: FastifyInstance) {
       .where(
         and(
           or(eq(conversations.coachAId, me), eq(conversations.coachBId, me)),
-          ne(messages.senderId, me),
+          notFromMe(me),
           or(isNull(conversationReads.lastReadAt), gt(messages.createdAt, conversationReads.lastReadAt)),
         ),
       );
@@ -188,8 +201,12 @@ export function messageRoutes(app: FastifyInstance) {
       messages: rows.map(
         (m): MessageDto => ({
           id: m.id,
+          kind: m.kind,
           body: m.body,
-          mine: m.senderId === me,
+          // Un message de l'application n'est à personne : il ne prend donc le
+          // côté d'aucun des deux coachs.
+          mine: m.kind === "coach" && m.senderId === me,
+          matchId: m.matchId,
           createdAt: m.createdAt.toISOString(),
         }),
       ),
@@ -201,7 +218,7 @@ export function messageRoutes(app: FastifyInstance) {
     const { id } = idParamSchema.parse(request.params);
     const row = await conversationForMember(id, request.user.id);
     if (!row) throw new HttpError(404, "Conversation introuvable");
-    await markRead(id, request.user.id);
+    await markRead(db, id, request.user.id);
     return { ok: true };
   });
 
@@ -224,7 +241,7 @@ export function messageRoutes(app: FastifyInstance) {
 
     // Écrire, c'est avoir lu : sans ça, mes propres envois laisseraient le fil
     // marqué comme non ouvert jusqu'à ma prochaine visite.
-    await markRead(id, me);
+    await markRead(db, id, me);
 
     const recipientId = row.coachAId === me ? row.coachBId : row.coachAId;
     const [sender] = await db
@@ -239,6 +256,13 @@ export function messageRoutes(app: FastifyInstance) {
     });
 
     reply.code(201);
-    return { id: created.id, body: created.body, mine: true, createdAt: created.createdAt.toISOString() };
+    return {
+      id: created.id,
+      kind: "coach",
+      body: created.body,
+      mine: true,
+      matchId: null,
+      createdAt: created.createdAt.toISOString(),
+    };
   });
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, MessageCircle } from "lucide-react";
+import { CalendarCheck2, ChevronRight, MessageCircle } from "lucide-react";
 import type { ConversationDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
@@ -111,16 +111,23 @@ export default function CoachMessagesPage() {
                 </div>
                 {/* L'aperçu prend la place de l'équipe dès qu'il y a un message :
                     savoir de quoi on parlait compte plus que savoir qui c'est,
-                    le nom est juste au-dessus. */}
+                    le nom est juste au-dessus. Un match inscrit par
+                    l'application s'annonce par son icône — sans elle, « Match
+                    confirmé — U13… » se lirait comme une phrase du confrère. */}
                 <p
                   className={cn(
-                    "truncate text-xs",
+                    "truncate text-xs flex items-center gap-1",
                     c.unread > 0 ? "text-ink font-bold" : "text-ink-soft font-semibold",
                   )}
                 >
-                  {c.lastMessage
-                    ? `${c.lastMessage.mine ? "Vous : " : ""}${c.lastMessage.body}`
-                    : (c.teamName ?? "Match convenu — écrivez-lui")}
+                  {c.lastMessage?.kind === "system" && (
+                    <CalendarCheck2 size={12} className="shrink-0 text-blue" aria-hidden />
+                  )}
+                  <span className="truncate">
+                    {c.lastMessage
+                      ? `${c.lastMessage.mine ? "Vous : " : ""}${c.lastMessage.body}`
+                      : (c.teamName ?? "Match convenu — écrivez-lui")}
+                  </span>
                 </p>
               </div>
               {c.unread > 0 ? (

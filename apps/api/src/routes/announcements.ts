@@ -3,12 +3,14 @@ import { and, desc, eq, gte, inArray, ne, notInArray } from "drizzle-orm";
 import {
   idParamSchema,
   responseParamsSchema,
+  categoryLabel,
   createAnnouncementSchema,
   daysBetweenIso,
   MATCH_GENDER_LABELS,
   type AnnouncementDto,
   type AnnouncementResponseDto,
   type CoachRefDto,
+  type MatchGender,
   type RadarDto,
   type TeamDto,
 } from "@footcoach/shared";
@@ -21,7 +23,7 @@ import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
 import { tournamentsInRadar } from "./tournaments.js";
 import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard.js";
-import { openConversation } from "../lib/conversations.js";
+import { markRead, openConversation, postSystemMessage } from "../lib/conversations.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -140,6 +142,47 @@ async function teamsSharingCoachWith(teamId: string): Promise<string[]> {
       ),
     );
   return [...new Set([teamId, ...rows.map((r) => r.teamId)])];
+}
+
+/**
+ * Le message que l'application inscrit dans le fil des deux coachs quand un
+ * match est convenu.
+ *
+ * Il dit CE QUI a été convenu, pas seulement qu'on s'est mis d'accord : deux
+ * coachs ont parfois plusieurs matchs ensemble, et plusieurs annonces peuvent
+ * être acceptées le même jour — un fil qui ne porterait qu'un nom laisserait
+ * exactement la question « qui est qui, pour quel match ? ».
+ *
+ * Trois lignes, dans l'ordre où l'on cherche : de quoi il s'agit, quand et où,
+ * puis qui reçoit qui. Le texte est FIGÉ à l'écriture — il raconte l'accord de
+ * ce jour-là ; la feuille de match, elle, dit l'état actuel (voir `matchId`).
+ *
+ * ⚠ La reprise de l'existant (migration 0030) réécrit ce texte en SQL : les
+ * deux doivent rester identiques, sans quoi les anciens fils ne ressembleraient
+ * pas aux nouveaux.
+ */
+function matchSystemMessage(input: {
+  category: string;
+  gender: MatchGender | null;
+  format: string;
+  date: string;
+  time: string;
+  location: string;
+  homeTeamName: string;
+  awayTeamName: string;
+}): string {
+  const day = new Date(`${input.date}T00:00:00`).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+  });
+  const category = `${categoryLabel(input.category)}${
+    input.gender ? ` ${MATCH_GENDER_LABELS[input.gender]}` : ""
+  }`;
+  return [
+    `Match confirmé — ${category} · ${input.format}`,
+    `${day} à ${input.time.slice(0, 5)} · ${input.location}`,
+    `${input.homeTeamName} reçoit ${input.awayTeamName}`,
+  ].join("\n");
 }
 
 /**
@@ -474,7 +517,31 @@ export function announcementRoutes(app: FastifyInstance) {
          */
         const responderCoachId = response.coachId ?? (await representativeCoachOf(response.teamId))?.id ?? null;
         if (responderCoachId) {
-          await openConversation(tx, request.user.id, responderCoachId, created.id);
+          const conversationId = await openConversation(tx, request.user.id, responderCoachId, created.id);
+          if (conversationId) {
+            const [homeTeam, awayTeam] = await Promise.all([
+              tx.select({ name: teams.name }).from(teams).where(eq(teams.id, announcement.teamId)),
+              tx.select({ name: teams.name }).from(teams).where(eq(teams.id, response.teamId)),
+            ]);
+            await postSystemMessage(
+              tx,
+              conversationId,
+              matchSystemMessage({
+                category: announcement.category,
+                gender: announcement.gender,
+                format: announcement.format,
+                date: created.date,
+                time: created.time,
+                location: created.location,
+                homeTeamName: homeTeam[0].name,
+                awayTeamName: awayTeam[0].name,
+              }),
+              created.id,
+            );
+            // Celui qui accepte a déjà tout lu : c'est lui qui vient d'écrire
+            // l'histoire. Seul l'autre doit voir la pastille s'allumer.
+            await markRead(tx, conversationId, request.user.id);
+          }
         }
         return created;
       });

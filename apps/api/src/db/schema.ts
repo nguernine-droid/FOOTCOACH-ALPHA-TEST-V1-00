@@ -75,6 +75,9 @@ export const teamEventType = pgEnum("team_event_type", ["entrainement", "tournoi
 export const eventRecurrence = pgEnum("event_recurrence", ["none", "weekly"]);
 export const joinRequestStatus = pgEnum("join_request_status", ["pending", "approved", "declined"]);
 export const resetRequestStatus = pgEnum("reset_request_status", ["pending", "handled"]);
+// Qui parle dans une conversation. `system` = l'application elle-même, qui
+// inscrit le match convenu à l'ouverture du fil et à chaque nouvelle rencontre.
+export const messageKind = pgEnum("message_kind", ["coach", "system"]);
 // D'où vient la position d'un coach : géolocalisation du navigateur, ou adresse
 // qu'il a saisie. NULL = aucune position propre, on retombe sur son équipe.
 export const locationSource = pgEnum("location_source", ["gps", "address"]);
@@ -815,9 +818,19 @@ export const messages = pgTable(
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
-    senderId: uuid("sender_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    /**
+     * NULL pour un message `system` : personne ne l'a écrit, c'est
+     * l'application qui inscrit le match convenu. Un expéditeur de complaisance
+     * — le coach qui accepte, par exemple — ferait croire qu'il l'a rédigé.
+     */
+    senderId: uuid("sender_id").references(() => users.id, { onDelete: "cascade" }),
+    kind: messageKind("kind").notNull().default("coach"),
+    /**
+     * Match annoncé par un message `system`. Le texte du message est figé à
+     * l'écriture (il raconte ce qui a été convenu ce jour-là) ; cette référence,
+     * elle, permet d'ouvrir la feuille de match telle qu'elle est aujourd'hui.
+     */
+    matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
     body: text("body").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

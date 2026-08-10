@@ -1241,19 +1241,31 @@ export interface ConversationDto {
   coach: CoachRefDto;
   /** Son équipe, pour situer un homonyme (null s'il n'en encadre aucune) */
   teamName: string | null;
-  /** Dernier message échangé — null tant que personne n'a écrit */
-  lastMessage: { body: string; createdAt: string; mine: boolean } | null;
+  /** Dernier message du fil — null tant que rien n'y a été inscrit */
+  lastMessage: { body: string; createdAt: string; mine: boolean; kind: MessageKind } | null;
   /** Messages de l'autre coach reçus depuis ma dernière lecture */
   unread: number;
   /** Dernier message, ou création du fil : ce qui ordonne la liste */
   updatedAt: string;
 }
 
+/**
+ * Qui parle dans un fil. `system` n'a pas d'expéditeur : c'est l'application
+ * qui inscrit le match convenu, pour qu'on sache de quelle rencontre on parle —
+ * deux coachs peuvent en avoir plusieurs ensemble, et plusieurs fils peuvent
+ * s'ouvrir le même jour.
+ */
+export const MESSAGE_KINDS = ["coach", "system"] as const;
+export type MessageKind = (typeof MESSAGE_KINDS)[number];
+
 export interface MessageDto {
   id: string;
+  kind: MessageKind;
   body: string;
   /** true si c'est moi qui l'ai écrit — c'est ce qui décide du côté de la bulle */
   mine: boolean;
+  /** Match annoncé par un message `system` : de quoi ouvrir sa feuille */
+  matchId: string | null;
   createdAt: string;
 }
 

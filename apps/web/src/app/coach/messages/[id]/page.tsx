@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, MessageCircle, SendHorizontal } from "lucide-react";
+import { ArrowLeft, CalendarCheck2, ChevronRight, MessageCircle, SendHorizontal } from "lucide-react";
 import { MESSAGE_MAX_LENGTH, type ConversationThreadDto, type MessageDto } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,6 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
   /** Carte du confrère, ouverte depuis son nom */
   const [cardOpen, setCardOpen] = useState(false);
 
-  const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   /** Dernier message pour lequel la lecture a déjà été signalée au serveur */
   const readUpTo = useRef<string | null>(null);
@@ -100,10 +99,15 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
     return () => clearInterval(timer);
   }, [load]);
 
-  // On arrive toujours en bas du fil : c'est le dernier message qui intéresse
+  /**
+   * On arrive toujours en bas du fil : c'est le dernier message qui intéresse.
+   *
+   * La page entière, et non le dernier message : la zone d'écriture est collée
+   * en bas, elle recouvrirait ce message si l'on s'arrêtait à lui.
+   */
   const messageCount = thread?.messages.length ?? 0;
   useEffect(() => {
-    if (messageCount > 0) endRef.current?.scrollIntoView({ block: "end" });
+    if (messageCount > 0) window.scrollTo({ top: document.documentElement.scrollHeight });
   }, [messageCount]);
 
   // `SyntheticEvent` et non `FormEvent` : l'envoi part aussi d'un raccourci
@@ -193,18 +197,6 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
       </button>
 
       <div className="space-y-2">
-        {thread.messages.length === 0 && (
-          <div className="card p-8 text-center space-y-3">
-            <span className="w-12 h-12 rounded-lg bg-blue-soft text-blue flex items-center justify-center mx-auto">
-              <MessageCircle size={22} />
-            </span>
-            <p className="text-sm font-bold">Votre match est convenu</p>
-            <p className="text-xs text-ink-soft">
-              Écrivez le premier message : l&apos;heure d&apos;arrivée, la couleur des maillots, le vestiaire.
-            </p>
-          </div>
-        )}
-
         {thread.messages.map((message) => {
           const day = dayLabel(message.createdAt);
           const newDay = day !== previousDay;
@@ -216,27 +208,65 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
                   <span className="chip bg-paper text-ink-soft">{day}</span>
                 </p>
               )}
-              <div className={cn("flex", message.mine ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 space-y-0.5",
-                    message.mine
-                      ? "bg-blue text-white rounded-br-sm"
-                      : "surface-2 text-ink rounded-bl-sm border border-line",
-                  )}
-                >
-                  {/* `whitespace-pre-wrap` : les retours à la ligne du confrère
-                      sont son découpage, pas du bruit à écraser. */}
-                  <p className="text-sm leading-snug whitespace-pre-wrap break-words">{message.body}</p>
-                  <p className={cn("text-[10px] text-right", message.mine ? "text-white/60" : "text-ink-faint")}>
-                    {hourOf(message.createdAt)}
-                  </p>
+
+              {/* Le match convenu, inscrit par l'application. Centré et sans
+                  bulle : il n'est ni de l'un ni de l'autre. C'est lui qui dit
+                  DE QUEL match on parle — deux coachs en ont parfois plusieurs
+                  ensemble, et le fil devient leur chronologie. */}
+              {message.kind === "system" ? (
+                <div className="flex justify-center">
+                  <div className="max-w-[92%] rounded-xl border border-line bg-paper px-4 py-3 text-center space-y-1.5">
+                    <p className="text-xs font-semibold text-ink leading-relaxed whitespace-pre-wrap">
+                      <CalendarCheck2 size={13} className="inline align-[-2px] mr-1 text-blue" aria-hidden />
+                      {message.body}
+                    </p>
+                    {message.matchId && (
+                      <Link
+                        href={`/coach/matches/${message.matchId}`}
+                        className="inline-flex items-center gap-1 min-h-11 px-2 text-xs font-bold text-blue
+                          transition hover:underline"
+                      >
+                        Feuille de match <ChevronRight size={13} aria-hidden />
+                      </Link>
+                    )}
+                    <p className="text-[10px] text-ink-faint">{hourOf(message.createdAt)}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className={cn("flex", message.mine ? "justify-end" : "justify-start")}>
+                  <div
+                    className={cn(
+                      "max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 space-y-0.5",
+                      message.mine
+                        ? "bg-blue text-white rounded-br-sm"
+                        : "surface-2 text-ink rounded-bl-sm border border-line",
+                    )}
+                  >
+                    {/* `whitespace-pre-wrap` : les retours à la ligne du confrère
+                        sont son découpage, pas du bruit à écraser. */}
+                    <p className="text-sm leading-snug whitespace-pre-wrap break-words">{message.body}</p>
+                    <p className={cn("text-[10px] text-right", message.mine ? "text-white/60" : "text-ink-faint")}>
+                      {hourOf(message.createdAt)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
-        <div ref={endRef} />
+
+        {/* Personne n'a encore écrit : l'invitation se place APRÈS le match
+            inscrit par l'application, à l'endroit exact où la réponse ira. */}
+        {!thread.messages.some((m) => m.kind === "coach") && (
+          <div className="card p-6 text-center space-y-2">
+            <span className="w-10 h-10 rounded-lg bg-blue-soft text-blue flex items-center justify-center mx-auto">
+              <MessageCircle size={18} />
+            </span>
+            <p className="text-xs text-ink-soft">
+              Écrivez le premier message : l&apos;heure d&apos;arrivée, la couleur des maillots, le vestiaire.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Zone d'écriture collée au-dessus de la barre d'onglets : sur un fil, on
