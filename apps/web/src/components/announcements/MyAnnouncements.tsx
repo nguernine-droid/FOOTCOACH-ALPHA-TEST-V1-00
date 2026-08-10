@@ -48,7 +48,7 @@ function bucketOfTournament(t: TournamentDto): Bucket {
   return t.slotsLeft === 0 ? "confirmed" : "ongoing";
 }
 
-export type MyPublications = {
+export type MyAnnouncements = {
   /** null tant que le premier chargement n'a pas répondu */
   announcements: AnnouncementDto[] | null;
   tournaments: TournamentDto[];
@@ -70,7 +70,7 @@ export type MyPublications = {
  * dédiée (« Moi › Mes annonces ») et l'onglet « Annonces » — et il n'était pas
  * question d'en tenir deux copies qui finiraient par diverger.
  */
-export function useMyPublications(): MyPublications {
+export function useMyAnnouncements(): MyAnnouncements {
   const router = useRouter();
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
@@ -139,12 +139,12 @@ export function useMyPublications(): MyPublications {
 }
 
 /**
- * Mes publications, rangées en trois casiers. Sans en-tête ni titre : ce
+ * Mes annonces, rangées en trois casiers. Sans en-tête ni titre : ce
  * composant est posé tantôt sous le bandeau de sa page, tantôt sous les
  * catégories de l'onglet « Annonces », et c'est à eux de dire où l'on est.
  */
-export function MyPublicationsList({ publications }: { publications: MyPublications }) {
-  const { announcements, tournaments, error, accept, decline, cancel } = publications;
+export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
+  const { announcements, tournaments, error, accept, decline, cancel } = mine;
   const [bucket, setBucket] = useState<Bucket>("ongoing");
   /** Annonce dont le détail est ouvert — relue dans la liste, jamais copiée */
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -174,7 +174,7 @@ export function MyPublicationsList({ publications }: { publications: MyPublicati
   return (
     <div className="space-y-4">
       {/* Trois casiers qui se partagent la largeur : cible large, pas de repli */}
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Filtrer mes publications">
+      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Filtrer mes annonces">
         {BUCKETS.map((b) => (
           <button
             key={b.key}

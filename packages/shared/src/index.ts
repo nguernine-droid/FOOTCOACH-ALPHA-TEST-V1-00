@@ -686,6 +686,19 @@ export const sendMessageSchema = z.object({
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
 /**
+ * Longueur maximale d'une publication de contributeur. C'est un billet
+ * d'information — les poules du district, une intempérie qui annule — pas un
+ * article : au-delà, l'information se noie dans le texte.
+ */
+export const PUBLICATION_MAX_LENGTH = 800;
+
+/** Rédaction d'une publication (coachs contributeurs uniquement) */
+export const createPublicationSchema = z.object({
+  body: z.string().trim().min(1, "Écrivez votre publication").max(PUBLICATION_MAX_LENGTH),
+});
+export type CreatePublicationInput = z.infer<typeof createPublicationSchema>;
+
+/**
  * Préfixe du QR code d'un coach : `FOOTCOACH:COACH:<code>`. Il permet au
  * scanner de reconnaître un code FootCoach et d'écarter tout autre QR.
  */
@@ -1273,6 +1286,25 @@ export interface MessageDto {
 export interface ConversationThreadDto {
   conversation: ConversationDto;
   messages: MessageDto[];
+}
+
+// ---------- Publications des contributeurs ----------
+
+/**
+ * Un billet d'information rédigé par un coach contributeur, lisible par tous
+ * les coachs : les poules des matchs officiels, une intempérie qui annule…
+ * À ne pas confondre avec les annonces : une publication n'attend pas de
+ * réponse, elle informe.
+ */
+export interface PublicationDto {
+  id: string;
+  author: CoachRefDto;
+  /** L'équipe qui situe l'auteur (null s'il n'en encadre aucune) */
+  teamName: string | null;
+  body: string;
+  /** true si je l'ai rédigée — c'est ce qui affiche le bouton de suppression */
+  mine: boolean;
+  createdAt: string;
 }
 
 export interface AuthResponseDto {

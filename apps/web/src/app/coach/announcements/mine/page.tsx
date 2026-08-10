@@ -1,19 +1,20 @@
 "use client";
 
 import { Megaphone } from "lucide-react";
-import { MyPublicationsList, useMyPublications } from "@/components/announcements/MyPublications";
+import { MyAnnouncementsList, useMyAnnouncements } from "@/components/announcements/MyAnnouncements";
 import { ButtonLink } from "@/components/ui/Button";
 
 /**
  * Ce que J'AI publié — annonces de match et tournois que j'organise, dans trois
  * casiers.
  *
- * La même matière s'ouvre désormais depuis la troisième catégorie de l'onglet
- * « Annonces » : cette page reste le lien direct de la feuille « Moi », avec
- * son bandeau, mais elle ne tient plus la logique — voir `MyPublications`.
+ * S'ouvre depuis la feuille « Moi › Mes annonces ». La troisième catégorie de
+ * l'onglet « Annonces » est occupée par les publications des contributeurs —
+ * les annonces d'un coach, elles, se retrouvent ici. La logique vit dans
+ * `MyAnnouncements`, partagée à l'époque où l'onglet la montrait aussi.
  */
 export default function MyAnnouncementsPage() {
-  const publications = useMyPublications();
+  const mine = useMyAnnouncements();
 
   return (
     <div className="space-y-4">
@@ -32,7 +33,7 @@ export default function MyAnnouncementsPage() {
         </ButtonLink>
       </div>
 
-      <MyPublicationsList publications={publications} />
+      <MyAnnouncementsList mine={mine} />
     </div>
   );
 }

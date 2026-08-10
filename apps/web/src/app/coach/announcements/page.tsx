@@ -5,7 +5,7 @@ import { Megaphone, Radar } from "lucide-react";
 import type { RadarDto, AnnouncementDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { MyPublicationsList, useMyPublications } from "@/components/announcements/MyPublications";
+import { PublicationsFeedView, usePublicationsFeed } from "@/components/publications/PublicationsFeed";
 import { SectorAnnouncementCard } from "@/components/announcements/SectorAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { ButtonLink } from "@/components/ui/Button";
@@ -13,13 +13,14 @@ import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 /**
  * Tout ce qui se publie autour de soi, en trois catégories : les matchs
- * amicaux du secteur, les tournois, et ses propres publications.
+ * amicaux du secteur, les tournois, et les publications des contributeurs.
  *
  * Les deux premières sont ce que les AUTRES cherchent — la même matière que le
  * radar, sans la carte ni les filtres, pour qui préfère lire une liste que
- * viser un maillot. La troisième est ce que J'AI publié : elle ne vivait qu'au
- * tableau de bord, or c'est ici qu'on vient quand on pense « annonces », et
- * revenir sur la sienne ne devrait pas demander de changer d'écran.
+ * viser un maillot. La troisième est le panneau d'affichage du secteur : les
+ * billets d'information des coachs contributeurs — poules des matchs
+ * officiels, intempéries qui annulent. Ses propres annonces, elles, vivent
+ * dans la feuille « Moi › Mes annonces ».
  *
  * Le périmètre reste celui du radar, réglé sur le tableau de bord : deux
  * réglages de portée qui pourraient diverger seraient un piège.
@@ -29,8 +30,8 @@ export default function AnnouncementsPage() {
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
   /** Amicaux d'abord : c'est ce qu'on cherche neuf fois sur dix */
-  const [kind, setKind] = useState<"matches" | "tournaments" | "mine">("matches");
-  const publications = useMyPublications();
+  const [kind, setKind] = useState<"matches" | "tournaments" | "publications">("matches");
+  const feed = usePublicationsFeed();
 
   const load = useCallback(async () => {
     try {
@@ -95,8 +96,8 @@ export default function AnnouncementsPage() {
         <div className="min-w-[14rem] flex-1">
           <h2 className="display text-lg">Annonces</h2>
           <p className="text-xs text-white/80">
-            Ce que les coachs autour de vous cherchent et organisent — et, dans « Les miennes », ce que vous
-            avez publié.
+            Ce que les coachs autour de vous cherchent et organisent — et, dans « Publications », les
+            informations du secteur.
           </p>
         </div>
         <ButtonLink href="/coach" variant="accent" className="shrink-0 w-full sm:w-auto">
@@ -117,9 +118,7 @@ export default function AnnouncementsPage() {
           [
             { key: "matches", label: "Amicaux", count: announcements.length },
             { key: "tournaments", label: "Tournois", count: tournaments.length },
-            // Ce que j'ai publié et qui n'est pas encore passé : le nombre doit
-            // dire ce qui vit, pas la taille de mes archives.
-            { key: "mine", label: "Les miennes", count: publications.activeCount },
+            { key: "publications", label: "Publications", count: feed.posts?.length ?? 0 },
           ] as const
         ).map((t) => (
           <button
@@ -188,12 +187,11 @@ export default function AnnouncementsPage() {
         </section>
       )}
 
-      {/* Mes publications, avec leurs propres casiers et les décisions à
-          prendre. Exactement l'écran « Moi › Mes annonces » — même composant,
-          donc rien à maintenir en double. */}
-      {kind === "mine" && (
-        <section className="space-y-3" aria-label="Mes publications">
-          <MyPublicationsList publications={publications} />
+      {/* Le panneau d'affichage du secteur : lecture pour tous, rédaction pour
+          les contributeurs — le formulaire vit dans le composant. */}
+      {kind === "publications" && (
+        <section className="space-y-3" aria-label="Publications des contributeurs">
+          <PublicationsFeedView feed={feed} />
         </section>
       )}
     </div>

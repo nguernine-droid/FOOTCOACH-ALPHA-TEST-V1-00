@@ -5,6 +5,7 @@ import {
   coachRelations,
   matchAnnouncements,
   matches,
+  publications,
   teamCoaches,
   teams,
   tournamentRegistrations,
@@ -45,7 +46,7 @@ async function tournamentIdsAround(teamIds: string[]): Promise<Set<string>> {
  * Un coach peut-il voir la carte d'un autre ?
  *
  * Le nom et la photo d'un coach ne sont pas publics dans l'application : ils ne
- * le deviennent que pour les gens qui ont une raison de les connaître. Quatre
+ * le deviennent que pour les gens qui ont une raison de les connaître. Cinq
  * raisons, et pas une de plus :
  *
  * 1. c'est lui-même ;
@@ -56,6 +57,9 @@ async function tournamentIdsAround(teamIds: string[]): Promise<Set<string>> {
  *    coach qui sollicite des adversaires ne peut pas exiger l'anonymat de ceux
  *    qu'il sollicite. La visibilité se referme d'elle-même quand l'annonce est
  *    pourvue ou périmée.
+ * 5. il a signé une publication de contributeur : son billet porte déjà son nom
+ *    et sa photo devant tous les coachs, et il reste signé tant qu'il reste
+ *    affiché — la carte suit.
  */
 export async function canSeeCoachCard(viewerId: string, targetId: string): Promise<boolean> {
   if (viewerId === targetId) return true;
@@ -66,6 +70,15 @@ export async function canSeeCoachCard(viewerId: string, targetId: string): Promi
     .where(and(eq(coachRelations.coachId, viewerId), eq(coachRelations.relatedCoachId, targetId)))
     .limit(1);
   if (relation) return true;
+
+  // Avant le raccourci « pas d'équipe » : signer un billet montre son auteur,
+  // qu'il encadre une équipe ou non.
+  const [publication] = await db
+    .select({ id: publications.id })
+    .from(publications)
+    .where(eq(publications.authorId, targetId))
+    .limit(1);
+  if (publication) return true;
 
   const [viewerTeams, targetTeams] = await Promise.all([teamIdsOf(viewerId), teamIdsOf(targetId)]);
   if (viewerTeams.length === 0 || targetTeams.length === 0) return false;

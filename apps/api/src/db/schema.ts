@@ -857,3 +857,27 @@ export const conversationReads = pgTable(
   },
   (t) => [uniqueIndex("conversation_reads_conv_coach_idx").on(t.conversationId, t.coachId)],
 );
+
+/**
+ * Publication d'un coach contributeur : un billet d'information à destination
+ * de tous les coachs — les poules des matchs officiels, une intempérie qui
+ * annule un plateau. Rien d'autre qu'un texte et son auteur : ni destinataire,
+ * ni réponse, ni statut — c'est un panneau d'affichage, pas une conversation.
+ *
+ * Le droit d'écrire ne se stocke pas ici : il se lit dans la casquette
+ * `contributeur` de l'auteur AU MOMENT de la rédaction. Un billet survit donc
+ * au retrait de la casquette — l'information donnée reste donnée.
+ */
+export const publications = pgTable(
+  "publications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Le fil se lit toujours du plus récent au plus ancien
+  (t) => [index("publications_created_idx").on(t.createdAt)],
+);
