@@ -143,16 +143,16 @@ export function RoleGuard({
       <div className="min-h-dvh" aria-busy aria-label="Chargement">
         <AppBackdrop />
         <header className="app-header sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
-          {/* Même gabarit que le header définitif — photo à gauche comprise —
+          {/* Même gabarit que le header définitif — photo à droite comprise —
               pour que le titre ne se déplace pas une fois le compte chargé. */}
           <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
-            <span className="shrink-0 -ml-1 p-1">
-              <span className="block w-9 h-9 rounded-full bg-white/10" />
-            </span>
             <Logo size={30} className="hidden min-[380px]:inline-flex" />
             <p className="display text-xl leading-none select-none">
               FOOT<span className="text-accent-solid">COACH</span>
             </p>
+            <span className="shrink-0 ml-auto -mr-1 p-1">
+              <span className="block w-9 h-9 rounded-full bg-white/10" />
+            </span>
           </div>
         </header>
         <div className={cn(SHELL_WIDTH, "pt-6 pb-28 space-y-4")}>
@@ -180,21 +180,36 @@ export function RoleGuard({
             verre flouté la nuit, où le halo et le tracé du terrain se
             poursuivent dessous au lieu de s'arrêter net. */}
         <div className="app-header sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
-          {/* Le header porte UNE action, et une seule : la photo, tout à gauche,
+          {/* Le header porte UNE action, et une seule : la photo, tout à droite,
               qui ouvre le menu « Moi ». C'est le geste appris ailleurs — sa
-              propre tête en haut à gauche ouvre son compte — et il vaut à toutes
+              propre tête en haut à droite ouvre son compte — et il vaut à toutes
               les largeurs, ce qui évite d'avoir deux portes différentes vers le
               même menu selon la taille de l'écran. La carte du coach, elle, a
               rejoint le menu : elle s'ouvre par son nom, en tête de feuille. */}
           <header className="text-on-structure">
             <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
+              <Logo size={30} className="hidden min-[380px]:inline-flex" />
+
+              {/* Le nom de l'application cède la place avant la photo sur les
+                  très petits écrans : on sait toujours où l'on est, la marque
+                  se rappelle par son blason. */}
+              <div className="min-w-0 leading-tight">
+                <p className="display text-xl leading-none select-none">
+                  FOOT<span className="text-accent-solid">COACH</span>
+                </p>
+                <p className="text-[11px] text-white/60 font-semibold truncate">
+                  {teamLabel ? `${teamLabel} · ` : ""}
+                  {ROLE_SPACES[user.role]}
+                </p>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setSheetOpen(true)}
                 aria-haspopup="dialog"
                 aria-expanded={sheetOpen}
                 aria-label={`Menu de ${user.firstName}`}
-                className="shrink-0 -ml-1 p-1 rounded-full transition hover:bg-white/10 active:scale-95
+                className="shrink-0 ml-auto -mr-1 p-1 rounded-full transition hover:bg-white/10 active:scale-95
                   focus-visible:outline-accent"
               >
                 <Avatar
@@ -210,21 +225,6 @@ export function RoleGuard({
                   )}
                 />
               </button>
-
-              <Logo size={30} className="hidden min-[380px]:inline-flex" />
-
-              {/* Le nom de l'application cède la place avant la photo sur les
-                  très petits écrans : on sait toujours où l'on est, la marque
-                  se rappelle par son blason. */}
-              <div className="min-w-0 leading-tight">
-                <p className="display text-xl leading-none select-none">
-                  FOOT<span className="text-accent-solid">COACH</span>
-                </p>
-                <p className="text-[11px] text-white/60 font-semibold truncate">
-                  {teamLabel ? `${teamLabel} · ` : ""}
-                  {ROLE_SPACES[user.role]}
-                </p>
-              </div>
             </div>
           </header>
 
