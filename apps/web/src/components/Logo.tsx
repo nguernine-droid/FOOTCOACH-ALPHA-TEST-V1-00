@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils";
 /**
  * Logo FootCoach.
  *
- * La marque est d’un bleu vif : posée directement sur le header navy, elle
- * tomberait à 2,35:1 de contraste et se lirait à peine. Elle est donc portée
- * par une pastille claire, qui lui rend son intensité d'origine — celle du
- * fichier fourni, dessiné pour un fond blanc.
+ * La marque est d’un orange vif : posée directement sur le header navy, elle
+ * manquerait de contraste et se lirait mal. Elle est donc portée par une
+ * pastille claire, qui lui rend son intensité d'origine — celle du fichier
+ * fourni, dessiné pour un fond blanc.
  *
  * `alt` vide : le logo jouxte toujours le mot-repère « FOOTCOACH », un lecteur
  * d'écran annoncerait deux fois la même chose.

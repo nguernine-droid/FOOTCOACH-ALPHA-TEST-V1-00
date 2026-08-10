@@ -1,8 +1,8 @@
 # Sources graphiques
 
-`logo.png` est **la source** du logo FootCoach : marque bleue `#124BCB` sur fond
-transparent. Ce dossier n'est pas servi par Next — seul `public/` l'est. Les
-fichiers réellement livrés au navigateur en sont dérivés.
+`logo.png` est **la source** du logo FootCoach : marque orange `≈ #F87010` sur
+fond transparent. Ce dossier n'est pas servi par Next — seul `public/` l'est.
+Les fichiers réellement livrés au navigateur en sont dérivés.
 
 | Dérivé | Rôle | Format |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ const sharp=require('sharp');
 
 ## À savoir
 
-La marque bleue tombe à **2,35:1 de contraste sur le header navy** : elle y est
-donc portée par une pastille blanche (voir `src/components/Logo.tsx`). Une
+La marque orange manque de contraste sur le header navy : elle y est donc
+portée par une pastille blanche (voir `src/components/Logo.tsx`). Une
 déclinaison monochrome blanche permettrait de la poser directement sur le navy,
 sans pastille.

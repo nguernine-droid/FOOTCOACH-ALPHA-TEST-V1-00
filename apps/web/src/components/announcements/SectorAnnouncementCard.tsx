@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Clock3, MapPin, Navigation, UserMinus, XCircle } from "lucide-react";
+import { CalendarDays, Clock3, MapPin, Navigation, UserMinus, Users, XCircle } from "lucide-react";
 import {
   categoryLabel,
   MATCH_GENDER_LABELS,
@@ -54,7 +54,7 @@ export function SectorAnnouncementCard({
         <p className="-m-4 mb-0 rounded-t-lg bg-coral-soft px-4 py-2.5 text-xs font-bold text-coral flex items-start gap-2">
           <UserMinus size={14} className="shrink-0 mt-px" aria-hidden />
           <span>
-            SOS — l&apos;adversaire s&apos;est désisté
+            SOS — {a.plateau ? "une équipe s'est désistée" : "l'adversaire s'est désisté"}
             {a.sosReason && ` (${WITHDRAWAL_REASON_LABELS[a.sosReason].toLowerCase()})`}
             {a.sosDetails && <span className="block font-semibold text-ink-soft">{a.sosDetails}</span>}
           </span>
@@ -84,6 +84,16 @@ export function SectorAnnouncementCard({
       </div>
 
       <div className="flex flex-wrap gap-1.5">
+        {/* Jusqu'aux U11, l'annonce réunit un plateau : dire combien de places
+            restent, c'est dire s'il faut se dépêcher. */}
+        {a.plateau && (
+          <span className="chip bg-accent-surface text-accent">
+            <Users size={11} /> Plateau ·{" "}
+            {a.teamsWanted - a.teamsAccepted > 0
+              ? `${a.teamsWanted - a.teamsAccepted} place${a.teamsWanted - a.teamsAccepted > 1 ? "s" : ""}`
+              : "complet"}
+          </span>
+        )}
         <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
         {a.gender && <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>}
         <span className="chip bg-pitch-soft text-primary">{a.format}</span>

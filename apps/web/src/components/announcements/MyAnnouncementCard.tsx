@@ -83,7 +83,7 @@ export function MyAnnouncementCard({
         <p className="rounded-lg bg-coral-soft px-3 py-2 text-xs font-bold text-coral flex items-start gap-2">
           <UserMinus size={13} className="shrink-0 mt-px" aria-hidden />
           <span>
-            SOS — adversaire désisté
+            SOS — {a.plateau ? "équipe désistée" : "adversaire désisté"}
             {a.sosReason && ` (${WITHDRAWAL_REASON_LABELS[a.sosReason].toLowerCase()})`}
             <span className="block font-semibold text-ink-soft">
               Remise en tête du radar, les coachs du secteur ont été alertés.
@@ -129,9 +129,15 @@ export function MyAnnouncementCard({
             ) : (
               <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-accent animate-soft-pulse shrink-0" aria-hidden />
-                {pending.length === 0
-                  ? "En attente de proposition"
-                  : `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider`}
+                {/* Un plateau se remplit équipe par équipe : dire où il en est,
+                    c'est dire pourquoi l'annonce est encore ouverte. */}
+                {pending.length > 0
+                  ? `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider${
+                      a.plateau ? ` — ${a.teamsAccepted}/${a.teamsWanted} équipes` : ""
+                    }`
+                  : a.plateau
+                    ? `Plateau — ${a.teamsAccepted} équipe${a.teamsAccepted > 1 ? "s" : ""} sur ${a.teamsWanted}`
+                    : "En attente de proposition"}
               </p>
             )}
             <button
@@ -177,7 +183,9 @@ export function MyAnnouncementCard({
       {a.status === "matched" && (
         <p className="text-xs font-semibold text-success flex items-center gap-1.5">
           <CheckCircle2 size={12} className="shrink-0" />
-          Match confirmé — {a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}
+          {a.plateau
+            ? `Plateau complet — ${a.teamsWanted} équipes trouvées`
+            : `Match confirmé — ${a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}`}
         </p>
       )}
 

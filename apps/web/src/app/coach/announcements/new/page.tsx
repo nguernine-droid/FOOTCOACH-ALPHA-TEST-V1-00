@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Megaphone, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Megaphone, ShieldCheck, Users } from "lucide-react";
 import {
+  ANNOUNCEMENT_CATEGORIES,
   FFF_NOTICE_DAYS,
   MATCH_GENDERS,
   MATCH_GENDER_LABELS,
+  PLATEAU_TEAMS_WANTED,
+  announcementCategoryOf,
   daysBetweenIso,
-  type MatchCategory,
+  isPlateauCategory,
+  type AnnouncementCategory,
   type MatchGender,
 } from "@footcoach/shared";
 import { api } from "@/lib/api";
@@ -55,9 +59,11 @@ export default function NewAnnouncementPage() {
     time: "",
     city: activeTeam?.city ?? "",
     stadium: activeTeam?.stadium ?? "",
-    // Équipes créées avant les références : rien à reprendre, on retombe sur la
-    // catégorie la plus courante plutôt que sur un formulaire bloqué.
-    category: (activeTeam?.category ?? "U13") as MatchCategory,
+    // La catégorie FINE de l'équipe (U13) est reprise dans son groupe d'âges
+    // (U12-U13) : les rencontres s'apparient par paires, comme au district.
+    // Équipes créées avant les références : rien à reprendre, on retombe sur le
+    // groupe le plus courant plutôt que sur un formulaire bloqué.
+    category: (announcementCategoryOf(activeTeam?.category) ?? "U12-U13") as AnnouncementCategory,
     level: "loisir",
     format: "8v8",
     comment: "",
@@ -79,6 +85,10 @@ export default function NewAnnouncementPage() {
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  // Jusqu'aux U11 l'annonce cherche un plateau de quatre équipes, pas un
+  // adversaire : le formulaire doit le dire avant la publication, pas après.
+  const plateau = isPlateauCategory(form.category);
 
   // Délai FFF : la date choisie laisse-t-elle les 10 jours de déclaration ?
   const today = new Date().toISOString().slice(0, 10);
@@ -117,7 +127,7 @@ export default function NewAnnouncementPage() {
           <Megaphone size={22} />
         </span>
         <div>
-          <h2 className="display text-lg">Proposer un match amical</h2>
+          <h2 className="display text-lg">{plateau ? "Proposer un plateau" : "Proposer un match amical"}</h2>
           <p className="text-xs text-white/85">Votre annonce sera visible par tous les coachs sur le radar.</p>
         </div>
       </div>
@@ -165,6 +175,7 @@ export default function NewAnnouncementPage() {
         <CategoryPicker
           value={form.category}
           onChange={(c) => set("category", c)}
+          categories={ANNOUNCEMENT_CATEGORIES}
           idPrefix="announcement-category"
           hint={
             activeTeam && fromTeam.length > 1
@@ -172,6 +183,20 @@ export default function NewAnnouncementPage() {
               : undefined
           }
         />
+
+        {/* Le mot « plateau » doit apparaître AVANT la publication : un coach
+            U10 qui croit chercher un adversaire découvrirait sinon trois
+            équipes acceptées sur son annonce. */}
+        {plateau && (
+          <div className="rounded-lg bg-blue-faint border border-line px-4 py-3 flex gap-2.5">
+            <Users size={15} className="text-blue shrink-0 mt-0.5" aria-hidden />
+            <p className="text-xs text-ink-soft">
+              Jusqu&apos;aux U11, on ne joue pas de match amical : un <span className="font-bold text-ink">plateau</span>{" "}
+              réunit quatre équipes. Votre annonce restera ouverte jusqu&apos;à ce que{" "}
+              <span className="font-bold text-ink">{PLATEAU_TEAMS_WANTED} équipes</span> l&apos;aient rejointe.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <span className="text-xs font-bold text-ink-soft">Genre</span>

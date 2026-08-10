@@ -121,6 +121,15 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
         </div>
 
         <div className="flex flex-wrap gap-1.5">
+          {/* Le plateau se signale ici aussi : c'est l'écran où l'on décide de proposer */}
+          {a.plateau && (
+            <span className="chip bg-accent-surface text-accent">
+              Plateau ·{" "}
+              {a.teamsWanted - a.teamsAccepted > 0
+                ? `${a.teamsWanted - a.teamsAccepted} place${a.teamsWanted - a.teamsAccepted > 1 ? "s" : ""}`
+                : "complet"}
+            </span>
+          )}
           <span className="chip bg-paper text-ink-soft">{categoryLabel(a.category)}</span>
           {a.gender && <span className="chip bg-paper text-ink-soft">{MATCH_GENDER_LABELS[a.gender]}</span>}
           <span className="chip bg-paper text-ink-soft">{a.format}</span>

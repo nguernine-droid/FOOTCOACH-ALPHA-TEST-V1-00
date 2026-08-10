@@ -17,8 +17,9 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  ANNOUNCEMENT_CATEGORIES,
+  announcementCategoryOf,
   categoryLabel,
-  MATCH_CATEGORIES,
   MATCH_GENDERS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
@@ -188,7 +189,9 @@ export function RadarFeed() {
   const matchesFilters = useMemo(
     () =>
       (announcements ?? [])
-        .filter((a) => (category ? a.category === category : true))
+        // Par GROUPE d'âges : les annonces d'avant le regroupement portent
+        // encore une catégorie fine (U13), on les range dans leur paire.
+        .filter((a) => (category ? announcementCategoryOf(a.category) === category : true))
         // Le genre non renseigné (annonces d'avant le champ) ne disparaît pas
         // sur un filtre : on ne sait pas, ce n'est pas une exclusion.
         .filter((a) => (gender ? a.gender === gender || a.gender === null : true))
@@ -396,7 +399,7 @@ export function RadarFeed() {
                 >
                   Toutes
                 </button>
-                {MATCH_CATEGORIES.map((c) => (
+                {ANNOUNCEMENT_CATEGORIES.map((c) => (
                   <button
                     key={c}
                     type="button"

@@ -6,6 +6,7 @@ import {
   idParamSchema,
   confirmEncounterSchema,
   finalScoreSchema,
+  isPlateauCategory,
   levelForPoints,
   withdrawMatchSchema,
   MATCH_POINTS,
@@ -193,7 +194,7 @@ export function matchRoutes(app: FastifyInstance) {
           })
           .where(eq(matchAnnouncements.id, match.announcementId));
       } else {
-        await tx
+        const [reopened] = await tx
           .update(matchAnnouncements)
           .set({
             status: "open",
@@ -206,10 +207,25 @@ export function matchRoutes(app: FastifyInstance) {
             sosAlertedAt: new Date(),
             sosWidenedAt: null,
           })
-          .where(eq(matchAnnouncements.id, match.announcementId));
-        await tx
-          .delete(announcementResponses)
-          .where(eq(announcementResponses.announcementId, match.announcementId));
+          .where(eq(matchAnnouncements.id, match.announcementId))
+          .returning({ category: matchAnnouncements.category });
+        // Amical : table rase, l'annonce repart de zéro. Plateau : les AUTRES
+        // équipes acceptées restent engagées — seule la place du désisté se
+        // libère, c'est elle que le SOS annonce.
+        if (reopened && isPlateauCategory(reopened.category)) {
+          await tx
+            .delete(announcementResponses)
+            .where(
+              and(
+                eq(announcementResponses.announcementId, match.announcementId),
+                eq(announcementResponses.teamId, myTeamId!),
+              ),
+            );
+        } else {
+          await tx
+            .delete(announcementResponses)
+            .where(eq(announcementResponses.announcementId, match.announcementId));
+        }
       }
     });
 

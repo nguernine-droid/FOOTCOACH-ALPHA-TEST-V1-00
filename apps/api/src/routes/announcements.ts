@@ -1,11 +1,13 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, gte, inArray, ne, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, notInArray, sql } from "drizzle-orm";
 import {
   idParamSchema,
   responseParamsSchema,
   categoryLabel,
   createAnnouncementSchema,
   daysBetweenIso,
+  isPlateauCategory,
+  PLATEAU_TEAMS_WANTED,
   MATCH_GENDER_LABELS,
   type AnnouncementDto,
   type AnnouncementResponseDto,
@@ -34,8 +36,11 @@ function toDto(
   myResponseStatus?: AnnouncementResponseDto["status"] | null,
   /** Coach représentant l'équipe émettrice, quand l'appelant l'a chargé */
   coach?: CoachRefDto | null,
+  /** Acceptées déjà comptées par l'appelant (radar) — sinon relues des propositions */
+  acceptedCount?: number,
 ): AnnouncementDto {
   const { announcement, team } = row;
+  const plateau = isPlateauCategory(announcement.category);
   // Position relative du LIEU DU MATCH, pas du siège du club : une annonce
   // peut se jouer loin de la ville de l'équipe qui la publie, et c'est le
   // déplacement réel qui intéresse le coach. `null` si la ville du match est
@@ -57,6 +62,9 @@ function toDto(
     comment: announcement.comment,
     status: announcement.status,
     isMine: team.id === myTeamId,
+    plateau,
+    teamsWanted: plateau ? PLATEAU_TEAMS_WANTED : 1,
+    teamsAccepted: acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length,
     coach: coach ?? null,
     createdAt: announcement.createdAt.toISOString(),
     noticeDays: daysBetweenIso(announcement.createdAt.toISOString().slice(0, 10), announcement.date),
@@ -178,8 +186,11 @@ function matchSystemMessage(input: {
   const category = `${categoryLabel(input.category)}${
     input.gender ? ` ${MATCH_GENDER_LABELS[input.gender]}` : ""
   }`;
+  // Jusqu'aux U11 c'est un plateau qui se confirme, pas un match : le fil doit
+  // employer le mot que les deux coachs emploieront au bord du terrain.
+  const confirmed = isPlateauCategory(input.category) ? "Plateau confirmé" : "Match confirmé";
   return [
-    `Match confirmé — ${category} · ${input.format}`,
+    `${confirmed} — ${category} · ${input.format}`,
     `${day} à ${input.time.slice(0, 5)} · ${input.location}`,
     `${input.homeTeamName} reçoit ${input.awayTeamName}`,
   ].join("\n");
@@ -245,15 +256,15 @@ export function announcementRoutes(app: FastifyInstance) {
     const myTeamId = request.user.teamId;
     const isMine = row.team.id === myTeamId;
     const links = await loadMatchLinks([id]);
-    const responses = isMine
-      ? (await loadResponses([id])).get(id)?.map(({ teamId: _teamId, ...dto }) => dto)
-      : [];
-    const myStatus = myTeamId
-      ? ((await loadResponses([id])).get(id)?.find((r) => r.teamId === myTeamId)?.status ?? null)
-      : null;
+    const all = (await loadResponses([id])).get(id) ?? [];
+    const responses = isMine ? all.map(({ teamId: _teamId, ...dto }) => dto) : [];
+    const myStatus = myTeamId ? (all.find((r) => r.teamId === myTeamId)?.status ?? null) : null;
+    // Compté à part : un visiteur ne reçoit pas les propositions, mais les
+    // places restantes d'un plateau le concernent au premier chef.
+    const acceptedCount = all.filter((r) => r.status === "accepted").length;
     const myCoords = await loadOrigin(request.user.id, myTeamId);
     const coaches = await representativeCoachesOf([row.team.id]);
-    return toDto(row, myTeamId, links.get(id), myCoords, responses, myStatus, coaches.get(row.team.id));
+    return toDto(row, myTeamId, links.get(id), myCoords, responses, myStatus, coaches.get(row.team.id), acceptedCount);
   });
 
   /**
@@ -305,6 +316,23 @@ export function announcementRoutes(app: FastifyInstance) {
       : [];
     const myStatusByAnn = new Map(myResponses.map((r) => [r.announcementId, r.status]));
 
+    // Places prises des plateaux encore ouverts : une annonce à 4 équipes reste
+    // au radar après une première acceptation, il faut dire ce qui reste.
+    const acceptedCounts = new Map<string, number>();
+    if (rows.length > 0) {
+      const counts = await db
+        .select({ announcementId: announcementResponses.announcementId, count: sql<number>`count(*)::int` })
+        .from(announcementResponses)
+        .where(
+          and(
+            inArray(announcementResponses.announcementId, rows.map((r) => r.announcement.id)),
+            eq(announcementResponses.status, "accepted"),
+          ),
+        )
+        .groupBy(announcementResponses.announcementId);
+      for (const c of counts) acceptedCounts.set(c.announcementId, c.count);
+    }
+
     const coaches = await representativeCoachesOf(rows.map((r) => r.team.id));
     const items: AnnouncementDto[] = [];
     let beyondRadius = 0;
@@ -317,6 +345,7 @@ export function announcementRoutes(app: FastifyInstance) {
         [],
         myStatusByAnn.get(row.announcement.id) ?? null,
         coaches.get(row.team.id),
+        acceptedCounts.get(row.announcement.id) ?? 0,
       );
       if (radiusKm !== null && dto.distanceKm !== null && dto.distanceKm > radiusKm) beyondRadius++;
       else items.push(dto);
@@ -477,21 +506,43 @@ export function announcementRoutes(app: FastifyInstance) {
           throw new HttpError(400, "Vous encadrez aussi l'équipe qui a proposé : ce match ne peut pas se jouer");
         }
 
-        await tx.update(matchAnnouncements).set({ status: "matched" }).where(eq(matchAnnouncements.id, id));
         await tx
           .update(announcementResponses)
           .set({ status: "accepted" })
           .where(eq(announcementResponses.id, responseId));
-        await tx
-          .update(announcementResponses)
-          .set({ status: "declined" })
+
+        /**
+         * Un amical se pourvoit à la première acceptation ; un plateau (≤ U11)
+         * cherche TROIS équipes et reste donc ouvert — et au radar — jusqu'à la
+         * troisième. Les propositions restantes ne tombent qu'une fois le
+         * plateau complet : les décliner avant reviendrait à refuser des
+         * équipes qu'on cherche encore.
+         */
+        const teamsWanted = isPlateauCategory(announcement.category) ? PLATEAU_TEAMS_WANTED : 1;
+        const [{ count: acceptedCount }] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(announcementResponses)
           .where(
-            and(
-              eq(announcementResponses.announcementId, id),
-              ne(announcementResponses.id, responseId),
-              eq(announcementResponses.status, "pending"),
-            ),
+            and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "accepted")),
           );
+        const full = acceptedCount >= teamsWanted;
+        let declinedTeamIds: string[] = [];
+        if (full) {
+          const pendings = await tx
+            .select({ teamId: announcementResponses.teamId })
+            .from(announcementResponses)
+            .where(
+              and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "pending")),
+            );
+          declinedTeamIds = pendings.map((p) => p.teamId);
+          await tx
+            .update(announcementResponses)
+            .set({ status: "declined" })
+            .where(
+              and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "pending")),
+            );
+          await tx.update(matchAnnouncements).set({ status: "matched" }).where(eq(matchAnnouncements.id, id));
+        }
 
         const [created] = await tx
           .insert(matches)
@@ -543,22 +594,19 @@ export function announcementRoutes(app: FastifyInstance) {
             await markRead(tx, conversationId, request.user.id);
           }
         }
-        return created;
+        return { created, declinedTeamIds };
       });
 
-      // Prévient l'équipe retenue, et celles dont la proposition vient de tomber
-      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, match.homeTeamId));
-      const declined = await db
-        .select({ teamId: announcementResponses.teamId })
-        .from(announcementResponses)
-        .where(and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "declined")));
+      // Prévient l'équipe retenue, et celles dont la proposition VIENT de
+      // tomber — celles déclinées à la main l'ont déjà été à ce moment-là.
+      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, match.created.homeTeamId));
       notifyResponseDecision({
-        responderTeamId: match.awayTeamId,
+        responderTeamId: match.created.awayTeamId,
         accepted: true,
         opponentTeamName: ownTeam.name,
-        matchId: match.id,
+        matchId: match.created.id,
       });
-      for (const { teamId } of declined) {
+      for (const teamId of match.declinedTeamIds) {
         notifyResponseDecision({
           responderTeamId: teamId,
           accepted: false,
@@ -568,7 +616,7 @@ export function announcementRoutes(app: FastifyInstance) {
       }
 
       reply.code(201);
-      return { matchId: match.id };
+      return { matchId: match.created.id };
     },
   );
 

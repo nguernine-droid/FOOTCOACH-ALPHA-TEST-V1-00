@@ -123,6 +123,45 @@ export function asMatchCategory(value: string | null | undefined): MatchCategory
 }
 
 /**
+ * Catégories des ANNONCES : les rencontres se jouent par paires d'âges
+ * (U6-U7, U8-U9…), c'est ainsi que les districts les organisent. L'équipe,
+ * elle, garde sa catégorie fine (U13) — c'est à la publication qu'elle est
+ * reprise dans son groupe.
+ */
+export const ANNOUNCEMENT_CATEGORIES = [
+  "U6-U7", "U8-U9", "U10-U11", "U12-U13", "U14-U15", "U16-U17", "U18-U19",
+  "U20", "Seniors", "Veterans",
+] as const;
+export type AnnouncementCategory = (typeof ANNOUNCEMENT_CATEGORIES)[number];
+
+const ANNOUNCEMENT_GROUP_OF: Record<string, AnnouncementCategory> = {
+  U6: "U6-U7", U7: "U6-U7", U8: "U8-U9", U9: "U8-U9", U10: "U10-U11", U11: "U10-U11",
+  U12: "U12-U13", U13: "U12-U13", U14: "U14-U15", U15: "U14-U15", U16: "U16-U17", U17: "U16-U17",
+  U18: "U18-U19", U19: "U18-U19", U20: "U20", Seniors: "Seniors", Veterans: "Veterans",
+};
+
+/** Le groupe d'annonce d'une catégorie d'équipe (U13 → U12-U13). Idempotent : un groupe reste lui-même. */
+export function announcementCategoryOf(teamCategory: string | null | undefined): AnnouncementCategory | null {
+  if (!teamCategory) return null;
+  if ((ANNOUNCEMENT_CATEGORIES as readonly string[]).includes(teamCategory)) return teamCategory as AnnouncementCategory;
+  return ANNOUNCEMENT_GROUP_OF[teamCategory] ?? null;
+}
+
+/**
+ * Jusqu'aux U11, on ne joue pas un match amical : le district réunit des
+ * PLATEAUX de quatre équipes. Une annonce de ces catégories cherche donc trois
+ * équipes, pas un adversaire. Les valeurs fines (U6…U11) sont reconnues aussi :
+ * les annonces antérieures au regroupement les portent encore.
+ */
+export function isPlateauCategory(category: string | null | undefined): boolean {
+  if (!category) return false;
+  return ["U6-U7", "U8-U9", "U10-U11", "U6", "U7", "U8", "U9", "U10", "U11"].includes(category);
+}
+
+/** Équipes cherchées par une annonce de plateau — l'hôte complète le carré */
+export const PLATEAU_TEAMS_WANTED = 3;
+
+/**
  * Genre de l'équipe, distinct de la catégorie : dédoubler les catégories
  * (U15, U15F…) rendrait « U15 » ambigu et doublerait la liste. « Mixte » n'est
  * pas un fourre-tout — jusqu'aux U11, les équipes le sont réellement.
@@ -480,7 +519,9 @@ export const createAnnouncementSchema = z.object({
   time: z.string().regex(/^\d{2}:\d{2}$/),
   city: z.string().min(1).max(100),
   stadium: z.string().min(1).max(150),
-  category: z.enum(MATCH_CATEGORIES),
+  // Groupes d'âges, pas catégories fines : une rencontre se cherche en U12-U13,
+  // c'est ainsi que les districts apparient les équipes.
+  category: z.enum(ANNOUNCEMENT_CATEGORIES),
   // Demandé à la publication : deviner le genre d'une équipe serait présumer,
   // et une annonce féminine tombée face à une équipe masculine ne se joue pas.
   gender: z.enum(MATCH_GENDERS),
@@ -900,6 +941,15 @@ export interface AnnouncementDto {
   comment: string | null;
   status: AnnouncementStatus;
   isMine: boolean;
+  /**
+   * Jusqu'aux U11, l'annonce ne cherche pas UN adversaire mais un PLATEAU de
+   * quatre équipes : elle reste ouverte jusqu'à trois acceptations.
+   */
+  plateau: boolean;
+  /** Équipes cherchées (1 pour un amical, 3 pour un plateau) */
+  teamsWanted: number;
+  /** Équipes déjà acceptées — ce qui reste se déduit */
+  teamsAccepted: number;
   /**
    * Coach qui représente l'équipe émettrice — de quoi ouvrir sa carte depuis
    * l'annonce. Publier, c'est se montrer : le nom sort de l'anonymat le temps
