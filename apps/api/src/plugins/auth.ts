@@ -1,10 +1,10 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
-import type { Role } from "@footcoach/shared";
+import type { CoachCategory, Role } from "@footcoach/shared";
 import { env } from "../env.js";
 import { db } from "../db/client.js";
-import { teamCoaches } from "../db/schema.js";
+import { teamCoaches, users } from "../db/schema.js";
 
 export interface AuthUser {
   id: string;
@@ -88,6 +88,25 @@ export function requireRole(...roles: Role[]) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     if (!roles.includes(request.user.role)) {
       return reply.code(403).send({ error: "Accès refusé pour ce rôle" });
+    }
+  };
+}
+
+/**
+ * preHandler : exige que le coach connecté porte la casquette donnée, lue
+ * fraîche en base — pas dans le JWT, qui ne porte que {sub, role, teamId} et
+ * resterait valable 15 minutes après qu'un coach a décoché la case dans son
+ * profil. Même logique que `getCoachTeamIds` ci-dessus : une lecture par
+ * requête plutôt qu'une donnée embarquée qui peut devenir fausse en session.
+ */
+export function requireCoachCategory(category: CoachCategory) {
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    const [row] = await db
+      .select({ categories: users.coachCategories })
+      .from(users)
+      .where(eq(users.id, request.user.id));
+    if (!row || !row.categories.includes(category)) {
+      return reply.code(403).send({ error: "Réservé aux coachs contributeurs" });
     }
   };
 }

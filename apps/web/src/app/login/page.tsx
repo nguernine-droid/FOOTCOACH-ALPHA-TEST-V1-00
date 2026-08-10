@@ -3,18 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ClipboardList, ShieldHalf } from "lucide-react";
 import { homeForRole, login } from "@/lib/api";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
-
-// V1 réservée aux coachs : seuls les comptes de démo accessibles sont proposés
-const DEMO_ACCOUNTS = [
-  { label: "Coach A", sub: "FC Nexus", email: "coach.a@demo.fr", icon: ClipboardList, color: "text-pitch bg-pitch-soft" },
-  { label: "Coach B", sub: "AS Cyber", email: "coach.b@demo.fr", icon: ClipboardList, color: "text-pitch bg-pitch-soft" },
-  { label: "Admin", sub: "Alice", email: "admin@demo.fr", icon: ShieldHalf, color: "text-primary bg-blue-soft" },
-];
 
 /** Contrôle volontairement large : on signale une faute de frappe, pas une RFC */
 function emailLooksWrong(value: string): string | null {
@@ -82,7 +73,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="field"
-              placeholder="coach.a@demo.fr"
+              placeholder="vous@exemple.fr"
             />
             {touched && emailError && (
               <p id="email-error" className="text-xs font-semibold text-coral">
@@ -105,7 +96,6 @@ export default function LoginPage() {
               aria-invalid={Boolean(touched && !password) || undefined}
               aria-describedby={touched && !password ? "password-error" : undefined}
               className="field"
-              placeholder="Demo1234!"
             />
             {touched && !password && (
               <p id="password-error" className="text-xs font-semibold text-coral">
@@ -136,34 +126,6 @@ export default function LoginPage() {
           >
             Créer un compte coach
           </Link>
-        </div>
-
-        <div className="card p-4 space-y-3">
-          <p className="text-xs font-bold text-ink-soft text-center">Essayez avec un compte de démo</p>
-          <div className="grid grid-cols-2 gap-2">
-            {DEMO_ACCOUNTS.map(({ label, sub, email: demoEmail, icon: Icon, color }) => (
-              <button
-                key={demoEmail}
-                type="button"
-                onClick={() => {
-                  setEmail(demoEmail);
-                  setPassword("Demo1234!");
-                }}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-lg border border-line px-3 py-2.5 text-left transition hover:border-pitch/40 hover:bg-paper",
-                  email === demoEmail && "border-pitch bg-pitch-soft/50",
-                )}
-              >
-                <span className={cn("w-8 h-8 rounded-xl flex items-center justify-center shrink-0", color)}>
-                  <Icon size={15} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-xs font-bold truncate">{label}</span>
-                  <span className="block text-[10px] text-ink-soft truncate">{sub}</span>
-                </span>
-              </button>
-            ))}
-          </div>
         </div>
       </div>
     </div>

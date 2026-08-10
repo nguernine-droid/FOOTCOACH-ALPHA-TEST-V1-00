@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import jsQR from "jsqr";
 import { CameraOff, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +20,13 @@ export function QrScanner({ onResult, onClose }: { onResult: (text: string) => v
   const frameRef = useRef<number | null>(null);
   const doneRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  // Rendue dans `document.body` par un portail, comme `BottomSheet` : un
+  // `position: fixed` se cale sur le premier ancêtre transformé, et l'onglet
+  // Matchs vit désormais dans la bande translatée du carrousel (`TabPager`).
+  // Sans portail, le viseur grimpait avec le défilement au lieu de rester
+  // plaqué à l'écran.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const stop = useCallback(() => {
     if (frameRef.current != null) cancelAnimationFrame(frameRef.current);
@@ -93,7 +101,9 @@ export function QrScanner({ onResult, onClose }: { onResult: (text: string) => v
   // Viseur plein écran, mais l'unique commande — annuler — est en bas :
   // une croix en haut à droite est intenable quand on tient le téléphone
   // d'une main et le QR code de l'autre.
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 bg-navy-900/95 flex flex-col p-4 pt-[max(1rem,env(safe-area-inset-top))]"
       role="dialog"
@@ -133,6 +143,7 @@ export function QrScanner({ onResult, onClose }: { onResult: (text: string) => v
       </div>
 
       <canvas ref={canvasRef} className="hidden" />
-    </div>
+    </div>,
+    document.body,
   );
 }

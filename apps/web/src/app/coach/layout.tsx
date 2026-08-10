@@ -7,6 +7,7 @@ import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
 import { TabPager, type Pane } from "@/components/TabPager";
 import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
+import { getStoredUser } from "@/lib/api";
 // Les trois écrans d'onglet sont montés ensemble par le carrousel du téléphone :
 // il faut donc les composants eux-mêmes, et pas seulement leurs routes.
 import CoachDashboard from "./page";
@@ -38,35 +39,49 @@ const PANES: Pane[] = [
 ];
 
 /**
- * Le « + » ne crée plus directement une annonce : il demande laquelle des deux
+ * Le « + » ne crée plus directement une annonce : il demande laquelle des
  * créations le coach a en tête. Un tournoi ne se trouvait qu'en descendant
  * jusqu'à sa section du radar, alors que c'est la même intention — organiser
  * quelque chose et le faire savoir.
  *
- * L'annonce reste en premier : c'est le geste courant, le tournoi est
- * l'exception.
+ * L'annonce reste en premier : c'est le geste courant, le tournoi et la
+ * publication sont l'exception. La publication n'apparaît que pour un coach
+ * « contributeur » — l'affichage suit ici l'écran, mais le vrai gate est
+ * côté serveur (requireCoachCategory sur POST /publications).
  */
-const CREATE: QuickAction = {
-  kind: "choice",
-  label: "Créer",
-  options: [
-    {
-      href: "/coach/announcements/new",
-      label: "Match amical",
-      description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
-      icon: "announcement",
-    },
-    {
-      href: "/coach/tournaments/new",
-      label: "Tournoi",
-      description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
-      icon: "tournament",
-    },
-  ],
-};
+function buildCreateAction(isContributeur: boolean): QuickAction {
+  return {
+    kind: "choice",
+    label: "Créer",
+    options: [
+      {
+        href: "/coach/announcements/new",
+        label: "Match amical",
+        description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
+        icon: "announcement",
+      },
+      {
+        href: "/coach/tournaments/new",
+        label: "Tournoi",
+        description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
+        icon: "tournament",
+      },
+      ...(isContributeur
+        ? [
+            {
+              href: "/coach/publications/new",
+              label: "Publication",
+              description: "Partagez un conseil ou un retour d'expérience avec tous les coachs.",
+              icon: "publication" as const,
+            },
+          ]
+        : []),
+    ],
+  };
+}
 
 /** Ce que crée le bouton central selon la page ouverte */
-function defaultAction(pathname: string): QuickAction | null {
+function defaultAction(pathname: string, isContributeur: boolean): QuickAction | null {
   if (pathname.startsWith("/coach/agenda")) {
     return { kind: "link", href: "/coach/agenda?nouveau=1", label: "Créer un événement" };
   }
@@ -75,14 +90,15 @@ function defaultAction(pathname: string): QuickAction | null {
   if (pathname.startsWith("/coach/team")) {
     return { kind: "link", href: "/coach/team/new", label: "Créer une équipe" };
   }
-  return CREATE;
+  return buildCreateAction(isContributeur);
 }
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Une page de création remplace le « + » par un « ✓ » qui valide son formulaire
   const [override, setOverride] = useState<QuickAction | null>(null);
-  const action = override ?? defaultAction(pathname);
+  const isContributeur = (getStoredUser()?.categories ?? []).includes("contributeur");
+  const action = override ?? defaultAction(pathname, isContributeur);
 
   return (
     <QuickActionProvider value={setOverride}>

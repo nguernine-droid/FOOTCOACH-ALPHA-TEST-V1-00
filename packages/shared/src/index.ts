@@ -205,7 +205,7 @@ export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
   joker:
     "Vous acceptez d'être alerté quand un coach de votre secteur se retrouve sans adversaire. Ces alertes SOS ne partent qu'aux jokers.",
   contributeur:
-    "Vous publiez régulièrement des annonces, sans attendre qu'on vous en propose : c'est ce qui donne aux autres des matchs à trouver.",
+    "Vous pouvez écrire des publications, lues par tous les coachs de l'application — conseils, retours d'expérience, informations utiles au-delà d'une simple annonce de match.",
 };
 
 /** Choix des casquettes par le coach lui-même. Tableau vide = aucune. */
@@ -220,6 +220,37 @@ export function asCoachCategories(values: readonly string[] | null | undefined):
   const known = new Set<string>(COACH_CATEGORIES);
   return [...new Set(values.filter((v): v is CoachCategory => known.has(v)))];
 }
+
+// ---------- Signalements (bug / suggestion) ----------
+
+export const FEEDBACK_TYPES = ["bug", "suggestion"] as const;
+export type FeedbackType = (typeof FEEDBACK_TYPES)[number];
+export const FEEDBACK_TYPE_LABELS: Record<FeedbackType, string> = {
+  bug: "Bug",
+  suggestion: "Suggestion d'amélioration",
+};
+
+export const FEEDBACK_STATUSES = ["nouveau", "en_cours", "resolu", "refuse"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
+  nouveau: "Nouveau",
+  en_cours: "En cours",
+  resolu: "Résolu",
+  refuse: "Refusé",
+};
+
+export const createFeedbackSchema = z.object({
+  type: z.enum(FEEDBACK_TYPES),
+  message: z.string().trim().min(10).max(2000),
+});
+export type CreateFeedbackInput = z.infer<typeof createFeedbackSchema>;
+
+/** Triage admin : changer le statut, avec une note facultative visible de l'auteur */
+export const updateFeedbackStatusSchema = z.object({
+  status: z.enum(FEEDBACK_STATUSES),
+  adminNote: z.string().trim().max(500).optional(),
+});
+export type UpdateFeedbackStatusInput = z.infer<typeof updateFeedbackStatusSchema>;
 
 // ---------- Points et paliers ----------
 
@@ -906,6 +937,25 @@ export interface RadarDto {
   beyondRadius: number;
 }
 
+// ---------- Publications ----------
+
+export const createPublicationSchema = z.object({
+  title: z.string().trim().min(3).max(120),
+  body: z.string().trim().min(10).max(4000),
+});
+export type CreatePublicationInput = z.infer<typeof createPublicationSchema>;
+
+/** Billet d'un coach contributeur, visible de tous les coachs — fil global, sans portée club/équipe */
+export interface PublicationDto {
+  id: string;
+  title: string;
+  body: string;
+  author: CoachRefDto;
+  createdAt: string;
+  /** true si publiée par le coach connecté — seul cas où « Supprimer » apparaît */
+  isMine: boolean;
+}
+
 export interface MatchDto {
   id: string;
   homeTeam: TeamDto;
@@ -1101,6 +1151,26 @@ export interface AdminAccountDto {
   hasPendingReset: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+}
+
+/**
+ * Un signalement (bug ou suggestion). Réservé à l'admin — l'auteur n'a aucune
+ * vue en retour sur ce qu'il a envoyé, ni sur son statut : c'est un canal vers
+ * l'éditeur, pas un historique personnel.
+ */
+export interface FeedbackDto {
+  id: string;
+  type: FeedbackType;
+  message: string;
+  status: FeedbackStatus;
+  adminNote: string | null;
+  createdAt: string;
+  handledAt: string | null;
+}
+
+/** Vue admin : la même chose, avec l'auteur — l'inbox mélange tous les coachs */
+export interface AdminFeedbackDto extends FeedbackDto {
+  author: CoachRefDto;
 }
 
 // ---------- Espace club ----------

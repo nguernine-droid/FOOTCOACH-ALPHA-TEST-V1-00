@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Bell,
+  BookOpen,
   CalendarRange,
   Check,
   ChevronLeft,
@@ -12,6 +13,7 @@ import {
   Contact,
   LogOut,
   Megaphone,
+  MessageSquareWarning,
   Trophy,
   Users,
   type LucideIcon,
@@ -237,6 +239,13 @@ export function AccountSheet({
             <Row icon={Contact} label="Mes relations" href="/coach/relations" onClick={onClose} />
             <Row icon={Users} label="Mes équipes" href="/coach/team" onClick={onClose} />
             <Row icon={CalendarRange} label="Agenda de l'équipe" href="/coach/agenda" onClick={onClose} />
+            <Row icon={BookOpen} label="Publications" href="/coach/publications" onClick={onClose} />
+            <Row
+              icon={MessageSquareWarning}
+              label="Signaler un bug / suggestion"
+              href="/coach/feedback/new"
+              onClick={onClose}
+            />
             <Row
               icon={Bell}
               label="Notifications"

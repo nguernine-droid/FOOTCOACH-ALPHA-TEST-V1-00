@@ -1,9 +1,10 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronRight, Megaphone, Plus, Trophy, type LucideIcon } from "lucide-react";
+import { BookOpen, Check, ChevronRight, Megaphone, Plus, Trophy, type LucideIcon } from "lucide-react";
 import type { QuickAction, QuickChoice } from "@/components/QuickActionContext";
 import { useAccountEntry } from "@/components/AccountSheetContext";
 import { Avatar } from "@/components/Avatar";
@@ -17,6 +18,7 @@ export type { QuickAction };
 const CHOICE_ICONS: Record<QuickChoice["icon"], LucideIcon> = {
   announcement: Megaphone,
   tournament: Trophy,
+  publication: BookOpen,
 };
 
 export type AppTab = {
@@ -61,6 +63,10 @@ export function AppTabs({
   const account = useAccountEntry();
   /** Feuille des créations possibles, quand le « + » en propose plusieurs */
   const [choosing, setChoosing] = useState(false);
+  // `document.body` n'existe pas au rendu serveur : le portail n'est posé
+  // qu'une fois le composant monté côté client (voir BottomSheet).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Même bouton dans les deux barres : lien de création, choix entre plusieurs,
   // ou validation du formulaire ouvert (associé par l'attribut `form`, donc à
@@ -189,11 +195,19 @@ export function AppTabs({
         </nav>
       </div>
 
-      {/* Mobile : barre fixe en bas de l'écran.
+      {/* Mobile : barre fixe en bas de l'écran, rendue dans `document.body` par
+          un portail. `RoleGuard` rend `{nav}` à l'intérieur de `.app-header`,
+          qui porte un `backdrop-filter` — un ancêtre filtré ou transformé
+          devient le référentiel de tout descendant `fixed` (même piège que
+          `BottomSheet`). Sans portail, la barre se collerait au bas du
+          header au lieu du bas de l'écran, un comportement que Safari applique
+          strictement et que certains outils d'émulation ne reproduisent pas.
+
           Le fond, la bordure et le floutage appartiennent entièrement à
           `.app-tabbar` — aucun utilitaire de couleur ici, sans quoi il
           gagnerait sur la recette du thème (les utilitaires priment sur la
           couche `components`) et la barre ne suivrait plus. */}
+      {mounted && createPortal(
       <nav
         role="tablist"
         aria-label={ariaLabel}
@@ -299,7 +313,9 @@ export function AppTabs({
             </Fragment>
           ))}
         </div>
-      </nav>
+      </nav>,
+      document.body,
+      )}
 
       {/* Deux créations derrière un seul « + ». La feuille plutôt qu'un menu
           déroulant : elle s'ouvre dans la zone du pouce, juste au-dessus du

@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy } from "lucide-react";
-import type { ActivityDto, AnnouncementDto, MatchDto, TournamentDto } from "@footcoach/shared";
+import type { ActivityDto, AnnouncementDto, MatchDto, PublicationDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";
+import { Avatar } from "@/components/Avatar";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
@@ -15,6 +16,9 @@ import { RadarFeed } from "@/components/announcements/RadarFeed";
 import { NoMatchCard } from "@/components/coach/NoMatchCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+/** Les cinq derniers billets, en aperçu — le fil complet vit sur /coach/publications */
+const DASHBOARD_PUBLICATIONS = 5;
 
 function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
   return (
@@ -34,6 +38,7 @@ export default function CoachDashboard() {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
+  const [publications, setPublications] = useState<PublicationDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const loadAll = useCallback(() => {
@@ -44,8 +49,11 @@ export default function CoachDashboard() {
       // Les tournois que j'organise tiennent la même place que mes annonces :
       // c'est publié par moi, ça attend des équipes, et ça se suit d'ici.
       api<TournamentDto[]>("/tournaments/mine").catch(() => [] as TournamentDto[]),
+      // Le fil global, tronqué ici — un aperçu, pas une raison de ne jamais
+      // aller sur /coach/publications.
+      api<PublicationDto[]>("/publications").catch(() => [] as PublicationDto[]),
     ])
-      .then(([m, a, act, t]) => {
+      .then(([m, a, act, t, pubs]) => {
         setMatches(m);
         setAnnouncements(a.filter((x) => x.status !== "cancelled"));
         setActivity(act);
@@ -54,6 +62,7 @@ export default function CoachDashboard() {
         setTournaments(
           t.filter((x) => x.isMine && x.status !== "cancelled" && (x.endDate ?? x.date) >= todayIso()),
         );
+        setPublications(pubs.slice(0, DASHBOARD_PUBLICATIONS));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -272,6 +281,36 @@ export default function CoachDashboard() {
               </li>
             ))}
           </ul>
+        </section>
+
+        {/* Dernières publications : aperçu du fil global, pas de portée club/équipe */}
+        <section className="card p-5 space-y-3 animate-rise-in" aria-label="Dernières publications">
+          <div className="flex items-center justify-between">
+            <h3 className="display text-lg">Publications</h3>
+            <ButtonLink href="/coach/publications" variant="ghost" size="sm">
+              Tout voir
+            </ButtonLink>
+          </div>
+
+          {publications.length === 0 ? (
+            <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">Rien de publié pour l&apos;instant.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {publications.map((p) => (
+                <li key={p.id}>
+                  <Link href={`/coach/publications/${p.id}`} className="flex items-start gap-2.5 text-xs group">
+                    <Avatar firstName={p.author.firstName} lastName={p.author.lastName} avatarUrl={p.author.avatarUrl} size={28} />
+                    <div className="min-w-0">
+                      <p className="text-ink font-bold leading-snug truncate group-hover:text-blue">{p.title}</p>
+                      <p className="text-[10px] text-ink-faint font-semibold">
+                        {p.author.firstName} {p.author.lastName} · {timeAgo(p.createdAt, now)}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </div>

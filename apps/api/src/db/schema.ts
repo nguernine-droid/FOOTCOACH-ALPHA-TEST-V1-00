@@ -22,8 +22,8 @@ export const userRole = pgEnum("user_role", ["coach", "player", "parent", "suppo
  * de faire pour les autres.
  *
  * `joker` a un effet immédiat — lui seul est alerté des SOS. `contributeur`
- * annonce un coach qui publie beaucoup : c'est une intention affichée, sans
- * effet technique pour l'instant, que la V2 pourra reconnaître.
+ * en a un aussi : lui seul peut écrire une publication (voir la table
+ * `publications` plus bas), un billet visible de tous les coachs.
  *
  * Les deux se choisissent à l'inscription et se rechangent au profil.
  */
@@ -78,6 +78,10 @@ export const resetRequestStatus = pgEnum("reset_request_status", ["pending", "ha
 // D'où vient la position d'un coach : géolocalisation du navigateur, ou adresse
 // qu'il a saisie. NULL = aucune position propre, on retombe sur son équipe.
 export const locationSource = pgEnum("location_source", ["gps", "address"]);
+// Un bug se constate, une suggestion se propose : même canal vers l'admin,
+// deux intentions à distinguer dans l'inbox de triage.
+export const feedbackType = pgEnum("feedback_type", ["bug", "suggestion"]);
+export const feedbackStatus = pgEnum("feedback_status", ["nouveau", "en_cours", "resolu", "refuse"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -219,6 +223,40 @@ export const passwordResetRequests = pgTable(
     handledAt: timestamp("handled_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("reset_requests_pending_user_idx").on(t.userId).where(sql`status = 'pending'`)],
+);
+
+/**
+ * Signalement d'un bug ou suggestion d'amélioration envoyé par un coach.
+ * Une seule table pour les deux : ce sont deux intentions d'un même geste
+ * (« quelque chose ne va pas » / « pourrait être mieux »), distinguées par
+ * `type` et non deux formulaires qui dupliqueraient triage et visibilité.
+ *
+ * Visible du seul auteur (ses envois + leur statut) et de l'admin qui triage —
+ * pas de vote public ni de visibilité entre coachs, à la différence d'une
+ * annonce : ce canal s'adresse à l'éditeur, pas aux autres coachs.
+ */
+export const coachFeedback = pgTable(
+  "coach_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: feedbackType("type").notNull(),
+    message: text("message").notNull(),
+    status: feedbackStatus("status").notNull().default("nouveau"),
+    // Réponse courte de l'admin, visible de l'auteur : pourquoi refusé, ce qui a été fait…
+    adminNote: text("admin_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Posé au premier changement de statut fait par un admin ; NULL = encore "nouveau"
+    handledAt: timestamp("handled_at", { withTimezone: true }),
+  },
+  (t) => [
+    // « Mes signalements » : lu par auteur, le plus récent en tête
+    index("coach_feedback_author_idx").on(t.authorId, t.createdAt),
+    // L'inbox admin trie/filtre par statut
+    index("coach_feedback_status_idx").on(t.status, t.createdAt),
+  ],
 );
 
 export const teams = pgTable("teams", {
@@ -753,4 +791,31 @@ export const coachRelations = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("coach_relations_pair_idx").on(t.coachId, t.relatedCoachId)],
+);
+
+/**
+ * Publication d'un coach « contributeur » : billet visible de tous les coachs
+ * de l'application, sans portée club/équipe — contrairement à une annonce,
+ * ce n'est pas un match à trouver, c'est un partage d'expérience.
+ *
+ * `authorId` ne porte aucune contrainte de casquette en base : `contributeur`
+ * est cumulable et révocable à tout moment depuis le profil, et une
+ * publication déjà écrite doit rester lisible même si son auteur décoche
+ * ensuite la case — sinon décocher une case supprimerait du contenu que
+ * d'autres coachs ont déjà pu lire. Le contrôle se fait à l'écriture
+ * (POST /publications, voir requireCoachCategory), jamais à la lecture.
+ */
+export const publications = pgTable(
+  "publications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Le fil global trie systématiquement par date de publication
+  (t) => [index("publications_created_idx").on(t.createdAt)],
 );

@@ -24,6 +24,8 @@ import { adminRoutes } from "./routes/admin.js";
 import { clubRoutes } from "./routes/club.js";
 import { relationRoutes } from "./routes/relations.js";
 import { locationRoutes } from "./routes/location.js";
+import { feedbackRoutes } from "./routes/feedback.js";
+import { publicationRoutes } from "./routes/publications.js";
 
 const app = Fastify({
   logger: {
@@ -125,6 +127,8 @@ app.register((instance) => clubDirectoryRoutes(instance));
 app.register((instance) => coachCardRoutes(instance));
 app.register((instance) => relationRoutes(instance));
 app.register((instance) => locationRoutes(instance));
+app.register((instance) => feedbackRoutes(instance));
+app.register((instance) => publicationRoutes(instance));
 
 try {
   await runMigrations();
