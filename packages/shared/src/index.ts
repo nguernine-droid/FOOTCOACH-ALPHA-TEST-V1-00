@@ -205,7 +205,7 @@ export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
   joker:
     "Vous acceptez d'être alerté quand un coach de votre secteur se retrouve sans adversaire. Ces alertes SOS ne partent qu'aux jokers.",
   contributeur:
-    "Vous publiez régulièrement des annonces, sans attendre qu'on vous en propose : c'est ce qui donne aux autres des matchs à trouver.",
+    "Vous partagez les informations du secteur — poules des matchs officiels, intempéries, plateaux annulés. Vos publications sont lues par tous les coachs.",
 };
 
 /** Choix des casquettes par le coach lui-même. Tableau vide = aucune. */

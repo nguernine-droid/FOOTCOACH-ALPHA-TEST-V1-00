@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy } from "lucide-react";
-import type { ActivityDto, AnnouncementDto, MatchDto, TournamentDto } from "@footcoach/shared";
+import type { ActivityDto, AnnouncementDto, MatchDto, PublicationDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";
+import { Avatar } from "@/components/Avatar";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
@@ -34,6 +35,7 @@ export default function CoachDashboard() {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
+  const [publications, setPublications] = useState<PublicationDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const loadAll = useCallback(() => {
@@ -44,8 +46,11 @@ export default function CoachDashboard() {
       // Les tournois que j'organise tiennent la même place que mes annonces :
       // c'est publié par moi, ça attend des équipes, et ça se suit d'ici.
       api<TournamentDto[]>("/tournaments/mine").catch(() => [] as TournamentDto[]),
+      // Les billets des contributeurs — en repli silencieux : un panneau
+      // d'affichage vide ne doit pas faire tomber le tableau de bord.
+      api<PublicationDto[]>("/publications").catch(() => [] as PublicationDto[]),
     ])
-      .then(([m, a, act, t]) => {
+      .then(([m, a, act, t, pubs]) => {
         setMatches(m);
         setAnnouncements(a.filter((x) => x.status !== "cancelled"));
         setActivity(act);
@@ -54,6 +59,9 @@ export default function CoachDashboard() {
         setTournaments(
           t.filter((x) => x.isMine && x.status !== "cancelled" && (x.endDate ?? x.date) >= todayIso()),
         );
+        // Les cinq derniers : le tableau de bord donne le fil de l'actualité,
+        // l'onglet Annonces garde le panneau entier.
+        setPublications(pubs.slice(0, 5));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -191,11 +199,17 @@ export default function CoachDashboard() {
             </div>
           </section>
         ) : (
-          <NoMatchCard />
+          // Sans match prévu, trouver un adversaire EST la tâche du jour : le
+          // radar prend la tête de l'écran, l'appel à publier suit.
+          <>
+            <RadarFeed />
+            <NoMatchCard />
+          </>
         )}
 
-        {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1 */}
-        <RadarFeed />
+        {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1.
+            Quand un match est prévu, il vient après la carte du match. */}
+        {featured && <RadarFeed />}
       </div>
 
       {/* ————— Colonne latérale ————— */}
@@ -272,6 +286,42 @@ export default function CoachDashboard() {
               </li>
             ))}
           </ul>
+        </section>
+
+        {/* Les cinq derniers billets des contributeurs, en pied de tableau de
+            bord : l'actualité du secteur se survole d'ici, se lit en entier
+            dans l'onglet Annonces. Rien à faire dessus — donc en dernier. */}
+        <section className="card p-5 space-y-3 animate-rise-in" aria-label="Dernières publications">
+          <h3 className="display text-lg">Publications</h3>
+          {publications.length === 0 ? (
+            <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
+              Aucune information du secteur pour le moment.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {publications.map((p) => (
+                <li key={p.id} className="flex items-start gap-2.5 text-xs">
+                  <Avatar name={p.author.nickname} avatarUrl={p.author.avatarUrl} size={28} className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="leading-snug">
+                      <span className="font-bold">{p.author.nickname}</span>{" "}
+                      <span className="text-[10px] text-ink-faint font-semibold">{timeAgo(p.createdAt, now)}</span>
+                    </p>
+                    {/* Deux lignes d'aperçu : de quoi savoir si le billet me
+                        concerne, pas de quoi le lire à la place du panneau. */}
+                    <p className="text-ink leading-snug line-clamp-2">{p.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href="/coach/announcements?cat=publications"
+            className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-blue
+              transition hover:text-blue-dark active:bg-blue-soft"
+          >
+            Voir toutes les publications
+          </Link>
         </section>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Megaphone, Radar } from "lucide-react";
 import type { RadarDto, AnnouncementDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
@@ -25,12 +26,18 @@ import { CardGridSkeleton } from "@/components/ui/Skeleton";
  * Le périmètre reste celui du radar, réglé sur le tableau de bord : deux
  * réglages de portée qui pourraient diverger seraient un piège.
  */
-export default function AnnouncementsPage() {
+function AnnouncementsPageContent() {
   const [radar, setRadar] = useState<RadarDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
+  // `?cat=publications` : le tableau de bord pointe directement le panneau
+  // d'affichage — arriver sur « Amicaux » obligerait à un second geste.
+  const searchParams = useSearchParams();
   /** Amicaux d'abord : c'est ce qu'on cherche neuf fois sur dix */
-  const [kind, setKind] = useState<"matches" | "tournaments" | "publications">("matches");
+  const [kind, setKind] = useState<"matches" | "tournaments" | "publications">(() => {
+    const cat = searchParams.get("cat");
+    return cat === "publications" || cat === "tournaments" ? cat : "matches";
+  });
   const feed = usePublicationsFeed();
 
   const load = useCallback(async () => {
@@ -195,5 +202,14 @@ export default function AnnouncementsPage() {
         </section>
       )}
     </div>
+  );
+}
+
+/** `useSearchParams` impose la frontière Suspense — la silhouette est la même qu'au chargement. */
+export default function AnnouncementsPage() {
+  return (
+    <Suspense fallback={<CardGridSkeleton cards={3} />}>
+      <AnnouncementsPageContent />
+    </Suspense>
   );
 }
