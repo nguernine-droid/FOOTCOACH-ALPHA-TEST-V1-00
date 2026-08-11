@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Check, ChevronRight, Megaphone, Newspaper, Plus, Trophy, type LucideIcon } from "lucide-react";
@@ -64,6 +65,15 @@ export function AppTabs({
   const badges = useTabBadges();
   /** Feuille des créations possibles, quand le « + » en propose plusieurs */
   const [choosing, setChoosing] = useState(false);
+  // `document.body` n'existe pas au rendu serveur, et surtout : RoleGuard
+  // pose `nav` À L'INTÉRIEUR du header flouté (`.app-header`, backdrop-filter).
+  // Un `backdrop-filter` établit un bloc de confinement pour ses descendants
+  // `position: fixed`, au même titre qu'un `transform` — la barre basse mobile
+  // s'ancrait donc au bord du header, tout en haut de l'écran, au lieu du bas
+  // de la fenêtre. Le portail la sort de cette zone d'influence, comme
+  // `BottomSheet` le fait déjà pour la même raison.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Même bouton dans les deux barres : lien de création, choix entre plusieurs,
   // ou validation du formulaire ouvert (associé par l'attribut `form`, donc à
@@ -236,85 +246,90 @@ export function AppTabs({
         </nav>
       </div>
 
-      {/* Mobile : barre fixe en bas de l'écran.
+      {/* Mobile : barre fixe en bas de l'écran, portée hors du header par un
+          portail (voir la note plus haut sur le `backdrop-filter`).
           Le fond, la bordure et le floutage appartiennent entièrement à
           `.app-tabbar` — aucun utilitaire de couleur ici, sans quoi il
           gagnerait sur la recette du thème (les utilitaires priment sur la
           couche `components`) et la barre ne suivrait plus. */}
-      <nav
-        role="tablist"
-        aria-label={ariaLabel}
-        className="app-tabbar min-[960px]:hidden fixed bottom-0 inset-x-0 z-40
-          pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
-      >
-        {/* Les deux moitiés sont des frères flex-1 de part et d'autre du « + » :
-            chaque onglet garde ainsi la même largeur des deux côtés. */}
-        <div className="flex items-stretch">
-          {mobileGroups.map((group, groupIndex) => (
-            <Fragment key={groupIndex}>
-              <div
-                className="flex min-w-0"
-                // Chaque moitié grandit au prorata du nombre de cases qu'elle
-                // porte : sans ça, une moitié d'un seul onglet le rendait deux
-                // fois plus large que ses voisins.
-                style={{ flexGrow: group.length, flexBasis: 0 }}
-              >
-                {group.map((tab) => {
-                  const active = isActive(tab);
-                  const alert = alertOf(tab);
-                  return (
-                    <Link
-                      key={tab.href}
-                      href={tab.href}
-                      role="tab"
-                      aria-selected={active}
-                      aria-label={labelWithAlert(tab, alert)}
-                      className={tabClassName(active)}
-                    >
-                      {/* Barre dorée qui se déploie sous l'onglet retenu */}
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "absolute top-0 h-0.5 w-8 rounded-full bg-accent-solid origin-center transition-transform",
-                          active ? "scale-x-100" : "scale-x-0",
-                        )}
-                      />
-                      <span className="relative flex items-center justify-center">
-                        <tab.icon
-                          size={20}
-                          aria-hidden
-                          className={cn("transition-transform", active && "-translate-y-px scale-110")}
-                        />
-                        {alert === "dot" && <NotificationDot />}
-                        {typeof alert === "number" && <NotificationDot count={alert} />}
-                      </span>
-                      <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">
-                        {tab.shortLabel ?? tab.label}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              {/* Bouton de création, surélevé entre les deux moitiés d'onglets.
-                  68 px et débordant franchement au-dessus de la barre : c'est
-                  l'action la plus importante de l'app, elle doit se voir avant
-                  de se lire. Halo doré plutôt qu'anneau opaque — la barre étant
-                  en verre, un anneau plein aurait dessiné un disque parasite. */}
-              {action && groupIndex === 0 && (
-                <div className="shrink-0 w-20 flex justify-center">
-                  <ActionButton
-                    className="fab -mt-7 w-[68px] h-[68px] rounded-full text-navy-900 flex items-center justify-center
-                      transition-transform active:scale-90 focus-visible:!outline-white"
+      {mounted &&
+        createPortal(
+          <nav
+            role="tablist"
+            aria-label={ariaLabel}
+            className="app-tabbar min-[960px]:hidden fixed bottom-0 inset-x-0 z-40
+              pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+          >
+            {/* Les deux moitiés sont des frères flex-1 de part et d'autre du « + » :
+                chaque onglet garde ainsi la même largeur des deux côtés. */}
+            <div className="flex items-stretch">
+              {mobileGroups.map((group, groupIndex) => (
+                <Fragment key={groupIndex}>
+                  <div
+                    className="flex min-w-0"
+                    // Chaque moitié grandit au prorata du nombre de cases qu'elle
+                    // porte : sans ça, une moitié d'un seul onglet le rendait deux
+                    // fois plus large que ses voisins.
+                    style={{ flexGrow: group.length, flexBasis: 0 }}
                   >
-                    <MorphIcon size={30} strokeWidth={3} />
-                  </ActionButton>
-                </div>
-              )}
-            </Fragment>
-          ))}
-        </div>
-      </nav>
+                    {group.map((tab) => {
+                      const active = isActive(tab);
+                      const alert = alertOf(tab);
+                      return (
+                        <Link
+                          key={tab.href}
+                          href={tab.href}
+                          role="tab"
+                          aria-selected={active}
+                          aria-label={labelWithAlert(tab, alert)}
+                          className={tabClassName(active)}
+                        >
+                          {/* Barre dorée qui se déploie sous l'onglet retenu */}
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "absolute top-0 h-0.5 w-8 rounded-full bg-accent-solid origin-center transition-transform",
+                              active ? "scale-x-100" : "scale-x-0",
+                            )}
+                          />
+                          <span className="relative flex items-center justify-center">
+                            <tab.icon
+                              size={20}
+                              aria-hidden
+                              className={cn("transition-transform", active && "-translate-y-px scale-110")}
+                            />
+                            {alert === "dot" && <NotificationDot />}
+                            {typeof alert === "number" && <NotificationDot count={alert} />}
+                          </span>
+                          <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">
+                            {tab.shortLabel ?? tab.label}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bouton de création, surélevé entre les deux moitiés d'onglets.
+                      68 px et débordant franchement au-dessus de la barre : c'est
+                      l'action la plus importante de l'app, elle doit se voir avant
+                      de se lire. Halo doré plutôt qu'anneau opaque — la barre étant
+                      en verre, un anneau plein aurait dessiné un disque parasite. */}
+                  {action && groupIndex === 0 && (
+                    <div className="shrink-0 w-20 flex justify-center">
+                      <ActionButton
+                        className="fab -mt-7 w-[68px] h-[68px] rounded-full text-navy-900 flex items-center justify-center
+                          transition-transform active:scale-90 focus-visible:!outline-white"
+                      >
+                        <MorphIcon size={30} strokeWidth={3} />
+                      </ActionButton>
+                    </div>
+                  )}
+                </Fragment>
+              ))}
+            </div>
+          </nav>,
+          document.body,
+        )}
 
       {/* Deux créations derrière un seul « + ». La feuille plutôt qu'un menu
           déroulant : elle s'ouvre dans la zone du pouce, juste au-dessus du
