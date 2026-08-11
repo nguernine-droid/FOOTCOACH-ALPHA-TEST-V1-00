@@ -120,6 +120,9 @@ export function adminRoutes(app: FastifyInstance) {
           email,
           passwordHash,
           role: "club",
+          // Un compte club n'a pas de surnom à choisir : le prénom du contact
+          // tient ce rôle, l'identité affichée reste celle du club.
+          nickname: input.contactFirstName,
           firstName: input.contactFirstName,
           lastName: input.contactLastName,
         })
@@ -170,7 +173,12 @@ export function adminRoutes(app: FastifyInstance) {
       .leftJoin(teams, or(eq(teams.id, users.teamId), eq(teams.coachId, users.id)))
       .where(
         term
-          ? or(ilike(users.email, term), ilike(users.firstName, term), ilike(users.lastName, term))
+          ? or(
+              ilike(users.email, term),
+              ilike(users.nickname, term),
+              ilike(users.firstName, term),
+              ilike(users.lastName, term),
+            )
           : undefined,
       )
       .orderBy(desc(users.createdAt));
@@ -190,6 +198,7 @@ export function adminRoutes(app: FastifyInstance) {
       seen.add(user.id);
       accounts.push({
         id: user.id,
+        nickname: user.nickname,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,

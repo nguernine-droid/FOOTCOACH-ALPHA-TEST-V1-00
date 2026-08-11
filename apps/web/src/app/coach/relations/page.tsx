@@ -52,7 +52,7 @@ export default function CoachRelationsPage() {
           method: "POST",
           body: JSON.stringify({ code: value }),
         });
-        setAdded(`${relation.firstName} ${relation.lastName} a rejoint vos relations`);
+        setAdded(`${relation.nickname} a rejoint vos relations`);
         setCode("");
         await load();
       } catch (err) {
@@ -191,18 +191,17 @@ export default function CoachRelationsPage() {
                   onClick={() => setCardOf(relation.id)}
                   className="flex items-center gap-3 min-w-0 flex-1 text-left rounded-lg -m-1 p-1
                     transition active:bg-paper hover:bg-paper"
-                  aria-label={`Voir la carte de ${relation.firstName} ${relation.lastName}`}
+                  aria-label={`Voir la carte de ${relation.nickname}`}
                 >
                   <Avatar
-                    firstName={relation.firstName}
-                    lastName={relation.lastName}
+                    name={relation.nickname}
                     avatarUrl={relation.avatarUrl}
                     size={48}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="font-bold flex items-center gap-1.5 flex-wrap">
                       <span className="truncate">
-                        {relation.firstName} {relation.lastName}
+                        {relation.nickname}
                       </span>
                       <LevelBadge level={relation.level} />
                       <CategoryBadges categories={relation.categories} />
@@ -217,7 +216,7 @@ export default function CoachRelationsPage() {
                 <button
                   type="button"
                   onClick={() => setConfirmRemove(confirmRemove === relation.id ? null : relation.id)}
-                  aria-label={`Retirer ${relation.firstName} ${relation.lastName} de mes relations`}
+                  aria-label={`Retirer ${relation.nickname} de mes relations`}
                   className="icon-btn -mr-2 text-ink-faint hover:text-coral hover:bg-coral-soft"
                 >
                   <Trash2 size={16} />

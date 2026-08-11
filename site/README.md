@@ -98,8 +98,8 @@ n'est pas un import : si la direction artistique bouge, il faut repasser ici.
 Le bloc de commentaire en tête de `index.html` le rappelle.
 
 Le contenu, lui, suit le périmètre décrit dans le `README.md` de la racine
-(radar, délai FFF de 10 jours, score validé par QR, notifications, relations
-entre coachs). Toute évolution du périmètre V1 doit se relire ici.
+(radar, score validé par QR, notifications, relations entre coachs). Toute
+évolution du périmètre V1 doit se relire ici.
 
 Les fontes Inter et Barlow Condensed sont distribuées sous **SIL Open Font
 License 1.1**, qui autorise cet auto-hébergement.

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Barlow_Condensed, Inter } from "next/font/google";
+import { InstallPromptListener } from "@/components/InstallPromptListener";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body className="antialiased">
+        <InstallPromptListener />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

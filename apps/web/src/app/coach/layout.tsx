@@ -1,29 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { CalendarDays, LayoutDashboard, Megaphone } from "lucide-react";
+import { CalendarDays, LayoutDashboard, Megaphone, MessageCircle } from "lucide-react";
+import { getStoredUser } from "@/lib/api";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
 import { TabPager, type Pane } from "@/components/TabPager";
-import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
-import { getStoredUser } from "@/lib/api";
-// Les trois écrans d'onglet sont montés ensemble par le carrousel du téléphone :
+import { QuickActionProvider, type QuickAction, type QuickChoice } from "@/components/QuickActionContext";
+// Les écrans d'onglet sont montés ensemble par le carrousel du téléphone :
 // il faut donc les composants eux-mêmes, et pas seulement leurs routes.
 import CoachDashboard from "./page";
 import AnnouncementsPage from "./announcements/page";
 import CoachMatchesPage from "./matches/page";
+import CoachMessagesPage from "./messages/page";
 
 // V1 recentrée sur la gestion des matchs amicaux entre coachs.
 // Le radar vit désormais dans le tableau de bord ; les sections secondaires
 // (agenda, relations, mes équipes, profil) sont rassemblées dans la feuille
-// « Moi » de la barre basse ; le covoiturage est masqué.
+// « Moi », qui s'ouvre par la photo du header ; le covoiturage est masqué.
+// La barre basse ne porte donc que des destinations, dont les messages : les
+// conversations naissent des matchs convenus, elles ont leur place à côté d'eux.
 // `badge: "activity"` : le tableau de bord porte le fil d'activité, c'est donc
 // lui qui signale qu'il s'est passé quelque chose depuis la dernière visite.
 const TABS: AppTab[] = [
   { href: "/coach", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true, badge: "activity" },
   { href: "/coach/announcements", label: "Annonces", icon: Megaphone },
   { href: "/coach/matches", label: "Matchs", icon: CalendarDays },
+  { href: "/coach/messages", label: "Messages", icon: MessageCircle, badge: "messages" },
 ];
 
 /**
@@ -36,6 +40,7 @@ const PANES: Pane[] = [
   { href: "/coach", node: <CoachDashboard /> },
   { href: "/coach/announcements", node: <AnnouncementsPage /> },
   { href: "/coach/matches", node: <CoachMatchesPage /> },
+  { href: "/coach/messages", node: <CoachMessagesPage /> },
 ];
 
 /**
@@ -44,44 +49,41 @@ const PANES: Pane[] = [
  * jusqu'à sa section du radar, alors que c'est la même intention — organiser
  * quelque chose et le faire savoir.
  *
- * L'annonce reste en premier : c'est le geste courant, le tournoi et la
- * publication sont l'exception. La publication n'apparaît que pour un coach
- * « contributeur » — l'affichage suit ici l'écran, mais le vrai gate est
- * côté serveur (requireCoachCategory sur POST /publications).
+ * L'annonce reste en premier : c'est le geste courant, le tournoi est
+ * l'exception.
  */
-function buildCreateAction(isContributeur: boolean): QuickAction {
-  return {
-    kind: "choice",
-    label: "Créer",
-    options: [
-      {
-        href: "/coach/announcements/new",
-        label: "Match amical",
-        description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
-        icon: "announcement",
-      },
-      {
-        href: "/coach/tournaments/new",
-        label: "Tournoi",
-        description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
-        icon: "tournament",
-      },
-      ...(isContributeur
-        ? [
-            {
-              href: "/coach/publications/new",
-              label: "Publication",
-              description: "Partagez un conseil ou un retour d'expérience avec tous les coachs.",
-              icon: "publication" as const,
-            },
-          ]
-        : []),
-    ],
-  };
-}
+const CREATE_OPTIONS: QuickChoice[] = [
+  {
+    href: "/coach/announcements/new",
+    label: "Match amical",
+    description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
+    icon: "announcement",
+  },
+  {
+    href: "/coach/tournaments/new",
+    label: "Tournoi",
+    description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
+    icon: "tournament",
+  },
+];
+
+/**
+ * La publication d'un billet, réservée aux contributeurs. En dernier : c'est la
+ * création la plus rare, et la seule que tout le monde ne peut pas faire.
+ *
+ * Elle a rejoint le « + » quand la zone de rédaction a quitté le haut du
+ * panneau d'affichage — elle y occupait l'écran à demeure pour un geste
+ * saisonnier.
+ */
+const PUBLISH_OPTION: QuickChoice = {
+  href: "/coach/publications/new",
+  label: "Information",
+  description: "Poules, intempéries, plateau annulé — au panneau d'affichage du secteur.",
+  icon: "publication",
+};
 
 /** Ce que crée le bouton central selon la page ouverte */
-function defaultAction(pathname: string, isContributeur: boolean): QuickAction | null {
+function defaultAction(pathname: string, contributor: boolean): QuickAction | null {
   if (pathname.startsWith("/coach/agenda")) {
     return { kind: "link", href: "/coach/agenda?nouveau=1", label: "Créer un événement" };
   }
@@ -90,15 +92,28 @@ function defaultAction(pathname: string, isContributeur: boolean): QuickAction |
   if (pathname.startsWith("/coach/team")) {
     return { kind: "link", href: "/coach/team/new", label: "Créer une équipe" };
   }
-  return buildCreateAction(isContributeur);
+  return {
+    kind: "choice",
+    label: "Créer",
+    options: contributor ? [...CREATE_OPTIONS, PUBLISH_OPTION] : CREATE_OPTIONS,
+  };
 }
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Une page de création remplace le « + » par un « ✓ » qui valide son formulaire
   const [override, setOverride] = useState<QuickAction | null>(null);
-  const isContributeur = (getStoredUser()?.categories ?? []).includes("contributeur");
-  const action = override ?? defaultAction(pathname, isContributeur);
+  /**
+   * La casquette est lue APRÈS le montage : elle vit dans le stockage local,
+   * absent du rendu serveur, et une liste d'options différente de part et
+   * d'autre ferait diverger l'hydratation. Relue à chaque navigation, elle suit
+   * un coach qui vient de se déclarer contributeur dans son profil.
+   */
+  const [contributor, setContributor] = useState(false);
+  useEffect(() => {
+    setContributor((getStoredUser()?.categories ?? []).includes("contributeur"));
+  }, [pathname]);
+  const action = override ?? defaultAction(pathname, contributor);
 
   return (
     <QuickActionProvider value={setOverride}>
@@ -106,7 +121,7 @@ export default function CoachLayout({ children }: { children: React.ReactNode })
         role="coach"
         nav={<AppTabs tabs={TABS} action={action} ariaLabel="Sections de l'espace coach" />}
       >
-        {/* Au téléphone, les trois onglets sont montés côte à côte et suivent le
+        {/* Au téléphone, les onglets sont montés côte à côte et suivent le
             doigt : on voit les deux écrans pendant le glissé. Ailleurs — sur une
             sous-page, ou au-delà de 960 px — c'est la route courante, comme
             partout. */}

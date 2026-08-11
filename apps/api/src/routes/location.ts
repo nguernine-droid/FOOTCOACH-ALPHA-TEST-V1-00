@@ -27,6 +27,7 @@ const notificationPrefsSchema = z.object({
   announcementResponse: z.boolean(),
   responseDecision: z.boolean(),
   score: z.boolean(),
+  message: z.boolean(),
 });
 
 const subscribeSchema = z.object({
@@ -113,6 +114,7 @@ export function locationRoutes(app: FastifyInstance) {
         notifyAnnouncementResponse: prefs.announcementResponse,
         notifyResponseDecision: prefs.responseDecision,
         notifyScore: prefs.score,
+        notifyMessage: prefs.message,
       })
       .where(eq(users.id, request.user.id))
       .returning();

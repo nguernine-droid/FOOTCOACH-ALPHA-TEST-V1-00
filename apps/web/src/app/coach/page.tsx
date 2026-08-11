@@ -17,9 +17,6 @@ import { NoMatchCard } from "@/components/coach/NoMatchCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-/** Les cinq derniers billets, en aperçu — le fil complet vit sur /coach/publications */
-const DASHBOARD_PUBLICATIONS = 5;
-
 function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
   return (
     <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
@@ -49,8 +46,8 @@ export default function CoachDashboard() {
       // Les tournois que j'organise tiennent la même place que mes annonces :
       // c'est publié par moi, ça attend des équipes, et ça se suit d'ici.
       api<TournamentDto[]>("/tournaments/mine").catch(() => [] as TournamentDto[]),
-      // Le fil global, tronqué ici — un aperçu, pas une raison de ne jamais
-      // aller sur /coach/publications.
+      // Les billets des contributeurs — en repli silencieux : un panneau
+      // d'affichage vide ne doit pas faire tomber le tableau de bord.
       api<PublicationDto[]>("/publications").catch(() => [] as PublicationDto[]),
     ])
       .then(([m, a, act, t, pubs]) => {
@@ -62,7 +59,9 @@ export default function CoachDashboard() {
         setTournaments(
           t.filter((x) => x.isMine && x.status !== "cancelled" && (x.endDate ?? x.date) >= todayIso()),
         );
-        setPublications(pubs.slice(0, DASHBOARD_PUBLICATIONS));
+        // Les cinq derniers : le tableau de bord donne le fil de l'actualité,
+        // l'onglet Annonces garde le panneau entier.
+        setPublications(pubs.slice(0, 5));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -200,11 +199,17 @@ export default function CoachDashboard() {
             </div>
           </section>
         ) : (
-          <NoMatchCard />
+          // Sans match prévu, trouver un adversaire EST la tâche du jour : le
+          // radar prend la tête de l'écran, l'appel à publier suit.
+          <>
+            <RadarFeed />
+            <NoMatchCard />
+          </>
         )}
 
-        {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1 */}
-        <RadarFeed />
+        {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1.
+            Quand un match est prévu, il vient après la carte du match. */}
+        {featured && <RadarFeed />}
       </div>
 
       {/* ————— Colonne latérale ————— */}
@@ -283,34 +288,40 @@ export default function CoachDashboard() {
           </ul>
         </section>
 
-        {/* Dernières publications : aperçu du fil global, pas de portée club/équipe */}
+        {/* Les cinq derniers billets des contributeurs, en pied de tableau de
+            bord : l'actualité du secteur se survole d'ici, se lit en entier
+            dans l'onglet Annonces. Rien à faire dessus — donc en dernier. */}
         <section className="card p-5 space-y-3 animate-rise-in" aria-label="Dernières publications">
-          <div className="flex items-center justify-between">
-            <h3 className="display text-lg">Publications</h3>
-            <ButtonLink href="/coach/publications" variant="ghost" size="sm">
-              Tout voir
-            </ButtonLink>
-          </div>
-
+          <h3 className="display text-lg">Publications</h3>
           {publications.length === 0 ? (
-            <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">Rien de publié pour l&apos;instant.</p>
+            <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
+              Aucune information du secteur pour le moment.
+            </p>
           ) : (
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {publications.map((p) => (
-                <li key={p.id}>
-                  <Link href={`/coach/publications/${p.id}`} className="flex items-start gap-2.5 text-xs group">
-                    <Avatar firstName={p.author.firstName} lastName={p.author.lastName} avatarUrl={p.author.avatarUrl} size={28} />
-                    <div className="min-w-0">
-                      <p className="text-ink font-bold leading-snug truncate group-hover:text-blue">{p.title}</p>
-                      <p className="text-[10px] text-ink-faint font-semibold">
-                        {p.author.firstName} {p.author.lastName} · {timeAgo(p.createdAt, now)}
-                      </p>
-                    </div>
-                  </Link>
+                <li key={p.id} className="flex items-start gap-2.5 text-xs">
+                  <Avatar name={p.author.nickname} avatarUrl={p.author.avatarUrl} size={28} className="mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="leading-snug">
+                      <span className="font-bold">{p.author.nickname}</span>{" "}
+                      <span className="text-[10px] text-ink-faint font-semibold">{timeAgo(p.createdAt, now)}</span>
+                    </p>
+                    {/* Deux lignes d'aperçu : de quoi savoir si le billet me
+                        concerne, pas de quoi le lire à la place du panneau. */}
+                    <p className="text-ink leading-snug line-clamp-2">{p.body}</p>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
+          <Link
+            href="/coach/announcements?cat=publications"
+            className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-blue
+              transition hover:text-blue-dark active:bg-blue-soft"
+          >
+            Voir toutes les publications
+          </Link>
         </section>
       </div>
     </div>

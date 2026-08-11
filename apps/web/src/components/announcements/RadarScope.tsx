@@ -82,9 +82,9 @@ const CARDINALS = [
 ] as const;
 
 /**
- * Carte des matchs proches : les cercles de portée, un cône qui balaie la
- * zone, et un maillot par équipe qui cherche un adversaire — placé à sa vraie
- * distance et dans sa vraie direction.
+ * Radar des annonces : les cercles de portée, un cône qui balaie la zone, et un
+ * maillot par équipe qui cherche un adversaire — placé à sa vraie distance et
+ * dans sa vraie direction.
  *
  * Le fond est uni. Un plan de rues stylisé y avait sa place tant qu'il portait
  * une information ; ce n'était pas le cas — il ne montrait aucune rue réelle,

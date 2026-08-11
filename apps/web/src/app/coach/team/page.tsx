@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { MapPin, Pencil, Plus, ShieldCheck, Users } from "lucide-react";
-import { categoryLabel, type CoachTeamDto, type MatchCategory } from "@footcoach/shared";
+import {
+  categoryLabel,
+  MATCH_GENDER_LABELS,
+  type CoachTeamDto,
+  type MatchCategory,
+  type MatchGender,
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { GenderPicker } from "@/components/GenderPicker";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { cn } from "@/lib/utils";
@@ -72,14 +79,26 @@ export default function CoachTeamPage() {
                     {team.category && (
                       <span className="chip bg-paper text-ink-soft shrink-0">{categoryLabel(team.category)}</span>
                     )}
+                    {team.gender && (
+                      <span className="chip bg-paper text-ink-soft shrink-0">
+                        {MATCH_GENDER_LABELS[team.gender]}
+                      </span>
+                    )}
                   </span>
                   <span className="block text-xs text-ink-soft truncate">
                     {team.stadium ? `${team.stadium} · ${team.city}` : team.city}
                   </span>
-                  {/* Sans catégorie, l'annonce repart d'une valeur par défaut :
+                  {/* Sans catégorie ni genre, l'annonce repart d'une valeur par
+                      défaut et les coachs qui répondent ne sont comparés à rien :
                       autant le dire là où on peut y remédier. */}
-                  {!team.category && (
-                    <span className="block text-[11px] text-warning font-semibold">Catégorie à renseigner</span>
+                  {(!team.category || !team.gender) && (
+                    <span className="block text-[11px] text-warning font-semibold">
+                      {!team.category && !team.gender
+                        ? "Catégorie et genre à renseigner"
+                        : !team.category
+                          ? "Catégorie à renseigner"
+                          : "Genre à renseigner"}
+                    </span>
                   )}
                 </span>
                 {team.role === "adjoint" && <span className="chip bg-paper text-ink-soft shrink-0">Adjoint</span>}
@@ -122,18 +141,19 @@ export default function CoachTeamPage() {
 function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () => void }) {
   const { reloadTeams } = useActiveTeam();
   const [category, setCategory] = useState<MatchCategory | null>(team.category);
+  const [gender, setGender] = useState<MatchGender | null>(team.gender);
   const [stadium, setStadium] = useState(team.stadium ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function save() {
-    if (saving || !category) return;
+    if (saving || !category || !gender) return;
     setSaving(true);
     setError(null);
     try {
       await api<CoachTeamDto>(`/coach/teams/${team.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ category, stadium: stadium.trim() || undefined }),
+        body: JSON.stringify({ category, gender, stadium: stadium.trim() || undefined }),
       });
       // La liste des équipes vit dans la session : sans ce rechargement, les
       // annonces continueraient d'être préremplies avec l'ancienne référence.
@@ -154,7 +174,7 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
           <Button type="button" variant="soft" className="flex-1" onClick={onClose}>
             Annuler
           </Button>
-          <Button type="button" className="flex-1" onClick={save} disabled={saving || !category}>
+          <Button type="button" className="flex-1" onClick={save} disabled={saving || !category || !gender}>
             {saving ? "Enregistrement…" : "Enregistrer"}
           </Button>
         </div>
@@ -173,6 +193,13 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
           onChange={setCategory}
           idPrefix="references-category"
           hint="Proposée d'office à chaque annonce publiée au nom de cette équipe."
+        />
+
+        <GenderPicker
+          value={gender}
+          onChange={setGender}
+          idPrefix="references-gender"
+          hint="Proposé d'office lui aussi, et comparé à celui des équipes qui vous répondent."
         />
 
         <div className="space-y-1.5">

@@ -31,17 +31,26 @@ function plusDays(days: number): string {
 async function upsertUser(input: {
   email: string;
   role: "coach" | "player" | "parent" | "supporter" | "admin" | "club";
+  /** Surnom affiché — à défaut, le prénom, comme le backfill de la migration */
+  nickname?: string;
   firstName: string;
   lastName: string;
   teamId?: string | null;
 }) {
   const passwordHash = await hashPassword(PASSWORD);
+  const nickname = input.nickname ?? input.firstName;
   const [user] = await db
     .insert(users)
-    .values({ ...input, passwordHash, teamId: input.teamId ?? null })
+    .values({ ...input, nickname, passwordHash, teamId: input.teamId ?? null })
     .onConflictDoUpdate({
       target: users.email,
-      set: { role: input.role, firstName: input.firstName, lastName: input.lastName, teamId: input.teamId ?? null },
+      set: {
+        role: input.role,
+        nickname,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        teamId: input.teamId ?? null,
+      },
     })
     .returning();
   return user;
@@ -54,7 +63,7 @@ async function upsertTeam(
   joinCode: string,
   // Références du préremplissage : les comptes de démo doivent montrer une
   // publication d'annonce déjà remplie, c'est là tout leur intérêt.
-  references: { category: string; stadium: string },
+  references: { category: string; gender: string; stadium: string },
 ) {
   const coords = cityCoords(city);
   const values = {
@@ -64,6 +73,7 @@ async function upsertTeam(
     lat: coords?.lat ?? null,
     lng: coords?.lng ?? null,
     category: references.category,
+    gender: references.gender,
     stadium: references.stadium,
   };
   const [team] = await db
@@ -87,19 +97,26 @@ async function main() {
 
   await runMigrations();
 
-  const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", firstName: "Alexandre", lastName: "Martin" });
-  const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", firstName: "Bruno", lastName: "Silva" });
+  // Des surnoms distincts de l'état civil : les comptes de démo doivent montrer
+  // que c'est bien le surnom, et lui seul, que les confrères voient.
+  const coachA = await upsertUser({ email: "coach.a@demo.fr", role: "coach", nickname: "Coach Alex", firstName: "Alexandre", lastName: "Martin" });
+  const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", nickname: "Bruno S.", firstName: "Bruno", lastName: "Silva" });
   const teamA = await upsertTeam("FC Nexus U13", "Lyon", coachA.id, "DEMOA1", {
     category: "U13",
+    gender: "masculin",
     stadium: "Plaine des Jeux de Gerland",
   });
   const teamB = await upsertTeam("AS Cyber", "Villeurbanne", coachB.id, "DEMOB2", {
     category: "U13",
+    gender: "masculin",
     stadium: "Stade des Iris",
   });
-  // Coach A encadre une seconde équipe (U15) : démo du multi-équipes "Mes équipes"
+  // Coach A encadre une seconde équipe (U15) : démo du multi-équipes "Mes
+  // équipes". En féminines, pour que l'écart de genre entre une équipe et une
+  // annonce se voie sur les comptes de démo comme il se verra en vrai.
   await upsertTeam("FC Nexus U15", "Lyon", coachA.id, "DEMOA3", {
     category: "U15",
+    gender: "feminin",
     stadium: "Plaine des Jeux de Gerland",
   });
 
@@ -138,11 +155,19 @@ async function main() {
       lat: teamCoords?.lat ?? null,
       lng: teamCoords?.lng ?? null,
       category: "U11",
+      // Mixte jusqu'aux U11, comme sur le terrain
+      gender: "mixte",
       stadium: "Stade Georges Lyvet",
     })
     .onConflictDoUpdate({
       target: teams.joinCode,
-      set: { clubId: demoClub.id, name: "Étoile U11", category: "U11", stadium: "Stade Georges Lyvet" },
+      set: {
+        clubId: demoClub.id,
+        name: "Étoile U11",
+        category: "U11",
+        gender: "mixte",
+        stadium: "Stade Georges Lyvet",
+      },
     });
 
   const existing = await db.select().from(matchAnnouncements);
@@ -150,7 +175,7 @@ async function main() {
     // Annonce ouverte du coach B — pour démontrer le flux "répondre"
     await db.insert(matchAnnouncements).values({
       teamId: teamB.id,
-      // J+14 : le délai FFF de déclaration (10 jours) est tenu
+      // J+14 : assez loin pour qu'on ait le temps de répondre à la démo
       date: plusDays(14),
       time: "15:00",
       city: "Villeurbanne",

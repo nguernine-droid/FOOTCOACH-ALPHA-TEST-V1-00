@@ -144,6 +144,41 @@ export function notifyNewAnnouncement(input: {
   );
 }
 
+/**
+ * Un confrère vient d'écrire dans une conversation.
+ *
+ * Adressée à UNE personne et non à une équipe : un message est écrit à
+ * quelqu'un, pas à un banc de touche. Le `tag` porte l'identifiant du fil pour
+ * que dix messages d'affilée n'empilent pas dix notifications — la dernière
+ * remplace la précédente, comme dans n'importe quelle messagerie.
+ */
+export function notifyNewMessage(input: {
+  recipientCoachId: string;
+  senderName: string;
+  preview: string;
+  conversationId: string;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      const [recipient] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, input.recipientCoachId), isNull(users.disabledAt), eq(users.notifyMessage, true)));
+      if (!recipient) return;
+      // Un aperçu, pas le message : une notification affichée sur un écran
+      // verrouillé se lit par-dessus l'épaule.
+      const preview = input.preview.length > 120 ? `${input.preview.slice(0, 119)}…` : input.preview;
+      await sendToUsers([recipient.id], {
+        title: input.senderName,
+        body: preview,
+        url: `/coach/messages/${input.conversationId}`,
+        tag: `message-${input.conversationId}`,
+      });
+    })(),
+  );
+}
+
 /** Coachs d'une équipe qui acceptent ce type de notification. */
 async function teamCoachesToNotify(
   teamId: string,

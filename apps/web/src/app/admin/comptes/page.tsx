@@ -7,6 +7,7 @@ import type { AdminAccountDto, AdminCreateClubResultDto, Role } from "@footcoach
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { timeAgo, useNow } from "@/lib/time";
+import { Avatar } from "@/components/Avatar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
@@ -39,7 +40,7 @@ function TempPasswordModal({ account, password, onClose }: { account: AdminAccou
           <h3 className="text-base font-black">Mot de passe réinitialisé</h3>
           <p className="text-sm text-ink-soft">
             Transmettez ce mot de passe temporaire à{" "}
-            <span className="font-bold">{account.firstName} {account.lastName}</span>. Il ne sera plus affiché ensuite.
+            <span className="font-bold">{account.nickname}</span>. Il ne sera plus affiché ensuite.
           </p>
         </div>
         <button
@@ -92,15 +93,16 @@ function AccountCard({ account, onChanged }: { account: AdminAccountDto; onChang
   return (
     <div className={cn("card p-5 space-y-3 animate-rise-in", account.disabled && "opacity-75 border-coral/30")}>
       <div className="flex items-center gap-3">
-        <span className="w-11 h-11 rounded-full bg-navy-700 text-white flex items-center justify-center text-sm font-black shrink-0">
-          {account.firstName[0]}
-          {account.lastName[0] ?? ""}
-        </span>
+        <Avatar name={account.nickname} size={44} />
         <div className="min-w-0 flex-1">
-          <p className="font-bold truncate">
-            {account.firstName} {account.lastName}
+          {/* Le surnom en premier : c'est sous ce nom que le compte apparaît
+              dans l'application. L'état civil, s'il existe, situe la personne. */}
+          <p className="font-bold truncate">{account.nickname}</p>
+          <p className="text-xs text-ink-soft truncate">
+            {`${account.firstName} ${account.lastName}`.trim()
+              ? `${`${account.firstName} ${account.lastName}`.trim()} · ${account.email}`
+              : account.email}
           </p>
-          <p className="text-xs text-ink-soft truncate">{account.email}</p>
         </div>
         <span className={cn("chip shrink-0", meta.chip)}>{meta.label}</span>
       </div>
@@ -395,7 +397,7 @@ function AdminAccounts() {
 
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? accounts.filter((a) => `${a.firstName} ${a.lastName} ${a.email}`.toLowerCase().includes(q))
+    ? accounts.filter((a) => `${a.nickname} ${a.firstName} ${a.lastName} ${a.email}`.toLowerCase().includes(q))
     : accounts;
   // Les demandes de réinitialisation en premier
   const sorted = [...filtered].sort((a, b) => Number(b.hasPendingReset) - Number(a.hasPendingReset));

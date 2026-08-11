@@ -25,6 +25,7 @@ const TOGGLES: { key: keyof NotificationPrefsDto; label: string; hint: string }[
     hint: "Votre proposition est acceptée ou déclinée",
   },
   { key: "score", label: "Score à valider", hint: "L'adversaire a saisi le score final" },
+  { key: "message", label: "Message d'un coach", hint: "Un confrère vous écrit dans une conversation" },
 ];
 
 /** Interrupteur pleine largeur : toute la ligne est cliquable */
@@ -80,6 +81,7 @@ export function NotificationsCard({ user, onChange }: { user: UserDto; onChange:
     announcementResponse: true,
     responseDecision: true,
     score: true,
+    message: true,
   };
 
   useEffect(() => {

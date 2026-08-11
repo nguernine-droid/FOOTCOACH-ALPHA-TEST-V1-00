@@ -1,5 +1,5 @@
 /**
- * Marqueur « maillot » de la carte des matchs proches.
+ * Marqueur « maillot » du radar des annonces.
  *
  * PLACEHOLDER — pictogramme de substitution, en attendant l'asset définitif
  * (voir la liste des assets à fournir).

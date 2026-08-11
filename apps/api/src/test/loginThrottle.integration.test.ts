@@ -86,7 +86,7 @@ describeOrSkip("frein de connexion, de bout en bout", async (t) => {
     for (const email of [EMAIL, VOISIN]) {
       await db
         .insert(users)
-        .values({ email, passwordHash, role: "coach", firstName: "Test", lastName: "Frein" });
+        .values({ email, passwordHash, role: "coach", nickname: "Test", firstName: "Test", lastName: "Frein" });
     }
 
     app = Fastify();
@@ -120,7 +120,7 @@ describeOrSkip("frein de connexion, de bout en bout", async (t) => {
     for (const email of [EMAIL, VOISIN]) {
       await db
         .insert(users)
-        .values({ email, passwordHash, role: "coach", firstName: "Test", lastName: "Frein" });
+        .values({ email, passwordHash, role: "coach", nickname: "Test", firstName: "Test", lastName: "Frein" });
     }
 
     for (let i = 0; i < MAX_FAILURES_PER_ACCOUNT; i++) {
@@ -192,6 +192,7 @@ describeOrSkip("réencodage des empreintes héritées", async (t) => {
       email: EMAIL,
       passwordHash: await bcryptjs.hash(PASSWORD, 10),
       role: "coach",
+      nickname: "Ancien",
       firstName: "Ancien",
       lastName: "Compte",
     });

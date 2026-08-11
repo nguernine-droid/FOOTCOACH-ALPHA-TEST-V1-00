@@ -62,12 +62,14 @@ test("un mot de passe convenable passe, sans exigence de gymnastique", () => {
 });
 
 const INSCRIPTION = {
+  nickname: "Alex",
   firstName: "Alex",
   lastName: "Martin",
   email: "alex@exemple.fr",
   teamName: "FC Exemple",
   teamCity: "Lyon",
   teamCategory: "U13",
+  teamGender: "masculin",
   acceptTerms: true,
   acceptResponsibility: true,
 } as const;

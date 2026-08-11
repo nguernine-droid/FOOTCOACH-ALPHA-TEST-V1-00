@@ -1,14 +1,21 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, gte, inArray, ne, notInArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, notInArray, sql } from "drizzle-orm";
 import {
   idParamSchema,
   responseParamsSchema,
+  announcementCategoryOf,
+  asMatchCategory,
+  asMatchGender,
+  categoryLabel,
   createAnnouncementSchema,
-  daysBetweenIso,
+  isPlateauCategory,
+  PLATEAU_TEAMS_WANTED,
   MATCH_GENDER_LABELS,
+  type AnnouncementDefaultsDto,
   type AnnouncementDto,
   type AnnouncementResponseDto,
   type CoachRefDto,
+  type MatchGender,
   type RadarDto,
   type TeamDto,
 } from "@footcoach/shared";
@@ -20,7 +27,8 @@ import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
 import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
 import { tournamentsInRadar } from "./tournaments.js";
-import { representativeCoachesOf } from "../lib/coachCard.js";
+import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard.js";
+import { markRead, openConversation, postSystemMessage } from "../lib/conversations.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -31,8 +39,11 @@ function toDto(
   myResponseStatus?: AnnouncementResponseDto["status"] | null,
   /** Coach représentant l'équipe émettrice, quand l'appelant l'a chargé */
   coach?: CoachRefDto | null,
+  /** Acceptées déjà comptées par l'appelant (radar) — sinon relues des propositions */
+  acceptedCount?: number,
 ): AnnouncementDto {
   const { announcement, team } = row;
+  const plateau = isPlateauCategory(announcement.category);
   // Position relative du LIEU DU MATCH, pas du siège du club : une annonce
   // peut se jouer loin de la ville de l'équipe qui la publie, et c'est le
   // déplacement réel qui intéresse le coach. `null` si la ville du match est
@@ -54,9 +65,11 @@ function toDto(
     comment: announcement.comment,
     status: announcement.status,
     isMine: team.id === myTeamId,
+    plateau,
+    teamsWanted: plateau ? PLATEAU_TEAMS_WANTED : 1,
+    teamsAccepted: acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length,
     coach: coach ?? null,
     createdAt: announcement.createdAt.toISOString(),
-    noticeDays: daysBetweenIso(announcement.createdAt.toISOString().slice(0, 10), announcement.date),
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
     distanceKm,
@@ -106,6 +119,11 @@ async function loadResponses(announcementIds: string[]) {
     list.push({
       id: response.id,
       team: { id: team.id, name: team.name, city: team.city },
+      // Références de l'équipe qui propose, portées jusqu'à l'émetteur : c'est
+      // lui qui doit voir, avant d'accepter, que des U15 féminines répondent à
+      // son annonce U12-U13 masculine.
+      teamCategory: asMatchCategory(team.category),
+      teamGender: asMatchGender(team.gender),
       status: response.status,
       createdAt: response.createdAt.toISOString(),
       teamId: team.id,
@@ -139,6 +157,50 @@ async function teamsSharingCoachWith(teamId: string): Promise<string[]> {
       ),
     );
   return [...new Set([teamId, ...rows.map((r) => r.teamId)])];
+}
+
+/**
+ * Le message que l'application inscrit dans le fil des deux coachs quand un
+ * match est convenu.
+ *
+ * Il dit CE QUI a été convenu, pas seulement qu'on s'est mis d'accord : deux
+ * coachs ont parfois plusieurs matchs ensemble, et plusieurs annonces peuvent
+ * être acceptées le même jour — un fil qui ne porterait qu'un nom laisserait
+ * exactement la question « qui est qui, pour quel match ? ».
+ *
+ * Trois lignes, dans l'ordre où l'on cherche : de quoi il s'agit, quand et où,
+ * puis qui reçoit qui. Le texte est FIGÉ à l'écriture — il raconte l'accord de
+ * ce jour-là ; la feuille de match, elle, dit l'état actuel (voir `matchId`).
+ *
+ * ⚠ La reprise de l'existant (migration 0030) réécrit ce texte en SQL : les
+ * deux doivent rester identiques, sans quoi les anciens fils ne ressembleraient
+ * pas aux nouveaux.
+ */
+function matchSystemMessage(input: {
+  category: string;
+  gender: MatchGender | null;
+  format: string;
+  date: string;
+  time: string;
+  location: string;
+  homeTeamName: string;
+  awayTeamName: string;
+}): string {
+  const day = new Date(`${input.date}T00:00:00`).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+  });
+  const category = `${categoryLabel(input.category)}${
+    input.gender ? ` ${MATCH_GENDER_LABELS[input.gender]}` : ""
+  }`;
+  // Jusqu'aux U11 c'est un plateau qui se confirme, pas un match : le fil doit
+  // employer le mot que les deux coachs emploieront au bord du terrain.
+  const confirmed = isPlateauCategory(input.category) ? "Plateau confirmé" : "Match confirmé";
+  return [
+    `${confirmed} — ${category} · ${input.format}`,
+    `${day} à ${input.time.slice(0, 5)} · ${input.location}`,
+    `${input.homeTeamName} reçoit ${input.awayTeamName}`,
+  ].join("\n");
 }
 
 /**
@@ -180,6 +242,47 @@ export function announcementRoutes(app: FastifyInstance) {
   });
 
   /**
+   * Ce que la dernière annonce du coach lègue à la suivante. Le formulaire de
+   * publication s'en sert pour se replier sur l'essentiel : un coach republie
+   * presque toujours la même catégorie, le même genre, le même format.
+   *
+   * Sur l'ÉQUIPE ACTIVE, et non sur le coach : celui qui encadre des U13 et des
+   * U15 n'hérite pas des U15 en publiant pour les U13. Sans équipe active, ou
+   * sans annonce passée, `null` — le formulaire montre alors tout.
+   *
+   * Déclarée avant `/announcements/:id` par confort de lecture ; Fastify fait
+   * de toute façon primer les routes statiques sur les paramétrées.
+   */
+  app.get(
+    "/announcements/last",
+    { preHandler: requireRole("coach") },
+    async (request): Promise<AnnouncementDefaultsDto | null> => {
+      const myTeamId = request.user.teamId;
+      if (!myTeamId) return null;
+      const [last] = await db
+        .select()
+        .from(matchAnnouncements)
+        .where(eq(matchAnnouncements.teamId, myTeamId))
+        .orderBy(desc(matchAnnouncements.createdAt))
+        .limit(1);
+      if (!last) return null;
+      // La catégorie repart en GROUPE d'âges : les annonces d'avant le
+      // regroupement portent encore une catégorie fine, que le formulaire ne
+      // sait pas sélectionner. Une valeur hors liste vaut « rien à léguer ».
+      const category = announcementCategoryOf(last.category);
+      if (!category) return null;
+      return {
+        category,
+        gender: last.gender,
+        level: last.level,
+        format: last.format,
+        stadium: last.stadium,
+        city: last.city,
+      };
+    },
+  );
+
+  /**
    * Détail d'une annonce — l'écran qu'on ouvre depuis le radar avant de
    * proposer un match. Il porte la carte du coach émetteur : publier, c'est se
    * montrer, et l'on choisit plus volontiers un adversaire dont on voit qui il
@@ -201,15 +304,15 @@ export function announcementRoutes(app: FastifyInstance) {
     const myTeamId = request.user.teamId;
     const isMine = row.team.id === myTeamId;
     const links = await loadMatchLinks([id]);
-    const responses = isMine
-      ? (await loadResponses([id])).get(id)?.map(({ teamId: _teamId, ...dto }) => dto)
-      : [];
-    const myStatus = myTeamId
-      ? ((await loadResponses([id])).get(id)?.find((r) => r.teamId === myTeamId)?.status ?? null)
-      : null;
+    const all = (await loadResponses([id])).get(id) ?? [];
+    const responses = isMine ? all.map(({ teamId: _teamId, ...dto }) => dto) : [];
+    const myStatus = myTeamId ? (all.find((r) => r.teamId === myTeamId)?.status ?? null) : null;
+    // Compté à part : un visiteur ne reçoit pas les propositions, mais les
+    // places restantes d'un plateau le concernent au premier chef.
+    const acceptedCount = all.filter((r) => r.status === "accepted").length;
     const myCoords = await loadOrigin(request.user.id, myTeamId);
     const coaches = await representativeCoachesOf([row.team.id]);
-    return toDto(row, myTeamId, links.get(id), myCoords, responses, myStatus, coaches.get(row.team.id));
+    return toDto(row, myTeamId, links.get(id), myCoords, responses, myStatus, coaches.get(row.team.id), acceptedCount);
   });
 
   /**
@@ -261,6 +364,23 @@ export function announcementRoutes(app: FastifyInstance) {
       : [];
     const myStatusByAnn = new Map(myResponses.map((r) => [r.announcementId, r.status]));
 
+    // Places prises des plateaux encore ouverts : une annonce à 4 équipes reste
+    // au radar après une première acceptation, il faut dire ce qui reste.
+    const acceptedCounts = new Map<string, number>();
+    if (rows.length > 0) {
+      const counts = await db
+        .select({ announcementId: announcementResponses.announcementId, count: sql<number>`count(*)::int` })
+        .from(announcementResponses)
+        .where(
+          and(
+            inArray(announcementResponses.announcementId, rows.map((r) => r.announcement.id)),
+            eq(announcementResponses.status, "accepted"),
+          ),
+        )
+        .groupBy(announcementResponses.announcementId);
+      for (const c of counts) acceptedCounts.set(c.announcementId, c.count);
+    }
+
     const coaches = await representativeCoachesOf(rows.map((r) => r.team.id));
     const items: AnnouncementDto[] = [];
     let beyondRadius = 0;
@@ -273,6 +393,7 @@ export function announcementRoutes(app: FastifyInstance) {
         [],
         myStatusByAnn.get(row.announcement.id) ?? null,
         coaches.get(row.team.id),
+        acceptedCounts.get(row.announcement.id) ?? 0,
       );
       if (radiusKm !== null && dto.distanceKm !== null && dto.distanceKm > radiusKm) beyondRadius++;
       else items.push(dto);
@@ -362,7 +483,7 @@ export function announcementRoutes(app: FastifyInstance) {
 
     const [created] = await db
       .insert(announcementResponses)
-      .values({ announcementId: id, teamId: responderTeamId })
+      .values({ announcementId: id, teamId: responderTeamId, coachId: request.user.id })
       .returning();
 
     const [responderTeam] = await db.select().from(teams).where(eq(teams.id, responderTeamId));
@@ -433,21 +554,43 @@ export function announcementRoutes(app: FastifyInstance) {
           throw new HttpError(400, "Vous encadrez aussi l'équipe qui a proposé : ce match ne peut pas se jouer");
         }
 
-        await tx.update(matchAnnouncements).set({ status: "matched" }).where(eq(matchAnnouncements.id, id));
         await tx
           .update(announcementResponses)
           .set({ status: "accepted" })
           .where(eq(announcementResponses.id, responseId));
-        await tx
-          .update(announcementResponses)
-          .set({ status: "declined" })
+
+        /**
+         * Un amical se pourvoit à la première acceptation ; un plateau (≤ U11)
+         * cherche TROIS équipes et reste donc ouvert — et au radar — jusqu'à la
+         * troisième. Les propositions restantes ne tombent qu'une fois le
+         * plateau complet : les décliner avant reviendrait à refuser des
+         * équipes qu'on cherche encore.
+         */
+        const teamsWanted = isPlateauCategory(announcement.category) ? PLATEAU_TEAMS_WANTED : 1;
+        const [{ count: acceptedCount }] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(announcementResponses)
           .where(
-            and(
-              eq(announcementResponses.announcementId, id),
-              ne(announcementResponses.id, responseId),
-              eq(announcementResponses.status, "pending"),
-            ),
+            and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "accepted")),
           );
+        const full = acceptedCount >= teamsWanted;
+        let declinedTeamIds: string[] = [];
+        if (full) {
+          const pendings = await tx
+            .select({ teamId: announcementResponses.teamId })
+            .from(announcementResponses)
+            .where(
+              and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "pending")),
+            );
+          declinedTeamIds = pendings.map((p) => p.teamId);
+          await tx
+            .update(announcementResponses)
+            .set({ status: "declined" })
+            .where(
+              and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "pending")),
+            );
+          await tx.update(matchAnnouncements).set({ status: "matched" }).where(eq(matchAnnouncements.id, id));
+        }
 
         const [created] = await tx
           .insert(matches)
@@ -460,22 +603,58 @@ export function announcementRoutes(app: FastifyInstance) {
             location: `${announcement.stadium}, ${announcement.city}`,
           })
           .returning();
-        return created;
+
+        /**
+         * Le match convenu ouvre la conversation entre les deux coachs. Dans la
+         * même transaction que le match : un match sans fil obligerait à
+         * s'échanger un numéro pour convenir de l'heure exacte, ce que
+         * l'acceptation était précisément censée éviter.
+         *
+         * Deux personnes, pas deux équipes : celui qui vient d'accepter, et
+         * celui qui a proposé — à défaut (proposition antérieure à cette
+         * colonne) le coach qui représente l'équipe candidate.
+         */
+        const responderCoachId = response.coachId ?? (await representativeCoachOf(response.teamId))?.id ?? null;
+        if (responderCoachId) {
+          const conversationId = await openConversation(tx, request.user.id, responderCoachId, created.id);
+          if (conversationId) {
+            const [homeTeam, awayTeam] = await Promise.all([
+              tx.select({ name: teams.name }).from(teams).where(eq(teams.id, announcement.teamId)),
+              tx.select({ name: teams.name }).from(teams).where(eq(teams.id, response.teamId)),
+            ]);
+            await postSystemMessage(
+              tx,
+              conversationId,
+              matchSystemMessage({
+                category: announcement.category,
+                gender: announcement.gender,
+                format: announcement.format,
+                date: created.date,
+                time: created.time,
+                location: created.location,
+                homeTeamName: homeTeam[0].name,
+                awayTeamName: awayTeam[0].name,
+              }),
+              created.id,
+            );
+            // Celui qui accepte a déjà tout lu : c'est lui qui vient d'écrire
+            // l'histoire. Seul l'autre doit voir la pastille s'allumer.
+            await markRead(tx, conversationId, request.user.id);
+          }
+        }
+        return { created, declinedTeamIds };
       });
 
-      // Prévient l'équipe retenue, et celles dont la proposition vient de tomber
-      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, match.homeTeamId));
-      const declined = await db
-        .select({ teamId: announcementResponses.teamId })
-        .from(announcementResponses)
-        .where(and(eq(announcementResponses.announcementId, id), eq(announcementResponses.status, "declined")));
+      // Prévient l'équipe retenue, et celles dont la proposition VIENT de
+      // tomber — celles déclinées à la main l'ont déjà été à ce moment-là.
+      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, match.created.homeTeamId));
       notifyResponseDecision({
-        responderTeamId: match.awayTeamId,
+        responderTeamId: match.created.awayTeamId,
         accepted: true,
         opponentTeamName: ownTeam.name,
-        matchId: match.id,
+        matchId: match.created.id,
       });
-      for (const { teamId } of declined) {
+      for (const teamId of match.declinedTeamIds) {
         notifyResponseDecision({
           responderTeamId: teamId,
           accepted: false,
@@ -485,7 +664,7 @@ export function announcementRoutes(app: FastifyInstance) {
       }
 
       reply.code(201);
-      return { matchId: match.id };
+      return { matchId: match.created.id };
     },
   );
 

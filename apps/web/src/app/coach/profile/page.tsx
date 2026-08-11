@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
+import { Bell, Camera, ChevronRight, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
 import { coachQrPayload, type CoachCategory, type UserDto } from "@footcoach/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { LocationCard } from "@/components/coach/LocationCard";
-import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -21,6 +21,7 @@ export default function CoachProfilePage() {
   const [form, setForm] = useState(() => {
     const stored = getStoredUser();
     return {
+      nickname: stored?.nickname ?? "",
       firstName: stored?.firstName ?? "",
       lastName: stored?.lastName ?? "",
       phone: stored?.phone ?? "",
@@ -62,10 +63,23 @@ export default function CoachProfilePage() {
     const next = current.includes(category)
       ? current.filter((c) => c !== category)
       : [...current, category];
+    await saveCategories(next);
+  }
+
+  /**
+   * Retour au coach simple. Déjà simple, l'appel est épargné : la case cochée
+   * qu'on recoche ne doit pas faire clignoter un message d'enregistrement.
+   */
+  async function clearCategories() {
+    if ((user?.categories ?? []).length === 0) return;
+    await saveCategories([]);
+  }
+
+  async function saveCategories(categories: CoachCategory[]) {
     setError(null);
     setMessage(null);
     try {
-      apply(await api<UserDto>("/me/categories", { method: "PATCH", body: JSON.stringify({ categories: next }) }));
+      apply(await api<UserDto>("/me/categories", { method: "PATCH", body: JSON.stringify({ categories }) }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Enregistrement impossible");
     }
@@ -137,10 +151,10 @@ export default function CoachProfilePage() {
       {/* Photo + identité */}
       <section className="card p-5 space-y-4">
         <div className="flex items-center gap-4">
-          <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={72} />
+          <Avatar name={user.nickname} avatarUrl={user.avatarUrl} size={72} />
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-base font-black truncate">
-              {user.firstName} {user.lastName}
+              {user.nickname}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="soft" onClick={() => fileRef.current?.click()} disabled={uploading}>
@@ -167,12 +181,32 @@ export default function CoachProfilePage() {
         />
 
         <form onSubmit={saveProfile} className="space-y-4 border-t border-line pt-4">
+          {/* Le surnom d'abord : c'est LE nom que les autres coachs voient.
+              L'état civil suit, facultatif — il ne sort jamais du compte. */}
+          <div className="space-y-1.5">
+            <label htmlFor="nickname" className="text-xs font-bold text-ink-soft">Surnom</label>
+            <input
+              id="nickname"
+              required
+              maxLength={30}
+              autoComplete="nickname"
+              enterKeyHint="next"
+              value={form.nickname}
+              onChange={(e) => setForm((f) => ({ ...f, nickname: e.target.value }))}
+              className="field"
+              placeholder="Coach Alex"
+            />
+            <p className="text-[11px] text-ink-faint font-semibold">
+              C&apos;est le nom que les autres coachs voient — partout.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label htmlFor="firstName" className="text-xs font-bold text-ink-soft">Prénom</label>
+              <label htmlFor="firstName" className="text-xs font-bold text-ink-soft">
+                Prénom <span className="text-ink-faint font-semibold">(facultatif)</span>
+              </label>
               <input
                 id="firstName"
-                required
                 autoComplete="given-name"
                 autoCapitalize="words"
                 enterKeyHint="next"
@@ -182,10 +216,11 @@ export default function CoachProfilePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">Nom</label>
+              <label htmlFor="lastName" className="text-xs font-bold text-ink-soft">
+                Nom <span className="text-ink-faint font-semibold">(facultatif)</span>
+              </label>
               <input
                 id="lastName"
-                required
                 autoComplete="family-name"
                 autoCapitalize="words"
                 enterKeyHint="next"
@@ -253,7 +288,23 @@ export default function CoachProfilePage() {
 
       <LocationCard user={user} onChange={apply} />
 
-      <NotificationsCard user={user} onChange={apply} />
+      {/* Les notifications se réglaient ici : elles sont parties dans
+          Paramètres, avec l'apparence. Ce n'étaient pas des informations sur le
+          coach mais des réglages de l'application sur cet appareil. La ligne
+          reste pour ceux qui les cherchent à leur ancienne place. */}
+      <Link
+        href="/coach/settings"
+        className="card p-5 flex items-center gap-3 transition hover:bg-blue-faint active:bg-blue-soft"
+      >
+        <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
+          <Bell size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Notifications et apparence</span>
+          <span className="block text-xs text-ink-soft">Réglées dans Paramètres.</span>
+        </span>
+        <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+      </Link>
 
       {/* Code coach + QR à faire scanner */}
       <section className="card p-5 space-y-4">
@@ -298,18 +349,22 @@ export default function CoachProfilePage() {
         )}
       </section>
 
-      {/* Casquettes : cumulables, et rien de coché est le cas ordinaire —
-          « simple coach » n'a pas de case, ce serait une case pour dire non. */}
+      {/* Trois options pour deux casquettes : « Coach simple » dit le cas
+          ordinaire au lieu de le laisser deviner. Les deux vraies restent
+          cumulables entre elles. */}
       {user.categories !== undefined && (
         <section className="card p-5 space-y-3" aria-label="Mes casquettes">
           <div className="space-y-1">
             <h3 className="display text-lg">Mes casquettes</h3>
             <p className="text-xs text-ink-soft">
-              Facultatives et cumulables. Sans aucune, vous restez un coach comme un autre — vos annonces et vos
-              matchs fonctionnent à l&apos;identique.
+              Facultatives, et cumulables entre elles. Chaque changement est enregistré aussitôt.
             </p>
           </div>
-          <CoachCategoryPicker value={user.categories ?? []} onToggle={toggleCategory} />
+          <CoachCategoryPicker
+            value={user.categories ?? []}
+            onToggle={toggleCategory}
+            onClear={clearCategories}
+          />
         </section>
       )}
 

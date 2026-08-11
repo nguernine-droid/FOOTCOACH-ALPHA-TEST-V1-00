@@ -31,7 +31,7 @@ const POINTS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: ShieldAlert,
     title: "La déclaration à votre district reste la vôtre",
-    body: `Un match amical doit être déclaré au district ou à la ligue, en principe au moins ${FFF_NOTICE_DAYS} jours avant la rencontre. L'application vous rappelle ce délai et vous demande de l'attester : elle ne déclare rien à votre place et ne transmet rien à votre fédération.`,
+    body: `Un match amical doit être déclaré au district ou à la ligue, en principe au moins ${FFF_NOTICE_DAYS} jours avant la rencontre. L'application ne vérifie pas ce délai, ne déclare rien à votre place et ne transmet rien à votre fédération : c'est ici, une fois pour toutes, qu'il vous est rappelé.`,
   },
   {
     icon: FileCheck,

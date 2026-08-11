@@ -1,33 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Megaphone, Radar, Trophy } from "lucide-react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Megaphone, Radar } from "lucide-react";
 import type { RadarDto, AnnouncementDto, TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { PublicationsFeedView, usePublicationsFeed } from "@/components/publications/PublicationsFeed";
 import { SectorAnnouncementCard } from "@/components/announcements/SectorAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 /**
- * Ce que les autres coachs publient, en deux listes : les matchs amicaux et
- * les tournois.
+ * Tout ce qui se publie autour de soi, en trois catégories : les matchs
+ * amicaux du secteur, les tournois, et les publications des contributeurs.
  *
- * L'onglet montrait « mes annonces » — elles ont leur écran à elles, dans la
- * feuille « Moi ». Ici on vient chercher un adversaire, pas relire ce qu'on a
- * écrit : c'est la même matière que le radar, sans la carte ni les filtres,
- * pour qui préfère lire une liste que viser un maillot.
+ * Les deux premières sont ce que les AUTRES cherchent — la même matière que le
+ * radar, sans la carte ni les filtres, pour qui préfère lire une liste que
+ * viser un maillot. La troisième est le panneau d'affichage du secteur : les
+ * billets d'information des coachs contributeurs — poules des matchs
+ * officiels, intempéries qui annulent. Ses propres annonces, elles, vivent
+ * dans la feuille « Moi › Mes annonces ».
  *
  * Le périmètre reste celui du radar, réglé sur le tableau de bord : deux
  * réglages de portée qui pourraient diverger seraient un piège.
  */
-export default function AnnouncementsPage() {
+function AnnouncementsPageContent() {
   const [radar, setRadar] = useState<RadarDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
+  // `?cat=publications` : le tableau de bord pointe directement le panneau
+  // d'affichage — arriver sur « Amicaux » obligerait à un second geste.
+  const searchParams = useSearchParams();
   /** Amicaux d'abord : c'est ce qu'on cherche neuf fois sur dix */
-  const [kind, setKind] = useState<"matches" | "tournaments">("matches");
+  const [kind, setKind] = useState<"matches" | "tournaments" | "publications">(() => {
+    const cat = searchParams.get("cat");
+    return cat === "publications" || cat === "tournaments" ? cat : "matches";
+  });
+  const feed = usePublicationsFeed();
 
   const load = useCallback(async () => {
     try {
@@ -90,10 +101,10 @@ export default function AnnouncementsPage() {
           <Megaphone size={22} />
         </span>
         <div className="min-w-[14rem] flex-1">
-          <h2 className="display text-lg">Annonces du secteur</h2>
+          <h2 className="display text-lg">Annonces</h2>
           <p className="text-xs text-white/80">
-            Ce que les coachs autour de vous cherchent et organisent. Vos propres annonces sont dans
-            « Moi › Mes annonces ».
+            Ce que les coachs autour de vous cherchent et organisent — et, dans « Publications », les
+            informations du secteur.
           </p>
         </div>
         <ButtonLink href="/coach" variant="accent" className="shrink-0 w-full sm:w-auto">
@@ -101,15 +112,20 @@ export default function AnnouncementsPage() {
         </ButtonLink>
       </div>
 
-      {/* Deux catégories, en haut, l'une OU l'autre : les deux listes empilées
+      {/* Trois catégories, en haut, une seule à la fois : les listes empilées
           obligeaient à faire défiler tout un secteur d'amicaux pour savoir s'il
-          y avait un tournoi. On vient chercher l'un ou l'autre, rarement les
-          deux à la fois. */}
-      <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Catégorie d'annonces">
+          y avait un tournoi. On vient chercher l'une ou l'autre, rarement deux
+          à la fois.
+
+          Libellés courts et sans icône : à trois par rangée sur un téléphone,
+          « Matchs amicaux » et sa pastille ne tiennent plus, et un libellé
+          tronqué renseigne moins qu'un mot entier. */}
+      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Catégorie d'annonces">
         {(
           [
-            { key: "matches", label: "Matchs amicaux", icon: Megaphone, count: announcements.length },
-            { key: "tournaments", label: "Tournois", icon: Trophy, count: tournaments.length },
+            { key: "matches", label: "Amicaux", count: announcements.length },
+            { key: "tournaments", label: "Tournois", count: tournaments.length },
+            { key: "publications", label: "Publications", count: feed.posts?.length ?? 0 },
           ] as const
         ).map((t) => (
           <button
@@ -118,9 +134,11 @@ export default function AnnouncementsPage() {
             role="tab"
             aria-selected={kind === t.key}
             onClick={() => setKind(t.key)}
-            className={cn("chip-choice", kind === t.key ? "chip-choice-on" : "chip-choice-off")}
+            // `px-2` : à trois par rangée, les 16 px de côté de `.chip-choice`
+            // mangeaient le libellé sur un téléphone. La hauteur de 44 px, elle,
+            // ne bouge pas — c'est la cible qui compte, pas la marge.
+            className={cn("chip-choice px-2", kind === t.key ? "chip-choice-on" : "chip-choice-off")}
           >
-            <t.icon size={13} aria-hidden />
             <span className="truncate">{t.label}</span> ({t.count})
           </button>
         ))}
@@ -175,6 +193,23 @@ export default function AnnouncementsPage() {
         )}
         </section>
       )}
+
+      {/* Le panneau d'affichage du secteur : lecture pour tous, rédaction pour
+          les contributeurs — le formulaire vit dans le composant. */}
+      {kind === "publications" && (
+        <section className="space-y-3" aria-label="Publications des contributeurs">
+          <PublicationsFeedView feed={feed} />
+        </section>
+      )}
     </div>
+  );
+}
+
+/** `useSearchParams` impose la frontière Suspense — la silhouette est la même qu'au chargement. */
+export default function AnnouncementsPage() {
+  return (
+    <Suspense fallback={<CardGridSkeleton cards={3} />}>
+      <AnnouncementsPageContent />
+    </Suspense>
   );
 }

@@ -462,7 +462,7 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* ————— Carte des matchs proches —————
+  /* ————— Radar des annonces —————
      Le cône de balayage : un secteur d'environ 55°, accentué au centre et
      transparent au bord, qui fait un tour en `--sweep-period`. Son opacité est
      un jeton : sur un fond de carte clair, la valeur nocturne l'écraserait. */

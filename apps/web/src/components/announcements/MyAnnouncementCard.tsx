@@ -13,10 +13,11 @@ import {
 } from "lucide-react";
 import {
   categoryLabel,
-  FFF_NOTICE_DAYS,
+  teamMatchesAnnouncement,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
+  type AnnouncementResponseDto,
 } from "@footcoach/shared";
 import { todayIso } from "@/lib/time";
 import { cn, formatDate } from "@/lib/utils";
@@ -50,9 +51,8 @@ export function MyAnnouncementCard({
   onOpenDetail?: () => void;
 }) {
   const pending = a.responses.filter((r) => r.status === "pending");
-  const noticeShort = a.noticeDays < FFF_NOTICE_DAYS;
   // La date est passée : le serveur a retiré l'annonce du radar et refuse les
-  // propositions. Le délai FFF n'a plus de sens (il serait négatif).
+  // propositions.
   const past = a.date < todayIso();
 
   const body = (
@@ -83,7 +83,7 @@ export function MyAnnouncementCard({
         <p className="rounded-lg bg-coral-soft px-3 py-2 text-xs font-bold text-coral flex items-start gap-2">
           <UserMinus size={13} className="shrink-0 mt-px" aria-hidden />
           <span>
-            SOS — adversaire désisté
+            SOS — {a.plateau ? "équipe désistée" : "adversaire désisté"}
             {a.sosReason && ` (${WITHDRAWAL_REASON_LABELS[a.sosReason].toLowerCase()})`}
             <span className="block font-semibold text-ink-soft">
               Remise en tête du radar, les coachs du secteur ont été alertés.
@@ -92,29 +92,17 @@ export function MyAnnouncementCard({
         </p>
       )}
 
-      {/* Conformité FFF : le délai de déclaration, et lui seul — l'attestation
-          par annonce a laissé place à l'acceptation donnée à l'inscription.
-          Une annonce repartie en SOS n'est pas réévaluée : la déclaration au
-          district porte sur la tenue du match, pas sur l'identité de l'adversaire. */}
-      <div className="flex flex-wrap gap-1.5">
-        {past && a.status === "open" ? (
+      {/* Plus de pastille de conformité FFF : le délai de déclaration est
+          rappelé une fois pour toutes dans les CGU acceptées à l'inscription.
+          Reste la seule information que la carte est seule à porter — l'annonce
+          n'est plus sur le radar parce que sa date est derrière nous. */}
+      {past && a.status === "open" && (
+        <div className="flex flex-wrap gap-1.5">
           <span className="chip bg-paper text-ink-soft">
             <CalendarX size={11} /> Date passée
           </span>
-        ) : a.isSos ? (
-          <span className="chip bg-success-soft text-success">
-            <ShieldCheck size={11} /> Match déjà déclaré — délai sans objet
-          </span>
-        ) : noticeShort ? (
-          <span className="chip bg-coral-soft text-coral">
-            <AlertTriangle size={11} /> Délai FFF non respecté ({a.noticeDays} j)
-          </span>
-        ) : (
-          <span className="chip bg-success-soft text-success">
-            <ShieldCheck size={11} /> Délai FFF respecté
-          </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {a.status === "open" && (
         <>
@@ -129,9 +117,15 @@ export function MyAnnouncementCard({
             ) : (
               <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-accent animate-soft-pulse shrink-0" aria-hidden />
-                {pending.length === 0
-                  ? "En attente de proposition"
-                  : `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider`}
+                {/* Un plateau se remplit équipe par équipe : dire où il en est,
+                    c'est dire pourquoi l'annonce est encore ouverte. */}
+                {pending.length > 0
+                  ? `${pending.length} proposition${pending.length > 1 ? "s" : ""} à valider${
+                      a.plateau ? ` — ${a.teamsAccepted}/${a.teamsWanted} équipes` : ""
+                    }`
+                  : a.plateau
+                    ? `Plateau — ${a.teamsAccepted} équipe${a.teamsAccepted > 1 ? "s" : ""} sur ${a.teamsWanted}`
+                    : "En attente de proposition"}
               </p>
             )}
             <button
@@ -161,6 +155,7 @@ export function MyAnnouncementCard({
                     <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
                   </span>
                 </div>
+                <ResponseFit response={r} announcement={a} />
                 <div className="grid grid-cols-2 gap-2">
                   <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
                     Accepter
@@ -177,7 +172,9 @@ export function MyAnnouncementCard({
       {a.status === "matched" && (
         <p className="text-xs font-semibold text-success flex items-center gap-1.5">
           <CheckCircle2 size={12} className="shrink-0" />
-          Match confirmé — {a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}
+          {a.plateau
+            ? `Plateau complet — ${a.teamsWanted} équipes trouvées`
+            : `Match confirmé — ${a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}`}
         </p>
       )}
 
@@ -203,5 +200,58 @@ export function MyAnnouncementCard({
     </Link>
   ) : (
     body
+  );
+}
+
+/**
+ * Ce que l'équipe qui propose joue, en face de ce que l'annonce demande.
+ * L'écart n'est jamais bloquant — un U13 peut vouloir se frotter à des U15, et
+ * lui seul en juge. Mais il doit le SAVOIR avant de cliquer « Accepter » : sans
+ * cette ligne, l'écart ne se découvrait qu'au coup d'envoi.
+ *
+ * Rien d'affiché quand l'équipe qui propose ne porte aucune référence : elle a
+ * été créée avant que la question soit posée, et l'inconnu n'est pas un écart.
+ */
+function ResponseFit({
+  response,
+  announcement,
+}: {
+  response: AnnouncementResponseDto;
+  announcement: AnnouncementDto;
+}) {
+  const fit = teamMatchesAnnouncement(
+    { category: response.teamCategory, gender: response.teamGender },
+    announcement,
+  );
+  if (!fit) return null;
+
+  const references = [
+    response.teamCategory ? categoryLabel(response.teamCategory) : null,
+    response.teamGender ? MATCH_GENDER_LABELS[response.teamGender] : null,
+  ].filter((v): v is string => v !== null);
+  // Accord écrit à la main : « catégorie » est féminin, « genre » masculin, et
+  // les deux ensemble prennent le masculin pluriel. Une phrase assemblée par
+  // pluriel automatique donnait « genre différente ».
+  const gap =
+    !fit.category && !fit.gender
+      ? "catégorie et genre différents de votre annonce"
+      : !fit.category
+        ? "catégorie différente de votre annonce"
+        : !fit.gender
+          ? "genre différent de votre annonce"
+          : null;
+
+  return (
+    <p className={cn("text-[11px] flex items-start gap-1.5", gap ? "font-bold text-coral" : "text-ink-soft")}>
+      {gap ? (
+        <AlertTriangle size={11} className="shrink-0 mt-0.5" aria-hidden />
+      ) : (
+        <ShieldCheck size={11} className="shrink-0 mt-0.5 text-success" aria-hidden />
+      )}
+      <span>
+        {references.join(" · ")}
+        {gap && ` — ${gap}`}
+      </span>
+    </p>
   );
 }

@@ -17,8 +17,9 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  ANNOUNCEMENT_CATEGORIES,
+  announcementCategoryOf,
   categoryLabel,
-  MATCH_CATEGORIES,
   MATCH_GENDERS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
@@ -188,7 +189,9 @@ export function RadarFeed() {
   const matchesFilters = useMemo(
     () =>
       (announcements ?? [])
-        .filter((a) => (category ? a.category === category : true))
+        // Par GROUPE d'âges : les annonces d'avant le regroupement portent
+        // encore une catégorie fine (U13), on les range dans leur paire.
+        .filter((a) => (category ? announcementCategoryOf(a.category) === category : true))
         // Le genre non renseigné (annonces d'avant le champ) ne disparaît pas
         // sur un filtre : on ne sait pas, ce n'est pas une exclusion.
         .filter((a) => (gender ? a.gender === gender || a.gender === null : true))
@@ -226,12 +229,12 @@ export function RadarFeed() {
   const detail = detailId ? (announcements ?? []).find((a) => a.id === detailId) ?? null : null;
 
   /**
-   * Ce que les filtres repliés retirent de la liste. Le périmètre n'en fait pas
-   * partie : il est appliqué par le serveur, il se règle une fois et il est
-   * rappelé en toutes lettres — il n'y a rien à « effacer » là.
+   * Ce que les filtres REPLIÉS retirent de la liste. Ni le périmètre ni la
+   * catégorie n'en font partie : le premier est appliqué par le serveur et
+   * rappelé en toutes lettres, la seconde a sa rangée de pastilles en tête du
+   * radar, toujours visible. On ne résume que ce qu'on ne voit plus.
    */
   const activeFilters = [
-    category ? categoryLabel(category) : null,
     gender ? MATCH_GENDER_LABELS[gender] : null,
     date ? formatDate(date) : null,
   ].filter((label): label is string => label !== null);
@@ -247,18 +250,28 @@ export function RadarFeed() {
       <span className="w-9 h-9 rounded-lg bg-accent-surface border border-defined text-accent flex items-center justify-center shrink-0">
         <Radar size={18} />
       </span>
-      <div className="min-w-0">
-        <h3 className="display text-lg leading-none">Carte des matchs proches</h3>
+      <div className="min-w-0 flex-1">
+        <h3 className="display text-lg leading-none">Radar des annonces</h3>
         <p className="text-xs text-ink-soft">
           Explorez votre zone et découvrez les équipes qui s&apos;entraînent ou cherchent des adversaires.
         </p>
       </div>
+      {/* Ce que le radar montre À CET INSTANT, filtres compris : le nombre
+          descend quand on choisit une catégorie, et c'est précisément ce qui
+          dit qu'un filtre est actif quand la liste est trop longue pour être
+          embrassée d'un coup d'œil. Rien tant que le balayage n'a pas répondu :
+          un « 0 » pendant le chargement se lirait comme un secteur vide. */}
+      {announcements && (
+        <span className="chip bg-accent-surface text-accent shrink-0 tabular-nums">
+          {inRange.length} annonce{inRange.length > 1 ? "s" : ""}
+        </span>
+      )}
     </div>
   );
 
   if (!announcements) {
     return (
-      <section className="card p-5 space-y-4" aria-label="Carte des matchs proches" aria-busy>
+      <section className="card p-5 space-y-4" aria-label="Radar des annonces" aria-busy>
         {header}
         <Skeleton className="w-full aspect-square rounded-card" />
         <Skeleton className="h-40" />
@@ -267,8 +280,39 @@ export function RadarFeed() {
   }
 
   return (
-    <section className="card p-5 space-y-4 animate-rise-in" aria-label="Carte des matchs proches">
+    <section className="card p-5 space-y-4 animate-rise-in" aria-label="Radar des annonces">
       {header}
+
+      {/* La catégorie en tête, hors du panneau replié : c'est le premier tri
+          d'un coach — il encadre des U13, pas « toutes les équipes du secteur »
+          — et le seul filtre qui change ce que la carte elle-même dessine.
+          Genre, date et périmètre restent des réglages, ils attendent plus bas.
+
+          Rangée qui défile horizontalement plutôt que de se replier : dix
+          pastilles de 44 px ne tiennent sur aucun écran de téléphone. */}
+      {announcements.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5" role="group" aria-label="Filtrer par catégorie">
+          <button
+            type="button"
+            onClick={() => setCategory(null)}
+            aria-pressed={category === null}
+            className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
+          >
+            Toutes
+          </button>
+          {ANNOUNCEMENT_CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(category === c ? null : c)}
+              aria-pressed={category === c}
+              className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
+            >
+              {categoryLabel(c)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <RadarScope
         blips={blips}
@@ -384,30 +428,8 @@ export function RadarFeed() {
 
           {announcements.length > 0 && (
             <div className="space-y-2">
-              {/* Rangée de catégories qui défile horizontalement plutôt que de se
-                  replier : dix-huit pastilles de 44 px ne tiennent sur aucun écran
-                  de téléphone sans le manger entièrement. */}
-              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
-                <button
-                  type="button"
-                  onClick={() => setCategory(null)}
-                  aria-pressed={category === null}
-                  className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
-                >
-                  Toutes
-                </button>
-                {MATCH_CATEGORIES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setCategory(category === c ? null : c)}
-                    aria-pressed={category === c}
-                    className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
-                  >
-                    {categoryLabel(c)}
-                  </button>
-                ))}
-              </div>
+              {/* La catégorie n'est plus ici : elle est remontée en tête du
+                  radar, où elle reste visible sans qu'on déplie quoi que ce soit. */}
 
               {/* Genre : quatre choix seulement, donc une grille pleine largeur */}
               <div className="grid grid-cols-4 gap-2" role="group" aria-label="Filtrer par genre">

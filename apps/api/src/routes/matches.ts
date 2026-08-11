@@ -6,6 +6,7 @@ import {
   idParamSchema,
   confirmEncounterSchema,
   finalScoreSchema,
+  isPlateauCategory,
   levelForPoints,
   withdrawMatchSchema,
   MATCH_POINTS,
@@ -149,9 +150,6 @@ export function matchRoutes(app: FastifyInstance) {
    *   que chacun, y compris les coachs déclinés, puisse reproposer ;
    * - l'équipe HÔTE renonce : il n'y a plus de match à offrir, l'annonce est
    *   annulée et l'invité prévenu.
-   *
-   * Le délai FFF de 10 jours n'est pas réévalué : la déclaration au district
-   * porte sur la tenue du match, pas sur l'identité de l'adversaire.
    */
   app.post("/matches/:id/withdraw", { preHandler: requireRole("coach") }, async (request) => {
     const { id } = idParamSchema.parse(request.params);
@@ -193,7 +191,7 @@ export function matchRoutes(app: FastifyInstance) {
           })
           .where(eq(matchAnnouncements.id, match.announcementId));
       } else {
-        await tx
+        const [reopened] = await tx
           .update(matchAnnouncements)
           .set({
             status: "open",
@@ -206,10 +204,25 @@ export function matchRoutes(app: FastifyInstance) {
             sosAlertedAt: new Date(),
             sosWidenedAt: null,
           })
-          .where(eq(matchAnnouncements.id, match.announcementId));
-        await tx
-          .delete(announcementResponses)
-          .where(eq(announcementResponses.announcementId, match.announcementId));
+          .where(eq(matchAnnouncements.id, match.announcementId))
+          .returning({ category: matchAnnouncements.category });
+        // Amical : table rase, l'annonce repart de zéro. Plateau : les AUTRES
+        // équipes acceptées restent engagées — seule la place du désisté se
+        // libère, c'est elle que le SOS annonce.
+        if (reopened && isPlateauCategory(reopened.category)) {
+          await tx
+            .delete(announcementResponses)
+            .where(
+              and(
+                eq(announcementResponses.announcementId, match.announcementId),
+                eq(announcementResponses.teamId, myTeamId!),
+              ),
+            );
+        } else {
+          await tx
+            .delete(announcementResponses)
+            .where(eq(announcementResponses.announcementId, match.announcementId));
+        }
       }
     });
 

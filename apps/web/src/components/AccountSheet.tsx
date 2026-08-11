@@ -4,23 +4,21 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Bell,
-  BookOpen,
   CalendarRange,
   Check,
   ChevronLeft,
   ChevronRight,
-  CircleUserRound,
   Contact,
+  IdCard,
   LogOut,
   Megaphone,
-  MessageSquareWarning,
+  Settings,
   Trophy,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import { Avatar } from "@/components/Avatar";
-import { ThemePicker } from "@/components/ThemePicker";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { timeAgo } from "@/lib/time";
@@ -78,9 +76,18 @@ function Row({
 }
 
 /**
- * Feuille « Moi » : tout ce qui vivait dans le coin haut-droit du header
- * (équipe active, profil, agenda, notifications, déconnexion) rassemblé dans
- * la zone du pouce, ouvert depuis la barre d'onglets basse.
+ * Feuille « Moi » : l'identité, l'équipe active, les écrans qu'on ouvre
+ * souvent, et la déconnexion — rassemblés dans la zone du pouce.
+ *
+ * Ouverte par la photo du header, en haut à gauche, à toutes les largeurs. Elle
+ * n'occupe plus d'emplacement dans la barre basse : celle-ci ne porte que des
+ * destinations, et la place libérée est allée aux messages.
+ *
+ * Les RÉGLAGES n'y sont plus : apparence, profil, notifications et
+ * signalement vivent dans `/coach/settings`, derrière une seule ligne. Une
+ * feuille qui doit se lire d'un coup d'œil, le pouce en bas, ne peut pas
+ * porter à la fois ce qu'on ouvre trois fois par semaine et ce qu'on règle
+ * trois fois par an.
  */
 export function AccountSheet({
   user,
@@ -88,7 +95,6 @@ export function AccountSheet({
   activeTeamId,
   onSelectTeam,
   activities,
-  unreadCount,
   onSeenNotifications,
   onClose,
   onLogout,
@@ -99,8 +105,6 @@ export function AccountSheet({
   onSelectTeam: (teamId: string) => void;
   /** Fil d'activité du coach — `null` tant qu'il charge, absent pour les autres rôles */
   activities: ActivityDto[] | null;
-  /** Événements plus récents que la dernière consultation — pilote le badge, pas le total du fil */
-  unreadCount: number;
   /** Appelé à l'ouverture de la liste : éteint la pastille « non-lu » */
   onSeenNotifications: () => void;
   onClose: () => void;
@@ -165,21 +169,45 @@ export function AccountSheet({
 
   return (
     <BottomSheet label="Mon compte" onClose={onClose} footer={footer}>
-      {/* Identité, en lecture seule : la carte du coach s'ouvre désormais par la
-          photo du header, présente sur tous les écrans. Deux portes vers la
-          même carte, dont une cachée dans un menu, n'en valaient qu'une. */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <Avatar firstName={user.firstName} lastName={user.lastName} avatarUrl={user.avatarUrl} size={52} />
-        <div className="min-w-0">
-          <p className="text-base font-black truncate">
-            {user.firstName} {user.lastName}
-          </p>
-          <p className="text-xs text-ink-soft font-semibold truncate">
-            {ROLE_LABELS[user.role]}
-            {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
-          </p>
+      {/* Identité en tête de feuille, et c'est la porte de la carte : la photo
+          du header ouvre désormais ce menu, la carte se prend donc ici, sur son
+          nom — le premier endroit où l'on se reconnaît. Les autres rôles n'ont
+          pas de carte : leur identité reste un simple bandeau. */}
+      {isCoach ? (
+        <Link
+          href="/coach/card"
+          onClick={onClose}
+          className="flex items-center gap-3 px-5 py-4 transition active:bg-paper hover:bg-paper"
+        >
+          <Avatar name={user.nickname} avatarUrl={user.avatarUrl} size={52} />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-black truncate">
+              {user.nickname}
+            </p>
+            <p className="text-xs text-ink-soft font-semibold truncate">
+              {ROLE_LABELS[user.role]}
+              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
+            </p>
+          </div>
+          <span className="shrink-0 flex items-center gap-0.5 text-xs font-bold text-blue">
+            <IdCard size={14} aria-hidden /> Ma carte
+          </span>
+          <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+        </Link>
+      ) : (
+        <div className="flex items-center gap-3 px-5 py-4">
+          <Avatar name={user.nickname} avatarUrl={user.avatarUrl} size={52} />
+          <div className="min-w-0">
+            <p className="text-base font-black truncate">
+              {user.nickname}
+            </p>
+            <p className="text-xs text-ink-soft font-semibold truncate">
+              {ROLE_LABELS[user.role]}
+              {activeTeam ? ` · ${activeTeam.name}` : user.teamName ? ` · ${user.teamName}` : ""}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Équipe active : la bascule n'a de sens qu'à partir de deux équipes */}
       {isCoach && teams.length > 1 && (
@@ -220,14 +248,10 @@ export function AccountSheet({
         </div>
       )}
 
-      {/* Apparence. Placée avant les raccourcis de navigation : c'est un
-          réglage, pas une destination — on ne quitte pas la feuille pour le
-          changer, on le change et on voit le résultat derrière. */}
-      <div className="border-t border-line px-5 py-4">
-        <h3 className="section-title text-xs text-secondary mb-3">Apparence</h3>
-        <ThemePicker />
-      </div>
-
+      {/* Rien que des DESTINATIONS, désormais. L'apparence et le profil sont
+          partis dans « Paramètres » : ce sont des réglages qu'on ouvre trois
+          fois par an, et ils occupaient ici la place de ce qu'on cherche
+          plusieurs fois par semaine. */}
       <div className="border-t border-line py-1">
         {isCoach && (
           <>
@@ -235,30 +259,27 @@ export function AccountSheet({
                 plus souvent — qui a répondu à ce qu'il a publié. L'onglet
                 « Annonces » montre désormais celles des autres. */}
             <Row icon={Megaphone} label="Mes annonces" href="/coach/announcements/mine" onClick={onClose} />
-            <Row icon={CircleUserRound} label="Mon profil" href="/coach/profile" onClick={onClose} />
             <Row icon={Contact} label="Mes relations" href="/coach/relations" onClick={onClose} />
             <Row icon={Users} label="Mes équipes" href="/coach/team" onClick={onClose} />
             <Row icon={CalendarRange} label="Agenda de l'équipe" href="/coach/agenda" onClick={onClose} />
-            <Row icon={BookOpen} label="Publications" href="/coach/publications" onClick={onClose} />
-            <Row
-              icon={MessageSquareWarning}
-              label="Signaler un bug / suggestion"
-              href="/coach/feedback/new"
-              onClick={onClose}
-            />
+            {/* « Activité » et non « Notifications » : c'est le fil de ce qui
+                s'est passé, pas leur réglage — lequel vit maintenant dans
+                Paramètres, à une ligne d'ici. Deux « Notifications » voisines
+                n'auraient désigné ni l'une ni l'autre. */}
             <Row
               icon={Bell}
-              label="Notifications"
+              label="Activité"
               onClick={() => {
                 onSeenNotifications();
                 setView("notifications");
               }}
               right={
-                unreadCount > 0 ? (
-                  <span className="chip bg-blue-soft text-primary shrink-0">{unreadCount}</span>
+                activities && activities.length > 0 ? (
+                  <span className="chip bg-blue-soft text-primary shrink-0">{activities.length}</span>
                 ) : undefined
               }
             />
+            <Row icon={Settings} label="Paramètres" href="/coach/settings" onClick={onClose} />
           </>
         )}
         <Row icon={LogOut} label="Se déconnecter" tone="danger" onClick={onLogout} />

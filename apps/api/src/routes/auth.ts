@@ -4,6 +4,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   asCoachCategories,
   asMatchCategory,
+  asMatchGender,
   forgotPasswordSchema,
   isV1Role,
   levelForPoints,
@@ -74,6 +75,7 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
       // Références du préremplissage : elles voyagent avec la session, si bien
       // que le formulaire d'annonce n'a aucune requête à faire pour les obtenir.
       category: teams.category,
+      gender: teams.gender,
       stadium: teams.stadium,
     })
     .from(teamCoaches)
@@ -83,7 +85,11 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
   // Tri stable : équipe(s) où il est "principal" avant celles où il est "adjoint"
   return rows
     .sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1))
-    .map((row) => ({ ...row, category: asMatchCategory(row.category) }));
+    .map((row) => ({
+      ...row,
+      category: asMatchCategory(row.category),
+      gender: asMatchGender(row.gender),
+    }));
 }
 
 /** URL publique d'une photo de profil (servie par l'API, proxifiée sous /api) */
@@ -152,6 +158,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
     id: user.id,
     email: user.email,
     role: user.role,
+    nickname: user.nickname,
     firstName: user.firstName,
     lastName: user.lastName,
     teamId,
@@ -178,6 +185,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
             announcementResponse: user.notifyAnnouncementResponse,
             responseDecision: user.notifyResponseDecision,
             score: user.notifyScore,
+            message: user.notifyMessage,
           },
         }
       : {}),
@@ -328,8 +336,9 @@ export function authRoutes(app: FastifyInstance) {
     const [updated] = await db
       .update(users)
       .set({
-        firstName: input.firstName.trim(),
-        lastName: input.lastName.trim(),
+        nickname: input.nickname,
+        firstName: input.firstName,
+        lastName: input.lastName,
         ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}),
         // Champ absent = inchangé ; vidé = effacé. C'est ce qui permet de
         // retirer une licence saisie par erreur sans route dédiée.

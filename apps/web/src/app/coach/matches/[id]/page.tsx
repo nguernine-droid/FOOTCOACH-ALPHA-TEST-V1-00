@@ -17,7 +17,6 @@ import {
   UserMinus,
 } from "lucide-react";
 import {
-  FFF_NOTICE_DAYS,
   POINTS_COOLDOWN_DAYS,
   WITHDRAWAL_REASONS,
   WITHDRAWAL_REASON_LABELS,
@@ -233,11 +232,6 @@ function WithdrawSheet({
           />
           <span className="block text-[11px] text-ink-faint text-right">{details.length}/140</span>
         </label>
-
-        <p className="text-[11px] text-ink-soft">
-          Le délai FFF de {FFF_NOTICE_DAYS} jours n&apos;est pas remis en cause : la déclaration au district porte
-          sur la tenue du match, pas sur l&apos;identité de l&apos;adversaire.
-        </p>
       </div>
     </BottomSheet>
   );
@@ -412,10 +406,10 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
                   className="flex items-center gap-3 rounded-lg bg-paper px-4 py-3 text-left transition
                     hover:bg-blue-faint active:bg-blue-soft"
                 >
-                  <Avatar firstName={coach.firstName} lastName={coach.lastName} avatarUrl={coach.avatarUrl} size={40} />
+                  <Avatar name={coach.nickname} avatarUrl={coach.avatarUrl} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block font-bold truncate">
-                      {coach.firstName} {coach.lastName}
+                      {coach.nickname}
                     </span>
                     <span className="block text-xs text-ink-soft truncate">
                       {side} · {team.name}

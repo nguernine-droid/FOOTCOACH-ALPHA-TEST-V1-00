@@ -40,7 +40,7 @@ export function CoachCardSheet({ coachId, onClose }: { coachId: string; onClose:
 
   return (
     <BottomSheet
-      label={card ? `Carte de ${card.firstName} ${card.lastName}` : "Carte du coach"}
+      label={card ? `Carte de ${card.nickname}` : "Carte du coach"}
       onClose={onClose}
       footer={
         <Button variant="soft" className="w-full" onClick={onClose}>
@@ -61,8 +61,7 @@ export function CoachCardSheet({ coachId, onClose }: { coachId: string; onClose:
           <Skeleton className="h-[440px] max-w-[340px] mx-auto" />
         ) : (
           <CoachCard
-            firstName={card.firstName}
-            lastName={card.lastName}
+            name={card.nickname}
             avatarUrl={card.avatarUrl}
             clubLabel={card.clubLabel}
             teamCategory={card.teamCategory}

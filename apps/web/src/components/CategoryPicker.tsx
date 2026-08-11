@@ -8,19 +8,26 @@ import { cn } from "@/lib/utils";
  * demandent une : l'inscription, la création d'équipe et la publication d'une
  * annonce. Recopiée dans chacun, elle divergeait au premier ajustement.
  *
- * Dix-sept catégories : quatre par rangée au pouce, `px` resserré pour que
- * « Vétérans » tienne sans être tronqué.
+ * La LISTE se passe en prop : une équipe se déclare dans une catégorie fine
+ * (U13), une annonce se publie dans un groupe d'âges (U12-U13) — même grille,
+ * pas les mêmes valeurs. Par défaut, les catégories fines.
+ *
+ * Quatre par rangée au pouce, `px` resserré pour que « Vétérans » tienne sans
+ * être tronqué.
  */
-export function CategoryPicker({
+export function CategoryPicker<T extends string = MatchCategory>({
   value,
   onChange,
+  categories = MATCH_CATEGORIES as unknown as readonly T[],
   label = "Catégorie",
   hint,
   idPrefix = "cat",
   narrow = false,
 }: {
-  value: MatchCategory | null;
-  onChange: (category: MatchCategory) => void;
+  value: T | null;
+  onChange: (category: T) => void;
+  /** Valeurs proposées — catégories fines par défaut, groupes pour les annonces */
+  categories?: readonly T[];
   label?: string;
   /** Ligne d'explication sous la grille */
   hint?: React.ReactNode;
@@ -45,7 +52,7 @@ export function CategoryPicker({
         aria-labelledby={labelId}
         className={cn("grid gap-2", narrow ? "grid-cols-4" : "grid-cols-4 sm:grid-cols-6")}
       >
-        {MATCH_CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <button
             key={c}
             type="button"

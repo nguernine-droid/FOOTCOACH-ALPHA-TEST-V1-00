@@ -22,8 +22,8 @@ export const userRole = pgEnum("user_role", ["coach", "player", "parent", "suppo
  * de faire pour les autres.
  *
  * `joker` a un effet immédiat — lui seul est alerté des SOS. `contributeur`
- * en a un aussi : lui seul peut écrire une publication (voir la table
- * `publications` plus bas), un billet visible de tous les coachs.
+ * annonce un coach qui publie beaucoup : c'est une intention affichée, sans
+ * effet technique pour l'instant, que la V2 pourra reconnaître.
  *
  * Les deux se choisissent à l'inscription et se rechangent au profil.
  */
@@ -75,21 +75,31 @@ export const teamEventType = pgEnum("team_event_type", ["entrainement", "tournoi
 export const eventRecurrence = pgEnum("event_recurrence", ["none", "weekly"]);
 export const joinRequestStatus = pgEnum("join_request_status", ["pending", "approved", "declined"]);
 export const resetRequestStatus = pgEnum("reset_request_status", ["pending", "handled"]);
+// Qui parle dans une conversation. `system` = l'application elle-même, qui
+// inscrit le match convenu à l'ouverture du fil et à chaque nouvelle rencontre.
+export const messageKind = pgEnum("message_kind", ["coach", "system"]);
 // D'où vient la position d'un coach : géolocalisation du navigateur, ou adresse
 // qu'il a saisie. NULL = aucune position propre, on retombe sur son équipe.
 export const locationSource = pgEnum("location_source", ["gps", "address"]);
-// Un bug se constate, une suggestion se propose : même canal vers l'admin,
-// deux intentions à distinguer dans l'inbox de triage.
-export const feedbackType = pgEnum("feedback_type", ["bug", "suggestion"]);
-export const feedbackStatus = pgEnum("feedback_status", ["nouveau", "en_cours", "resolu", "refuse"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: userRole("role").notNull(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
+  /**
+   * Surnom choisi à l'inscription : l'identité affichée aux autres coachs —
+   * la seule qui sorte du compte. Backfillé depuis `first_name` pour les
+   * comptes antérieurs (migration 0032).
+   */
+  nickname: text("nickname").notNull(),
+  /**
+   * État civil, facultatif depuis l'arrivée du surnom (chaîne vide = non
+   * renseigné, pas un NULL à interpréter). Visible du seul titulaire et des
+   * gestionnaires de comptes (admin, club) — jamais des confrères.
+   */
+  firstName: text("first_name").notNull().default(""),
+  lastName: text("last_name").notNull().default(""),
   teamId: uuid("team_id"),
   // Coach : club auquel il est affilié (NULL = coach indépendant, sans club)
   clubId: uuid("club_id").references((): any => clubs.id),
@@ -142,6 +152,7 @@ export const users = pgTable("users", {
   notifyAnnouncementResponse: boolean("notify_announcement_response").notNull().default(true),
   notifyResponseDecision: boolean("notify_response_decision").notNull().default(true),
   notifyScore: boolean("notify_score").notNull().default(true),
+  notifyMessage: boolean("notify_message").notNull().default(true),
   // Compte désactivé par l'admin : connexion et refresh refusés
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   // ————— Acceptation des conditions —————
@@ -225,40 +236,6 @@ export const passwordResetRequests = pgTable(
   (t) => [uniqueIndex("reset_requests_pending_user_idx").on(t.userId).where(sql`status = 'pending'`)],
 );
 
-/**
- * Signalement d'un bug ou suggestion d'amélioration envoyé par un coach.
- * Une seule table pour les deux : ce sont deux intentions d'un même geste
- * (« quelque chose ne va pas » / « pourrait être mieux »), distinguées par
- * `type` et non deux formulaires qui dupliqueraient triage et visibilité.
- *
- * Visible du seul auteur (ses envois + leur statut) et de l'admin qui triage —
- * pas de vote public ni de visibilité entre coachs, à la différence d'une
- * annonce : ce canal s'adresse à l'éditeur, pas aux autres coachs.
- */
-export const coachFeedback = pgTable(
-  "coach_feedback",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    authorId: uuid("author_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    type: feedbackType("type").notNull(),
-    message: text("message").notNull(),
-    status: feedbackStatus("status").notNull().default("nouveau"),
-    // Réponse courte de l'admin, visible de l'auteur : pourquoi refusé, ce qui a été fait…
-    adminNote: text("admin_note"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    // Posé au premier changement de statut fait par un admin ; NULL = encore "nouveau"
-    handledAt: timestamp("handled_at", { withTimezone: true }),
-  },
-  (t) => [
-    // « Mes signalements » : lu par auteur, le plus récent en tête
-    index("coach_feedback_author_idx").on(t.authorId, t.createdAt),
-    // L'inbox admin trie/filtre par statut
-    index("coach_feedback_status_idx").on(t.status, t.createdAt),
-  ],
-);
-
 export const teams = pgTable("teams", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
@@ -278,6 +255,13 @@ export const teams = pgTable("teams", {
   // NULL pour les équipes créées avant : on ne devine pas la catégorie d'un
   // « FC Exemple », et le formulaire d'annonce doit pouvoir le constater.
   category: text("category"),
+  //
+  // Genre de l'équipe, à côté de sa catégorie et pour la même raison : il
+  // préremplit l'annonce, et il dit à celui qui reçoit une proposition si
+  // l'équipe en face joue bien dans le même tableau. Texte libre comme la
+  // catégorie (MATCH_GENDERS validé par zod), NULL pour les équipes créées
+  // avant — on ne devine pas le genre d'un « FC Exemple ».
+  gender: text("gender"),
   stadium: text("stadium"),
   // Club propriétaire de l'équipe (NULL = équipe d'un coach indépendant, sans club)
   clubId: uuid("club_id").references(() => clubs.id),
@@ -421,6 +405,15 @@ export const announcementResponses = pgTable(
     teamId: uuid("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    /**
+     * Le coach qui a proposé, en personne. L'équipe seule ne suffit plus depuis
+     * qu'une conversation s'ouvre à l'acceptation : elle relie deux personnes,
+     * et une équipe en compte parfois plusieurs.
+     *
+     * NULL sur les propositions envoyées avant cette colonne — on retombe alors
+     * sur le coach qui représente l'équipe.
+     */
+    coachId: uuid("coach_id").references(() => users.id, { onDelete: "set null" }),
     status: responseStatus("status").notNull().default("pending"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -794,16 +787,104 @@ export const coachRelations = pgTable(
 );
 
 /**
- * Publication d'un coach « contributeur » : billet visible de tous les coachs
- * de l'application, sans portée club/équipe — contrairement à une annonce,
- * ce n'est pas un match à trouver, c'est un partage d'expérience.
+ * Conversation entre DEUX coachs. Elle naît d'une acceptation d'annonce : à
+ * partir du moment où un match est convenu, les deux coachs ont à se parler
+ * (l'heure exacte, le vestiaire, la couleur des maillots) et n'ont plus à
+ * s'échanger un numéro pour le faire.
  *
- * `authorId` ne porte aucune contrainte de casquette en base : `contributeur`
- * est cumulable et révocable à tout moment depuis le profil, et une
- * publication déjà écrite doit rester lisible même si son auteur décoche
- * ensuite la case — sinon décocher une case supprimerait du contenu que
- * d'autres coachs ont déjà pu lire. Le contrôle se fait à l'écriture
- * (POST /publications, voir requireCoachCategory), jamais à la lecture.
+ * Une seule conversation par paire, jamais une par match : deux coachs qui se
+ * retrouvent la saison suivante reprennent le même fil. `match_id` garde
+ * seulement la rencontre qui l'a ouverte, pour pouvoir le raconter.
+ *
+ * La paire est ORDONNÉE (`coach_a_id < coach_b_id`, garanti par la contrainte)
+ * pour que l'index unique suffise : sans cet ordre, (A,B) et (B,A) seraient
+ * deux lignes distinctes et la même paire pourrait avoir deux fils.
+ */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    coachAId: uuid("coach_a_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    coachBId: uuid("coach_b_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Match à l'origine du fil (NULL si le match a été supprimé depuis) */
+    matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
+    /**
+     * Dernier message, dupliqué ici : c'est le tri de la liste des
+     * conversations, et le recalculer par un MAX sur les messages à chaque
+     * ouverture de l'écran coûterait un balayage par fil.
+     */
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("conversations_pair_idx").on(t.coachAId, t.coachBId),
+    // Les deux lectures de la liste : « mes conversations », d'un côté ou de l'autre
+    index("conversations_coach_a_idx").on(t.coachAId, t.lastMessageAt),
+    index("conversations_coach_b_idx").on(t.coachBId, t.lastMessageAt),
+    check("conversations_paire_ordonnee", sql`coach_a_id < coach_b_id`),
+  ],
+);
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    /**
+     * NULL pour un message `system` : personne ne l'a écrit, c'est
+     * l'application qui inscrit le match convenu. Un expéditeur de complaisance
+     * — le coach qui accepte, par exemple — ferait croire qu'il l'a rédigé.
+     */
+    senderId: uuid("sender_id").references(() => users.id, { onDelete: "cascade" }),
+    kind: messageKind("kind").notNull().default("coach"),
+    /**
+     * Match annoncé par un message `system`. Le texte du message est figé à
+     * l'écriture (il raconte ce qui a été convenu ce jour-là) ; cette référence,
+     * elle, permet d'ouvrir la feuille de match telle qu'elle est aujourd'hui.
+     */
+    matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Un fil se lit toujours en entier et dans l'ordre
+  (t) => [index("messages_conversation_idx").on(t.conversationId, t.createdAt)],
+);
+
+/**
+ * Jusqu'où chaque coach a lu son fil. Une ligne par (conversation, coach),
+ * posée à la première ouverture : son absence veut dire « jamais ouvert », donc
+ * tout est non lu — un défaut juste, et non une donnée manquante.
+ */
+export const conversationReads = pgTable(
+  "conversation_reads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    coachId: uuid("coach_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("conversation_reads_conv_coach_idx").on(t.conversationId, t.coachId)],
+);
+
+/**
+ * Publication d'un coach contributeur : un billet d'information à destination
+ * de tous les coachs — les poules des matchs officiels, une intempérie qui
+ * annule un plateau. Rien d'autre qu'un texte et son auteur : ni destinataire,
+ * ni réponse, ni statut — c'est un panneau d'affichage, pas une conversation.
+ *
+ * Le droit d'écrire ne se stocke pas ici : il se lit dans la casquette
+ * `contributeur` de l'auteur AU MOMENT de la rédaction. Un billet survit donc
+ * au retrait de la casquette — l'information donnée reste donnée.
  */
 export const publications = pgTable(
   "publications",
@@ -812,10 +893,9 @@ export const publications = pgTable(
     authorId: uuid("author_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
     body: text("body").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  // Le fil global trie systématiquement par date de publication
+  // Le fil se lit toujours du plus récent au plus ancien
   (t) => [index("publications_created_idx").on(t.createdAt)],
 );

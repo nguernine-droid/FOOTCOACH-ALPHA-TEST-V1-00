@@ -4,14 +4,14 @@ La **V1 est volontairement restreinte à la gestion des matchs amicaux entre coa
 
 | Rôle | Ce qu'il peut faire |
 |---|---|
-| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé), **valider la rencontre au stade** en se scannant avec le coach adverse (ce qui rapporte des points), puis saisir le **score final** |
+| **Coach** | Publier des annonces de match amical, répondre aux annonces des autres coachs depuis le radar (→ crée un match confirmé **et une conversation avec l'autre coach**), **valider la rencontre au stade** en se scannant avec le coach adverse (ce qui rapporte des points), puis saisir le **score final** |
 | **Admin** | Gérer les comptes coachs (réinitialisation de mot de passe, désactivation), consulter les statistiques |
 
 Il n'y a **pas de comptes joueur ni parent** : tout ce qui en dépendait (effectif, présences, composition d'équipe, covoiturage, temps forts) a été retiré. Les rôles **supporter et club** restent implémentés mais **masqués** : leur connexion est refusée par l'API. Voir « Ce qui est masqué en V1 » plus bas.
 
 L'application est **conçue pour être utilisée à une main sur un téléphone** et **installable sur l'écran d'accueil** — voir « Ergonomie mobile » et « Installation ».
 
-### La rencontre validée au stade, et les points
+## La rencontre validée au stade, et les points
 
 Ce qui atteste qu'un match a eu lieu n'est pas le score, mais le **face-à-face des deux coachs** :
 
@@ -36,14 +36,17 @@ L'application ne gère du tournoi **que sa visibilité et ses inscriptions** : n
 
 Le journal `coach_points` accepte les deux origines (`match_id` **ou** `tournament_id`, jamais les deux — contrainte `coach_points_une_origine`), pour que le total d'un coach reste une seule somme.
 
-### Casquettes du coach
+## Casquettes du coach
 
-Un coach se donne ses casquettes, **cumulables**, **à l'inscription** (une étape à elle seule, entre l'équipe et les acceptations) puis à volonté depuis **Mon profil → Mes casquettes**. N'en cocher aucune est le cas ordinaire et se lit « simple coach » — il n'y a pas de case pour dire non, et l'étape d'inscription se franchit sans rien cocher.
+Un coach se donne ses casquettes **à l'inscription** (une étape à elle seule, entre l'équipe et les acceptations) puis à volonté depuis **Mon profil → Mes casquettes**.
 
-| Casquette | Effet |
+L'écran propose **trois options pour deux casquettes** : « Coach simple » ouvre la liste et vaut pour le tableau vide, joker et contributeur restent **cumulables entre elles**. « Coach simple » n'est stocké nulle part — cocher une vraie casquette la décoche d'elle-même, la cocher retire les deux autres. Elle est cochée d'avance à l'inscription, l'étape se franchit donc sans rien toucher.
+
+| Option | Effet |
 |---|---|
+| **Coach simple** | Aucune casquette, le cas ordinaire. Annonces, propositions et matchs fonctionnent à l'identique : ni alerte SOS en premier, ni rédaction de publications. |
 | **Joker** | Il accepte d'être alerté quand un coach de son secteur se retrouve sans adversaire. **Les alertes SOS ne partent qu'aux jokers**, et seulement à ceux dont le rayon couvre le lieu : se dire disponible n'est pas se dire ubiquiste. |
-| **Contributeur** | Il publie régulièrement des annonces, sans attendre qu'on lui en propose — ce sont elles qui donnent aux autres des matchs à trouver. Décoratif pour l'instant (un badge sur sa fiche), la casquette prendra son sens en V2 ; elle est demandée dès l'inscription pour que les coachs puissent se déclarer sans attendre. |
+| **Contributeur** | Il rédige les **publications** du secteur — poules des matchs officiels, intempéries, plateaux annulés — lues par tous les coachs dans l'onglet Annonces. Voir « Publications » ci-dessous. |
 
 Se déclarer joker **est** l'abonnement aux SOS : le ciblage ne recoupe pas la préférence « nouvelle annonce », qui répond à une autre question. Un coach qui a coupé le flot des annonces neuves mais s'est déclaré joker veut précisément cela — n'être dérangé que quand quelqu'un est en panne.
 
@@ -74,15 +77,29 @@ Les casquettes s'affichent sur les fiches de relations, à côté du palier.
 
 > La caméra n'est accessible qu'en **contexte sécurisé** : HTTPS en production, ou `localhost` en développement. Sur une IP locale en HTTP, le navigateur refusera l'accès et le scanner affichera « Caméra indisponible ».
 
-### Règle FFF des 10 jours
+## Publications — le panneau d'affichage du secteur
 
-Un match amical doit être déclaré à la fédération (district / ligue) **au moins 10 jours avant** la rencontre. À la publication d'une annonce :
+Ce qu'un coach a besoin de savoir sans avoir à le demander : les **poules du district viennent de tomber**, le **terrain est impraticable**, le **plateau de samedi est annulé**. Rien de tout cela n'est une annonce — ça n'attend aucune réponse, ça informe.
 
-- un **rappel du délai** est affiché ;
-- une date à moins de 10 jours **n'est pas bloquée** mais affiche un avertissement (les dérogations de district existent) ;
-- chaque annonce porte un badge « Délai FFF respecté » ou « Délai FFF non respecté (n j) », calculé entre la publication et la date du match.
+**Tous les coachs lisent, seuls les contributeurs écrivent.** C'est un panneau, pas un mur où chacun épingle : dix billets par jour et plus personne ne l'ouvre. La casquette se coche et se décoche librement dans **Mon profil**, et le serveur la **revérifie à chaque rédaction** (`POST /publications` → 403) — un client qui aurait gardé un écran ouvert ne doit pas publier avec une casquette rendue.
 
-Il n'y a **plus de case à cocher par annonce**. Que la déclaration au district relève du coach et de son club est accepté **une fois, à l'inscription** (« Je comprends que la déclaration du match à ma fédération… relève de ma responsabilité »), avec date et version conservées sur le compte — la redemander à chaque publication faisait double emploi. La colonne `match_announcements.federation_declared` reste en base pour les annonces publiées sous l'ancienne règle, mais n'est plus écrite ni affichée : sur une annonce récente, `false` signifie « la question n'a pas été posée ».
+| | |
+|---|---|
+| **Lire** | Onglet **Annonces › Publications**, et les **cinq derniers** billets en pied de tableau de bord — l'actualité se survole d'ici, se lit en entier là-bas. Le tableau de bord les charge en **repli silencieux** : un panneau vide ne doit pas faire tomber l'écran d'accueil. |
+| **Écrire** | Le **« + »** de la barre → **Information** (`/coach/publications/new`). L'option n'apparaît qu'aux contributeurs. |
+| **Effacer** | Chacun **n'efface que les siens** — y compris un ancien contributeur qui a rendu la casquette : ce qu'on a écrit reste à soi. Confirmation sur place (« Supprimer ? »), sans boîte de dialogue. |
+
+Un billet porte son auteur (surnom, photo, et l'équipe qui le situe — celle qu'il encadre en principal, à défaut la plus ancienne, comme dans la messagerie et les relations) et **800 caractères** au plus (`PUBLICATION_MAX_LENGTH`) : c'est un billet d'information, pas un article — au-delà, l'information se noie dans le texte. Les **retours à la ligne sont conservés** à l'affichage, parce qu'une liste de poules se lit en liste et non en paragraphe.
+
+Le fil sert les **cent derniers** billets, du plus récent au plus ancien : un panneau d'affichage montre ce qui est d'actualité, pas ses archives. Table `publications` (auteur en `ON DELETE CASCADE`, index sur `created_at`) — **pas de modification après coup, pas de réponse, pas de mention** : ajouter l'une de ces trois choses en ferait un réseau social, ce que la V1 ne cherche pas à être. Un billet erroné se supprime et se réécrit.
+
+## Règle FFF des 10 jours
+
+Un match amical doit être déclaré à la fédération (district / ligue) **au moins 10 jours avant** la rencontre. La règle est énoncée **une fois, à l'inscription**, dans les CGU (`LegalConsent`) : que la déclaration au district relève du coach et de son club y est accepté explicitement (« Je comprends que la déclaration du match à ma fédération… relève de ma responsabilité »), avec date et version conservées sur le compte.
+
+**L'application ne mesure plus ce délai annonce par annonce.** Ni case à cocher, ni rappel au formulaire de publication, ni badge « Délai FFF respecté / non respecté » sur les annonces, le détail d'annonce ou la feuille de match : elle ne déclare rien à la place du coach, les dérogations de district existent, et répéter l'avertissement à chaque écran noyait les informations propres à la rencontre. Seule reste la constante `FFF_NOTICE_DAYS`, qui alimente le texte des CGU.
+
+La colonne `match_announcements.federation_declared` reste en base pour les annonces publiées sous l'ancienne règle, mais n'est plus écrite ni affichée : sur une annonce récente, `false` signifie « la question n'a pas été posée ».
 
 ## Le radar
 
@@ -113,7 +130,7 @@ Le géocodage passe par l'**API Adresse de l'État** (`api-adresse.data.gouv.fr`
 
 ## Notifications push
 
-Le coach peut être prévenu **même l'application fermée**. Les quatre premiers sont désactivables dans **Mon profil → Notifications** ; le cinquième dépend de la casquette **joker** et de rien d'autre :
+Le coach peut être prévenu **même l'application fermée**. Les cinq premiers sont désactivables dans **Mon profil → Notifications** ; le sixième dépend de la casquette **joker** et de rien d'autre :
 
 | Déclencheur | Ciblage |
 |---|---|
@@ -121,12 +138,13 @@ Le coach peut être prévenu **même l'application fermée**. Les quatre premier
 | Une équipe propose de jouer mon annonce | Coachs de l'équipe émettrice |
 | Ma proposition est acceptée ou déclinée | Coachs de l'équipe qui a proposé |
 | Score final enregistré par l'adversaire | Coachs de l'équipe adverse |
+| Message d'un confrère | Le **destinataire** du message, et lui seul (aperçu tronqué à 120 caractères — une notification se lit par-dessus l'épaule) |
 | **SOS** — un coach se retrouve sans adversaire | **Jokers** dont le rayon couvre le lieu (voir « Casquettes ») |
 | **SOS sans réponse** (10 à 60 min selon l'urgence) | Tous les autres coachs du secteur (jokers exclus, ils ont déjà été appelés) |
 
 Détails d'implémentation :
 
-- Service worker minimal (`apps/web/public/sw.js`), **sans cache** : mettre l'app hors ligne demanderait une stratégie d'invalidation, et des annonces périmées vaudraient pire que pas d'offline.
+- Service worker minimal (`apps/web/public/sw.js`), **sans cache** : mettre l'app hors ligne demanderait une stratégie d'invalidation, et des annonces périmées vaudraient pire que pas d'offline. Son handler `fetch` est **transparent** — il n'existe que pour rendre l'application installable (voir « Installation sur l'écran d'accueil »).
 - Un abonnement par appareil (`push_subscriptions`), **purgé automatiquement** dès que le service de push répond 404/410.
 - Les envois ne sont **jamais attendus par une route** : un service de push lent ne retarde pas la réponse du coach qui vient de publier.
 - Le périmètre du radar vit en base (`users.radar_radius_km`) parce que c'est le serveur qui décide qui notifier.
@@ -151,13 +169,26 @@ VAPID_SUBJECT=mailto:contact@exemple.fr
 
 L'application est une PWA installable : manifeste (`app/manifest.ts`), icônes, `theme-color` navy et `viewport-fit=cover` pour que les *safe areas* iOS soient réellement renseignées.
 
-Sur iPhone : Safari → Partager → « Sur l'écran d'accueil ». L'app s'ouvre alors sans barre d'adresse, la barre d'état prolonge le header navy, et les notifications deviennent possibles.
+**L'installation est proposée à la fin de l'inscription**, sur l'écran « Bienvenue » qui suit la création du compte — le seul moment où le coach vient de décider que l'application lui servirait. Ce qu'il y voit dépend de son système, parce que les deux n'offrent pas la même chose (`lib/install.ts`, `components/InstallAppCard.tsx`) :
+
+| Système | Ce qui s'affiche |
+|---|---|
+| **Android** (et navigateurs de bureau Chromium) | Un bouton **« Installer l'application »**. Le navigateur émet `beforeinstallprompt`, qu'on intercepte pour ouvrir sa boîte d'installation depuis notre bouton. Une touche. |
+| **iOS / iPadOS** | Les **trois gestes illustrés** : Partager → « Sur l'écran d'accueil » → Ajouter. Apple n'expose aucune API d'installation ; il n'y a rien à déclencher, seulement un chemin à montrer. |
+| Déjà installée, ou navigateur qui ne sait pas faire | **Rien**, et l'écran est sauté : une invitation sans issue fait chercher un bouton qui n'existe pas. |
+
+L'écoute de `beforeinstallprompt` vit à la **racine** (`InstallPromptListener` dans le layout) : l'événement ne se produit qu'une fois par chargement, souvent avant qu'on arrive sur l'écran qui s'y intéresse. Un refus consomme l'événement et l'offre disparaît — insister reviendrait à ne pas entendre la réponse.
+
+> **Le service worker conditionne l'installation.** Chrome ne juge une application installable que si un service worker déclarant un handler `fetch` est déjà en place. `sw.js` en porte donc un, **volontairement transparent** : il n'appelle pas `respondWith`, chaque requête part au réseau, la promesse « sans cache » tient toujours. Et il est enregistré **au démarrage de l'app** et non plus à l'activation des notifications — sinon l'ordre était circulaire : pas de service worker → pas d'installation possible → pas de notifications sur iPhone, qui les réserve aux applications installées.
+
+Une fois installée, l'app s'ouvre sans barre d'adresse, la barre d'état prolonge le header navy, et les notifications deviennent possibles.
 
 ## Ergonomie mobile
 
 L'app est pensée pour le pouce, pas pour la souris. Les règles ci-dessous sont des **contraintes de conception à ne pas défaire** :
 
-- **Le header ne porte aucune action.** Logo, wordmark, équipe active, espace : lecture seule. Tout ce qui vivait dans le coin haut-droit (profil, agenda, notifications, bascule d'équipe, déconnexion) est dans la **feuille « Moi »**, ouverte depuis la barre basse.
+- **Le header ne porte qu'UNE action : la photo, en haut à gauche**, qui ouvre la **feuille « Moi »** (identité et carte, équipe active, annonces, relations, équipes, agenda, activité, paramètres, déconnexion). C'est le geste appris ailleurs — sa propre tête ouvre son compte — et il vaut à **toutes les largeurs** : pas deux portes différentes vers le même menu selon la taille de l'écran. Le reste du header (logo, wordmark, équipe active, espace) reste en lecture seule.
+- **La barre basse ne porte que des destinations.** Un menu n'est pas un onglet : il n'a rien à faire dans une rangée qui dit où l'on est.
 - **Toute action primaire est dans le tiers bas**, en pleine largeur sous 960 px.
 - **Aucune modale centrée** : `BottomSheet` partout — poignée, fermeture par glissé vers le bas, par le fond, par Échap ou par un bouton en pied, safe-area respectée, défilement d'arrière-plan bloqué. Au-delà de 960 px elle redevient une boîte centrée.
 - **Cibles ≥ 44 px** : `Button` (44/48/52), `.field` (16 px de police — en dessous iOS zoome au focus — et 48 px de haut), `.icon-btn` (44 px visibles, 48 px touchés), `.chip-choice` pour toute pastille cliquable.
@@ -345,13 +376,13 @@ cherche les erreurs qui n'apparaissent qu'en volume et mesure ce que l'interface
 reçoit à densité réelle. Elle **écrit dans la base** et se nettoie ensuite —
 mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
 
-### Créer un compte coach (sans compte de démo)
+## Créer un compte coach (sans compte de démo)
 
 « Créer un compte coach » — 4 petites étapes (nom → identifiants → équipe → casquettes), plus les acceptations. L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
 
-L'étape « équipe » demande son nom, sa ville, sa **catégorie** (obligatoire) et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
+L'étape « équipe » demande son nom, sa ville, sa **catégorie** et son **genre** (obligatoires), et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
 
-L'étape « casquettes » propose **joker** et **contributeur**, chacune expliquée par ce qu'elle engage (voir « Casquettes du coach »). Aucune n'est obligatoire ; le serveur reçoit un tableau qui peut être vide, et une inscription qui ne l'envoie pas du tout reste valable.
+L'étape « casquettes » propose **coach simple**, **joker** et **contributeur**, chacune expliquée par ce qu'elle engage (voir « Casquettes du coach »). Aucune n'est obligatoire — « coach simple » est coché d'avance ; le serveur reçoit un tableau qui peut être vide, et une inscription qui ne l'envoie pas du tout reste valable.
 
 Le champ **nom de l'équipe** propose des **suggestions de clubs** tirées de l'annuaire public des entreprises (`recherche-entreprises.api.gouv.fr`, façade de la base SIRENE, filtrée sur le code NAF **93.12Z « Activités de clubs de sports »**). Retenir une suggestion remplit aussi la **ville**. Même champ dans **Mes équipes › Créer une équipe**.
 
@@ -367,13 +398,34 @@ C'est une aide, jamais une contrainte :
 
 L'étape « qui êtes-vous » accepte un **numéro de licence d'éducateur**, facultatif. Il n'est **servi qu'à son titulaire** : ni sur les fiches de relations, ni nulle part ailleurs — c'est une donnée administrative, pas un signe extérieur. Rien ne s'appuie dessus pour l'instant ; il est recueilli parce qu'un coach l'a sous la main en s'inscrivant et beaucoup moins le jour où il servira. Modifiable et effaçable ensuite dans **Mon profil** (vider le champ l'efface). Le format est volontairement permissif — chiffres, lettres, espaces, tirets et barres, 30 caractères — les districts n'ayant pas tous la même notation.
 
-### Références d'équipe
+## Références d'équipe
 
-Chaque équipe porte une **catégorie** (U6 → Vétérans) et un **stade habituel**. Ils sont demandés à sa création — à l'inscription comme dans **Mes équipes › Créer une équipe** — et **préremplissent chaque annonce** publiée en son nom : catégorie, stade et ville arrivent déjà renseignés, il ne reste que la date, l'heure et le genre.
+Chaque équipe porte une **catégorie** (U6 → Vétérans), un **genre** (masculin / féminin / mixte) et un **stade habituel**. Les trois sont demandés à sa création — à l'inscription comme dans **Mes équipes › Créer une équipe** — et **préremplissent chaque annonce** publiée en son nom : il ne reste alors que la date, le créneau et les informations pratiques.
 
 Ce ne sont que des valeurs de départ : un déplacement se joue ailleurs, un amical peut se caler sur une autre catégorie, et tous les champs de l'annonce restent modifiables.
 
-Les équipes créées avant cette version n'en ont pas — le formulaire d'annonce retombe alors sur ses valeurs par défaut, et **Mes équipes** signale « Catégorie à renseigner ». Le crayon en bout de ligne ouvre une feuille qui règle les deux valeurs (`PATCH /coach/teams/:id`, réservé aux encadrants de l'équipe).
+Le genre sert **deux fois**, et c'est ce qui justifie de le demander à l'équipe plutôt qu'à chaque annonce : il remplit l'annonce, et il permet de comparer une équipe qui propose à l'annonce qu'elle vise (voir « Concordance » ci-dessous).
+
+Les équipes créées avant cette version n'en ont pas — le formulaire d'annonce retombe alors sur ses valeurs par défaut, et **Mes équipes** signale « Catégorie à renseigner », « Genre à renseigner » ou les deux. Le crayon en bout de ligne ouvre une feuille qui règle les trois valeurs (`PATCH /coach/teams/:id`, réservé aux encadrants de l'équipe).
+
+### Concordance d'une proposition
+
+Quand un coach reçoit une proposition sur son annonce, la fiche de l'équipe qui propose porte sa **catégorie et son genre**, et signale l'écart s'il y en a un : *« U13 · Masculin — catégorie différente de votre annonce »*, en rouge, juste au-dessus d'« Accepter ».
+
+C'est un **avertissement, jamais un blocage** : un U13 peut vouloir se frotter à des U15, et lui seul en juge. Deux règles seulement (`teamMatchesAnnouncement`, testée dans `apps/api/src/lib/teamFit.test.ts`) :
+
+- la **catégorie** se compare par **groupe d'âges** — une équipe U13 concorde avec une annonce U12-U13, c'est l'appariement du district ;
+- le **genre** se compare tel quel, à ceci près que **le mixte s'apparie avec tout le monde**, des deux côtés : jusqu'aux U11 les équipes le sont réellement, et refuser l'appariement les priverait de la moitié du radar.
+
+Ce qu'on ne sait pas ne s'oppose à rien : une équipe sans références (créée avant qu'on les demande) n'affiche **aucune** ligne, et une valeur inconnue ne fabrique pas de désaccord. Un faux avertissement ferait décliner des propositions parfaitement valables.
+
+### Ce que la dernière annonce lègue à la suivante
+
+Un coach republie presque toujours la même chose. Dès sa **deuxième annonce**, le formulaire se replie donc sur ce qui change vraiment — la **date**, le **créneau**, le **lieu**, les **informations pratiques** — et range catégorie, genre, niveau et format derrière un résumé d'une ligne (*« U12-U13 · Masculin · Loisir · 8v8 »*) que **« Modifier »** rouvre en entier.
+
+L'héritage vient de `GET /announcements/last`, qui lit la dernière annonce de l'**équipe active** (et non du coach : celui qui encadre des U13 et des U15 n'hérite pas des U15 en publiant pour les U13). Servi par le serveur et non retenu par le navigateur — un coach qui publie depuis le téléphone du club puis depuis le sien retrouve ses habitudes.
+
+Deux cas gardent le formulaire ouvert en entier : la **première annonce** (rien à résumer) et l'**absence de genre**, car le formulaire ne serait pas publiable avec le seul contrôle manquant caché derrière un bouton.
 
 ## Relations entre coachs
 
@@ -388,23 +440,47 @@ Dans **Mon profil**, le coach personnalise son compte : photo, nom, prénom, té
 
 ## Navigation de l'espace coach
 
-Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Moi**.
+Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Messages**.
 
-- Le bouton **« + »** doré est contextuel : il publie une annonce depuis la plupart des écrans, et crée un événement depuis l'agenda. Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets. Sur un formulaire de création, il **pivote pour devenir un « ✓ »** qui valide — grisé tant que le genre de l'équipe n'est pas choisi.
-- La feuille **« Moi »** rassemble l'identité, l'**équipe active**, **Mon profil**, **Mes relations**, **Mes équipes**, l'**agenda** et les **notifications** (avec pastille de non-lus). Sur desktop, où la barre basse n'existe pas, l'avatar du header ouvre la même feuille.
+- Le bouton **« + »** doré est contextuel : il propose les créations depuis la plupart des écrans, et crée directement un événement depuis l'agenda ou une équipe depuis « Mes équipes ». Sur mobile il est surélevé au centre de la barre basse, entre deux moitiés d'onglets de largeur égale ; sur desktop il est à droite des onglets. Sur un formulaire de création, il **pivote pour devenir un « ✓ »** qui valide — grisé tant que le formulaire n'est pas complet.
+- La feuille du « + » propose **Match amical**, **Tournoi**, et **Information** pour les seuls **contributeurs** (`/coach/publications/new`). La zone de rédaction qui trônait en tête du panneau d'affichage a disparu : elle occupait le haut de l'écran à demeure, chez les contributeurs, pour un geste qui se fait quelques fois par saison. La casquette est relue à chaque navigation — elle vit dans le stockage local, absent du rendu serveur, et une liste d'options différente de part et d'autre ferait diverger l'hydratation. Aucun garde côté navigateur sur l'écran de rédaction : c'est `POST /publications` qui refuse quiconque n'est pas contributeur.
+- L'onglet **Messages** porte le **nombre** de messages non lus, là où le tableau de bord ne porte qu'un point : on ne répond pas de la même façon à « il s'est passé quelque chose » et à « trois confrères attendent votre réponse ».
+- L'onglet **Annonces** ne montre que ce qui vient **des autres**, en trois catégories : *Amicaux* et *Tournois* (la matière du radar, sans la carte ni les filtres, pour qui préfère lire une liste que viser un maillot) et *Publications* — le panneau d'affichage du secteur, tenu par les contributeurs.
+- **Ce que j'ai publié vit ailleurs**, sur sa propre page (`/coach/announcements/mine`), ouverte depuis « Moi › Mes annonces » ou depuis la carte du tableau de bord. Trois casiers — en cours / confirmées / passées — et les propositions à trancher. La logique est partagée entre les deux entrées (`components/announcements/MyAnnouncements.tsx` : hook `useMyAnnouncements` + `MyAnnouncementsList`, et `MyAnnouncementCard` pour la carte du tableau de bord). Les deux listes ne pouvaient pas cohabiter dans le même onglet : « annonces » y aurait désigné tantôt celles des confrères, tantôt les siennes.
+- La feuille **« Moi »** rassemble l'identité, l'**équipe active** et les écrans qu'on ouvre souvent : **Mes annonces**, **Mes relations**, **Mes équipes**, l'**agenda**, l'**activité** (avec pastille de non-lus) et **Paramètres**. Elle s'ouvre par la **photo du header**, en haut à gauche, à toutes les largeurs — elle n'occupe plus d'emplacement dans la barre basse.
+- **Les réglages n'y sont plus** : ils vivent dans **Paramètres** (`/coach/settings`), derrière une seule ligne — **apparence** (le sélecteur de thème, avec ses aperçus), **notifications**, **Mon profil** et **Signaler un bug ou une suggestion**. Une feuille qui doit se lire d'un coup d'œil, le pouce en bas, ne peut pas porter à la fois ce qu'on ouvre trois fois par semaine et ce qu'on règle trois fois par an.
+- La ligne du fil d'activité s'appelle **« Activité »** et non « Notifications » : c'est ce qui s'est passé, pas leur réglage — lequel est désormais dans Paramètres, à une ligne de là. Deux « Notifications » voisines n'auraient désigné ni l'une ni l'autre.
+- **Signaler un bug ou une suggestion** ouvre un lien `mailto:` vers `contact@footcoach.fr`, sujet et canevas préremplis (*ce que je faisais / ce qui s'est passé / ce que j'attendais*), plus une ligne technique sur l'appareil. Pas de formulaire : en phase de test, un message qui arrive dans une boîte se lit et se répond le jour même, là où un formulaire demanderait une table, un écran d'administration et quelqu'un pour l'ouvrir. Le canevas est complété **après le montage** — lire le navigateur pendant le rendu donnerait un lien différent côté serveur et côté client.
 - Le **bloc d'identité en haut de la feuille** mène à la **carte du coach** (`/coach/card`) : photo au centre, points à la place de la note, catégorie d'âge de l'équipe à celle du poste, nom, club, puis matchs joués et palier. Les casquettes s'y affichent en pastilles. Format portrait 5/7 — c'est ce rapport qui la fait lire comme une carte et non comme une fiche. Les autres rôles n'en ont pas : elle parle de points et de matchs encadrés.
 - Le **radar** vit dans le **tableau de bord** ; `/coach/radar` y redirige.
 - **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.
 
-Les espaces **admin** et **club** suivent les mêmes règles : barre basse, feuille « Moi », et bouton « + » pour les créations (patron `?nouveau=1`).
+Les espaces **admin** et **club** suivent les mêmes règles : barre basse, feuille « Moi » ouverte par la photo du header, et bouton « + » pour les créations (patron `?nouveau=1`).
+
+## Messagerie entre coachs
+
+Deux coachs qui viennent de convenir d'un match ont aussitôt des choses à se dire : l'heure d'arrivée, la couleur des maillots, le vestiaire. La messagerie sert **cela**, et rien d'autre.
+
+**Une conversation ne se crée pas à la demande.** Elle naît de l'**acceptation d'une proposition** — quand j'accepte, ou quand la mienne est acceptée. Il n'y a donc aucun bouton « nouveau message » : on écrit aux confrères avec qui on a quelque chose à organiser, et le carnet d'adresses ne devient jamais un moyen de démarcher tous les coachs du secteur.
+
+**Chaque acceptation inscrit un message dans le fil** (`messages.kind = 'system'`, sans expéditeur) : catégorie et format, date, heure et lieu, puis qui reçoit qui — avec un lien vers la feuille de match. Sans lui, un fil ne porterait qu'un nom : impossible de savoir de quelle rencontre on parle quand deux coachs en ont plusieurs ensemble, ou quand plusieurs annonces sont acceptées le même jour. Le fil devient ainsi la **chronologie de ce que les deux coachs ont convenu**. Son texte est **figé à l'écriture** (il raconte l'accord de ce jour-là) ; `messages.match_id` renvoie, lui, à la feuille telle qu'elle est aujourd'hui. Le coach qui **accepte** ne le reçoit pas en non-lu — c'est lui qui l'a provoqué ; l'autre, si.
+
+- **Une conversation par PAIRE de coachs**, jamais une par match : deux équipes qui se retrouvent la saison suivante reprennent le même fil. `conversations.match_id` garde seulement la rencontre qui l'a ouverte. La paire est **ordonnée en base** (`coach_a_id < coach_b_id`, contrainte `conversations_paire_ordonnee`) pour qu'un index unique suffise à interdire deux fils pour les mêmes deux personnes.
+- **Deux personnes, pas deux équipes** : le coach qui accepte et celui qui a proposé (`announcement_responses.coach_id`, renseigné à la proposition ; à défaut, le coach qui représente l'équipe). Le fil naît **dans la transaction du match** — un match sans fil obligerait à s'échanger un numéro, ce que l'acceptation devait précisément éviter.
+- **Non-lus** : `conversation_reads` retient jusqu'où chacun a lu. Pas de ligne = fil jamais ouvert, donc tout est non lu. Envoyer vaut lire.
+- **Rafraîchissement** : le fil ouvert se relit toutes les **10 s** (suspendu quand l'app passe à l'arrière-plan), la pastille de l'onglet toutes les **60 s** (`GET /conversations/unread`, servi à part pour que la barre n'ait pas à charger toutes les conversations). Rien n'est poussé en temps réel : une messagerie d'organisation n'en a pas besoin.
+- **Reprise de l'existant** : la migration `0029_messagerie` ouvre les fils des matchs **déjà convenus**, et `0030_message_systeme` y inscrit leur match — sans quoi la règle aurait été fausse pour tout ce qui a été accepté avant leur mise en service. ⚠ Le texte du message est écrit **deux fois** : en TypeScript (`matchSystemMessage`, `routes/announcements.ts`) et en SQL dans la migration de reprise. Les deux doivent rester identiques, sinon les anciens fils ne ressemblent pas aux nouveaux.
+
+Routes : `GET /conversations`, `GET /conversations/unread`, `GET /conversations/:id`, `POST /conversations/:id/messages`, `POST /conversations/:id/read` — toutes réservées au rôle **coach**, et **404 (pas 403)** sur un fil dont on n'est pas membre : l'API ne dit pas à un tiers qu'une conversation existe entre deux autres coachs.
 
 ## La carte d'un confrère
 
-La même carte s'ouvre sur celle des autres, en feuille basse et sans quitter l'écran courant (`GET /coaches/:id/card`, `CoachCardSheet`). Trois portes, celles où l'on se demande justement **à qui on a affaire** :
+La même carte s'ouvre sur celle des autres, en feuille basse et sans quitter l'écran courant (`GET /coaches/:id/card`, `CoachCardSheet`). Quatre portes, celles où l'on se demande justement **à qui on a affaire** :
 
 - **Mes relations** — tout le bloc d'identité est cliquable, c'est la cible la plus large sous le pouce ;
 - **le détail d'une annonce** (`/coach/announcements/:id`, ouvert depuis le radar) — section **« Le coach »**, avant de décider de traverser le département pour un inconnu ;
-- **la feuille de match** — section **« Les coachs »**, les deux côtés, celui qui reçoit et celui qui se déplace.
+- **la feuille de match** — section **« Les coachs »**, les deux côtés, celui qui reçoit et celui qui se déplace ;
+- **une conversation** — l'en-tête du fil, où l'on se demande vite à qui l'on est en train d'écrire.
 
 **Qui a le droit de voir quoi** (`apps/api/src/lib/coachCard.ts`) : soi-même, ses relations, un coach avec qui on partage un match ou un tournoi, et un coach qui a une **annonce ouverte non expirée** — publier, c'est se montrer. Partout ailleurs l'API répond **404, pas 403** : on ne doit pas pouvoir énumérer les coachs de l'application identifiant par identifiant. La feuille affiche alors une explication, sans accuser personne.
 
@@ -435,9 +511,9 @@ Tables conservées mais plus lues : `attendances`, `lineups`, `match_events`, `c
 ## Scénario de démonstration
 
 1. **Coach A** règle sa position dans **Mon profil → Ma position** (« Utiliser ma position », ou une adresse), puis choisit son périmètre sur le radar.
-2. Il publie une annonce depuis le bouton « + » : catégorie, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date (à plus de 10 jours → badge « Délai FFF respecté »), l'heure et le genre.
+2. Il publie une annonce depuis le bouton « + » : catégorie, genre, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date et le créneau. À la deuxième annonce, ces caractéristiques se replient derrière un résumé et « Modifier ».
 3. **Coach B** (navigation privée) voit apparaître l'annonce **sur le radar de son tableau de bord**, à sa vraie distance et dans sa vraie direction, et clique « Proposer de jouer ». S'il a activé les notifications, il a été prévenu à la publication.
-4. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé.
+4. **Coach A** retrouve la proposition sur son **tableau de bord** (carte « Mes annonces »), ou dans **Moi › Mes annonces** ; il y lit la catégorie et le genre de l'équipe qui propose — avec l'écart signalé s'il y en a un — et l'accepte → le match est créé, et une **conversation s'ouvre entre les deux coachs**. Elle apparaît dans l'onglet **Messages** de chacun, **ouverte sur le match convenu** (catégorie, date, lieu, qui reçoit qui, et un lien vers la feuille) : c'est ce qui dit de quelle rencontre on parle. Ils y calent l'heure d'arrivée et la couleur des maillots.
 5. Le jour du match, les deux coachs voient **« Rencontre à valider »**. Coach A, qui reçoit, ouvre la feuille de match et clique **« Afficher le QR code »**.
 6. **Coach B** ouvre le même match, clique **« Scanner le QR code »** et vise l'écran de coach A → la rencontre est validée et chacun gagne 10 points, annoncés à coach B juste après son scan.
 7. Après le coup de sifflet final, l'un des deux saisit le score avec les compteurs : le match passe en « Terminé », l'autre en est notifié.

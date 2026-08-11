@@ -5,6 +5,7 @@ import {
   coachRelations,
   matchAnnouncements,
   matches,
+  publications,
   teamCoaches,
   teams,
   tournamentRegistrations,
@@ -45,7 +46,7 @@ async function tournamentIdsAround(teamIds: string[]): Promise<Set<string>> {
  * Un coach peut-il voir la carte d'un autre ?
  *
  * Le nom et la photo d'un coach ne sont pas publics dans l'application : ils ne
- * le deviennent que pour les gens qui ont une raison de les connaître. Quatre
+ * le deviennent que pour les gens qui ont une raison de les connaître. Cinq
  * raisons, et pas une de plus :
  *
  * 1. c'est lui-même ;
@@ -56,6 +57,9 @@ async function tournamentIdsAround(teamIds: string[]): Promise<Set<string>> {
  *    coach qui sollicite des adversaires ne peut pas exiger l'anonymat de ceux
  *    qu'il sollicite. La visibilité se referme d'elle-même quand l'annonce est
  *    pourvue ou périmée.
+ * 5. il a signé une publication de contributeur : son billet porte déjà son nom
+ *    et sa photo devant tous les coachs, et il reste signé tant qu'il reste
+ *    affiché — la carte suit.
  */
 export async function canSeeCoachCard(viewerId: string, targetId: string): Promise<boolean> {
   if (viewerId === targetId) return true;
@@ -66,6 +70,15 @@ export async function canSeeCoachCard(viewerId: string, targetId: string): Promi
     .where(and(eq(coachRelations.coachId, viewerId), eq(coachRelations.relatedCoachId, targetId)))
     .limit(1);
   if (relation) return true;
+
+  // Avant le raccourci « pas d'équipe » : signer un billet montre son auteur,
+  // qu'il encadre une équipe ou non.
+  const [publication] = await db
+    .select({ id: publications.id })
+    .from(publications)
+    .where(eq(publications.authorId, targetId))
+    .limit(1);
+  if (publication) return true;
 
   const [viewerTeams, targetTeams] = await Promise.all([teamIdsOf(viewerId), teamIdsOf(targetId)]);
   if (viewerTeams.length === 0 || targetTeams.length === 0) return false;
@@ -119,8 +132,7 @@ export async function representativeCoachOf(teamId: string): Promise<CoachRefDto
   const [row] = await db
     .select({
       id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
+      nickname: users.nickname,
       avatarPath: users.avatarPath,
       role: teamCoaches.role,
     })
@@ -133,8 +145,7 @@ export async function representativeCoachOf(teamId: string): Promise<CoachRefDto
   if (!row) return null;
   return {
     id: row.id,
-    firstName: row.firstName,
-    lastName: row.lastName,
+    nickname: row.nickname,
     avatarUrl: avatarUrlOf(row.avatarPath),
   };
 }
@@ -147,8 +158,7 @@ export async function representativeCoachesOf(teamIds: string[]): Promise<Map<st
     .select({
       teamId: teamCoaches.teamId,
       id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
+      nickname: users.nickname,
       avatarPath: users.avatarPath,
       role: teamCoaches.role,
     })
@@ -162,8 +172,7 @@ export async function representativeCoachesOf(teamIds: string[]): Promise<Map<st
     if (byTeam.has(row.teamId)) continue;
     byTeam.set(row.teamId, {
       id: row.id,
-      firstName: row.firstName,
-      lastName: row.lastName,
+      nickname: row.nickname,
       avatarUrl: avatarUrlOf(row.avatarPath),
     });
   }
@@ -187,8 +196,7 @@ export async function buildCoachCard(coachId: string): Promise<CoachCardDto | nu
   const [points, matchesPlayed] = await Promise.all([totalPointsOf(coachId), matchesPlayedBy(coachId)]);
   return {
     id: coach.id,
-    firstName: coach.firstName,
-    lastName: coach.lastName,
+    nickname: coach.nickname,
     avatarUrl: avatarUrlOf(coach.avatarPath),
     // Aucun club n'est rattaché en V1 : l'équipe tient ce rôle sur la carte
     clubLabel: team?.name ?? null,

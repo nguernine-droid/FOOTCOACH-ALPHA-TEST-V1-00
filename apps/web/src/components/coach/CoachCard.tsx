@@ -17,8 +17,7 @@ import { Avatar } from "@/components/Avatar";
  * donc pas en largeur, elle reste centrée.
  */
 export function CoachCard({
-  firstName,
-  lastName,
+  name,
   avatarUrl,
   clubLabel,
   teamCategory,
@@ -27,8 +26,8 @@ export function CoachCard({
   matchesPlayed,
   categories,
 }: {
-  firstName: string;
-  lastName: string;
+  /** Surnom du coach — la seule identité que la carte montre */
+  name: string;
   avatarUrl: string | null;
   /** Club du coach, ou à défaut son équipe active — le libellé est décidé par l'appelant */
   clubLabel: string | null;
@@ -92,13 +91,11 @@ export function CoachCard({
               "linear-gradient(160deg, var(--accent-solid-bright) 0%, color-mix(in srgb, var(--accent-solid) 45%, transparent) 100%)",
           }}
         >
-          <Avatar firstName={firstName} lastName={lastName} avatarUrl={avatarUrl} size={176} />
+          <Avatar name={name} avatarUrl={avatarUrl} size={176} />
         </span>
 
         <div className="mt-5 w-full text-center min-w-0">
-          <p className="display text-2xl leading-tight truncate">
-            {firstName} {lastName}
-          </p>
+          <p className="display text-2xl leading-tight truncate">{name}</p>
           {clubLabel && (
             <p className="text-[11px] font-bold tracking-wider text-white/60 truncate uppercase">{clubLabel}</p>
           )}
@@ -143,13 +140,11 @@ export function CoachCard({
  * blanche : un code sombre sur fond sombre ne se scanne pas.
  */
 export function CoachCardBack({
-  firstName,
-  lastName,
+  name,
   coachCode,
   children,
 }: {
-  firstName: string;
-  lastName: string;
+  name: string;
   coachCode: string | null;
   /** Le QR lui-même, rendu par l'appelant (composant client) */
   children?: React.ReactNode;
@@ -171,9 +166,7 @@ export function CoachCardBack({
 
       <div className="text-center space-y-1">
         <p className="display text-lg leading-none">Ajoutez-moi</p>
-        <p className="text-[11px] font-semibold text-white/60">
-          {firstName} {lastName}
-        </p>
+        <p className="text-[11px] font-semibold text-white/60">{name}</p>
       </div>
 
       {coachCode ? (

@@ -222,6 +222,9 @@ export function clubRoutes(app: FastifyInstance) {
         email,
         passwordHash,
         role: "coach",
+        // Le club crée le compte sans demander de surnom : le prénom en tient
+        // lieu, le coach le personnalisera à son premier passage au profil.
+        nickname: input.firstName,
         firstName: input.firstName,
         lastName: input.lastName,
         clubId: club.id,
