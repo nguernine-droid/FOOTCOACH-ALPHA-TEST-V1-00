@@ -2,13 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Newspaper, Trash2 } from "lucide-react";
-import { PUBLICATION_MAX_LENGTH, type PublicationDto } from "@footcoach/shared";
-import { api, getStoredUser } from "@/lib/api";
+import type { PublicationDto } from "@footcoach/shared";
+import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
-import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
 import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
-import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 export type PublicationsFeed = {
@@ -67,28 +65,17 @@ export function usePublicationsFeed(): PublicationsFeed {
  * Le panneau d'affichage du secteur : les billets d'information des coachs
  * contributeurs — poules des matchs officiels, intempéries qui annulent…
  *
- * Le formulaire de rédaction n'apparaît qu'aux contributeurs : la casquette se
- * lit dans le compte stocké, et le serveur revérifie de toute façon à l'envoi.
+ * Lecture pour tous ; la rédaction se fait par le « + » de la barre d'onglets
+ * (`/coach/publications/new`), qui ne propose l'option qu'aux contributeurs.
  * Les autres coachs lisent — c'est un panneau, pas un mur où chacun épingle.
  */
 export function PublicationsFeedView({ feed }: { feed: PublicationsFeed }) {
-  const { posts, error, publish, remove } = feed;
-  const contributor = (getStoredUser()?.categories ?? []).includes("contributeur");
-  const [draft, setDraft] = useState("");
-  const [sending, setSending] = useState(false);
+  const { posts, error, remove } = feed;
   /** Billet dont la suppression attend confirmation — un seul à la fois */
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   /** Auteur dont la carte est ouverte en feuille */
   const [cardCoachId, setCardCoachId] = useState<string | null>(null);
   const now = new Date();
-
-  async function submit() {
-    const body = draft.trim();
-    if (!body || sending) return;
-    setSending(true);
-    if (await publish(body)) setDraft("");
-    setSending(false);
-  }
 
   if (!posts && !error) {
     return (
@@ -108,38 +95,10 @@ export function PublicationsFeedView({ feed }: { feed: PublicationsFeed }) {
 
   return (
     <div className="space-y-4">
-      {contributor && (
-        <form
-          className="card p-4 space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-        >
-          <label htmlFor="publication-draft" className="text-xs font-bold text-ink-soft uppercase tracking-wider">
-            Publier une information
-          </label>
-          <textarea
-            id="publication-draft"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            maxLength={PUBLICATION_MAX_LENGTH}
-            rows={3}
-            className="field resize-none"
-            placeholder="Les poules U13 sont publiées, plateau de samedi annulé pour intempéries…"
-          />
-          <div className="flex items-center justify-between gap-3">
-            {/* Le décompte n'apparaît qu'en fin de course : tant qu'il reste de
-                la place, il n'y a rien à surveiller. */}
-            <span className="text-[11px] text-ink-faint font-semibold" aria-live="polite">
-              {draft.length >= PUBLICATION_MAX_LENGTH - 100 ? `${PUBLICATION_MAX_LENGTH - draft.length} caractères restants` : ""}
-            </span>
-            <Button type="submit" variant="accent" disabled={!draft.trim() || sending} className="shrink-0">
-              {sending ? "Publication…" : "Publier"}
-            </Button>
-          </div>
-        </form>
-      )}
+      {/* Plus de zone de rédaction en tête du panneau. Elle occupait le haut de
+          l'écran chez les contributeurs, à demeure, pour un geste qui se fait
+          quelques fois par saison — et le « + » de la barre le propose déjà,
+          au même endroit que les deux autres créations. */}
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 

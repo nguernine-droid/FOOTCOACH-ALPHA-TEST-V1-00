@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CalendarDays, LayoutDashboard, Megaphone, MessageCircle } from "lucide-react";
+import { getStoredUser } from "@/lib/api";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
 import { TabPager, type Pane } from "@/components/TabPager";
-import { QuickActionProvider, type QuickAction } from "@/components/QuickActionContext";
+import { QuickActionProvider, type QuickAction, type QuickChoice } from "@/components/QuickActionContext";
 // Les écrans d'onglet sont montés ensemble par le carrousel du téléphone :
 // il faut donc les composants eux-mêmes, et pas seulement leurs routes.
 import CoachDashboard from "./page";
@@ -43,7 +44,7 @@ const PANES: Pane[] = [
 ];
 
 /**
- * Le « + » ne crée plus directement une annonce : il demande laquelle des deux
+ * Le « + » ne crée plus directement une annonce : il demande laquelle des
  * créations le coach a en tête. Un tournoi ne se trouvait qu'en descendant
  * jusqu'à sa section du radar, alors que c'est la même intention — organiser
  * quelque chose et le faire savoir.
@@ -51,27 +52,38 @@ const PANES: Pane[] = [
  * L'annonce reste en premier : c'est le geste courant, le tournoi est
  * l'exception.
  */
-const CREATE: QuickAction = {
-  kind: "choice",
-  label: "Créer",
-  options: [
-    {
-      href: "/coach/announcements/new",
-      label: "Match amical",
-      description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
-      icon: "announcement",
-    },
-    {
-      href: "/coach/tournaments/new",
-      label: "Tournoi",
-      description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
-      icon: "tournament",
-    },
-  ],
+const CREATE_OPTIONS: QuickChoice[] = [
+  {
+    href: "/coach/announcements/new",
+    label: "Match amical",
+    description: "Votre date, votre stade — les coachs du secteur la voient sur leur radar.",
+    icon: "announcement",
+  },
+  {
+    href: "/coach/tournaments/new",
+    label: "Tournoi",
+    description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",
+    icon: "tournament",
+  },
+];
+
+/**
+ * La publication d'un billet, réservée aux contributeurs. En dernier : c'est la
+ * création la plus rare, et la seule que tout le monde ne peut pas faire.
+ *
+ * Elle a rejoint le « + » quand la zone de rédaction a quitté le haut du
+ * panneau d'affichage — elle y occupait l'écran à demeure pour un geste
+ * saisonnier.
+ */
+const PUBLISH_OPTION: QuickChoice = {
+  href: "/coach/publications/new",
+  label: "Information",
+  description: "Poules, intempéries, plateau annulé — au panneau d'affichage du secteur.",
+  icon: "publication",
 };
 
 /** Ce que crée le bouton central selon la page ouverte */
-function defaultAction(pathname: string): QuickAction | null {
+function defaultAction(pathname: string, contributor: boolean): QuickAction | null {
   if (pathname.startsWith("/coach/agenda")) {
     return { kind: "link", href: "/coach/agenda?nouveau=1", label: "Créer un événement" };
   }
@@ -80,14 +92,28 @@ function defaultAction(pathname: string): QuickAction | null {
   if (pathname.startsWith("/coach/team")) {
     return { kind: "link", href: "/coach/team/new", label: "Créer une équipe" };
   }
-  return CREATE;
+  return {
+    kind: "choice",
+    label: "Créer",
+    options: contributor ? [...CREATE_OPTIONS, PUBLISH_OPTION] : CREATE_OPTIONS,
+  };
 }
 
 export default function CoachLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Une page de création remplace le « + » par un « ✓ » qui valide son formulaire
   const [override, setOverride] = useState<QuickAction | null>(null);
-  const action = override ?? defaultAction(pathname);
+  /**
+   * La casquette est lue APRÈS le montage : elle vit dans le stockage local,
+   * absent du rendu serveur, et une liste d'options différente de part et
+   * d'autre ferait diverger l'hydratation. Relue à chaque navigation, elle suit
+   * un coach qui vient de se déclarer contributeur dans son profil.
+   */
+  const [contributor, setContributor] = useState(false);
+  useEffect(() => {
+    setContributor((getStoredUser()?.categories ?? []).includes("contributeur"));
+  }, [pathname]);
+  const action = override ?? defaultAction(pathname, contributor);
 
   return (
     <QuickActionProvider value={setOverride}>

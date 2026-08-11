@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronRight, Megaphone, Plus, Trophy, type LucideIcon } from "lucide-react";
+import { Check, ChevronRight, Megaphone, Newspaper, Plus, Trophy, type LucideIcon } from "lucide-react";
 import type { QuickAction, QuickChoice } from "@/components/QuickActionContext";
 import { useTabBadges } from "@/components/TabBadgesContext";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -16,6 +16,7 @@ export type { QuickAction };
 const CHOICE_ICONS: Record<QuickChoice["icon"], LucideIcon> = {
   announcement: Megaphone,
   tournament: Trophy,
+  publication: Newspaper,
 };
 
 export type AppTab = {
