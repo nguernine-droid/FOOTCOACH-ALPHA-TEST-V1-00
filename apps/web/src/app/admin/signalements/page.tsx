@@ -56,11 +56,9 @@ function FeedbackAdminCard({ feedback, onChanged }: { feedback: AdminFeedbackDto
   return (
     <div className="card p-5 space-y-3 animate-rise-in">
       <div className="flex items-center gap-3">
-        <Avatar firstName={feedback.author.firstName} lastName={feedback.author.lastName} avatarUrl={feedback.author.avatarUrl} size={40} />
+        <Avatar name={feedback.author.nickname} avatarUrl={feedback.author.avatarUrl} size={40} />
         <div className="min-w-0 flex-1">
-          <p className="font-bold truncate">
-            {feedback.author.firstName} {feedback.author.lastName}
-          </p>
+          <p className="font-bold truncate">{feedback.author.nickname}</p>
           <p className="text-[11px] text-ink-soft">Envoyé {timeAgo(feedback.createdAt, now).toLowerCase()}</p>
         </div>
         <span className={cn("chip shrink-0", STATUS_CHIP[feedback.status])}>{FEEDBACK_STATUS_LABELS[feedback.status]}</span>

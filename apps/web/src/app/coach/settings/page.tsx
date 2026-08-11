@@ -9,9 +9,6 @@ import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { ThemePicker } from "@/components/ThemePicker";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-/** Adresse de contact du service, la même que sur le site public */
-const CONTACT = "contact@footcoach.fr";
-
 /**
  * Réglages de l'application, rassemblés hors de la feuille « Moi ».
  *
@@ -22,13 +19,6 @@ const CONTACT = "contact@footcoach.fr";
  */
 export default function CoachSettingsPage() {
   const [user, setUser] = useState<UserDto | null>(() => getStoredUser());
-  /**
-   * Le canevas du signalement est enrichi APRÈS le montage. Lire le navigateur
-   * pendant le rendu donnerait un lien différent côté serveur et côté client, et
-   * React signalerait la divergence — pour un attribut qui n'a de sens que sur
-   * l'appareil du coach.
-   */
-  const [report, setReport] = useState(() => reportUrl(""));
 
   // La session stockée peut dater d'avant les préférences de notification :
   // c'est cette page qui les règle, elle doit partir de l'état réel.
@@ -39,10 +29,6 @@ export default function CoachSettingsPage() {
         updateStoredUser(fresh);
       })
       .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    setReport(reportUrl(`\n\n---\nAppareil : ${navigator.userAgent}\nÉcran : ${window.innerWidth} px`));
   }, []);
 
   /** Une fiche à jour se range aussi dans la session, comme au profil */
@@ -90,26 +76,12 @@ export default function CoachSettingsPage() {
         hint="Votre surnom, votre photo, votre position, vos casquettes et votre code coach."
       />
 
-      {/* Un lien `mailto` plutôt qu'un formulaire : en phase de test, un
-          message qui arrive dans une boîte se lit et se répond le jour même,
-          là où un formulaire demanderait une table, un écran d'administration
-          et quelqu'un pour l'ouvrir. Le sujet et le canevas sont préremplis —
-          un rapport sans « ce que j'attendais » se répond par une question. */}
-      <a
-        href={report}
-        className="card p-5 flex items-center gap-3 transition hover:bg-blue-faint active:bg-blue-soft"
-      >
-        <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
-          <Bug size={18} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-bold">Signaler un bug ou une suggestion</span>
-          <span className="block text-xs text-ink-soft">
-            Ouvre votre messagerie, vers {CONTACT}. Tout est lu.
-          </span>
-        </span>
-        <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
-      </a>
+      <LinkCard
+        href="/coach/feedback/new"
+        icon={<Bug size={18} />}
+        title="Signaler un bug ou une suggestion"
+        hint="Reçu directement par l'équipe FootCoach, qui triage chaque envoi."
+      />
     </div>
   );
 }
@@ -137,18 +109,4 @@ function LinkCard({
       <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
     </Link>
   );
-}
-
-/**
- * Le lien de signalement, avec son canevas. Le bloc technique ne porte que
- * l'appareil — rien qui identifie le coach : c'est sa messagerie qui dira qui
- * écrit, ce n'est pas à nous de glisser son identité dans une URL.
- *
- * Un vrai `href` plutôt qu'un `onClick` : il se copie, s'ouvre au clavier et
- * dans un nouvel onglet, ce qu'un gestionnaire de clic ne sait pas faire.
- */
-function reportUrl(context: string): string {
-  const body =
-    "Ce que je faisais :\n\n" + "Ce qui s'est passé :\n\n" + "Ce que j'attendais :\n" + context;
-  return `mailto:${CONTACT}?subject=${encodeURIComponent("FootCoach — bug ou suggestion")}&body=${encodeURIComponent(body)}`;
 }

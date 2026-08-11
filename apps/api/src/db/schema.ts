@@ -81,6 +81,10 @@ export const messageKind = pgEnum("message_kind", ["coach", "system"]);
 // D'où vient la position d'un coach : géolocalisation du navigateur, ou adresse
 // qu'il a saisie. NULL = aucune position propre, on retombe sur son équipe.
 export const locationSource = pgEnum("location_source", ["gps", "address"]);
+// Un bug se constate, une suggestion se propose : même canal vers l'admin,
+// deux intentions à distinguer dans l'inbox de triage.
+export const feedbackType = pgEnum("feedback_type", ["bug", "suggestion"]);
+export const feedbackStatus = pgEnum("feedback_status", ["nouveau", "en_cours", "resolu", "refuse"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -234,6 +238,40 @@ export const passwordResetRequests = pgTable(
     handledAt: timestamp("handled_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("reset_requests_pending_user_idx").on(t.userId).where(sql`status = 'pending'`)],
+);
+
+/**
+ * Signalement d'un bug ou suggestion d'amélioration envoyé par un coach.
+ * Une seule table pour les deux : ce sont deux intentions d'un même geste
+ * (« quelque chose ne va pas » / « pourrait être mieux »), distinguées par
+ * `type` et non deux formulaires qui dupliqueraient triage et visibilité.
+ *
+ * Visible du seul auteur (ses envois + leur statut) et de l'admin qui triage —
+ * pas de vote public ni de visibilité entre coachs, à la différence d'une
+ * annonce : ce canal s'adresse à l'éditeur, pas aux autres coachs.
+ */
+export const coachFeedback = pgTable(
+  "coach_feedback",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: feedbackType("type").notNull(),
+    message: text("message").notNull(),
+    status: feedbackStatus("status").notNull().default("nouveau"),
+    // Réponse courte de l'admin, visible de l'auteur : pourquoi refusé, ce qui a été fait…
+    adminNote: text("admin_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Posé au premier changement de statut fait par un admin ; NULL = encore "nouveau"
+    handledAt: timestamp("handled_at", { withTimezone: true }),
+  },
+  (t) => [
+    // « Mes signalements » : lu par auteur, le plus récent en tête
+    index("coach_feedback_author_idx").on(t.authorId, t.createdAt),
+    // L'inbox admin trie/filtre par statut
+    index("coach_feedback_status_idx").on(t.status, t.createdAt),
+  ],
 );
 
 export const teams = pgTable("teams", {

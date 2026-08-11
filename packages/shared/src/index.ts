@@ -330,6 +330,37 @@ export const updateCoachCategoriesSchema = z.object({
 });
 export type UpdateCoachCategoriesInput = z.infer<typeof updateCoachCategoriesSchema>;
 
+// ---------- Signalements (bug / suggestion) ----------
+
+export const FEEDBACK_TYPES = ["bug", "suggestion"] as const;
+export type FeedbackType = (typeof FEEDBACK_TYPES)[number];
+export const FEEDBACK_TYPE_LABELS: Record<FeedbackType, string> = {
+  bug: "Bug",
+  suggestion: "Suggestion d'amélioration",
+};
+
+export const FEEDBACK_STATUSES = ["nouveau", "en_cours", "resolu", "refuse"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {
+  nouveau: "Nouveau",
+  en_cours: "En cours",
+  resolu: "Résolu",
+  refuse: "Refusé",
+};
+
+export const createFeedbackSchema = z.object({
+  type: z.enum(FEEDBACK_TYPES),
+  message: z.string().trim().min(10).max(2000),
+});
+export type CreateFeedbackInput = z.infer<typeof createFeedbackSchema>;
+
+/** Triage admin : changer le statut, avec une note facultative visible de l'auteur */
+export const updateFeedbackStatusSchema = z.object({
+  status: z.enum(FEEDBACK_STATUSES),
+  adminNote: z.string().trim().max(500).optional(),
+});
+export type UpdateFeedbackStatusInput = z.infer<typeof updateFeedbackStatusSchema>;
+
 /** Valeurs venues de la base ramenées à la liste connue, sans doublon */
 export function asCoachCategories(values: readonly string[] | null | undefined): CoachCategory[] {
   if (!values) return [];
@@ -1311,6 +1342,26 @@ export interface AdminAccountDto {
   hasPendingReset: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+}
+
+/**
+ * Un signalement (bug ou suggestion). Réservé à l'admin — l'auteur n'a aucune
+ * vue en retour sur ce qu'il a envoyé, ni sur son statut : c'est un canal vers
+ * l'éditeur, pas un historique personnel.
+ */
+export interface FeedbackDto {
+  id: string;
+  type: FeedbackType;
+  message: string;
+  status: FeedbackStatus;
+  adminNote: string | null;
+  createdAt: string;
+  handledAt: string | null;
+}
+
+/** Vue admin : la même chose, avec l'auteur — l'inbox mélange tous les coachs */
+export interface AdminFeedbackDto extends FeedbackDto {
+  author: CoachRefDto;
 }
 
 // ---------- Espace club ----------

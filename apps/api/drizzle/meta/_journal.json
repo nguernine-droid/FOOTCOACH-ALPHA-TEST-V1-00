@@ -239,6 +239,13 @@
       "when": 1786434615931,
       "tag": "0033_equipe_genre",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1786481033009,
+      "tag": "0034_smooth_machine_man",
+      "breakpoints": true
     }
   ]
 }

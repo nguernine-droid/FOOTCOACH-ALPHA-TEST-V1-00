@@ -59,8 +59,7 @@ export function feedbackRoutes(app: FastifyInstance) {
       ...toDto(feedback),
       author: {
         id: author.id,
-        firstName: author.firstName,
-        lastName: author.lastName,
+        nickname: author.nickname,
         avatarUrl: avatarUrlOf(author.avatarPath),
       },
     }));
