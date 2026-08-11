@@ -15,14 +15,23 @@ import { register } from "@/lib/api";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { ClubNameField } from "@/components/ClubNameField";
 import { GenderPicker } from "@/components/GenderPicker";
+import { InstallAppCard } from "@/components/InstallAppCard";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
+import { useInstallOffer } from "@/lib/install";
 import { LEGAL_LINKS } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
 // Inscription volontairement découpée en petites étapes :
 // une seule question à l'écran, pour rester simple même sans être à l'aise avec la technologie.
+
+/**
+ * Écran d'après-inscription. Numéroté à la suite des cinq étapes pour tenir
+ * dans le même `step`, mais il n'en est pas une : il vient APRÈS la création du
+ * compte, et ne compte donc pas dans la progression.
+ */
+const DONE_STEP = 5;
 
 function Dots({ total, current }: { total: number; current: number }) {
   return (
@@ -105,6 +114,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Lu ici, et non dans l'écran final : c'est lui qui décide si cet écran a
+  // quelque chose à dire, donc s'il faut s'y arrêter.
+  const offer = useInstallOffer();
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -152,11 +164,39 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         acceptTerms: consent.terms,
         acceptResponsibility: consent.responsibility,
       });
-      router.replace("/coach/team?bienvenue=1");
+      // Le compte existe, la session est ouverte : le parcours est fini. Reste
+      // le seul moment où proposer l'installation a du sens — le coach vient
+      // de décider que l'application lui servirait. S'il n'y a rien à lui
+      // proposer (déjà installée, navigateur qui ne sait pas faire), on ne
+      // l'arrête pas sur un écran vide.
+      if (offer === "none") router.replace("/coach/team?bienvenue=1");
+      else setStep(DONE_STEP);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Inscription impossible");
       setLoading(false);
     }
+  }
+
+  /**
+   * Après l'inscription, hors du décompte d'étapes : le compte est créé, plus
+   * rien n'est obligatoire ni annulable ici. D'où l'absence de « Retour » et de
+   * points de progression — ce n'est plus une étape, c'est un aboutissement.
+   */
+  if (step === DONE_STEP) {
+    return (
+      <div className="card p-6 space-y-5 animate-rise-in">
+        <div className="space-y-1">
+          <h2 className="text-lg font-black">Bienvenue, {form.nickname.trim()}</h2>
+          <p className="text-sm text-ink-soft">
+            Votre compte et votre équipe sont créés. Une dernière chose, puis vous y êtes.
+          </p>
+        </div>
+        <InstallAppCard />
+        <Button type="button" size="lg" className="w-full" onClick={() => router.replace("/coach/team?bienvenue=1")}>
+          Continuer vers mon équipe
+        </Button>
+      </div>
+    );
   }
 
   return (

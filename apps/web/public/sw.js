@@ -10,6 +10,16 @@
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
+/* Handler `fetch` VOLONTAIREMENT TRANSPARENT. Il n'appelle pas `respondWith`,
+ * donc chaque requête part au réseau comme si ce fichier n'existait pas : la
+ * promesse « sans cache » ci-dessus tient toujours.
+ *
+ * Il existe pour une seule raison : Chrome ne juge une application installable
+ * que si son service worker déclare un handler `fetch`. Sans lui, l'événement
+ * `beforeinstallprompt` ne se produit jamais, et le bouton « Installer
+ * l'application » n'aurait jamais rien à proposer. */
+self.addEventListener("fetch", () => {});
+
 self.addEventListener("push", (event) => {
   let payload = {};
   try {

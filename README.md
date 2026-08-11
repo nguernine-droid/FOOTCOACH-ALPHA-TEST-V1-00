@@ -153,7 +153,19 @@ VAPID_SUBJECT=mailto:contact@exemple.fr
 
 L'application est une PWA installable : manifeste (`app/manifest.ts`), icônes, `theme-color` navy et `viewport-fit=cover` pour que les *safe areas* iOS soient réellement renseignées.
 
-Sur iPhone : Safari → Partager → « Sur l'écran d'accueil ». L'app s'ouvre alors sans barre d'adresse, la barre d'état prolonge le header navy, et les notifications deviennent possibles.
+**L'installation est proposée à la fin de l'inscription**, sur l'écran « Bienvenue » qui suit la création du compte — le seul moment où le coach vient de décider que l'application lui servirait. Ce qu'il y voit dépend de son système, parce que les deux n'offrent pas la même chose (`lib/install.ts`, `components/InstallAppCard.tsx`) :
+
+| Système | Ce qui s'affiche |
+|---|---|
+| **Android** (et navigateurs de bureau Chromium) | Un bouton **« Installer l'application »**. Le navigateur émet `beforeinstallprompt`, qu'on intercepte pour ouvrir sa boîte d'installation depuis notre bouton. Une touche. |
+| **iOS / iPadOS** | Les **trois gestes illustrés** : Partager → « Sur l'écran d'accueil » → Ajouter. Apple n'expose aucune API d'installation ; il n'y a rien à déclencher, seulement un chemin à montrer. |
+| Déjà installée, ou navigateur qui ne sait pas faire | **Rien**, et l'écran est sauté : une invitation sans issue fait chercher un bouton qui n'existe pas. |
+
+L'écoute de `beforeinstallprompt` vit à la **racine** (`InstallPromptListener` dans le layout) : l'événement ne se produit qu'une fois par chargement, souvent avant qu'on arrive sur l'écran qui s'y intéresse. Un refus consomme l'événement et l'offre disparaît — insister reviendrait à ne pas entendre la réponse.
+
+> **Le service worker conditionne l'installation.** Chrome ne juge une application installable que si un service worker déclarant un handler `fetch` est déjà en place. `sw.js` en porte donc un, **volontairement transparent** : il n'appelle pas `respondWith`, chaque requête part au réseau, la promesse « sans cache » tient toujours. Et il est enregistré **au démarrage de l'app** et non plus à l'activation des notifications — sinon l'ordre était circulaire : pas de service worker → pas d'installation possible → pas de notifications sur iPhone, qui les réserve aux applications installées.
+
+Une fois installée, l'app s'ouvre sans barre d'adresse, la barre d'état prolonge le header navy, et les notifications deviennent possibles.
 
 ## Ergonomie mobile
 
