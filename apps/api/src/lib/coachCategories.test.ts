@@ -20,6 +20,7 @@ const INSCRIPTION = {
   teamName: "FC Exemple",
   teamCity: "Lyon",
   teamCategory: "U13",
+  teamGender: "masculin",
   acceptTerms: true,
   acceptResponsibility: true,
 } as const;

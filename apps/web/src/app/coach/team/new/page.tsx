@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
-import type { CoachTeamDto, MatchCategory } from "@footcoach/shared";
+import type { CoachTeamDto, MatchCategory, MatchGender } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { ClubNameField } from "@/components/ClubNameField";
+import { GenderPicker } from "@/components/GenderPicker";
 import { Button } from "@/components/ui/Button";
 
 /** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
@@ -29,11 +30,14 @@ export default function NewTeamPage() {
   // Aucune catégorie présélectionnée : en poser une reviendrait à décider à la
   // place du coach, et cette valeur repartira ensuite dans toutes ses annonces.
   const [category, setCategory] = useState<MatchCategory | null>(null);
+  // Même raisonnement pour le genre : le supposer masculin publierait ensuite
+  // des annonces masculines au nom d'une équipe qui ne l'est pas.
+  const [gender, setGender] = useState<MatchGender | null>(null);
   const [stadium, setStadium] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const incomplete = name.trim().length < 2 || city.trim().length < 1 || !category;
+  const incomplete = name.trim().length < 2 || city.trim().length < 1 || !category || !gender;
   useQuickActionOverride({
     kind: "submit",
     formId: FORM_ID,
@@ -53,6 +57,7 @@ export default function NewTeamPage() {
           name: name.trim(),
           city: city.trim(),
           category,
+          gender,
           stadium: stadium.trim() || undefined,
         }),
       });
@@ -127,6 +132,13 @@ export default function NewTeamPage() {
           onChange={setCategory}
           idPrefix="team-category"
           hint="Reprise à chaque annonce publiée au nom de cette équipe, et modifiable au cas par cas."
+        />
+
+        <GenderPicker
+          value={gender}
+          onChange={setGender}
+          idPrefix="team-gender"
+          hint="Repris lui aussi à chaque annonce. Il dit surtout aux coachs qui vous répondent — et à vous quand ils vous répondent — si les deux équipes jouent dans le même tableau."
         />
 
         <div className="space-y-1.5">

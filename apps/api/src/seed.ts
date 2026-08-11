@@ -63,7 +63,7 @@ async function upsertTeam(
   joinCode: string,
   // Références du préremplissage : les comptes de démo doivent montrer une
   // publication d'annonce déjà remplie, c'est là tout leur intérêt.
-  references: { category: string; stadium: string },
+  references: { category: string; gender: string; stadium: string },
 ) {
   const coords = cityCoords(city);
   const values = {
@@ -73,6 +73,7 @@ async function upsertTeam(
     lat: coords?.lat ?? null,
     lng: coords?.lng ?? null,
     category: references.category,
+    gender: references.gender,
     stadium: references.stadium,
   };
   const [team] = await db
@@ -102,15 +103,20 @@ async function main() {
   const coachB = await upsertUser({ email: "coach.b@demo.fr", role: "coach", nickname: "Bruno S.", firstName: "Bruno", lastName: "Silva" });
   const teamA = await upsertTeam("FC Nexus U13", "Lyon", coachA.id, "DEMOA1", {
     category: "U13",
+    gender: "masculin",
     stadium: "Plaine des Jeux de Gerland",
   });
   const teamB = await upsertTeam("AS Cyber", "Villeurbanne", coachB.id, "DEMOB2", {
     category: "U13",
+    gender: "masculin",
     stadium: "Stade des Iris",
   });
-  // Coach A encadre une seconde équipe (U15) : démo du multi-équipes "Mes équipes"
+  // Coach A encadre une seconde équipe (U15) : démo du multi-équipes "Mes
+  // équipes". En féminines, pour que l'écart de genre entre une équipe et une
+  // annonce se voie sur les comptes de démo comme il se verra en vrai.
   await upsertTeam("FC Nexus U15", "Lyon", coachA.id, "DEMOA3", {
     category: "U15",
+    gender: "feminin",
     stadium: "Plaine des Jeux de Gerland",
   });
 
@@ -149,11 +155,19 @@ async function main() {
       lat: teamCoords?.lat ?? null,
       lng: teamCoords?.lng ?? null,
       category: "U11",
+      // Mixte jusqu'aux U11, comme sur le terrain
+      gender: "mixte",
       stadium: "Stade Georges Lyvet",
     })
     .onConflictDoUpdate({
       target: teams.joinCode,
-      set: { clubId: demoClub.id, name: "Étoile U11", category: "U11", stadium: "Stade Georges Lyvet" },
+      set: {
+        clubId: demoClub.id,
+        name: "Étoile U11",
+        category: "U11",
+        gender: "mixte",
+        stadium: "Stade Georges Lyvet",
+      },
     });
 
   const existing = await db.select().from(matchAnnouncements);

@@ -255,6 +255,13 @@ export const teams = pgTable("teams", {
   // NULL pour les équipes créées avant : on ne devine pas la catégorie d'un
   // « FC Exemple », et le formulaire d'annonce doit pouvoir le constater.
   category: text("category"),
+  //
+  // Genre de l'équipe, à côté de sa catégorie et pour la même raison : il
+  // préremplit l'annonce, et il dit à celui qui reçoit une proposition si
+  // l'équipe en face joue bien dans le même tableau. Texte libre comme la
+  // catégorie (MATCH_GENDERS validé par zod), NULL pour les équipes créées
+  // avant — on ne devine pas le genre d'un « FC Exemple ».
+  gender: text("gender"),
   stadium: text("stadium"),
   // Club propriétaire de l'équipe (NULL = équipe d'un coach indépendant, sans club)
   clubId: uuid("club_id").references(() => clubs.id),

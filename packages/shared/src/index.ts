@@ -199,6 +199,44 @@ export const MATCH_GENDER_LABELS: Record<MatchGender, string> = {
   mixte: "Mixte",
 };
 
+/** Même précaution que `asMatchCategory` : le genre est stocké en texte libre. */
+export function asMatchGender(value: string | null | undefined): MatchGender | null {
+  return value && (MATCH_GENDERS as readonly string[]).includes(value) ? (value as MatchGender) : null;
+}
+
+/**
+ * Une équipe qui propose peut-elle jouer cette annonce ? Deux règles, et deux
+ * seulement — le reste (niveau, format) se négocie entre coachs.
+ *
+ * La catégorie se compare par GROUPE d'âges : une équipe U13 répond à une
+ * annonce U12-U13, c'est le principe même de l'appariement du district.
+ * Le genre se compare tel quel, à ceci près qu'une équipe mixte entre partout
+ * et qu'une annonce mixte accueille tout le monde : jusqu'aux U11 les équipes
+ * le sont réellement, refuser l'appariement les priverait de la moitié du
+ * radar.
+ *
+ * Ce qu'on ne sait pas ne s'oppose pas : une équipe créée avant que le genre
+ * et la catégorie existent ne porte rien, et l'inconnu n'est pas un désaccord.
+ * D'où `null` pour « rien à signaler », et non `false`.
+ */
+export function teamMatchesAnnouncement(
+  team: { category: MatchCategory | null; gender: MatchGender | null },
+  announcement: { category: string; gender: MatchGender | null },
+): { category: boolean; gender: boolean } | null {
+  const teamGroup = announcementCategoryOf(team.category);
+  const announcementGroup = announcementCategoryOf(announcement.category);
+  if (team.category === null && team.gender === null) return null;
+  return {
+    category: teamGroup === null || announcementGroup === null || teamGroup === announcementGroup,
+    gender:
+      team.gender === null ||
+      announcement.gender === null ||
+      team.gender === announcement.gender ||
+      team.gender === "mixte" ||
+      announcement.gender === "mixte",
+  };
+}
+
 /** Types d'événements d'agenda. "match" est virtuel : projeté depuis les matchs. */
 export const EVENT_TYPES = ["match", "entrainement", "tournoi", "reunion", "autre"] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
@@ -606,18 +644,24 @@ export const withdrawMatchSchema = z.object({
 export type WithdrawMatchInput = z.infer<typeof withdrawMatchSchema>;
 
 /**
- * Références d'une équipe : sa catégorie d'engagement et son stade habituel.
+ * Références d'une équipe : sa catégorie d'engagement, son genre et son stade
+ * habituel.
  *
  * Renseignées une fois à la création, elles préremplissent chaque annonce — un
- * coach de U13 qui reçoit toujours au même stade ne les ressaisit plus. Elles
- * restent modifiables annonce par annonce : un déplacement se joue ailleurs, et
- * un amical peut se caler sur une autre catégorie.
+ * coach de U13 masculin qui reçoit toujours au même stade ne les ressaisit
+ * plus. Elles restent modifiables annonce par annonce : un déplacement se joue
+ * ailleurs, et un amical peut se caler sur une autre catégorie.
+ *
+ * Le genre est demandé au même titre que la catégorie parce qu'il sert deux
+ * fois : à remplir l'annonce, et à dire au coach qui reçoit une proposition si
+ * l'équipe d'en face joue dans le même tableau (`teamMatchesAnnouncement`).
  *
  * Le stade est facultatif (tous les clubs n'en ont pas un attitré) ; la chaîne
  * vide vaut « aucun » et sera stockée `null`.
  */
 export const teamReferencesSchema = z.object({
   category: z.enum(MATCH_CATEGORIES),
+  gender: z.enum(MATCH_GENDERS),
   stadium: z.string().trim().max(150).optional(),
 });
 export type TeamReferencesInput = z.infer<typeof teamReferencesSchema>;
@@ -684,6 +728,7 @@ export const registerCoachSchema = z.object({
   // Références de l'équipe créée avec le compte : mêmes règles que partout
   // ailleurs (voir teamReferencesSchema), simplement préfixées « team ».
   teamCategory: z.enum(MATCH_CATEGORIES),
+  teamGender: z.enum(MATCH_GENDERS),
   teamStadium: z.string().trim().max(150).optional(),
   // Facultatif : un coach l'a souvent sous la main en s'inscrivant, beaucoup
   // moins le jour où il faudra le retrouver. Modifiable ensuite dans le profil.
@@ -954,6 +999,7 @@ export interface CoachTeamDto {
    * alors sur ses valeurs par défaut.
    */
   category: MatchCategory | null;
+  gender: MatchGender | null;
   stadium: string | null;
 }
 
@@ -961,6 +1007,17 @@ export interface CoachTeamDto {
 export interface AnnouncementResponseDto {
   id: string;
   team: TeamDto;
+  /**
+   * Catégorie et genre de l'équipe qui propose — de quoi vérifier, avant
+   * d'accepter, qu'elle joue bien dans le même tableau que l'annonce
+   * (`teamMatchesAnnouncement`). `null` pour les équipes créées avant que ces
+   * références existent : on ne signale alors rien plutôt qu'un faux écart.
+   *
+   * Portés par la proposition et non par `TeamDto` : c'est ici, et nulle part
+   * ailleurs, que la comparaison a un sens.
+   */
+  teamCategory: MatchCategory | null;
+  teamGender: MatchGender | null;
   status: ResponseStatus;
   createdAt: string;
 }
@@ -1014,6 +1071,29 @@ export interface AnnouncementDto {
   isSos: boolean;
   sosReason: WithdrawalReason | null;
   sosDetails: string | null;
+}
+
+/**
+ * Ce que la DERNIÈRE annonce du coach lègue à la suivante. Un coach republie
+ * presque toujours la même chose : même catégorie, même genre, même niveau,
+ * même format, même stade. Le formulaire s'en sert pour se replier sur
+ * l'essentiel — la date, le lieu, les informations — et ranger le reste
+ * derrière un « Modifier ».
+ *
+ * Servi par le serveur et non retenu par le navigateur : un coach qui publie
+ * depuis le téléphone du club puis depuis le sien doit retrouver ses habitudes,
+ * pas repartir de zéro.
+ *
+ * `null` quand le coach n'a encore rien publié : c'est le signal que le
+ * formulaire doit tout montrer, il n'a rien à résumer.
+ */
+export interface AnnouncementDefaultsDto {
+  category: AnnouncementCategory;
+  gender: MatchGender | null;
+  level: MatchLevel;
+  format: MatchFormat;
+  stadium: string;
+  city: string;
 }
 
 /**

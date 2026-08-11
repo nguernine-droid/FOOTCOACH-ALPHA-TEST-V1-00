@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import {
   asCoachCategories,
   asMatchCategory,
+  asMatchGender,
   createTeamSchema,
   idParamSchema,
   registerCoachSchema,
@@ -90,6 +91,7 @@ export function registrationRoutes(app: FastifyInstance) {
           lat: coords?.lat ?? null,
           lng: coords?.lng ?? null,
           category: input.teamCategory,
+          gender: input.teamGender,
           stadium: stadiumOrNull(input.teamStadium),
         })
         .returning();
@@ -137,6 +139,7 @@ export function registrationRoutes(app: FastifyInstance) {
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
         category: input.category,
+        gender: input.gender,
         stadium: stadiumOrNull(input.stadium),
       });
       await db.insert(teamCoaches).values({ teamId: team.id, coachId: request.user.id, role: "principal" });
@@ -148,6 +151,7 @@ export function registrationRoutes(app: FastifyInstance) {
         city: team.city,
         role: "principal",
         category: asMatchCategory(team.category),
+        gender: asMatchGender(team.gender),
         stadium: team.stadium,
       };
     });
@@ -173,7 +177,7 @@ export function registrationRoutes(app: FastifyInstance) {
 
       const [team] = await db
         .update(teams)
-        .set({ category: input.category, stadium: stadiumOrNull(input.stadium) })
+        .set({ category: input.category, gender: input.gender, stadium: stadiumOrNull(input.stadium) })
         .where(eq(teams.id, id))
         .returning();
 
@@ -183,6 +187,7 @@ export function registrationRoutes(app: FastifyInstance) {
         city: team.city,
         role: assignment.role,
         category: asMatchCategory(team.category),
+        gender: asMatchGender(team.gender),
         stadium: team.stadium,
       };
     });

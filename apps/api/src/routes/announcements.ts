@@ -3,11 +3,15 @@ import { and, desc, eq, gte, inArray, ne, notInArray, sql } from "drizzle-orm";
 import {
   idParamSchema,
   responseParamsSchema,
+  announcementCategoryOf,
+  asMatchCategory,
+  asMatchGender,
   categoryLabel,
   createAnnouncementSchema,
   isPlateauCategory,
   PLATEAU_TEAMS_WANTED,
   MATCH_GENDER_LABELS,
+  type AnnouncementDefaultsDto,
   type AnnouncementDto,
   type AnnouncementResponseDto,
   type CoachRefDto,
@@ -115,6 +119,11 @@ async function loadResponses(announcementIds: string[]) {
     list.push({
       id: response.id,
       team: { id: team.id, name: team.name, city: team.city },
+      // Références de l'équipe qui propose, portées jusqu'à l'émetteur : c'est
+      // lui qui doit voir, avant d'accepter, que des U15 féminines répondent à
+      // son annonce U12-U13 masculine.
+      teamCategory: asMatchCategory(team.category),
+      teamGender: asMatchGender(team.gender),
       status: response.status,
       createdAt: response.createdAt.toISOString(),
       teamId: team.id,
@@ -231,6 +240,47 @@ export function announcementRoutes(app: FastifyInstance) {
       return toDto(r, myTeamId, links.get(r.announcement.id), null, responses, null, coaches.get(r.team.id));
     });
   });
+
+  /**
+   * Ce que la dernière annonce du coach lègue à la suivante. Le formulaire de
+   * publication s'en sert pour se replier sur l'essentiel : un coach republie
+   * presque toujours la même catégorie, le même genre, le même format.
+   *
+   * Sur l'ÉQUIPE ACTIVE, et non sur le coach : celui qui encadre des U13 et des
+   * U15 n'hérite pas des U15 en publiant pour les U13. Sans équipe active, ou
+   * sans annonce passée, `null` — le formulaire montre alors tout.
+   *
+   * Déclarée avant `/announcements/:id` par confort de lecture ; Fastify fait
+   * de toute façon primer les routes statiques sur les paramétrées.
+   */
+  app.get(
+    "/announcements/last",
+    { preHandler: requireRole("coach") },
+    async (request): Promise<AnnouncementDefaultsDto | null> => {
+      const myTeamId = request.user.teamId;
+      if (!myTeamId) return null;
+      const [last] = await db
+        .select()
+        .from(matchAnnouncements)
+        .where(eq(matchAnnouncements.teamId, myTeamId))
+        .orderBy(desc(matchAnnouncements.createdAt))
+        .limit(1);
+      if (!last) return null;
+      // La catégorie repart en GROUPE d'âges : les annonces d'avant le
+      // regroupement portent encore une catégorie fine, que le formulaire ne
+      // sait pas sélectionner. Une valeur hors liste vaut « rien à léguer ».
+      const category = announcementCategoryOf(last.category);
+      if (!category) return null;
+      return {
+        category,
+        gender: last.gender,
+        level: last.level,
+        format: last.format,
+        stadium: last.stadium,
+        city: last.city,
+      };
+    },
+  );
 
   /**
    * Détail d'une annonce — l'écran qu'on ouvre depuis le radar avant de

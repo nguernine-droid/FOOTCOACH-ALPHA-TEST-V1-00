@@ -352,7 +352,7 @@ mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
 
 « Créer un compte coach » — 4 petites étapes (nom → identifiants → équipe → casquettes), plus les acceptations. L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
 
-L'étape « équipe » demande son nom, sa ville, sa **catégorie** (obligatoire) et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
+L'étape « équipe » demande son nom, sa ville, sa **catégorie** et son **genre** (obligatoires), et son **stade habituel** (facultatif) — voir « Références d'équipe » ci-dessous.
 
 L'étape « casquettes » propose **coach simple**, **joker** et **contributeur**, chacune expliquée par ce qu'elle engage (voir « Casquettes du coach »). Aucune n'est obligatoire — « coach simple » est coché d'avance ; le serveur reçoit un tableau qui peut être vide, et une inscription qui ne l'envoie pas du tout reste valable.
 
@@ -372,11 +372,32 @@ L'étape « qui êtes-vous » accepte un **numéro de licence d'éducateur**, fa
 
 ### Références d'équipe
 
-Chaque équipe porte une **catégorie** (U6 → Vétérans) et un **stade habituel**. Ils sont demandés à sa création — à l'inscription comme dans **Mes équipes › Créer une équipe** — et **préremplissent chaque annonce** publiée en son nom : catégorie, stade et ville arrivent déjà renseignés, il ne reste que la date, l'heure et le genre.
+Chaque équipe porte une **catégorie** (U6 → Vétérans), un **genre** (masculin / féminin / mixte) et un **stade habituel**. Les trois sont demandés à sa création — à l'inscription comme dans **Mes équipes › Créer une équipe** — et **préremplissent chaque annonce** publiée en son nom : il ne reste alors que la date, le créneau et les informations pratiques.
 
 Ce ne sont que des valeurs de départ : un déplacement se joue ailleurs, un amical peut se caler sur une autre catégorie, et tous les champs de l'annonce restent modifiables.
 
-Les équipes créées avant cette version n'en ont pas — le formulaire d'annonce retombe alors sur ses valeurs par défaut, et **Mes équipes** signale « Catégorie à renseigner ». Le crayon en bout de ligne ouvre une feuille qui règle les deux valeurs (`PATCH /coach/teams/:id`, réservé aux encadrants de l'équipe).
+Le genre sert **deux fois**, et c'est ce qui justifie de le demander à l'équipe plutôt qu'à chaque annonce : il remplit l'annonce, et il permet de comparer une équipe qui propose à l'annonce qu'elle vise (voir « Concordance » ci-dessous).
+
+Les équipes créées avant cette version n'en ont pas — le formulaire d'annonce retombe alors sur ses valeurs par défaut, et **Mes équipes** signale « Catégorie à renseigner », « Genre à renseigner » ou les deux. Le crayon en bout de ligne ouvre une feuille qui règle les trois valeurs (`PATCH /coach/teams/:id`, réservé aux encadrants de l'équipe).
+
+#### Concordance d'une proposition
+
+Quand un coach reçoit une proposition sur son annonce, la fiche de l'équipe qui propose porte sa **catégorie et son genre**, et signale l'écart s'il y en a un : *« U13 · Masculin — catégorie différente de votre annonce »*, en rouge, juste au-dessus d'« Accepter ».
+
+C'est un **avertissement, jamais un blocage** : un U13 peut vouloir se frotter à des U15, et lui seul en juge. Deux règles seulement (`teamMatchesAnnouncement`, testée dans `apps/api/src/lib/teamFit.test.ts`) :
+
+- la **catégorie** se compare par **groupe d'âges** — une équipe U13 concorde avec une annonce U12-U13, c'est l'appariement du district ;
+- le **genre** se compare tel quel, à ceci près que **le mixte s'apparie avec tout le monde**, des deux côtés : jusqu'aux U11 les équipes le sont réellement, et refuser l'appariement les priverait de la moitié du radar.
+
+Ce qu'on ne sait pas ne s'oppose à rien : une équipe sans références (créée avant qu'on les demande) n'affiche **aucune** ligne, et une valeur inconnue ne fabrique pas de désaccord. Un faux avertissement ferait décliner des propositions parfaitement valables.
+
+#### Ce que la dernière annonce lègue à la suivante
+
+Un coach republie presque toujours la même chose. Dès sa **deuxième annonce**, le formulaire se replie donc sur ce qui change vraiment — la **date**, le **créneau**, le **lieu**, les **informations pratiques** — et range catégorie, genre, niveau et format derrière un résumé d'une ligne (*« U12-U13 · Masculin · Loisir · 8v8 »*) que **« Modifier »** rouvre en entier.
+
+L'héritage vient de `GET /announcements/last`, qui lit la dernière annonce de l'**équipe active** (et non du coach : celui qui encadre des U13 et des U15 n'hérite pas des U15 en publiant pour les U13). Servi par le serveur et non retenu par le navigateur — un coach qui publie depuis le téléphone du club puis depuis le sien retrouve ses habitudes.
+
+Deux cas gardent le formulaire ouvert en entier : la **première annonce** (rien à résumer) et l'**absence de genre**, car le formulaire ne serait pas publiable avec le seul contrôle manquant caché derrière un bouton.
 
 ## Relations entre coachs
 
@@ -457,9 +478,9 @@ Tables conservées mais plus lues : `attendances`, `lineups`, `match_events`, `c
 ## Scénario de démonstration
 
 1. **Coach A** règle sa position dans **Mon profil → Ma position** (« Utiliser ma position », ou une adresse), puis choisit son périmètre sur le radar.
-2. Il publie une annonce depuis le bouton « + » : catégorie, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date, l'heure et le genre.
+2. Il publie une annonce depuis le bouton « + » : catégorie, genre, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date et le créneau. À la deuxième annonce, ces caractéristiques se replient derrière un résumé et « Modifier ».
 3. **Coach B** (navigation privée) voit apparaître l'annonce **sur le radar de son tableau de bord**, à sa vraie distance et dans sa vraie direction, et clique « Proposer de jouer ». S'il a activé les notifications, il a été prévenu à la publication.
-4. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé, et une **conversation s'ouvre entre les deux coachs**. Elle apparaît dans l'onglet **Messages** de chacun, **ouverte sur le match convenu** (catégorie, date, lieu, qui reçoit qui, et un lien vers la feuille) : c'est ce qui dit de quelle rencontre on parle. Ils y calent l'heure d'arrivée et la couleur des maillots.
+4. **Coach A** retrouve la proposition dans l'onglet **Annonces**, y lit la catégorie et le genre de l'équipe qui propose — avec l'écart signalé s'il y en a un — et l'accepte → le match est créé, et une **conversation s'ouvre entre les deux coachs**. Elle apparaît dans l'onglet **Messages** de chacun, **ouverte sur le match convenu** (catégorie, date, lieu, qui reçoit qui, et un lien vers la feuille) : c'est ce qui dit de quelle rencontre on parle. Ils y calent l'heure d'arrivée et la couleur des maillots.
 5. Le jour du match, les deux coachs voient **« Rencontre à valider »**. Coach A, qui reçoit, ouvre la feuille de match et clique **« Afficher le QR code »**.
 6. **Coach B** ouvre le même match, clique **« Scanner le QR code »** et vise l'écran de coach A → la rencontre est validée et chacun gagne 10 points, annoncés à coach B juste après son scan.
 7. Après le coup de sifflet final, l'un des deux saisit le score avec les compteurs : le match passe en « Terminé », l'autre en est notifié.

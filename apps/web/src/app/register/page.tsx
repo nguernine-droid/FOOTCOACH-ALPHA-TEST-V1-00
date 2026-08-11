@@ -9,10 +9,12 @@ import {
   passwordProblem,
   type CoachCategory,
   type MatchCategory,
+  type MatchGender,
 } from "@footcoach/shared";
 import { register } from "@/lib/api";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { ClubNameField } from "@/components/ClubNameField";
+import { GenderPicker } from "@/components/GenderPicker";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
@@ -91,6 +93,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   // surtout elle ne part d'aucune valeur — présélectionner une catégorie
   // reviendrait à en choisir une pour le coach.
   const [teamCategory, setTeamCategory] = useState<MatchCategory | null>(null);
+  // Le genre suit la même règle que la catégorie, et pour la même raison : rien
+  // de présélectionné, c'est une caractéristique de l'équipe, pas un défaut.
+  const [teamGender, setTeamGender] = useState<MatchGender | null>(null);
   // Casquettes : aucune au départ, et aucune est une réponse valable — l'étape
   // se franchit sans rien cocher.
   const [categories, setCategories] = useState<CoachCategory[]>([]);
@@ -140,6 +145,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       await register("/auth/register-coach", {
         ...form,
         teamCategory,
+        teamGender,
         categories,
         teamStadium: form.teamStadium.trim() || undefined,
         licenseNumber: form.licenseNumber.trim() || undefined,
@@ -234,7 +240,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              advance(3, !form.teamName.trim() || !form.teamCity.trim() || !teamCategory);
+              advance(3, !form.teamName.trim() || !form.teamCity.trim() || !teamCategory || !teamGender);
             }}
             className="space-y-4"
           >
@@ -257,8 +263,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
               <input id="teamCity" autoComplete="address-level2" autoCapitalize="words" enterKeyHint="next" value={form.teamCity} onChange={(e) => set("teamCity", e.target.value)} className="field" placeholder="Lyon" />
               {touched && !form.teamCity.trim() && <FieldError id="teamCity-error">Indiquez la ville de l&apos;équipe.</FieldError>}
             </div>
-            {/* Catégorie et stade : demandés une fois ici, ils préremplissent
-                ensuite chaque annonce — d'où leur place dès l'inscription. */}
+            {/* Catégorie, genre et stade : demandés une fois ici, ils
+                préremplissent ensuite chaque annonce — d'où leur place dès
+                l'inscription. */}
             <CategoryPicker
               value={teamCategory}
               onChange={setTeamCategory}
@@ -267,6 +274,13 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
               hint="Elle sera reprise dans vos annonces de match."
             />
             {touched && !teamCategory && <FieldError id="teamCategory-error">Choisissez la catégorie de l&apos;équipe.</FieldError>}
+            <GenderPicker
+              value={teamGender}
+              onChange={setTeamGender}
+              idPrefix="register-gender"
+              hint="Repris lui aussi, et comparé à celui des équipes qui répondront à vos annonces."
+            />
+            {touched && !teamGender && <FieldError id="teamGender-error">Choisissez le genre de l&apos;équipe.</FieldError>}
             <div className="space-y-1.5">
               <label htmlFor="teamStadium" className="text-xs font-bold text-ink-soft">Stade habituel (optionnel)</label>
               <input id="teamStadium" autoComplete="off" autoCapitalize="words" enterKeyHint="done" maxLength={150} value={form.teamStadium} onChange={(e) => set("teamStadium", e.target.value)} className="field" placeholder="Stade municipal" />

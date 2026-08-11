@@ -4,6 +4,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   asCoachCategories,
   asMatchCategory,
+  asMatchGender,
   forgotPasswordSchema,
   isV1Role,
   levelForPoints,
@@ -74,6 +75,7 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
       // Références du préremplissage : elles voyagent avec la session, si bien
       // que le formulaire d'annonce n'a aucune requête à faire pour les obtenir.
       category: teams.category,
+      gender: teams.gender,
       stadium: teams.stadium,
     })
     .from(teamCoaches)
@@ -83,7 +85,11 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
   // Tri stable : équipe(s) où il est "principal" avant celles où il est "adjoint"
   return rows
     .sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1))
-    .map((row) => ({ ...row, category: asMatchCategory(row.category) }));
+    .map((row) => ({
+      ...row,
+      category: asMatchCategory(row.category),
+      gender: asMatchGender(row.gender),
+    }));
 }
 
 /** URL publique d'une photo de profil (servie par l'API, proxifiée sous /api) */

@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarX, CheckCircle2, ChevronRight, MapPin, Trash2, UserMinus } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarX,
+  CheckCircle2,
+  ChevronRight,
+  MapPin,
+  ShieldCheck,
+  Trash2,
+  UserMinus,
+} from "lucide-react";
 import {
   categoryLabel,
+  teamMatchesAnnouncement,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
+  type AnnouncementResponseDto,
 } from "@footcoach/shared";
 import { todayIso } from "@/lib/time";
 import { cn, formatDate } from "@/lib/utils";
@@ -144,6 +155,7 @@ export function MyAnnouncementCard({
                     <span className="text-ink-soft font-semibold"> · {r.team.city}</span>
                   </span>
                 </div>
+                <ResponseFit response={r} announcement={a} />
                 <div className="grid grid-cols-2 gap-2">
                   <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
                     Accepter
@@ -188,5 +200,58 @@ export function MyAnnouncementCard({
     </Link>
   ) : (
     body
+  );
+}
+
+/**
+ * Ce que l'équipe qui propose joue, en face de ce que l'annonce demande.
+ * L'écart n'est jamais bloquant — un U13 peut vouloir se frotter à des U15, et
+ * lui seul en juge. Mais il doit le SAVOIR avant de cliquer « Accepter » : sans
+ * cette ligne, l'écart ne se découvrait qu'au coup d'envoi.
+ *
+ * Rien d'affiché quand l'équipe qui propose ne porte aucune référence : elle a
+ * été créée avant que la question soit posée, et l'inconnu n'est pas un écart.
+ */
+function ResponseFit({
+  response,
+  announcement,
+}: {
+  response: AnnouncementResponseDto;
+  announcement: AnnouncementDto;
+}) {
+  const fit = teamMatchesAnnouncement(
+    { category: response.teamCategory, gender: response.teamGender },
+    announcement,
+  );
+  if (!fit) return null;
+
+  const references = [
+    response.teamCategory ? categoryLabel(response.teamCategory) : null,
+    response.teamGender ? MATCH_GENDER_LABELS[response.teamGender] : null,
+  ].filter((v): v is string => v !== null);
+  // Accord écrit à la main : « catégorie » est féminin, « genre » masculin, et
+  // les deux ensemble prennent le masculin pluriel. Une phrase assemblée par
+  // pluriel automatique donnait « genre différente ».
+  const gap =
+    !fit.category && !fit.gender
+      ? "catégorie et genre différents de votre annonce"
+      : !fit.category
+        ? "catégorie différente de votre annonce"
+        : !fit.gender
+          ? "genre différent de votre annonce"
+          : null;
+
+  return (
+    <p className={cn("text-[11px] flex items-start gap-1.5", gap ? "font-bold text-coral" : "text-ink-soft")}>
+      {gap ? (
+        <AlertTriangle size={11} className="shrink-0 mt-0.5" aria-hidden />
+      ) : (
+        <ShieldCheck size={11} className="shrink-0 mt-0.5 text-success" aria-hidden />
+      )}
+      <span>
+        {references.join(" · ")}
+        {gap && ` — ${gap}`}
+      </span>
+    </p>
   );
 }

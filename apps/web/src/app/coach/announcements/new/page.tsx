@@ -1,25 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Megaphone, Users } from "lucide-react";
+import { Megaphone, SlidersHorizontal, Users } from "lucide-react";
 import {
   ANNOUNCEMENT_CATEGORIES,
   ANNOUNCEMENT_TIME_SLOTS,
-  MATCH_GENDERS,
   MATCH_GENDER_LABELS,
   PLATEAU_TEAMS_WANTED,
   announcementCategoryOf,
+  categoryLabel,
   isPlateauCategory,
   type AnnouncementCategory,
+  type AnnouncementDefaultsDto,
+  type CoachTeamDto,
   type MatchGender,
 } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { GenderPicker } from "@/components/GenderPicker";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 
 /** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
@@ -38,47 +42,111 @@ const LEVELS = [
   { value: "loisir", label: "Loisir" },
   { value: "competition", label: "Compétition" },
 ] as const;
+const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 const FORMATS = ["5v5", "8v8", "11v11"] as const;
 
+/**
+ * Publier une annonce. La page attend de savoir ce que la DERNIÈRE annonce du
+ * coach lègue à celle-ci avant de dessiner le formulaire : appliquer un
+ * héritage arrivé en retard réécrirait des champs sous les doigts, et un
+ * formulaire qui change tout seul est pire qu'un formulaire lent.
+ *
+ * L'héritage est servi par le serveur (`/announcements/last`) plutôt que retenu
+ * par le navigateur : un coach qui publie depuis le téléphone du club puis
+ * depuis le sien doit retrouver ses habitudes.
+ */
 export default function NewAnnouncementPage() {
+  const { activeTeam } = useActiveTeam();
+  const [loaded, setLoaded] = useState<{ defaults: AnnouncementDefaultsDto | null } | null>(null);
+
+  useEffect(() => {
+    api<AnnouncementDefaultsDto | null>("/announcements/last")
+      .then((defaults) => setLoaded({ defaults }))
+      // Un héritage illisible ne doit pas empêcher de publier : on retombe sur
+      // le formulaire complet, celui de la toute première annonce.
+      .catch(() => setLoaded({ defaults: null }));
+  }, []);
+
+  if (!loaded) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-24 rounded-card" />
+        <Skeleton className="h-96 rounded-card" />
+      </div>
+    );
+  }
+  return <NewAnnouncementForm defaults={loaded.defaults} activeTeam={activeTeam} />;
+}
+
+function NewAnnouncementForm({
+  defaults,
+  activeTeam,
+}: {
+  defaults: AnnouncementDefaultsDto | null;
+  activeTeam: CoachTeamDto | null;
+}) {
   const router = useRouter();
   /**
-   * Références de l'équipe active : catégorie, stade habituel et ville. Elles
-   * ne sont que des valeurs de départ — un déplacement se joue ailleurs, et un
-   * amical peut se caler sur une autre catégorie. Le formulaire reste entier.
+   * Deux sources de préremplissage, dans cet ordre : la dernière annonce du
+   * coach, puis les références de son équipe. La première dit ce qu'il publie
+   * réellement, la seconde ce qu'il a déclaré une fois. Aucune n'est une
+   * contrainte — le formulaire reste entier.
    *
    * Lues une seule fois, à l'initialisation de l'état : changer d'équipe
    * remonte toute la page (RoleGuard la re-monte par sa clé), donc un
    * formulaire à moitié rempli ne se fait jamais réécrire sous les doigts.
    */
-  const { activeTeam } = useActiveTeam();
   const [form, setForm] = useState({
     date: "",
     time: "",
-    city: activeTeam?.city ?? "",
-    stadium: activeTeam?.stadium ?? "",
+    city: defaults?.city ?? activeTeam?.city ?? "",
+    stadium: defaults?.stadium ?? activeTeam?.stadium ?? "",
     // La catégorie FINE de l'équipe (U13) est reprise dans son groupe d'âges
     // (U12-U13) : les rencontres s'apparient par paires, comme au district.
     // Équipes créées avant les références : rien à reprendre, on retombe sur le
     // groupe le plus courant plutôt que sur un formulaire bloqué.
-    category: (announcementCategoryOf(activeTeam?.category) ?? "U12-U13") as AnnouncementCategory,
-    level: "loisir",
-    format: "8v8",
+    category: (defaults?.category ??
+      announcementCategoryOf(activeTeam?.category) ??
+      "U12-U13") as AnnouncementCategory,
+    level: (defaults?.level ?? "loisir") as (typeof LEVELS)[number]["value"],
+    format: (defaults?.format ?? "8v8") as (typeof FORMATS)[number],
     comment: "",
   });
-  // Ce qui a RÉELLEMENT été repris — annoncer un stade que l'équipe n'a pas
-  // ferait douter du reste du formulaire. La ville en fait toujours partie dès
-  // qu'une équipe est active : c'est le seul des trois qui ne manque jamais.
+  /**
+   * Le genre vient de la dernière annonce, sinon de l'équipe. Le reprendre de
+   * l'équipe n'est plus une supposition depuis qu'elle le déclare : c'est
+   * exactement la donnée qu'on cherchait. `null` ne subsiste que pour les
+   * équipes d'avant, et il ouvre alors le panneau (voir plus bas).
+   */
+  const [gender, setGender] = useState<MatchGender | null>(defaults?.gender ?? activeTeam?.gender ?? null);
+  /**
+   * Ce qui ne change presque jamais d'une annonce à l'autre — catégorie, genre,
+   * niveau, format — se replie derrière un résumé dès la deuxième publication.
+   * Ce qui change à chaque fois — la date, le créneau, le lieu, les
+   * informations — reste sous les yeux.
+   *
+   * Deux cas forcent l'ouverture : la première annonce (rien à résumer) et
+   * l'absence de genre (le formulaire ne serait pas publiable, avec le seul
+   * contrôle qui manque caché derrière un bouton).
+   */
+  const [showAll, setShowAll] = useState(defaults === null || (defaults.gender ?? activeTeam?.gender) == null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Ce qui a RÉELLEMENT été repris de l'équipe — annoncer un stade qu'elle n'a
+  // pas ferait douter du reste du formulaire. La ville en fait toujours partie
+  // dès qu'une équipe est active : c'est le seul qui ne manque jamais.
   const fromTeam = [
     activeTeam?.category ? "catégorie" : null,
+    activeTeam?.gender ? "genre" : null,
     activeTeam?.stadium ? "stade" : null,
     activeTeam ? "ville" : null,
   ].filter((v): v is string => v !== null);
-  // Aucun genre présélectionné : le supposer reviendrait à publier une annonce
-  // masculine par défaut pour une équipe qui ne l'est pas.
-  const [gender, setGender] = useState<MatchGender | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const inheritance = defaults
+    ? "Reprises de votre dernière annonce — modifiables si celle-ci fait exception."
+    : activeTeam && fromTeam.length > 1
+      ? `Repris de ${activeTeam.name} : ${enumerate(fromTeam)} — modifiables si ce match fait exception.`
+      : undefined;
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -88,8 +156,8 @@ export default function NewAnnouncementPage() {
   // adversaire : le formulaire doit le dire avant la publication, pas après.
   const plateau = isPlateauCategory(form.category);
 
-  // Genre et créneau n'ont pas de valeur par défaut : le formulaire n'est
-  // publiable qu'une fois les deux choisis. Les autres champs sont soit
+  // Genre et créneau n'ont pas de valeur par défaut garantie : le formulaire
+  // n'est publiable qu'une fois les deux tenus. Les autres champs sont soit
   // préremplis, soit `required` et pris en charge par le navigateur.
   const incomplete = !gender || !form.time;
 
@@ -157,23 +225,9 @@ export default function NewAnnouncementPage() {
           {!form.time && <p className="text-[11px] text-ink-soft">L&apos;heure du coup d&apos;envoi.</p>}
         </div>
 
-        {/* Grilles plutôt que rangées repliées : chaque choix garde une cible
-            pleine et régulière, même à 390 px de large. */}
-        <CategoryPicker
-          value={form.category}
-          onChange={(c) => set("category", c)}
-          categories={ANNOUNCEMENT_CATEGORIES}
-          idPrefix="announcement-category"
-          hint={
-            activeTeam && fromTeam.length > 1
-              ? `Repris de ${activeTeam.name} : ${enumerate(fromTeam)} — modifiables si ce match fait exception.`
-              : undefined
-          }
-        />
-
-        {/* Le mot « plateau » doit apparaître AVANT la publication : un coach
-            U10 qui croit chercher un adversaire découvrirait sinon trois
-            équipes acceptées sur son annonce. */}
+        {/* Le mot « plateau » doit apparaître AVANT la publication, panneau
+            replié ou non : un coach U10 qui croit chercher un adversaire
+            découvrirait sinon trois équipes acceptées sur son annonce. */}
         {plateau && (
           <div className="rounded-lg bg-blue-faint border border-line px-4 py-3 flex gap-2.5">
             <Users size={15} className="text-blue shrink-0 mt-0.5" aria-hidden />
@@ -185,61 +239,84 @@ export default function NewAnnouncementPage() {
           </div>
         )}
 
-        <div className="space-y-1.5">
-          <span className="text-xs font-bold text-ink-soft">Genre</span>
-          <div className="grid grid-cols-3 gap-2">
-            {MATCH_GENDERS.map((g) => (
-              <button
-                key={g}
-                type="button"
-                aria-pressed={gender === g}
-                onClick={() => setGender(g)}
-                className={cn("chip-choice", gender === g ? "chip-choice-on" : "chip-choice-off")}
-              >
-                {MATCH_GENDER_LABELS[g]}
-              </button>
-            ))}
-          </div>
-          {!gender && (
-            <p className="text-[11px] text-ink-soft">
-              À préciser : une équipe féminine ne se déplace pas pour affronter une équipe masculine.
-            </p>
-          )}
-        </div>
+        {showAll ? (
+          <>
+            {/* Grilles plutôt que rangées repliées : chaque choix garde une
+                cible pleine et régulière, même à 390 px de large. */}
+            <CategoryPicker
+              value={form.category}
+              onChange={(c) => set("category", c)}
+              categories={ANNOUNCEMENT_CATEGORIES}
+              idPrefix="announcement-category"
+              hint={inheritance}
+            />
 
-        <div className="space-y-1.5">
-          <span className="text-xs font-bold text-ink-soft">Niveau</span>
-          <div className="grid grid-cols-2 gap-2">
-            {LEVELS.map((l) => (
-              <button
-                key={l.value}
-                type="button"
-                aria-pressed={form.level === l.value}
-                onClick={() => set("level", l.value)}
-                className={cn("chip-choice", form.level === l.value ? "chip-choice-on" : "chip-choice-off")}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-        </div>
+            <GenderPicker
+              value={gender}
+              onChange={setGender}
+              idPrefix="announcement-gender"
+              hint={
+                gender
+                  ? undefined
+                  : "À préciser : une équipe féminine ne se déplace pas pour affronter une équipe masculine."
+              }
+            />
 
-        <div className="space-y-1.5">
-          <span className="text-xs font-bold text-ink-soft">Format</span>
-          <div className="grid grid-cols-3 gap-2">
-            {FORMATS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                aria-pressed={form.format === f}
-                onClick={() => set("format", f)}
-                className={cn("chip-choice", form.format === f ? "chip-choice-on" : "chip-choice-off")}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold text-ink-soft">Niveau</span>
+              <div className="grid grid-cols-2 gap-2">
+                {LEVELS.map((l) => (
+                  <button
+                    key={l.value}
+                    type="button"
+                    aria-pressed={form.level === l.value}
+                    onClick={() => set("level", l.value)}
+                    className={cn("chip-choice", form.level === l.value ? "chip-choice-on" : "chip-choice-off")}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <span className="text-xs font-bold text-ink-soft">Format</span>
+              <div className="grid grid-cols-3 gap-2">
+                {FORMATS.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    aria-pressed={form.format === f}
+                    onClick={() => set("format", f)}
+                    className={cn("chip-choice", form.format === f ? "chip-choice-on" : "chip-choice-off")}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Le résumé n'est pas un pense-bête décoratif : c'est la garantie
+             qu'on publie en connaissance de cause. Il porte les quatre valeurs
+             en toutes lettres, et le bouton les rouvre toutes d'un geste. */
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            className="w-full flex items-center gap-3 rounded-lg bg-paper px-4 py-3 text-left
+              transition hover:bg-blue-faint active:bg-blue-soft"
+          >
+            <SlidersHorizontal size={15} className="text-blue shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs font-bold truncate">
+                {categoryLabel(form.category)}
+                {gender && ` · ${MATCH_GENDER_LABELS[gender]}`} · {LEVEL_LABELS[form.level]} · {form.format}
+              </span>
+              <span className="block text-[11px] text-ink-soft">Reprises de votre dernière annonce.</span>
+            </span>
+            <span className="text-[11px] font-bold text-blue shrink-0">Modifier</span>
+          </button>
+        )}
 
         <div className="space-y-1.5">
           <label htmlFor="stadium" className="text-xs font-bold text-ink-soft">Stade</label>

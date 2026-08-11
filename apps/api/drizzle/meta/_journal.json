@@ -232,6 +232,13 @@
       "when": 1786368008537,
       "tag": "0032_surnom",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1786434615931,
+      "tag": "0033_equipe_genre",
+      "breakpoints": true
     }
   ]
 }
