@@ -36,7 +36,7 @@ L'application ne gère du tournoi **que sa visibilité et ses inscriptions** : n
 
 Le journal `coach_points` accepte les deux origines (`match_id` **ou** `tournament_id`, jamais les deux — contrainte `coach_points_une_origine`), pour que le total d'un coach reste une seule somme.
 
-### Casquettes du coach
+## Casquettes du coach
 
 Un coach se donne ses casquettes **à l'inscription** (une étape à elle seule, entre l'équipe et les acceptations) puis à volonté depuis **Mon profil → Mes casquettes**.
 
@@ -77,7 +77,7 @@ Les casquettes s'affichent sur les fiches de relations, à côté du palier.
 
 > La caméra n'est accessible qu'en **contexte sécurisé** : HTTPS en production, ou `localhost` en développement. Sur une IP locale en HTTP, le navigateur refusera l'accès et le scanner affichera « Caméra indisponible ».
 
-### Publications — le panneau d'affichage du secteur
+## Publications — le panneau d'affichage du secteur
 
 Ce qu'un coach a besoin de savoir sans avoir à le demander : les **poules du district viennent de tomber**, le **terrain est impraticable**, le **plateau de samedi est annulé**. Rien de tout cela n'est une annonce — ça n'attend aucune réponse, ça informe.
 
@@ -93,7 +93,7 @@ Un billet porte son auteur (surnom, photo, et l'équipe qui le situe — celle q
 
 Le fil sert les **cent derniers** billets, du plus récent au plus ancien : un panneau d'affichage montre ce qui est d'actualité, pas ses archives. Table `publications` (auteur en `ON DELETE CASCADE`, index sur `created_at`) — **pas de modification après coup, pas de réponse, pas de mention** : ajouter l'une de ces trois choses en ferait un réseau social, ce que la V1 ne cherche pas à être. Un billet erroné se supprime et se réécrit.
 
-### Règle FFF des 10 jours
+## Règle FFF des 10 jours
 
 Un match amical doit être déclaré à la fédération (district / ligue) **au moins 10 jours avant** la rencontre. La règle est énoncée **une fois, à l'inscription**, dans les CGU (`LegalConsent`) : que la déclaration au district relève du coach et de son club y est accepté explicitement (« Je comprends que la déclaration du match à ma fédération… relève de ma responsabilité »), avec date et version conservées sur le compte.
 
