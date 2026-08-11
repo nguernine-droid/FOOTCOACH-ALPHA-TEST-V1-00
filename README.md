@@ -46,7 +46,7 @@ L'écran propose **trois options pour deux casquettes** : « Coach simple » ouv
 |---|---|
 | **Coach simple** | Aucune casquette, le cas ordinaire. Annonces, propositions et matchs fonctionnent à l'identique : ni alerte SOS en premier, ni rédaction de publications. |
 | **Joker** | Il accepte d'être alerté quand un coach de son secteur se retrouve sans adversaire. **Les alertes SOS ne partent qu'aux jokers**, et seulement à ceux dont le rayon couvre le lieu : se dire disponible n'est pas se dire ubiquiste. |
-| **Contributeur** | Il rédige les **publications** du secteur — poules des matchs officiels, intempéries, plateaux annulés — lues par tous les coachs dans l'onglet Annonces. |
+| **Contributeur** | Il rédige les **publications** du secteur — poules des matchs officiels, intempéries, plateaux annulés — lues par tous les coachs dans l'onglet Annonces. Voir « Publications » ci-dessous. |
 
 Se déclarer joker **est** l'abonnement aux SOS : le ciblage ne recoupe pas la préférence « nouvelle annonce », qui répond à une autre question. Un coach qui a coupé le flot des annonces neuves mais s'est déclaré joker veut précisément cela — n'être dérangé que quand quelqu'un est en panne.
 
@@ -76,6 +76,22 @@ Les casquettes s'affichent sur les fiches de relations, à côté du palier.
 **Le score, lui, ne se contre-signe plus.** Il est saisi par l'un ou l'autre coach et clôt le match ; l'adversaire en est notifié et peut le corriger. C'est la rencontre qui est attestée, pas le résultat — un désaccord sur un but se règle entre coachs, pas par un refus de validation qui laissait le match ouvert indéfiniment.
 
 > La caméra n'est accessible qu'en **contexte sécurisé** : HTTPS en production, ou `localhost` en développement. Sur une IP locale en HTTP, le navigateur refusera l'accès et le scanner affichera « Caméra indisponible ».
+
+### Publications — le panneau d'affichage du secteur
+
+Ce qu'un coach a besoin de savoir sans avoir à le demander : les **poules du district viennent de tomber**, le **terrain est impraticable**, le **plateau de samedi est annulé**. Rien de tout cela n'est une annonce — ça n'attend aucune réponse, ça informe.
+
+**Tous les coachs lisent, seuls les contributeurs écrivent.** C'est un panneau, pas un mur où chacun épingle : dix billets par jour et plus personne ne l'ouvre. La casquette se coche et se décoche librement dans **Mon profil**, et le serveur la **revérifie à chaque rédaction** (`POST /publications` → 403) — un client qui aurait gardé un écran ouvert ne doit pas publier avec une casquette rendue.
+
+| | |
+|---|---|
+| **Lire** | Onglet **Annonces › Publications**, et les **cinq derniers** billets en pied de tableau de bord — l'actualité se survole d'ici, se lit en entier là-bas. Le tableau de bord les charge en **repli silencieux** : un panneau vide ne doit pas faire tomber l'écran d'accueil. |
+| **Écrire** | Le **« + »** de la barre → **Information** (`/coach/publications/new`). L'option n'apparaît qu'aux contributeurs. |
+| **Effacer** | Chacun **n'efface que les siens** — y compris un ancien contributeur qui a rendu la casquette : ce qu'on a écrit reste à soi. Confirmation sur place (« Supprimer ? »), sans boîte de dialogue. |
+
+Un billet porte son auteur (surnom, photo, et l'équipe qui le situe — celle qu'il encadre en principal, à défaut la plus ancienne, comme dans la messagerie et les relations) et **800 caractères** au plus (`PUBLICATION_MAX_LENGTH`) : c'est un billet d'information, pas un article — au-delà, l'information se noie dans le texte. Les **retours à la ligne sont conservés** à l'affichage, parce qu'une liste de poules se lit en liste et non en paragraphe.
+
+Le fil sert les **cent derniers** billets, du plus récent au plus ancien : un panneau d'affichage montre ce qui est d'actualité, pas ses archives. Table `publications` (auteur en `ON DELETE CASCADE`, index sur `created_at`) — **pas de modification après coup, pas de réponse, pas de mention** : ajouter l'une de ces trois choses en ferait un réseau social, ce que la V1 ne cherche pas à être. Un billet erroné se supprime et se réécrit.
 
 ### Règle FFF des 10 jours
 
