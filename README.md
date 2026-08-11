@@ -11,7 +11,7 @@ Il n'y a **pas de comptes joueur ni parent** : tout ce qui en dépendait (effect
 
 L'application est **conçue pour être utilisée à une main sur un téléphone** et **installable sur l'écran d'accueil** — voir « Ergonomie mobile » et « Installation ».
 
-### La rencontre validée au stade, et les points
+## La rencontre validée au stade, et les points
 
 Ce qui atteste qu'un match a eu lieu n'est pas le score, mais le **face-à-face des deux coachs** :
 
@@ -376,7 +376,7 @@ cherche les erreurs qui n'apparaissent qu'en volume et mesure ce que l'interface
 reçoit à densité réelle. Elle **écrit dans la base** et se nettoie ensuite —
 mode d'emploi dans [`tools/simulation/README.md`](tools/simulation/README.md).
 
-### Créer un compte coach (sans compte de démo)
+## Créer un compte coach (sans compte de démo)
 
 « Créer un compte coach » — 4 petites étapes (nom → identifiants → équipe → casquettes), plus les acceptations. L'équipe est créée avec le compte. `/register` mène directement à ce parcours : c'est la seule inscription de la V1.
 
@@ -398,7 +398,7 @@ C'est une aide, jamais une contrainte :
 
 L'étape « qui êtes-vous » accepte un **numéro de licence d'éducateur**, facultatif. Il n'est **servi qu'à son titulaire** : ni sur les fiches de relations, ni nulle part ailleurs — c'est une donnée administrative, pas un signe extérieur. Rien ne s'appuie dessus pour l'instant ; il est recueilli parce qu'un coach l'a sous la main en s'inscrivant et beaucoup moins le jour où il servira. Modifiable et effaçable ensuite dans **Mon profil** (vider le champ l'efface). Le format est volontairement permissif — chiffres, lettres, espaces, tirets et barres, 30 caractères — les districts n'ayant pas tous la même notation.
 
-### Références d'équipe
+## Références d'équipe
 
 Chaque équipe porte une **catégorie** (U6 → Vétérans), un **genre** (masculin / féminin / mixte) et un **stade habituel**. Les trois sont demandés à sa création — à l'inscription comme dans **Mes équipes › Créer une équipe** — et **préremplissent chaque annonce** publiée en son nom : il ne reste alors que la date, le créneau et les informations pratiques.
 
@@ -408,7 +408,7 @@ Le genre sert **deux fois**, et c'est ce qui justifie de le demander à l'équip
 
 Les équipes créées avant cette version n'en ont pas — le formulaire d'annonce retombe alors sur ses valeurs par défaut, et **Mes équipes** signale « Catégorie à renseigner », « Genre à renseigner » ou les deux. Le crayon en bout de ligne ouvre une feuille qui règle les trois valeurs (`PATCH /coach/teams/:id`, réservé aux encadrants de l'équipe).
 
-#### Concordance d'une proposition
+### Concordance d'une proposition
 
 Quand un coach reçoit une proposition sur son annonce, la fiche de l'équipe qui propose porte sa **catégorie et son genre**, et signale l'écart s'il y en a un : *« U13 · Masculin — catégorie différente de votre annonce »*, en rouge, juste au-dessus d'« Accepter ».
 
@@ -419,7 +419,7 @@ C'est un **avertissement, jamais un blocage** : un U13 peut vouloir se frotter �
 
 Ce qu'on ne sait pas ne s'oppose à rien : une équipe sans références (créée avant qu'on les demande) n'affiche **aucune** ligne, et une valeur inconnue ne fabrique pas de désaccord. Un faux avertissement ferait décliner des propositions parfaitement valables.
 
-#### Ce que la dernière annonce lègue à la suivante
+### Ce que la dernière annonce lègue à la suivante
 
 Un coach republie presque toujours la même chose. Dès sa **deuxième annonce**, le formulaire se replie donc sur ce qui change vraiment — la **date**, le **créneau**, le **lieu**, les **informations pratiques** — et range catégorie, genre, niveau et format derrière un résumé d'une ligne (*« U12-U13 · Masculin · Loisir · 8v8 »*) que **« Modifier »** rouvre en entier.
 
