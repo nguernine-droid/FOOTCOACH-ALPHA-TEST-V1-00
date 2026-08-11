@@ -161,7 +161,7 @@ async function main() {
     // Annonce ouverte du coach B — pour démontrer le flux "répondre"
     await db.insert(matchAnnouncements).values({
       teamId: teamB.id,
-      // J+14 : le délai FFF de déclaration (10 jours) est tenu
+      // J+14 : assez loin pour qu'on ait le temps de répondre à la démo
       date: plusDays(14),
       time: "15:00",
       city: "Villeurbanne",

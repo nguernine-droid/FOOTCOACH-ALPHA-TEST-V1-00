@@ -1,19 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import {
-  AlertTriangle,
-  CalendarX,
-  CheckCircle2,
-  ChevronRight,
-  MapPin,
-  ShieldCheck,
-  Trash2,
-  UserMinus,
-} from "lucide-react";
+import { CalendarX, CheckCircle2, ChevronRight, MapPin, Trash2, UserMinus } from "lucide-react";
 import {
   categoryLabel,
-  FFF_NOTICE_DAYS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
@@ -50,9 +40,8 @@ export function MyAnnouncementCard({
   onOpenDetail?: () => void;
 }) {
   const pending = a.responses.filter((r) => r.status === "pending");
-  const noticeShort = a.noticeDays < FFF_NOTICE_DAYS;
   // La date est passée : le serveur a retiré l'annonce du radar et refuse les
-  // propositions. Le délai FFF n'a plus de sens (il serait négatif).
+  // propositions.
   const past = a.date < todayIso();
 
   const body = (
@@ -92,29 +81,17 @@ export function MyAnnouncementCard({
         </p>
       )}
 
-      {/* Conformité FFF : le délai de déclaration, et lui seul — l'attestation
-          par annonce a laissé place à l'acceptation donnée à l'inscription.
-          Une annonce repartie en SOS n'est pas réévaluée : la déclaration au
-          district porte sur la tenue du match, pas sur l'identité de l'adversaire. */}
-      <div className="flex flex-wrap gap-1.5">
-        {past && a.status === "open" ? (
+      {/* Plus de pastille de conformité FFF : le délai de déclaration est
+          rappelé une fois pour toutes dans les CGU acceptées à l'inscription.
+          Reste la seule information que la carte est seule à porter — l'annonce
+          n'est plus sur le radar parce que sa date est derrière nous. */}
+      {past && a.status === "open" && (
+        <div className="flex flex-wrap gap-1.5">
           <span className="chip bg-paper text-ink-soft">
             <CalendarX size={11} /> Date passée
           </span>
-        ) : a.isSos ? (
-          <span className="chip bg-success-soft text-success">
-            <ShieldCheck size={11} /> Match déjà déclaré — délai sans objet
-          </span>
-        ) : noticeShort ? (
-          <span className="chip bg-coral-soft text-coral">
-            <AlertTriangle size={11} /> Délai FFF non respecté ({a.noticeDays} j)
-          </span>
-        ) : (
-          <span className="chip bg-success-soft text-success">
-            <ShieldCheck size={11} /> Délai FFF respecté
-          </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {a.status === "open" && (
         <>

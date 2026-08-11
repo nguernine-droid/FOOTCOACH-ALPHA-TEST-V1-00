@@ -24,17 +24,16 @@ export type AnnouncementStatus = (typeof ANNOUNCEMENT_STATUSES)[number];
 /**
  * Délai réglementaire FFF : un match amical doit être déclaré à la fédération
  * (district / ligue) au moins 10 jours avant sa date.
+ *
+ * Énoncé une seule fois, dans les CGU acceptées à l'inscription (LegalConsent).
+ * L'application ne le mesure plus annonce par annonce : elle ne déclare rien à
+ * la place du coach, et répéter l'avertissement à chaque écran noyait le reste.
  */
 export const FFF_NOTICE_DAYS = 10;
 
 /** Nombre de jours pleins entre deux dates ISO (yyyy-mm-dd), sans effet de fuseau */
 export function daysBetweenIso(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-}
-
-/** Le délai FFF est-il tenu pour un match le `matchDate` annoncé le `announcedOn` ? */
-export function respectsFffNotice(matchDate: string, announcedOn: string): boolean {
-  return daysBetweenIso(announcedOn, matchDate) >= FFF_NOTICE_DAYS;
 }
 
 /**
@@ -46,10 +45,15 @@ export function respectsFffNotice(matchDate: string, announcedOn: string): boole
  * un point substantiel, cette constante est incrémentée et les comptes dont la
  * version enregistrée est antérieure doivent se prononcer de nouveau.
  *
- * À tenir aligné sur l'en-tête de `site/cgu.html` (« Version : 1 »).
+ * Version 2 (11 août 2026) : l'application ne mesure plus le délai FFF de
+ * déclaration annonce par annonce — §5 le disait, ce n'est plus vrai. La règle
+ * elle-même n'a pas bougé, seul ce que le service en fait a changé.
+ *
+ * À tenir aligné sur l'en-tête de `site/cgu.html` et de
+ * `site/confidentialite.html` (« Version : 2 »).
  */
-export const LEGAL_VERSION = "1";
-export const LEGAL_UPDATED_AT = "2026-07-29";
+export const LEGAL_VERSION = "2";
+export const LEGAL_UPDATED_AT = "2026-08-11";
 
 /**
  * Cycle de vie d'un match : `scheduled` → `live` au coup d'envoi → `finished`
@@ -89,6 +93,26 @@ export type MatchLevel = (typeof MATCH_LEVELS)[number];
 
 export const MATCH_FORMATS = ["5v5", "8v8", "11v11"] as const;
 export type MatchFormat = (typeof MATCH_FORMATS)[number];
+
+/**
+ * Créneaux proposés à la publication d'une annonce : matinée avant le déjeuner,
+ * puis l'après-midi jusqu'à la tombée du jour. Un amical ne se cale pas à 7h12
+ * — offrir les 96 quarts d'heure de la journée faisait chercher longtemps ce
+ * qui se choisit d'un coup d'œil.
+ *
+ * L'API, elle, accepte toujours n'importe quelle heure valide : c'est une aide
+ * à la saisie, pas une règle métier, et les annonces déjà publiées à d'autres
+ * heures restent parfaitement valides.
+ */
+export const ANNOUNCEMENT_TIME_SLOTS = [
+  "09:00",
+  "10:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+] as const;
 
 /**
  * Catégories d'âge de la FFF, de l'école de foot aux vétérans. Les équipes sont
@@ -957,8 +981,6 @@ export interface AnnouncementDto {
    */
   coach: CoachRefDto | null;
   createdAt: string;
-  /** Jours entre la publication de l'annonce et la date du match (délai FFF : 10 minimum) */
-  noticeDays: number;
   /** Renseignés quand l'annonce est matchée : le match créé et l'équipe qui a répondu */
   matchId: string | null;
   opponentTeam: TeamDto | null;
@@ -972,8 +994,7 @@ export interface AnnouncementDto {
   myResponseStatus: ResponseStatus | null;
   /**
    * L'adversaire s'est désisté et l'annonce est repartie en recherche : elle
-   * remonte en tête du radar. Le délai FFF ne s'applique plus — la déclaration
-   * porte sur le match, pas sur l'identité de l'adversaire.
+   * remonte en tête du radar.
    */
   isSos: boolean;
   sosReason: WithdrawalReason | null;

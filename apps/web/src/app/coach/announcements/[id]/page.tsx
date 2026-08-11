@@ -3,7 +3,6 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
@@ -11,18 +10,16 @@ import {
   Clock3,
   MapPin,
   Navigation,
-  ShieldCheck,
   UserMinus,
 } from "lucide-react";
 import {
   categoryLabel,
-  FFF_NOTICE_DAYS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
 } from "@footcoach/shared";
 import { api } from "@/lib/api";
-import { cn, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
 import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -89,7 +86,6 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
   const a = announcement;
   const past = a.date < new Date().toISOString().slice(0, 10);
   const closed = a.status !== "open" || past;
-  const noticeShort = a.noticeDays < FFF_NOTICE_DAYS;
 
   return (
     <div className="max-w-[720px] mx-auto space-y-4">
@@ -150,25 +146,9 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           )}
         </div>
 
-        {/* Délai FFF : la même information que sur « Mes annonces », parce
-            qu'elle engage aussi celui qui se déplace. */}
-        <p
-          className={cn(
-            "rounded-lg px-4 py-2.5 text-xs flex items-start gap-2",
-            noticeShort ? "bg-coral-soft text-coral" : "bg-paper text-ink-soft",
-          )}
-        >
-          {noticeShort ? (
-            <AlertTriangle size={13} className="shrink-0 mt-px" aria-hidden />
-          ) : (
-            <ShieldCheck size={13} className="shrink-0 mt-px" aria-hidden />
-          )}
-          <span>
-            {noticeShort
-              ? `Publiée ${a.noticeDays} jour(s) avant la rencontre : le délai FFF de ${FFF_NOTICE_DAYS} jours n'est pas tenu.`
-              : `Délai FFF respecté — publiée ${a.noticeDays} jours avant la rencontre.`}
-          </span>
-        </p>
+        {/* Plus d'encart sur le délai FFF : il est rappelé dans les CGU
+            acceptées à l'inscription, et le répéter à chaque écran d'annonce
+            noyait les informations propres à la rencontre. */}
 
         {a.comment && (
           <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3 whitespace-pre-line">{a.comment}</p>

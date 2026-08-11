@@ -76,13 +76,11 @@ Les casquettes s'affichent sur les fiches de relations, à côté du palier.
 
 ### Règle FFF des 10 jours
 
-Un match amical doit être déclaré à la fédération (district / ligue) **au moins 10 jours avant** la rencontre. À la publication d'une annonce :
+Un match amical doit être déclaré à la fédération (district / ligue) **au moins 10 jours avant** la rencontre. La règle est énoncée **une fois, à l'inscription**, dans les CGU (`LegalConsent`) : que la déclaration au district relève du coach et de son club y est accepté explicitement (« Je comprends que la déclaration du match à ma fédération… relève de ma responsabilité »), avec date et version conservées sur le compte.
 
-- un **rappel du délai** est affiché ;
-- une date à moins de 10 jours **n'est pas bloquée** mais affiche un avertissement (les dérogations de district existent) ;
-- chaque annonce porte un badge « Délai FFF respecté » ou « Délai FFF non respecté (n j) », calculé entre la publication et la date du match.
+**L'application ne mesure plus ce délai annonce par annonce.** Ni case à cocher, ni rappel au formulaire de publication, ni badge « Délai FFF respecté / non respecté » sur les annonces, le détail d'annonce ou la feuille de match : elle ne déclare rien à la place du coach, les dérogations de district existent, et répéter l'avertissement à chaque écran noyait les informations propres à la rencontre. Seule reste la constante `FFF_NOTICE_DAYS`, qui alimente le texte des CGU.
 
-Il n'y a **plus de case à cocher par annonce**. Que la déclaration au district relève du coach et de son club est accepté **une fois, à l'inscription** (« Je comprends que la déclaration du match à ma fédération… relève de ma responsabilité »), avec date et version conservées sur le compte — la redemander à chaque publication faisait double emploi. La colonne `match_announcements.federation_declared` reste en base pour les annonces publiées sous l'ancienne règle, mais n'est plus écrite ni affichée : sur une annonce récente, `false` signifie « la question n'a pas été posée ».
+La colonne `match_announcements.federation_declared` reste en base pour les annonces publiées sous l'ancienne règle, mais n'est plus écrite ni affichée : sur une annonce récente, `false` signifie « la question n'a pas été posée ».
 
 ## Le radar
 
@@ -456,7 +454,7 @@ Tables conservées mais plus lues : `attendances`, `lineups`, `match_events`, `c
 ## Scénario de démonstration
 
 1. **Coach A** règle sa position dans **Mon profil → Ma position** (« Utiliser ma position », ou une adresse), puis choisit son périmètre sur le radar.
-2. Il publie une annonce depuis le bouton « + » : catégorie, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date (à plus de 10 jours → badge « Délai FFF respecté »), l'heure et le genre.
+2. Il publie une annonce depuis le bouton « + » : catégorie, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date, l'heure et le genre.
 3. **Coach B** (navigation privée) voit apparaître l'annonce **sur le radar de son tableau de bord**, à sa vraie distance et dans sa vraie direction, et clique « Proposer de jouer ». S'il a activé les notifications, il a été prévenu à la publication.
 4. **Coach A** retrouve la proposition dans l'onglet **Annonces** et l'accepte → le match est créé, et une **conversation s'ouvre entre les deux coachs**. Elle apparaît dans l'onglet **Messages** de chacun, **ouverte sur le match convenu** (catégorie, date, lieu, qui reçoit qui, et un lien vers la feuille) : c'est ce qui dit de quelle rencontre on parle. Ils y calent l'heure d'arrivée et la couleur des maillots.
 5. Le jour du match, les deux coachs voient **« Rencontre à valider »**. Coach A, qui reçoit, ouvre la feuille de match et clique **« Afficher le QR code »**.

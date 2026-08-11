@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Megaphone, Trophy } from "lucide-react";
-import { FFF_NOTICE_DAYS, type AnnouncementDto, type TournamentDto } from "@footcoach/shared";
+import { type AnnouncementDto, type TournamentDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { todayIso } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -209,8 +209,7 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
           {bucket === "ongoing" && (
             <>
               <p className="text-xs text-ink-soft">
-                Publiez une annonce : elle apparaîtra chez les coachs de votre secteur. Le délai de déclaration au
-                district est de {FFF_NOTICE_DAYS} jours.
+                Publiez une annonce : elle apparaîtra chez les coachs de votre secteur.
               </p>
               <ButtonLink href="/coach/announcements/new" variant="soft" className="w-full sm:w-auto">
                 Publier une annonce

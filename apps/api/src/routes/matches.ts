@@ -150,9 +150,6 @@ export function matchRoutes(app: FastifyInstance) {
    *   que chacun, y compris les coachs déclinés, puisse reproposer ;
    * - l'équipe HÔTE renonce : il n'y a plus de match à offrir, l'annonce est
    *   annulée et l'invité prévenu.
-   *
-   * Le délai FFF de 10 jours n'est pas réévalué : la déclaration au district
-   * porte sur la tenue du match, pas sur l'identité de l'adversaire.
    */
   app.post("/matches/:id/withdraw", { preHandler: requireRole("coach") }, async (request) => {
     const { id } = idParamSchema.parse(request.params);
