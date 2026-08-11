@@ -271,7 +271,22 @@ export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
     "Vous partagez les informations du secteur — poules des matchs officiels, intempéries, plateaux annulés. Vos publications sont lues par tous les coachs.",
 };
 
-/** Choix des casquettes par le coach lui-même. Tableau vide = aucune. */
+/**
+ * Troisième option de l'écran des casquettes — qui n'est pas une casquette :
+ * « Coach simple » vaut pour le tableau VIDE. Rien de nouveau n'est stocké, on
+ * ne fabrique pas une valeur en base pour dire l'absence des deux autres ; et
+ * une casquette « simple » qu'il faudrait retirer avant d'en prendre une vraie
+ * serait un piège.
+ *
+ * Elle a malgré tout sa carte : un choix qui ne se voit pas ne se fait pas.
+ * Deux cases seules laissaient deviner qu'on pouvait n'en cocher aucune, sans
+ * jamais le dire — et sans montrer que c'est le cas ordinaire.
+ */
+export const COACH_PLAIN_LABEL = "Coach simple";
+export const COACH_PLAIN_DESCRIPTION =
+  "Aucune casquette. Vous publiez vos annonces, répondez à celles des autres et jouez vos matchs : tout fonctionne à l'identique. Vous n'êtes simplement ni alerté des SOS en premier, ni rédacteur des publications.";
+
+/** Choix des casquettes par le coach lui-même. Tableau vide = « coach simple ». */
 export const updateCoachCategoriesSchema = z.object({
   categories: z.array(z.enum(COACH_CATEGORIES)).max(COACH_CATEGORIES.length),
 });

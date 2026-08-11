@@ -63,10 +63,23 @@ export default function CoachProfilePage() {
     const next = current.includes(category)
       ? current.filter((c) => c !== category)
       : [...current, category];
+    await saveCategories(next);
+  }
+
+  /**
+   * Retour au coach simple. Déjà simple, l'appel est épargné : la case cochée
+   * qu'on recoche ne doit pas faire clignoter un message d'enregistrement.
+   */
+  async function clearCategories() {
+    if ((user?.categories ?? []).length === 0) return;
+    await saveCategories([]);
+  }
+
+  async function saveCategories(categories: CoachCategory[]) {
     setError(null);
     setMessage(null);
     try {
-      apply(await api<UserDto>("/me/categories", { method: "PATCH", body: JSON.stringify({ categories: next }) }));
+      apply(await api<UserDto>("/me/categories", { method: "PATCH", body: JSON.stringify({ categories }) }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Enregistrement impossible");
     }
@@ -320,18 +333,22 @@ export default function CoachProfilePage() {
         )}
       </section>
 
-      {/* Casquettes : cumulables, et rien de coché est le cas ordinaire —
-          « simple coach » n'a pas de case, ce serait une case pour dire non. */}
+      {/* Trois options pour deux casquettes : « Coach simple » dit le cas
+          ordinaire au lieu de le laisser deviner. Les deux vraies restent
+          cumulables entre elles. */}
       {user.categories !== undefined && (
         <section className="card p-5 space-y-3" aria-label="Mes casquettes">
           <div className="space-y-1">
             <h3 className="display text-lg">Mes casquettes</h3>
             <p className="text-xs text-ink-soft">
-              Facultatives et cumulables. Sans aucune, vous restez un coach comme un autre — vos annonces et vos
-              matchs fonctionnent à l&apos;identique.
+              Facultatives, et cumulables entre elles. Chaque changement est enregistré aussitôt.
             </p>
           </div>
-          <CoachCategoryPicker value={user.categories ?? []} onToggle={toggleCategory} />
+          <CoachCategoryPicker
+            value={user.categories ?? []}
+            onToggle={toggleCategory}
+            onClear={clearCategories}
+          />
         </section>
       )}
 

@@ -278,18 +278,23 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       {step === 3 && (
         <StepCard
           title="Vos casquettes"
-          subtitle="Deux façons d'aider les autres coachs. Aucune n'est obligatoire."
+          subtitle="Coach simple, ou l'une des deux façons d'aider les autres coachs."
           onBack={() => setStep(2)}
         >
           {/* Étape à part entière, et non une ligne de plus au milieu des
               champs de l'équipe : ce sont deux engagements à lire, pas deux
-              cases à expédier. Rien de coché reste une réponse — d'où le
-              bouton « Continuer » toujours actif. */}
+              cases à expédier. « Coach simple » est coché d'avance parce que
+              c'est le cas ordinaire — d'où le bouton « Continuer » toujours
+              actif, l'étape se franchit sans rien toucher. */}
           <div className="space-y-4">
-            <CoachCategoryPicker value={categories} onToggle={toggleCategory} idPrefix="register-casquette" />
+            <CoachCategoryPicker
+              value={categories}
+              onToggle={toggleCategory}
+              onClear={() => setCategories([])}
+              idPrefix="register-casquette"
+            />
             <p className="text-[11px] text-ink-soft">
-              Sans aucune, vous restez un coach comme un autre : vos annonces et vos matchs fonctionnent à
-              l&apos;identique. Vous pourrez les cocher ou les retirer plus tard dans Mon profil.
+              Vous pourrez en prendre une, ou les retirer, plus tard dans Mon profil.
             </p>
             <Button type="button" size="lg" className="w-full" onClick={() => advance(4, false)}>
               Continuer
