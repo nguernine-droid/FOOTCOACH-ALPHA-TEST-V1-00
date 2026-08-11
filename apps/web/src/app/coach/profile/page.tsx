@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
+import { Bell, Camera, ChevronRight, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
 import { coachQrPayload, type CoachCategory, type UserDto } from "@footcoach/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { LocationCard } from "@/components/coach/LocationCard";
-import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -288,7 +288,23 @@ export default function CoachProfilePage() {
 
       <LocationCard user={user} onChange={apply} />
 
-      <NotificationsCard user={user} onChange={apply} />
+      {/* Les notifications se réglaient ici : elles sont parties dans
+          Paramètres, avec l'apparence. Ce n'étaient pas des informations sur le
+          coach mais des réglages de l'application sur cet appareil. La ligne
+          reste pour ceux qui les cherchent à leur ancienne place. */}
+      <Link
+        href="/coach/settings"
+        className="card p-5 flex items-center gap-3 transition hover:bg-blue-faint active:bg-blue-soft"
+      >
+        <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
+          <Bell size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Notifications et apparence</span>
+          <span className="block text-xs text-ink-soft">Réglées dans Paramètres.</span>
+        </span>
+        <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+      </Link>
 
       {/* Code coach + QR à faire scanner */}
       <section className="card p-5 space-y-4">

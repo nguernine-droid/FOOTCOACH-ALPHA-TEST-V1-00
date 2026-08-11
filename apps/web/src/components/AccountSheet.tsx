@@ -8,18 +8,17 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  CircleUserRound,
   Contact,
   IdCard,
   LogOut,
   Megaphone,
+  Settings,
   Trophy,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
 import { Avatar } from "@/components/Avatar";
-import { ThemePicker } from "@/components/ThemePicker";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { timeAgo } from "@/lib/time";
@@ -77,12 +76,18 @@ function Row({
 }
 
 /**
- * Feuille « Moi » : l'identité, l'équipe active, le profil, l'agenda, les
- * notifications et la déconnexion, rassemblés dans la zone du pouce.
+ * Feuille « Moi » : l'identité, l'équipe active, les écrans qu'on ouvre
+ * souvent, et la déconnexion — rassemblés dans la zone du pouce.
  *
  * Ouverte par la photo du header, en haut à gauche, à toutes les largeurs. Elle
  * n'occupe plus d'emplacement dans la barre basse : celle-ci ne porte que des
  * destinations, et la place libérée est allée aux messages.
+ *
+ * Les RÉGLAGES n'y sont plus : apparence, profil, notifications et
+ * signalement vivent dans `/coach/settings`, derrière une seule ligne. Une
+ * feuille qui doit se lire d'un coup d'œil, le pouce en bas, ne peut pas
+ * porter à la fois ce qu'on ouvre trois fois par semaine et ce qu'on règle
+ * trois fois par an.
  */
 export function AccountSheet({
   user,
@@ -243,14 +248,10 @@ export function AccountSheet({
         </div>
       )}
 
-      {/* Apparence. Placée avant les raccourcis de navigation : c'est un
-          réglage, pas une destination — on ne quitte pas la feuille pour le
-          changer, on le change et on voit le résultat derrière. */}
-      <div className="border-t border-line px-5 py-4">
-        <h3 className="section-title text-xs text-secondary mb-3">Apparence</h3>
-        <ThemePicker />
-      </div>
-
+      {/* Rien que des DESTINATIONS, désormais. L'apparence et le profil sont
+          partis dans « Paramètres » : ce sont des réglages qu'on ouvre trois
+          fois par an, et ils occupaient ici la place de ce qu'on cherche
+          plusieurs fois par semaine. */}
       <div className="border-t border-line py-1">
         {isCoach && (
           <>
@@ -258,13 +259,16 @@ export function AccountSheet({
                 plus souvent — qui a répondu à ce qu'il a publié. L'onglet
                 « Annonces » montre désormais celles des autres. */}
             <Row icon={Megaphone} label="Mes annonces" href="/coach/announcements/mine" onClick={onClose} />
-            <Row icon={CircleUserRound} label="Mon profil" href="/coach/profile" onClick={onClose} />
             <Row icon={Contact} label="Mes relations" href="/coach/relations" onClick={onClose} />
             <Row icon={Users} label="Mes équipes" href="/coach/team" onClick={onClose} />
             <Row icon={CalendarRange} label="Agenda de l'équipe" href="/coach/agenda" onClick={onClose} />
+            {/* « Activité » et non « Notifications » : c'est le fil de ce qui
+                s'est passé, pas leur réglage — lequel vit maintenant dans
+                Paramètres, à une ligne d'ici. Deux « Notifications » voisines
+                n'auraient désigné ni l'une ni l'autre. */}
             <Row
               icon={Bell}
-              label="Notifications"
+              label="Activité"
               onClick={() => {
                 onSeenNotifications();
                 setView("notifications");
@@ -275,6 +279,7 @@ export function AccountSheet({
                 ) : undefined
               }
             />
+            <Row icon={Settings} label="Paramètres" href="/coach/settings" onClick={onClose} />
           </>
         )}
         <Row icon={LogOut} label="Se déconnecter" tone="danger" onClick={onLogout} />
