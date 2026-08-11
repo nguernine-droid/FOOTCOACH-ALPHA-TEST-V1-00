@@ -127,13 +127,25 @@ export function RadarFeed() {
 
   // Le serveur applique déjà le périmètre enregistré et écarte mes propres
   // annonces : ce qui arrive ici est exactement ce que le radar affiche.
+  //
+  // Compteur de requêtes : `changeRadius` déclenche un nouveau `load()` à
+  // chaque clic, sans attendre le précédent. Deux clics rapprochés (25 km
+  // puis Illimité, par exemple) lancent deux requêtes qui peuvent répondre
+  // dans le désordre — sans garde, la réponse du PREMIER clic, arrivée en
+  // second, écraserait le résultat du second avec des annonces filtrées sur
+  // un périmètre qu'on a déjà quitté. Symptôme observé : le radar réglé sur
+  // « Illimité » affichant quand même une liste vide.
+  const loadSeq = useRef(0);
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     try {
       const radar = await api<RadarDto>("/announcements/radar");
+      if (seq !== loadSeq.current) return; // une requête plus récente est déjà partie
       setAnnouncements(radar.items);
       setTournaments(radar.tournaments);
       setBeyondRadius(radar.beyondRadius);
     } catch (err) {
+      if (seq !== loadSeq.current) return;
       setError(err instanceof Error ? err.message : "Erreur de chargement");
     }
   }, []);
@@ -347,7 +359,9 @@ export function RadarFeed() {
               {origin.source === "team" && <span className="text-ink-soft"> · ville de votre équipe</span>}
             </>
           ) : (
-            <span className="font-bold text-coral">Aucune position — le radar reste vide</span>
+            <span className="font-bold text-coral">
+              Aucune position — la distance n&apos;est pas filtrée, tout le secteur s&apos;affiche
+            </span>
           )}
         </span>
         <span className="text-[11px] font-bold text-blue shrink-0">Modifier</span>
