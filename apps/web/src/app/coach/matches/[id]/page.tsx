@@ -104,7 +104,7 @@ function FinalScoreForm({
     <form onSubmit={submit} className="space-y-4">
       {/* Une équipe par ligne : deux compteurs côte à côte sur un téléphone
           rendaient chaque bouton trop étroit et trop proche de son voisin. */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {counter(match.homeTeam.name, home, setHome)}
         {counter(match.awayTeam.name, away, setAway)}
       </div>
@@ -393,7 +393,7 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
       {(match.homeCoach || match.awayCoach) && (
         <section className="card p-5 space-y-3" aria-label="Les coachs">
           <h3 className="display text-lg">Les coachs</h3>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {[
               { coach: match.homeCoach, team: match.homeTeam, side: "Reçoit" },
               { coach: match.awayCoach, team: match.awayTeam, side: "Se déplace" },

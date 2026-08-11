@@ -18,7 +18,7 @@ export function Skeleton({ className }: { className?: string }) {
 /** Silhouette de grille de cartes (listes de matchs, annonces, effectif…) */
 export function CardGridSkeleton({ cards = 2 }: { cards?: number }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start" aria-busy aria-label="Chargement">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start" aria-busy aria-label="Chargement">
       {Array.from({ length: cards }).map((_, i) => (
         <div key={i} className="card p-5 space-y-4">
           <div className="flex items-center justify-between">

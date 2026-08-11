@@ -224,7 +224,7 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
               <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
                 <Megaphone size={13} aria-hidden /> Matchs amicaux ({shownAnnouncements.length})
               </h3>
-              <div className="stagger grid gap-3 md:grid-cols-2 xl:grid-cols-3 items-start">
+              <div className="stagger grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 items-start">
                 {shownAnnouncements.map((a) => (
                   // La carte porte déjà les décisions à prendre ; sa dernière
                   // ligne ouvre le détail complet — toutes les propositions, y
@@ -251,7 +251,7 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
               <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
                 <Trophy size={13} aria-hidden /> Tournois que j&apos;organise ({shownTournaments.length})
               </h3>
-              <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
+              <div className="stagger grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
                 {shownTournaments.map((t) => (
                   <TournamentCard key={t.id} tournament={t} />
                 ))}

@@ -33,7 +33,7 @@ function SupporterMatches() {
       {groupMatches(matches).map((section) => (
         <div key={section.key} className="space-y-3">
           <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider px-1 pt-2">{section.label}</h3>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
             {section.items.map((match) => (
               <MatchCard key={match.id} match={match}>
                 <Link href={`/supporter/matches/${match.id}`} className="block">

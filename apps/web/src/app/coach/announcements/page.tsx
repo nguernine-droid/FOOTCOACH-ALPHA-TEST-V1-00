@@ -159,7 +159,7 @@ function AnnouncementsPageContent() {
             </ButtonLink>
           </div>
         ) : (
-          <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
+          <div className="stagger grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
             {announcements.map((a) => (
               <SectorAnnouncementCard
                 key={a.id}
@@ -185,7 +185,7 @@ function AnnouncementsPageContent() {
             </ButtonLink>
           </div>
         ) : (
-          <div className="stagger grid gap-4 lg:grid-cols-2 items-start">
+          <div className="stagger grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
             {tournaments.map((t) => (
               <TournamentCard key={t.id} tournament={t} />
             ))}

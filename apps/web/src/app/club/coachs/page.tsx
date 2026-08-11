@@ -291,7 +291,7 @@ function ClubCoaches() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 items-start">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 items-start">
           {coaches.map((coach) => (
             <div key={coach.id} className="card p-5 space-y-3 animate-rise-in">
               <div className="flex items-center gap-3">

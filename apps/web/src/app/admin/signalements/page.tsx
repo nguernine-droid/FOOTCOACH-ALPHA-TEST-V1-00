@@ -153,7 +153,7 @@ export default function AdminFeedbackPage() {
       ) : items.length === 0 ? (
         <p className="text-sm text-ink-soft text-center py-6">Aucun signalement dans ce filtre.</p>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 items-start">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 items-start">
           {items.map((f) => (
             <FeedbackAdminCard key={f.id} feedback={f} onChanged={load} />
           ))}

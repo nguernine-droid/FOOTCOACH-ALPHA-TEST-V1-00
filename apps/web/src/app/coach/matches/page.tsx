@@ -44,7 +44,7 @@ export default function CoachMatchesPage() {
       {groupMatches(matches).map((section) => (
         <div key={section.key} className="space-y-3">
           <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider px-1 pt-2">{section.label}</h3>
-          <div className="stagger grid gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
+          <div className="stagger grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 items-start">
             {section.items.map((match) => (
               <MatchCard key={match.id} match={match}>
                 <div className="flex items-center justify-between gap-2">

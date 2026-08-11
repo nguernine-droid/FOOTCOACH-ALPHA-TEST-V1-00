@@ -38,7 +38,7 @@ function TeamBadge({ team }: { team: TeamDto }) {
     <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
       <div
         className={cn(
-          "w-12 h-12 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0",
+          "w-9 h-9 min-[380px]:w-10 min-[380px]:h-10 min-[420px]:w-12 min-[420px]:h-12 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0",
           teamColor(team),
         )}
       >
@@ -60,15 +60,19 @@ export function MatchCard({ match, children }: { match: MatchDto; children?: Rea
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 min-[420px]:gap-3">
         <TeamBadge team={match.homeTeam} />
-        <div className="shrink-0 text-center px-2">
+        <div className="shrink-0 text-center px-1">
           {match.status === "scheduled" || match.status === "cancelled" ? (
             <p className="text-xs font-black text-ink-soft bg-paper rounded-full px-3 py-1.5">VS</p>
           ) : (
-            <p className="display text-5xl tabular-nums leading-none text-primary">
+            // `text-5xl` (48px) sur les deux chiffres pleins ("99 – 99") + les deux
+            // badges d'équipe (48px, non compressibles) dépassait la largeur d'un
+            // téléphone : la carte débordait, rognée en silence par le conteneur
+            // du carrousel d'onglets — les matchs « sortaient de l'écran ».
+            <p className="display text-xl min-[350px]:text-2xl min-[380px]:text-3xl min-[420px]:text-4xl tabular-nums leading-none text-primary">
               {match.homeScore}
-              <span className="text-ink-faint mx-1.5">–</span>
+              <span className="text-ink-faint mx-1">–</span>
               {match.awayScore}
             </p>
           )}

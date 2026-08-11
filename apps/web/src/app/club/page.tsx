@@ -76,7 +76,7 @@ export default function ClubDashboardPage() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 items-start">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 items-start">
           {overview.teams.map((team) => (
             <div key={team.id} className="card p-5 space-y-3">
               <div className="flex items-center gap-3">

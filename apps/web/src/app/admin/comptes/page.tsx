@@ -437,7 +437,7 @@ function AdminAccounts() {
         <p className="text-sm text-ink-soft text-center py-6">Aucun compte ne correspond à « {query} ».</p>
       )}
 
-      <div className="grid gap-3 md:grid-cols-2 items-start">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 items-start">
         {sorted.map((a) => (
           <AccountCard key={a.id} account={a} onChanged={load} />
         ))}

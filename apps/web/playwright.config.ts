@@ -21,6 +21,13 @@ export default defineConfig({
     // serveur (le squelette de chargement) sans jamais hydrater.
     baseURL: "http://localhost:3100",
     trace: "retain-on-failure",
+    // `InstallPromptListener` enregistre le service worker (`/sw.js`) au
+    // montage, dès que l'API existe dans le navigateur — sans lien avec les
+    // routes mockées par les tests. Course avec les premières requêtes :
+    // selon le timing, le SW peut intercepter `/api/*` avant `page.route` et
+    // répondre lui-même (échec réseau → 500), rendant un test flaky selon
+    // qu'il gagne la course ou non. Bloqué ici, pas par test.
+    serviceWorkers: "block",
   },
   webServer: {
     command: "npm run dev -- --port 3100",

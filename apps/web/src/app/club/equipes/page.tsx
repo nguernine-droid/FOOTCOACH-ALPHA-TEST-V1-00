@@ -317,7 +317,7 @@ function ClubTeams() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 items-start">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 items-start">
           {teams.map((team) => (
             <TeamCard key={team.id} team={team} availableCoaches={coaches} onChanged={load} />
           ))}
