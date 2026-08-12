@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Newspaper, Trash2 } from "lucide-react";
-import type { PublicationDto } from "@footcoach/shared";
+import type { PublicationDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
 import { Avatar } from "@/components/Avatar";

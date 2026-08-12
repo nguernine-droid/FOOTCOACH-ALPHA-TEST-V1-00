@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
-import type { CoachCategory, Role } from "@footcoach/shared";
+import type { CoachCategory, Role } from "@teamnexus/shared";
 import { env } from "../env.js";
 import { db } from "../db/client.js";
 import { teamCoaches, users } from "../db/schema.js";

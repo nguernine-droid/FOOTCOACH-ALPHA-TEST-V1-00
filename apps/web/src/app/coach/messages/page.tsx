@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarCheck2, ChevronRight, MessageCircle } from "lucide-react";
-import type { ConversationDto } from "@footcoach/shared";
+import type { ConversationDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
 import { cn } from "@/lib/utils";

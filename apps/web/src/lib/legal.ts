@@ -14,7 +14,7 @@
  * l'information donnée au coach. C'est voulu — un lien mort ne doit pas pouvoir
  * vider l'acceptation de sa substance.
  */
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://footcoach.fr";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://teamnexus.fr";
 
 export const LEGAL_LINKS = {
   cgu: `${SITE_URL}/cgu.html`,

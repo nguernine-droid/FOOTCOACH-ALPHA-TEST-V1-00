@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Megaphone, Radar } from "lucide-react";
-import type { RadarDto, AnnouncementDto, TournamentDto } from "@footcoach/shared";
+import type { RadarDto, AnnouncementDto, TournamentDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { PublicationsFeedView, usePublicationsFeed } from "@/components/publications/PublicationsFeed";

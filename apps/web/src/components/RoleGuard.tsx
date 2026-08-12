@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
+import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@teamnexus/shared";
 import {
   api,
   getActiveTeamId,
@@ -153,7 +153,7 @@ export function RoleGuard({
           <div className={cn(SHELL_WIDTH, "h-16 flex items-center gap-3")}>
             <Logo size={30} className="hidden min-[380px]:inline-flex" />
             <p className="display text-xl leading-none select-none">
-              FOOT<span className="text-accent-solid">COACH</span>
+              TEAM<span className="text-accent-solid">NEXUS</span>
             </p>
             <span className="shrink-0 ml-auto -mr-1 p-1">
               <span className="block w-9 h-9 rounded-full bg-white/10" />
@@ -200,7 +200,7 @@ export function RoleGuard({
                   se rappelle par son blason. */}
               <div className="min-w-0 leading-tight">
                 <p className="display text-xl leading-none select-none">
-                  FOOT<span className="text-accent-solid">COACH</span>
+                  TEAM<span className="text-accent-solid">NEXUS</span>
                 </p>
                 <p className="text-[11px] text-white/60 font-semibold truncate">
                   {teamLabel ? `${teamLabel} · ` : ""}

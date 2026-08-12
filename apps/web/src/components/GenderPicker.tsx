@@ -1,6 +1,6 @@
 "use client";
 
-import { MATCH_GENDERS, MATCH_GENDER_LABELS, type MatchGender } from "@footcoach/shared";
+import { MATCH_GENDERS, MATCH_GENDER_LABELS, type MatchGender } from "@teamnexus/shared";
 import { cn } from "@/lib/utils";
 
 /**

@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users, X } from "lucide-react";
-import type { ClubCoachDto, ClubTeamDto, TeamCoachRole } from "@footcoach/shared";
+import type { ClubCoachDto, ClubTeamDto, TeamCoachRole } from "@teamnexus/shared";
 import { api, ApiError } from "@/lib/api";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";

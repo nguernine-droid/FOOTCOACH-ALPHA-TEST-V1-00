@@ -10,7 +10,7 @@ import {
   TOURNAMENT_MIN_SLOTS,
   type MatchCategory,
   type MatchGender,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";

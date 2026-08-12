@@ -1,4 +1,4 @@
-/* Service worker de FootCoach — notifications uniquement.
+/* Service worker de TeamNexus — notifications uniquement.
  *
  * Volontairement sans cache : mettre l'app hors ligne demanderait une stratégie
  * d'invalidation, et un coach qui voit des annonces périmées vaudrait pire que
@@ -28,13 +28,13 @@ self.addEventListener("push", (event) => {
     // Charge utile illisible : on affiche quand même quelque chose plutôt que rien
   }
 
-  const title = payload.title || "FootCoach";
+  const title = payload.title || "TeamNexus";
   const options = {
     body: payload.body || "",
     icon: "/icon.png",
     badge: "/icon.png",
     // Deux notifications du même sujet se remplacent au lieu de s'empiler
-    tag: payload.tag || "footcoach",
+    tag: payload.tag || "teamnexus",
     renotify: Boolean(payload.tag),
     data: { url: payload.url || "/coach" },
   };

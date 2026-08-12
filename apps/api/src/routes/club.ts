@@ -13,7 +13,7 @@ import {
   type ClubOverviewDto,
   type ClubTeamDto,
   type CreateClubCoachResultDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { clubAffiliationRequests, clubs, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

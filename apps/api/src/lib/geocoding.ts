@@ -1,5 +1,5 @@
-import type { GeoSuggestionDto } from "@footcoach/shared";
-import { coarseCoord } from "@footcoach/shared";
+import type { GeoSuggestionDto } from "@teamnexus/shared";
+import { coarseCoord } from "@teamnexus/shared";
 
 /**
  * Géocodage via l'API Adresse de l'État (Base Adresse Nationale) : gratuite,

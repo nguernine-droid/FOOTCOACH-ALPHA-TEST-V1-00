@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Camera, Copy, QrCode } from "lucide-react";
-import { coachQrPayload, levelForPoints, type UserDto } from "@footcoach/shared";
+import { coachQrPayload, levelForPoints, type UserDto } from "@teamnexus/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useActiveTeam } from "@/components/ActiveTeamContext";

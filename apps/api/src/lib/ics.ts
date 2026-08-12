@@ -1,11 +1,11 @@
-import type { AgendaItemDto } from "@footcoach/shared";
+import type { AgendaItemDto } from "@teamnexus/shared";
 
 /**
  * Génération du flux iCalendar (RFC 5545) auquel s'abonne le calendrier du
  * téléphone. Format texte simple : pas de dépendance, on écrit les lignes.
  *
  * Les horaires sont émis en heure locale « flottante » (sans TZID ni Z) : les
- * heures de FootCoach sont celles du terrain, saisies et lues en France. Un
+ * heures de TeamNexus sont celles du terrain, saisies et lues en France. Un
  * VTIMEZONE Europe/Paris serait plus rigoureux mais n'apporterait une
  * différence que pour un coach qui consulte son calendrier depuis un autre
  * fuseau — et il ferait 40 lignes de plus à maintenir (règles d'heure d'été).
@@ -13,7 +13,9 @@ import type { AgendaItemDto } from "@footcoach/shared";
 
 /** Échappement des valeurs texte : \ ; , et retours à la ligne (RFC 5545 §3.3.11) */
 function escapeText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  // \r\n, mais aussi un \r ou un \n solitaire : un CR seul suffirait sinon à
+  // ouvrir une propriété ICS sur certains analyseurs (injection de saut de ligne).
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
 /** Pliage des lignes longues à 75 octets, continuation par espace (RFC 5545 §3.1) */
@@ -60,12 +62,12 @@ export function buildIcsFeed(entries: CalendarEntry[]): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//FootCoach//Agenda//FR",
+    "PRODID:-//TeamNexus//Agenda//FR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     // Nom du calendrier tel qu'il apparaît dans l'app du téléphone
-    "X-WR-CALNAME:FootCoach",
-    "X-WR-CALDESC:Matchs\\, entraînements et tournois de vos équipes FootCoach",
+    "X-WR-CALNAME:TeamNexus",
+    "X-WR-CALDESC:Matchs\\, entraînements et tournois de vos équipes TeamNexus",
     // Suggestion d'intervalle de relecture (respectée par certains clients)
     "X-PUBLISHED-TTL:PT1H",
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
@@ -77,7 +79,7 @@ export function buildIcsFeed(entries: CalendarEntry[]): string {
       "BEGIN:VEVENT",
       // L'id d'item est déjà unique et stable (match-<id>, <event>@<date>…) :
       // le calendrier reconnaît l'événement d'une relecture à l'autre.
-      `UID:${escapeText(item.id)}@footcoach.app`,
+      `UID:${escapeText(item.id)}@teamnexus.app`,
       `DTSTAMP:${stamp}`,
       `DTSTART:${toLocalStamp(item.occurrenceDate, item.startTime)}`,
       `DTEND:${endStamp(item)}`,

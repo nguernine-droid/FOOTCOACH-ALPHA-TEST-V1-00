@@ -1,5 +1,5 @@
 {
-  "name": "@footcoach/web",
+  "name": "@teamnexus/web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@footcoach/shared": "*",
+    "@teamnexus/shared": "*",
     "clsx": "^2.1.1",
     "jsqr": "^1.4.0",
     "lucide-react": "^0.468.0",

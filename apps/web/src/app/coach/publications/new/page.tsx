@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Newspaper } from "lucide-react";
-import { PUBLICATION_MAX_LENGTH } from "@footcoach/shared";
+import { PUBLICATION_MAX_LENGTH } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { Button } from "@/components/ui/Button";

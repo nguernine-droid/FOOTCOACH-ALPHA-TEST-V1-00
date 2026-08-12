@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
-import { asMatchCategory, asCoachCategories, levelForPoints, type CoachCardDto, type CoachRefDto } from "@footcoach/shared";
+import { asMatchCategory, asCoachCategories, levelForPoints, type CoachCardDto, type CoachRefDto } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import {
   announcementResponses,

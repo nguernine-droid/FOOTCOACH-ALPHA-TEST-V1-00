@@ -1,8 +1,8 @@
-# Audit de sécurité — FOOTCOACH V1
+# Audit de sécurité — TEAMNEXUS V1
 
 | | |
 |---|---|
-| **Dépôt** | `FOOTCOACH-ALPHA-TEST-V1-00` |
+| **Dépôt** | `TEAMNEXUS-ALPHA-TEST-V1-00` |
 | **Branche auditée** | `v1` — commit `d435b45` |
 | **Date** | 30 juillet 2026 |
 | **Périmètre** | `apps/api`, `apps/web`, `packages/shared`, `tools/`, fichiers Docker et de configuration |
@@ -967,7 +967,7 @@ inscrits des autres. Le plafond est de 5 tentatives par 10 minutes — **sauf qu
 FC-01 le rend inopérant**, ce qui transforme une fuite marginale en énumération
 de masse. La correction de FC-01 réduit à elle seule la portée de celle-ci.
 
-L'information obtenue reste limitée : « cette adresse a un compte FootCoach ».
+L'information obtenue reste limitée : « cette adresse a un compte TeamNexus ».
 
 **Correction proposée**
 
@@ -1301,7 +1301,7 @@ d'expédition et en tests de délivrabilité — pas en code.
 
 **Tant que ce circuit n'existe pas, FC-14 reste ouverte et documentée comme
 acceptée.** Sa portée est faible : elle révèle « cette adresse a un compte
-FootCoach », et la correction de FC-01 lui a retiré la possibilité d'énumérer en
+TeamNexus », et la correction de FC-01 lui a retiré la possibilité d'énumérer en
 masse.
 
 ### Vérifications effectuées
@@ -1403,3 +1403,89 @@ photo de profil de `coach.a@demo.fr` en plus de la mienne. La référence en bas
 été remise à `NULL`, donc l'application retombe proprement sur les initiales —
 mais l'image est perdue. Développement uniquement, aucune donnée réelle
 concernée ; il suffit d'en renvoyer une.
+
+---
+
+## Phase 4 — Second tour (fonctionnalités arrivées après l'audit initial)
+
+Le premier audit portait sur le commit `d435b45`. Depuis, la V1 a gagné des
+fonctionnalités entières (messagerie entre coachs, publications, tournois,
+relations et cartes de coach, et l'abonnement au calendrier du téléphone). Ce
+tour n'audite que ce qui a été ajouté depuis, en reprenant la même grille.
+
+**Verdict : aucune faille haute ni critique dans le nouveau code.** Le contrôle
+d'accès des nouvelles routes est solide (messagerie, publications, cartes,
+relations, tournois vérifient tous l'appartenance) ; les téléversements
+(affiches de tournoi) réutilisent la vérification de signature de FC-08 ; les
+proxys sortants (annuaire SIRENE, géocodage) construisent leurs URL sur un hôte
+fixe avec le terme encodé ; aucune injection SQL, de commande, ni XSS. Quatre
+correctifs mineurs ont tout de même été appliqués.
+
+| ID | Titre | Sévérité | Fichier | Statut |
+|---|---|---|---|---|
+| TN-01 | Jeton d'abonnement au calendrier journalisé en clair (dans l'URL) | Moyenne | `apps/api/src/index.ts` | **Corrigé** |
+| TN-02 | `GET /tournaments/:id` sans garde de rôle : lecture par tout compte authentifié | Moyenne-basse | `apps/api/src/routes/tournaments.ts:253` | **Corrigé** |
+| TN-03 | Le flux ICS continue de servir l'agenda d'un coach désactivé | Basse | `apps/api/src/routes/calendar.ts:44` | **Corrigé** |
+| TN-04 | Échappement ICS : un `\r` solitaire n'était pas neutralisé | Basse | `apps/api/src/lib/ics.ts:15` | **Corrigé** |
+
+### TN-01 — Jeton de calendrier en clair dans les journaux
+
+Le flux ICS est public au sens « sans session » : le jeton dans le chemin de
+l'URL (`/calendar/<jeton>/teamnexus.ics`) est son seul secret, et il n'expire
+pas. Or Fastify journalise `req.url` à chaque requête, et la redaction ne
+couvrait que des en-têtes et champs de corps. Chaque relecture d'un calendrier
+abonné écrivait donc le jeton en clair dans les journaux — quiconque les lit
+(agrégation, export de support, exploitant sans accès applicatif) récupérait une
+URL permanente exposant l'agenda complet du coach. **Correctif :** un
+sérialiseur `req` masque le segment jeton (`/calendar/[masqué]/…`) sans aveugler
+les autres URL. Vérifié sur la pile : le jeton apparaît zéro fois dans les
+journaux, remplacé par `[masqué]`.
+
+### TN-02 — Route de lecture d'un tournoi sans garde de rôle
+
+Toutes les autres routes de `tournaments.ts` posent `requireRole("coach")` ;
+`GET /tournaments/:id` avait été oubliée, ne gardant que le `requireAuth`
+d'instance. Or le périmètre V1 réserve les tournois aux coachs : un compte
+`player`/`parent`/`supporter`/`club`/`admin` authentifié pouvait lire le
+`TournamentDetailDto` complet (organisateur, lieu, détails du SOS, liste des
+équipes inscrites avec pointages). **Correctif :** même garde que les routes
+sœurs. Vérifié : un compte admin reçoit désormais `403`, un coach `200`.
+
+### TN-03 — Flux ICS d'un coach désactivé
+
+La désactivation admin coupe la connexion et le rafraîchissement (les deux
+vérifient `disabled_at`), mais le jeton de calendrier survivait : un coach
+expulsé continuait de recevoir l'agenda de ses anciennes équipes, sans
+authentification, indéfiniment. **Correctif :** la recherche du flux exige
+`disabled_at IS NULL`, comme le fait déjà l'envoi de notifications.
+
+### TN-04 — Échappement ICS incomplet
+
+`escapeText` neutralisait `\r\n` et `\n` mais pas un `\r` solitaire, qui suffit
+sur certains analyseurs à ouvrir une propriété iCalendar (injection de saut de
+ligne via un titre de match ou un lieu). **Correctif :** l'expression couvre
+désormais `\r\n`, `\r` et `\n`. Portée réelle faible (la plupart des analyseurs
+exigent CRLF), corrigé par rigueur.
+
+### Vérifications de ce tour
+
+- **Typecheck** des trois workspaces : sans erreur.
+- **Tests** : 83 verts, 2 ignorés (ceux qui exigent un vrai Postgres) — inchangé
+  par rapport au tour précédent, plus la liste noire de mots de passe qui rejette
+  désormais aussi la nouvelle marque.
+- **Pile complète** (`docker compose up -d --build`) : `/api/health` répond ;
+  TN-01 (jeton masqué dans les journaux), TN-02 (403 admin / 200 coach) et le
+  flux ICS renommé (`teamnexus.ics`, `PRODID`/`X-WR-CALNAME` en TeamNexus)
+  éprouvés par requête.
+
+### Renommage FootCoach → TeamNexus
+
+Effectué dans le même lot : marque visible (interface, titres, manifeste, logo,
+mot-repère scindé `TEAM`/`NEXUS`, vitrine, documents légaux), scope npm
+`@footcoach/*` → `@teamnexus/*`, fichier ICS `teamnexus.ics`, domaines publics
+`teamnexus.fr` / `contact@teamnexus.fr`. **Volontairement conservés** parce que
+ce sont des identifiants d'infrastructure, non la marque : le réseau et la base
+Docker `footcoach`, l'utilisateur/base Postgres, et les variables d'environnement
+`FOOTCOACH_*` (les renommer aurait cassé le volume de données et les `.env`
+existants). L'entrée de liste noire de mots de passe suit la marque : `teamnexus`
+est désormais refusé à l'inscription.

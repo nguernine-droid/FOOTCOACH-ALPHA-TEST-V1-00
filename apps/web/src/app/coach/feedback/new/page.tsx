@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Bug, CheckCircle2, Lightbulb, MessageSquareWarning } from "lucide-react";
-import { FEEDBACK_TYPES, FEEDBACK_TYPE_LABELS, type FeedbackType } from "@footcoach/shared";
+import { FEEDBACK_TYPES, FEEDBACK_TYPE_LABELS, type FeedbackType } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { Button } from "@/components/ui/Button";
@@ -47,7 +47,7 @@ export default function NewFeedbackPage() {
           <CheckCircle2 size={22} />
         </span>
         <p className="text-sm font-bold">Signalement envoyé</p>
-        <p className="text-xs text-ink-soft">Transmis à l&apos;équipe FootCoach, qui s&apos;en occupe.</p>
+        <p className="text-xs text-ink-soft">Transmis à l&apos;équipe TeamNexus, qui s&apos;en occupe.</p>
         <Button
           variant="soft"
           className="w-full"
@@ -71,7 +71,7 @@ export default function NewFeedbackPage() {
         </span>
         <div>
           <h2 className="display text-lg">Signaler un bug ou une idée</h2>
-          <p className="text-xs text-white/85">Reçu directement par l&apos;équipe FootCoach.</p>
+          <p className="text-xs text-white/85">Reçu directement par l&apos;équipe TeamNexus.</p>
         </div>
       </div>
 

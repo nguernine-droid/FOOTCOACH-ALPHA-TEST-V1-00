@@ -17,7 +17,7 @@ import {
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";

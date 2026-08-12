@@ -14,7 +14,7 @@
 
   // ── Anti-flash ────────────────────────────────────────────────────────────
   try {
-    var choix = localStorage.getItem("footcoach-vitrine-theme");
+    var choix = localStorage.getItem("teamnexus-vitrine-theme");
     if (choix === "dark" || choix === "light") racine.setAttribute("data-theme", choix);
   } catch (e) {
     /* navigation privée : on suit la préférence système, sans mémoriser */
@@ -36,7 +36,7 @@
       var suivant = actuel === "dark" ? "light" : "dark";
       racine.setAttribute("data-theme", suivant);
       try {
-        localStorage.setItem("footcoach-vitrine-theme", suivant);
+        localStorage.setItem("teamnexus-vitrine-theme", suivant);
       } catch (e) {
         /* rien à mémoriser : la bascule reste valable pour la page en cours */
       }

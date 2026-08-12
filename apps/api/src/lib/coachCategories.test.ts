@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { asCoachCategories, registerCoachSchema } from "@footcoach/shared";
+import { asCoachCategories, registerCoachSchema } from "@teamnexus/shared";
 
 /**
  * Casquettes choisies dès l'inscription (joker, contributeur).

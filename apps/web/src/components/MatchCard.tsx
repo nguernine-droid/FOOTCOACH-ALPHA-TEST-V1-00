@@ -1,7 +1,7 @@
 "use client";
 
 import { MapPin } from "lucide-react";
-import type { MatchDto, TeamDto } from "@footcoach/shared";
+import type { MatchDto, TeamDto } from "@teamnexus/shared";
 import { cn, formatDate } from "@/lib/utils";
 
 const STATUS = {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, ChevronRight, Radar, Trophy } from "lucide-react";
-import type { MatchDto } from "@footcoach/shared";
+import type { MatchDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { groupMatches } from "@/lib/utils";
 import { MatchCard } from "@/components/MatchCard";

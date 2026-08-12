@@ -8,7 +8,7 @@ import type {
   ClubCoachDto,
   ClubOverviewDto,
   CreateClubCoachResultDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "@/components/ui/BottomSheet";

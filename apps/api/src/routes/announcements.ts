@@ -18,7 +18,7 @@ import {
   type MatchGender,
   type RadarDto,
   type TeamDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { announcementResponses, matchAnnouncements, matches, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

@@ -1,6 +1,6 @@
 import webpush from "web-push";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
-import { WITHDRAWAL_REASON_LABELS, type WithdrawalReason } from "@footcoach/shared";
+import { WITHDRAWAL_REASON_LABELS, type WithdrawalReason } from "@teamnexus/shared";
 import { env } from "../env.js";
 import { db } from "../db/client.js";
 import { pushSubscriptions, teamCoaches, teams, users } from "../db/schema.js";

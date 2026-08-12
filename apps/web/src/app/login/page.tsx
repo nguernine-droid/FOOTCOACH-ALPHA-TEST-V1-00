@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="hero-pitch p-7 text-center space-y-2">
           <Logo size={64} className="mx-auto mb-4" />
           <h1 className="display text-4xl leading-none">
-            FOOT<span className="text-pitch-soft/80">COACH</span>
+            TEAM<span className="text-pitch-soft/80">NEXUS</span>
           </h1>
           <p className="text-sm text-white/85 font-medium">Organisez vos matchs amicaux en deux touches de balle.</p>
         </div>

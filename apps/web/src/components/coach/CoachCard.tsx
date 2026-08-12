@@ -1,6 +1,6 @@
 "use client";
 
-import { categoryLabel, COACH_CATEGORY_LABELS, type CoachCategory, type CoachLevelDto } from "@footcoach/shared";
+import { categoryLabel, COACH_CATEGORY_LABELS, type CoachCategory, type CoachLevelDto } from "@teamnexus/shared";
 import { Avatar } from "@/components/Avatar";
 
 /**

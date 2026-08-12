@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  transpilePackages: ["@footcoach/shared"],
+  transpilePackages: ["@teamnexus/shared"],
   // La version du serveur n'apprend rien d'utile à un visiteur légitime
   poweredByHeader: false,
 

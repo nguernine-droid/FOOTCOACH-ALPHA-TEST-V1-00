@@ -58,7 +58,7 @@ const envSchema = z
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
     // Contact exigé par la spec Web Push, transmis au service de notification
-    VAPID_SUBJECT: z.string().default("mailto:contact@footcoach.local"),
+    VAPID_SUBJECT: z.string().default("mailto:contact@teamnexus.local"),
     /**
      * Annuaire public des entreprises (façade SIRENE), pour suggérer un nom de
      * club à l'inscription. Gratuit et sans clé. Configurable pour pouvoir le

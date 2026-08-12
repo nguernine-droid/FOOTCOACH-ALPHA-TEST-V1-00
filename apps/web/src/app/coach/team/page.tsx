@@ -8,7 +8,7 @@ import {
   type CoachTeamDto,
   type MatchCategory,
   type MatchGender,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { CategoryPicker } from "@/components/CategoryPicker";

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { PASSWORD_MIN_LENGTH } from "@footcoach/shared";
+import { PASSWORD_MIN_LENGTH } from "@teamnexus/shared";
 
 /**
  * Alphabet sans caractères ambigus : ces mots de passe se transmettent de vive

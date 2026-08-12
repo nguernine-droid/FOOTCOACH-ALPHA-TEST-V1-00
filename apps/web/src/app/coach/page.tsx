@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy } from "lucide-react";
-import type { ActivityDto, AnnouncementDto, MatchDto, PublicationDto, TournamentDto } from "@footcoach/shared";
+import type { ActivityDto, AnnouncementDto, MatchDto, PublicationDto, TournamentDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";

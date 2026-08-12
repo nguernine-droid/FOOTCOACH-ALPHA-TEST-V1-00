@@ -1,5 +1,5 @@
 {
-  "name": "@footcoach/api",
+  "name": "@teamnexus/api",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "@fastify/multipart": "^10.1.0",
     "@fastify/rate-limit": "^11.1.0",
     "@fastify/static": "^10.1.2",
-    "@footcoach/shared": "*",
+    "@teamnexus/shared": "*",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.0",

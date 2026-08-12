@@ -8,7 +8,7 @@ import {
   FEEDBACK_TYPE_LABELS,
   type AdminFeedbackDto,
   type FeedbackStatus,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { timeAgo, useNow } from "@/lib/time";

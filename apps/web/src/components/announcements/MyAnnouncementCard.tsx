@@ -18,7 +18,7 @@ import {
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
   type AnnouncementResponseDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { todayIso } from "@/lib/time";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";

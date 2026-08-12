@@ -37,6 +37,22 @@ const app = Fastify({
       paths: ["req.headers.authorization", "req.headers.cookie", "req.body.password", "req.body.refreshToken"],
       censor: "[masqué]",
     },
+    // Le jeton d'abonnement au calendrier voyage dans le chemin de l'URL
+    // (`/calendar/<jeton>/…`), qui est journalisé pour chaque requête. C'est un
+    // secret de capacité, sans expiration : le laisser en clair dans les
+    // journaux revient à publier l'agenda du coach. Le sérialiseur le masque
+    // sans aveugler le reste des URL (redact sur `req.url` les effacerait toutes).
+    serializers: {
+      req(req) {
+        return {
+          method: req.method,
+          url: req.url?.replace(/\/calendar\/[^/]+\//, "/calendar/[masqué]/"),
+          hostname: req.hostname,
+          remoteAddress: req.ip,
+          remotePort: req.socket?.remotePort,
+        };
+      },
+    },
   },
   // Qui l'on croit quand une requête annonce son adresse dans X-Forwarded-For.
   // Déclaré par le déploiement (TRUST_PROXY), jamais deviné : `true` revenait à

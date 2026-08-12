@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarRange, List, Plus } from "lucide-react";
-import type { AgendaItemDto } from "@footcoach/shared";
+import type { AgendaItemDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";

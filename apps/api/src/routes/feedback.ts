@@ -8,7 +8,7 @@ import {
   type AdminFeedbackDto,
   type FeedbackDto,
   type FeedbackStatus,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { coachFeedback, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

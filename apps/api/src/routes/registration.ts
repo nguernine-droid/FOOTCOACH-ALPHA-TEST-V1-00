@@ -12,7 +12,7 @@ import {
   LEGAL_VERSION,
   type AuthResponseDto,
   type CoachTeamDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";

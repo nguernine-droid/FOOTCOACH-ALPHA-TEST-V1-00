@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnnouncementDto, TournamentDto } from "@footcoach/shared";
+import type { AnnouncementDto, TournamentDto } from "@teamnexus/shared";
 import { JerseyPin, TrophyPin } from "@/components/announcements/mapArt";
 import { cn } from "@/lib/utils";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { LifeBuoy, Sparkles, Trophy } from "lucide-react";
-import { COACH_CATEGORY_LABELS, type CoachCategory, type CoachLevelDto } from "@footcoach/shared";
+import { COACH_CATEGORY_LABELS, type CoachCategory, type CoachLevelDto } from "@teamnexus/shared";
 import { cn } from "@/lib/utils";
 
 /**

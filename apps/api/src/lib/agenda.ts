@@ -1,6 +1,6 @@
 import { alias } from "drizzle-orm/pg-core";
 import { and, eq, gte, inArray, lte, ne, or, sql } from "drizzle-orm";
-import type { AgendaItemDto } from "@footcoach/shared";
+import type { AgendaItemDto } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { matches, teamEvents, tournamentRegistrations, tournaments, teams } from "../db/schema.js";
 

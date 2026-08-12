@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, Camera, ChevronRight, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
-import { coachQrPayload, type CoachCategory, type UserDto } from "@footcoach/shared";
+import { coachQrPayload, type CoachCategory, type UserDto } from "@teamnexus/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";

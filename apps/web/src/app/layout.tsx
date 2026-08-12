@@ -19,11 +19,11 @@ const body = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FOOTCOACH",
+  title: "TEAMNEXUS",
   description: "Gestion de matchs amicaux — coachs, joueurs, parents et supporters",
-  applicationName: "FootCoach",
+  applicationName: "TeamNexus",
   // Installée sur l'écran d'accueil iOS, l'app s'ouvre sans barre Safari
-  appleWebApp: { capable: true, title: "FootCoach", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "TeamNexus", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
 };
 

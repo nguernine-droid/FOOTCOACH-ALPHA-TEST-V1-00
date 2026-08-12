@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Megaphone, Trophy } from "lucide-react";
-import { type AnnouncementDto, type TournamentDto } from "@footcoach/shared";
+import { type AnnouncementDto, type TournamentDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { todayIso } from "@/lib/time";
 import { cn } from "@/lib/utils";

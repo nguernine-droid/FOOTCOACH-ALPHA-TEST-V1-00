@@ -7,7 +7,7 @@ import {
   COACH_PLAIN_DESCRIPTION,
   COACH_PLAIN_LABEL,
   type CoachCategory,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { cn } from "@/lib/utils";
 
 /**

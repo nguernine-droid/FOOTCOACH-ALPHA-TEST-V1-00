@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthResponseDto, Role, UserDto } from "@footcoach/shared";
+import type { AuthResponseDto, Role, UserDto } from "@teamnexus/shared";
 
 const ACCESS_KEY = "fc_access_token";
 const REFRESH_KEY = "fc_refresh_token";

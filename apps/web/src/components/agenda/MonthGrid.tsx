@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { AgendaItemDto } from "@footcoach/shared";
+import type { AgendaItemDto } from "@teamnexus/shared";
 import { cn } from "@/lib/utils";
 import { EVENT_TYPE_META, todayIso } from "./eventTypes";
 

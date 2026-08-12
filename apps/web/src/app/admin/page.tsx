@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { KeyRound, Shield, UserCheck, Users, X } from "lucide-react";
-import type { AdminStatsDto, Role } from "@footcoach/shared";
+import type { AdminStatsDto, Role } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { BarChart } from "@/components/admin/BarChart";

@@ -1,4 +1,4 @@
-import type { ClubSuggestionDto } from "@footcoach/shared";
+import type { ClubSuggestionDto } from "@teamnexus/shared";
 import { env } from "../env.js";
 import { footballScore, prettifyClubName, stripSigle } from "./clubNames.js";
 

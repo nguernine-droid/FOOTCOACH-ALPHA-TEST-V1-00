@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { CalendarDays, Dumbbell, Medal, Trophy, Users } from "lucide-react";
-import type { EventType } from "@footcoach/shared";
+import type { EventType } from "@teamnexus/shared";
 
 /** Couleur + icône par type d'événement — même langage visuel pour les trois rôles */
 export const EVENT_TYPE_META: Record<EventType, { label: string; icon: LucideIcon; dot: string; chip: string }> = {

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { eq } from "drizzle-orm";
-import { createEventSchema, idParamSchema, type AgendaItemDto } from "@footcoach/shared";
+import { createEventSchema, idParamSchema, type AgendaItemDto } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { teamEvents } from "../db/schema.js";
 import { addDays, collectAgendaItems, daysBetween, todayStr } from "../lib/agenda.js";

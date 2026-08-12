@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { teams, users } from "../db/schema.js";
 import { addDays, collectAgendaItems, todayStr } from "../lib/agenda.js";
@@ -9,7 +9,7 @@ import { getCoachTeamIds, requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
 /**
- * Liaison de l'agenda FootCoach au calendrier du téléphone, par abonnement ICS.
+ * Liaison de l'agenda TeamNexus au calendrier du téléphone, par abonnement ICS.
  *
  * Le coach lie une fois depuis les paramètres : on lui génère un jeton secret,
  * et son téléphone s'abonne à l'URL du flux. Ensuite le calendrier relit le
@@ -29,19 +29,25 @@ const FEED_FUTURE_DAYS = 150;
 
 /** Chemin public du flux pour un jeton donné (le front le préfixe de l'origine) */
 function feedPath(token: string): string {
-  return `/api/calendar/${token}/footcoach.ics`;
+  return `/api/calendar/${token}/teamnexus.ics`;
 }
 
 export function calendarRoutes(app: FastifyInstance) {
   // ————— Flux ICS, consulté par les calendriers sans session —————
   // Le nom de fichier en fin d'URL donne un libellé propre aux clients qui
   // l'affichent, et marque l'intention : ceci est un fichier calendrier.
-  app.get("/calendar/:token/footcoach.ics", async (request, reply) => {
+  app.get("/calendar/:token/teamnexus.ics", async (request, reply) => {
     const { token } = request.params as { token: string };
     // Forme d'un jeton base64url à nous : évite une requête pour les scans fantaisistes
     if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) throw new HttpError(404, "Flux introuvable");
 
-    const [coach] = await db.select().from(users).where(eq(users.calendarToken, token));
+    // Un compte désactivé par un admin ne doit plus rien exposer : le jeton du
+    // flux survivrait sinon à la révocation des sessions (login/refresh la
+    // vérifient déjà), et continuerait à servir l'agenda sans authentification.
+    const [coach] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.calendarToken, token), isNull(users.disabledAt)));
     if (!coach || coach.role !== "coach") throw new HttpError(404, "Flux introuvable");
 
     // Toutes les équipes du coach : son calendrier personnel n'a pas de notion
@@ -73,7 +79,7 @@ export function calendarRoutes(app: FastifyInstance) {
 
     reply
       .header("Content-Type", "text/calendar; charset=utf-8")
-      .header("Content-Disposition", 'inline; filename="footcoach.ics"')
+      .header("Content-Disposition", 'inline; filename="teamnexus.ics"')
       // Les clients calendrier relisent d'eux-mêmes ; un petit cache absorbe
       // les relectures rapprochées sans retarder personne.
       .header("Cache-Control", "private, max-age=300");

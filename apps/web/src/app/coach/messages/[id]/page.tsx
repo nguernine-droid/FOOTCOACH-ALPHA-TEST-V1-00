@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CalendarCheck2, ChevronRight, MessageCircle, SendHorizontal } from "lucide-react";
-import { MESSAGE_MAX_LENGTH, type ConversationThreadDto, type MessageDto } from "@footcoach/shared";
+import { MESSAGE_MAX_LENGTH, type ConversationThreadDto, type MessageDto } from "@teamnexus/shared";
 import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";

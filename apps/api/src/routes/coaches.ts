@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { coachIdParamSchema, type CoachCardDto } from "@footcoach/shared";
+import { coachIdParamSchema, type CoachCardDto } from "@teamnexus/shared";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { buildCoachCard, canSeeCoachCard } from "../lib/coachCard.js";

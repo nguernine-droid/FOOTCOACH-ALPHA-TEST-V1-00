@@ -6,7 +6,7 @@ import { ApiError, api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 
 /**
- * Liaison de l'agenda FootCoach au calendrier du téléphone.
+ * Liaison de l'agenda TeamNexus au calendrier du téléphone.
  *
  * Un seul bouton : on génère l'URL d'abonnement ICS côté serveur, puis on ouvre
  * ce que l'appareil sait ouvrir — le lien webcal:// sur iPhone/Mac (l'app
@@ -70,7 +70,7 @@ export function CalendarSyncCard() {
   }
 
   async function unlink() {
-    if (!window.confirm("Délier l'agenda ? Le calendrier de votre téléphone n'affichera plus vos matchs FootCoach.")) {
+    if (!window.confirm("Délier l'agenda ? Le calendrier de votre téléphone n'affichera plus vos matchs TeamNexus.")) {
       return;
     }
     setBusy(true);

@@ -8,7 +8,7 @@ import {
   loginSchema,
   passwordProblem,
   registerCoachSchema,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { generateTempPassword } from "./passwords.js";
 
 /**
@@ -36,7 +36,7 @@ test("les grands classiques sont refusés même assez longs", () => {
 });
 
 test("le vocabulaire du football est refusé : ce sont les premiers essais ici", () => {
-  for (const evident of ["footcoach", "Football123!", "ENTRAINEUR", "équipe", "Champion2026"]) {
+  for (const evident of ["teamnexus", "Football123!", "ENTRAINEUR", "équipe", "Champion2026"]) {
     assert.ok(isForbiddenPassword(evident), `« ${evident} » doit être interdit`);
   }
 });

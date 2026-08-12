@@ -9,7 +9,7 @@ import {
   type AdminCreateClubResultDto,
   type AdminStatsDto,
   type Role,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { clubs, loginEvents, passwordResetRequests, refreshTokens, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

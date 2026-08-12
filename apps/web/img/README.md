@@ -1,6 +1,6 @@
 # Sources graphiques
 
-`logo.png` est **la source** du logo FootCoach : marque orange `≈ #F87010` sur
+`logo.png` est **la source** du logo TeamNexus : marque orange `≈ #F87010` sur
 fond transparent. Ce dossier n'est pas servi par Next — seul `public/` l'est.
 Les fichiers réellement livrés au navigateur en sont dérivés.
 

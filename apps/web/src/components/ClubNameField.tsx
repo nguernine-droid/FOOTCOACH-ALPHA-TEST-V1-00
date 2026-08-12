@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { MapPin, Search } from "lucide-react";
-import type { ClubSuggestionDto } from "@footcoach/shared";
+import type { ClubSuggestionDto } from "@teamnexus/shared";
 import { cn } from "@/lib/utils";
 
 /** En dessous, la recherche ramène tout et n'aide personne (même seuil qu'au serveur) */

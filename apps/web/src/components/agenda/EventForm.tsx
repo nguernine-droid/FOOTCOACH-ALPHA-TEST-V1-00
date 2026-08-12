@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { AgendaItemDto, TeamEventType } from "@footcoach/shared";
-import { TEAM_EVENT_TYPES } from "@footcoach/shared";
+import type { AgendaItemDto, TeamEventType } from "@teamnexus/shared";
+import { TEAM_EVENT_TYPES } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "@/components/ui/BottomSheet";

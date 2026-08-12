@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Ban, Building2, Check, Copy, KeyRound, Mail, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
-import type { AdminAccountDto, AdminCreateClubResultDto, Role } from "@footcoach/shared";
+import type { AdminAccountDto, AdminCreateClubResultDto, Role } from "@teamnexus/shared";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { timeAgo, useNow } from "@/lib/time";

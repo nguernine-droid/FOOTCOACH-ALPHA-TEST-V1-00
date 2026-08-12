@@ -28,7 +28,7 @@ import {
   type RadarDto,
   type TournamentDto,
   type UserDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";

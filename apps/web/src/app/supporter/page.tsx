@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import type { MatchDto } from "@footcoach/shared";
+import type { MatchDto } from "@teamnexus/shared";
 import { MatchCard } from "@/components/MatchCard";
 import { Button } from "@/components/ui/Button";
 import { api } from "@/lib/api";

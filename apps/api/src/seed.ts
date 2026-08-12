@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, sql } from "./db/client.js";
-import { MATCH_POINTS } from "@footcoach/shared";
+import { MATCH_POINTS } from "@teamnexus/shared";
 import {
   clubs,
   coachPoints,

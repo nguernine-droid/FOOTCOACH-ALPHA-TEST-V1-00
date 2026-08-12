@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Contact, Phone, QrCode, ScanLine, Trash2, UserPlus } from "lucide-react";
-import { parseCoachQr, type CoachRelationDto } from "@footcoach/shared";
+import { parseCoachQr, type CoachRelationDto } from "@teamnexus/shared";
 import { ApiError, api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { CategoryBadges, LevelBadge } from "@/components/LevelBadge";
@@ -69,7 +69,7 @@ export default function CoachRelationsPage() {
       setScanning(false);
       const scanned = parseCoachQr(payload);
       if (!scanned) {
-        setError("Ce QR code n'est pas un code coach FootCoach");
+        setError("Ce QR code n'est pas un code coach TeamNexus");
         return;
       }
       addByCode(scanned);

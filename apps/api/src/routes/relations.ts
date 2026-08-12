@@ -10,7 +10,7 @@ import {
   levelForPoints,
   type CoachRelationDto,
   type UserDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { clubs, coachRelations, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

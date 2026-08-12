@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { coarseCoord, type GeoSuggestionDto, type UserDto } from "@footcoach/shared";
+import { coarseCoord, type GeoSuggestionDto, type UserDto } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { pushSubscriptions, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

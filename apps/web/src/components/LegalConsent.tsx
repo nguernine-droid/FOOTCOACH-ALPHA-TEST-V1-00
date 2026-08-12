@@ -10,7 +10,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import { FFF_NOTICE_DAYS } from "@footcoach/shared";
+import { FFF_NOTICE_DAYS } from "@teamnexus/shared";
 import { LEGAL_LINKS } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +55,7 @@ const POINTS: { icon: LucideIcon; title: string; body: string }[] = [
   },
   {
     icon: Landmark,
-    title: "FootCoach est indépendant",
+    title: "TeamNexus est indépendant",
     body: "L'application n'est ni affiliée, ni partenaire, ni mandatée par la Fédération française de football, ses ligues ou ses districts.",
   },
   {
@@ -174,7 +174,7 @@ export function LegalConsent({
             Je comprends que la déclaration du match à ma fédération, les licences, les assurances et
             le transport des joueurs relèvent de ma responsabilité et de celle de mon club.
           </span>{" "}
-          FootCoach n&apos;en répond pas et n&apos;effectue aucune démarche auprès de la fédération.
+          TeamNexus n&apos;en répond pas et n&apos;effectue aucune démarche auprès de la fédération.
         </ConsentBox>
 
         <ConsentBox

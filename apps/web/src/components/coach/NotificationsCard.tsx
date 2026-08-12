@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Share } from "lucide-react";
-import type { NotificationPrefsDto, UserDto } from "@footcoach/shared";
+import type { NotificationPrefsDto, UserDto } from "@teamnexus/shared";
 import { ApiError, api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { checkAvailability, subscribe, unsubscribe, type PushAvailability } from "@/lib/push";
@@ -130,7 +130,7 @@ export function NotificationsCard({ user, onChange }: { user: UserDto; onChange:
     const explanation = {
       "needs-install": (
         <>
-          <p className="text-sm font-bold">Ajoutez FootCoach à votre écran d&apos;accueil</p>
+          <p className="text-sm font-bold">Ajoutez TeamNexus à votre écran d&apos;accueil</p>
           <p className="text-xs text-ink-soft">
             Sur iPhone, les notifications ne sont possibles qu&apos;une fois l&apos;app installée. Dans Safari,
             touchez <Share size={12} className="inline align-[-2px]" /> puis « Sur l&apos;écran d&apos;accueil »,

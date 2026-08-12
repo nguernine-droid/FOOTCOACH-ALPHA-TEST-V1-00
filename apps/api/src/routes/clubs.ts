@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import type { ClubSuggestionDto } from "@footcoach/shared";
+import type { ClubSuggestionDto } from "@teamnexus/shared";
 import { searchClubs } from "../lib/clubDirectory.js";
 import { clubSearchRateLimit } from "../lib/rateLimits.js";
 

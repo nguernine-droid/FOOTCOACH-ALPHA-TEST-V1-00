@@ -17,7 +17,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@footcoach/shared";
+import type { ActivityDto, CoachTeamDto, Role, UserDto } from "@teamnexus/shared";
 import { Avatar } from "@/components/Avatar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";

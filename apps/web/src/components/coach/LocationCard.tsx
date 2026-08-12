@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Crosshair, MapPin, Search, Users, X } from "lucide-react";
-import type { GeoSuggestionDto, UserDto } from "@footcoach/shared";
-import { coarseCoord } from "@footcoach/shared";
+import type { GeoSuggestionDto, UserDto } from "@teamnexus/shared";
+import { coarseCoord } from "@teamnexus/shared";
 import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";

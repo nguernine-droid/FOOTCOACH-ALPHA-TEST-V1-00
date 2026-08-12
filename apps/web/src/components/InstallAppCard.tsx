@@ -28,7 +28,7 @@ export function InstallAppCard() {
       <Frame>
         <p className="text-xs font-bold text-success flex items-center gap-2">
           <CircleCheck size={14} className="shrink-0" aria-hidden />
-          FootCoach est sur votre écran d&apos;accueil.
+          TeamNexus est sur votre écran d&apos;accueil.
         </p>
       </Frame>
     );
@@ -37,7 +37,7 @@ export function InstallAppCard() {
   if (offer === "button") {
     return (
       <Frame>
-        <Header>Installez FootCoach sur votre téléphone</Header>
+        <Header>Installez TeamNexus sur votre téléphone</Header>
         <p className="text-xs text-ink-soft">
           Elle s&apos;ouvrira comme une application, en plein écran, et vous recevrez les alertes de match même
           l&apos;application fermée.
@@ -64,7 +64,7 @@ export function InstallAppCard() {
   // dessin qu'on cherche des yeux dans la barre, pas le mot.
   return (
     <Frame>
-      <Header>Ajoutez FootCoach à votre écran d&apos;accueil</Header>
+      <Header>Ajoutez TeamNexus à votre écran d&apos;accueil</Header>
       <p className="text-xs text-ink-soft">
         Sur iPhone, c&apos;est la seule façon de recevoir les alertes de match — Safari ne les autorise qu&apos;aux
         applications installées.

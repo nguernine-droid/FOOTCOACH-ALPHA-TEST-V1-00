@@ -1,5 +1,5 @@
 import { and, eq, exists, gte, isNotNull, isNull, lt, not } from "drizzle-orm";
-import { daysBetweenIso, SOS_WIDEN_MIN_MINUTES, sosWidenDelayMinutes } from "@footcoach/shared";
+import { daysBetweenIso, SOS_WIDEN_MIN_MINUTES, sosWidenDelayMinutes } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import {
   announcementResponses,

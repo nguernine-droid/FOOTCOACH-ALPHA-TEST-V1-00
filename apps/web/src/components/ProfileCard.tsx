@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, Mail, Users } from "lucide-react";
-import type { Role, UserDto } from "@footcoach/shared";
+import type { Role, UserDto } from "@teamnexus/shared";
 import { api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";

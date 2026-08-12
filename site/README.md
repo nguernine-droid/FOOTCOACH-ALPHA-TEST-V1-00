@@ -1,4 +1,4 @@
-# Site vitrine FootCoach
+# Site vitrine TeamNexus
 
 Page publique de présentation de l'application, **entièrement statique** : un seul
 fichier HTML, ses fontes et le logo. Aucun build, aucune dépendance, aucune
@@ -33,14 +33,14 @@ cd site && python -m http.server 4173      # puis http://localhost:4173
 ## À remplacer avant la mise en ligne
 
 Le site pointe vers l'application par une URL **de remplacement**,
-`https://app.footcoach.fr`, et vers `contact@footcoach.fr`. Trois choses à
+`https://app.teamnexus.fr`, et vers `contact@teamnexus.fr`. Trois choses à
 ajuster dans `index.html` :
 
 | Chercher | Remplacer par |
 |---|---|
-| `https://app.footcoach.fr` | l'URL réelle de l'application (5 occurrences, plus 3 mentions visibles `app.footcoach.fr` dans les étapes d'installation) |
-| `contact@footcoach.fr` | l'adresse de contact réelle |
-| `https://footcoach.fr/` | le domaine du site vitrine (`og:url` et `canonical`) |
+| `https://app.teamnexus.fr` | l'URL réelle de l'application (5 occurrences, plus 3 mentions visibles `app.teamnexus.fr` dans les étapes d'installation) |
+| `contact@teamnexus.fr` | l'adresse de contact réelle |
+| `https://teamnexus.fr/` | le domaine du site vitrine (`og:url` et `canonical`) |
 
 ```bash
 sed -i 's|https://app\.footcoach\.fr|https://VOTRE-APP|g; s|app\.footcoach\.fr|VOTRE-APP|g' index.html
@@ -57,7 +57,7 @@ Trois pages, dans la même charte que le site :
 |---|---|
 | `mentions-legales.html` | **Obligatoire** — LCEN art. 6 III : identification de l'éditeur et de l'hébergeur. |
 | `confidentialite.html` | **Obligatoire** — RGPD : l'application traite email, nom, téléphone, photo, position, abonnements push. Le contenu factuel (catégories, bases légales, sécurité, destinataires) est aligné sur le code : `apps/api/src/db/schema.ts` et les routes. |
-| `cgu.html` | Non obligatoire, mais c'est là que se dit l'essentiel : FootCoach met en relation, **ne déclare rien au district**, ne vérifie ni licences ni assurances ni terrain, et un score validé n'a pas de valeur fédérale. |
+| `cgu.html` | Non obligatoire, mais c'est là que se dit l'essentiel : TeamNexus met en relation, **ne déclare rien au district**, ne vérifie ni licences ni assurances ni terrain, et un score validé n'a pas de valeur fédérale. |
 
 **Rien n'est publiable en l'état.** Chaque information manquante est marquée
 dans le texte par un encadré rouge `[À COMPLÉTER]`, impossible à rater à
@@ -82,8 +82,8 @@ N'importe quel hébergeur de fichiers statiques convient (Netlify, Pages, un
 `nginx` ou un `Caddy` existant). Si le site doit vivre devant l'application,
 la répartition la plus simple est :
 
-- `footcoach.fr` → ce dossier, servi tel quel ;
-- `app.footcoach.fr` → le service `web` du `docker-compose` (port 3002).
+- `teamnexus.fr` → ce dossier, servi tel quel ;
+- `app.teamnexus.fr` → le service `web` du `docker-compose` (port 3002).
 
 Deux en-têtes valent la peine d'être posés par le serveur : un cache long sur
 `fonts/` et `logo.png` (leur nom ne changera pas, mais leur contenu non plus),

@@ -1,4 +1,4 @@
-# FOOTCOACH v1 — Gestion de matchs amicaux
+# TEAMNEXUS v1 — Gestion de matchs amicaux
 
 La **V1 est volontairement restreinte à la gestion des matchs amicaux entre coachs**. Seuls deux rôles accèdent à l'application :
 
@@ -71,7 +71,7 @@ Le différé vit en base (`match_announcements.sos_alerted_at` / `sos_widened_at
 
 Les casquettes s'affichent sur les fiches de relations, à côté du palier.
 
-**Paliers.** Nouveau → Bronze 30 → Argent 100 → Or 250 → Platine 500 (`COACH_LEVELS` dans `@footcoach/shared`). Le palier s'affiche sur les fiches de relations, comme repère de fiabilité avant de proposer un match à quelqu'un qu'on ne connaît pas. Le **total chiffré** ne se lit que sur la **carte du coach** — la sienne dans **Mon profil**, celle d'un confrère quand on a le droit de l'ouvrir (voir plus bas).
+**Paliers.** Nouveau → Bronze 30 → Argent 100 → Or 250 → Platine 500 (`COACH_LEVELS` dans `@teamnexus/shared`). Le palier s'affiche sur les fiches de relations, comme repère de fiabilité avant de proposer un match à quelqu'un qu'on ne connaît pas. Le **total chiffré** ne se lit que sur la **carte du coach** — la sienne dans **Mon profil**, celle d'un confrère quand on a le droit de l'ouvrir (voir plus bas).
 
 **Le score, lui, ne se contre-signe plus.** Il est saisi par l'un ou l'autre coach et clôt le match ; l'adversaire en est notifié et peut le corriger. C'est la rencontre qui est attestée, pas le résultat — un désaccord sur un but se règle entre coachs, pas par un refus de validation qui laissait le match ouvert indéfiniment.
 
@@ -450,7 +450,7 @@ Barre basse : **Tableau de bord · Annonces · (+) · Matchs · Messages**.
 - La feuille **« Moi »** rassemble l'identité, l'**équipe active** et les écrans qu'on ouvre souvent : **Mes annonces**, **Mes relations**, **Mes équipes**, l'**agenda**, l'**activité** (avec pastille de non-lus) et **Paramètres**. Elle s'ouvre par la **photo du header**, en haut à gauche, à toutes les largeurs — elle n'occupe plus d'emplacement dans la barre basse.
 - **Les réglages n'y sont plus** : ils vivent dans **Paramètres** (`/coach/settings`), derrière une seule ligne — **apparence** (le sélecteur de thème, avec ses aperçus), **notifications**, **Mon profil** et **Signaler un bug ou une suggestion**. Une feuille qui doit se lire d'un coup d'œil, le pouce en bas, ne peut pas porter à la fois ce qu'on ouvre trois fois par semaine et ce qu'on règle trois fois par an.
 - La ligne du fil d'activité s'appelle **« Activité »** et non « Notifications » : c'est ce qui s'est passé, pas leur réglage — lequel est désormais dans Paramètres, à une ligne de là. Deux « Notifications » voisines n'auraient désigné ni l'une ni l'autre.
-- **Signaler un bug ou une suggestion** ouvre un lien `mailto:` vers `contact@footcoach.fr`, sujet et canevas préremplis (*ce que je faisais / ce qui s'est passé / ce que j'attendais*), plus une ligne technique sur l'appareil. Pas de formulaire : en phase de test, un message qui arrive dans une boîte se lit et se répond le jour même, là où un formulaire demanderait une table, un écran d'administration et quelqu'un pour l'ouvrir. Le canevas est complété **après le montage** — lire le navigateur pendant le rendu donnerait un lien différent côté serveur et côté client.
+- **Signaler un bug ou une suggestion** ouvre un lien `mailto:` vers `contact@teamnexus.fr`, sujet et canevas préremplis (*ce que je faisais / ce qui s'est passé / ce que j'attendais*), plus une ligne technique sur l'appareil. Pas de formulaire : en phase de test, un message qui arrive dans une boîte se lit et se répond le jour même, là où un formulaire demanderait une table, un écran d'administration et quelqu'un pour l'ouvrir. Le canevas est complété **après le montage** — lire le navigateur pendant le rendu donnerait un lien différent côté serveur et côté client.
 - Le **bloc d'identité en haut de la feuille** mène à la **carte du coach** (`/coach/card`) : photo au centre, points à la place de la note, catégorie d'âge de l'équipe à celle du poste, nom, club, puis matchs joués et palier. Les casquettes s'y affichent en pastilles. Format portrait 5/7 — c'est ce rapport qui la fait lire comme une carte et non comme une fiche. Les autres rôles n'en ont pas : elle parle de points et de matchs encadrés.
 - Le **radar** vit dans le **tableau de bord** ; `/coach/radar` y redirige.
 - **Mes équipes** ne gère plus d'effectif : identité des équipes encadrées, choix de l'équipe active et rattachement au club.

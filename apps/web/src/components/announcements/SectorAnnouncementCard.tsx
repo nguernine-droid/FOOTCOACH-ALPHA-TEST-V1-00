@@ -6,7 +6,7 @@ import {
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { Button, ButtonLink } from "@/components/ui/Button";

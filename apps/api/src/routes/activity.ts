@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
-import { WITHDRAWAL_REASON_LABELS, type ActivityDto } from "@footcoach/shared";
+import { WITHDRAWAL_REASON_LABELS, type ActivityDto } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { announcementResponses, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

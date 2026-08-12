@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { CoachTeamDto } from "@footcoach/shared";
+import type { CoachTeamDto } from "@teamnexus/shared";
 
 export interface ActiveTeamValue {
   /** Toutes les équipes encadrées par le coach (principale en premier) */

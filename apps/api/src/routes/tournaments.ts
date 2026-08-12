@@ -12,7 +12,7 @@ import {
   type TournamentDetailDto,
   type TournamentDto,
   type TournamentRegistrationDto,
-} from "@footcoach/shared";
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { coachPoints, teamCoaches, teams, tournamentRegistrations, tournaments } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
@@ -250,7 +250,7 @@ export function tournamentRoutes(app: FastifyInstance) {
     }));
   });
 
-  app.get("/tournaments/:id", async (request): Promise<TournamentDetailDto> => {
+  app.get("/tournaments/:id", { preHandler: requireRole("coach") }, async (request): Promise<TournamentDetailDto> => {
     const { id } = idParamSchema.parse(request.params);
     return detailDto(await getTournamentOr404(id), request.user.id, request.user.teamId);
   });

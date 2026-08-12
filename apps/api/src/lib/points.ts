@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
-import { levelForPoints, POINTS_COOLDOWN_DAYS, type CoachLevelDto } from "@footcoach/shared";
+import { levelForPoints, POINTS_COOLDOWN_DAYS, type CoachLevelDto } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { coachPoints, matches } from "../db/schema.js";
 

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { createPublicationSchema, idParamSchema, type PublicationDto } from "@footcoach/shared";
+import { createPublicationSchema, idParamSchema, type PublicationDto } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import { publications, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

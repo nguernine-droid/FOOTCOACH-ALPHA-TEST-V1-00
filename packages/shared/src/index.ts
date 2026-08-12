@@ -548,7 +548,7 @@ const FORBIDDEN_PASSWORDS = [
   "welcome", "bienvenue", "letmein", "changeme", "secret", "abc", "abcdef",
   "monmotdepasse", "soleil", "bonjour", "coucou", "chouchou", "doudou",
   // Propres à ce produit : les premiers essais d'un attaquant qui sait où il est
-  "footcoach", "football", "foot", "coach", "entraineur", "equipe", "match",
+  "teamnexus", "football", "foot", "coach", "entraineur", "equipe", "match",
   "stade", "ballon", "gardien", "champion", "victoire", "demo", "test",
 ];
 
@@ -866,16 +866,16 @@ export const createPublicationSchema = z.object({
 export type CreatePublicationInput = z.infer<typeof createPublicationSchema>;
 
 /**
- * Préfixe du QR code d'un coach : `FOOTCOACH:COACH:<code>`. Il permet au
- * scanner de reconnaître un code FootCoach et d'écarter tout autre QR.
+ * Préfixe du QR code d'un coach : `TEAMNEXUS:COACH:<code>`. Il permet au
+ * scanner de reconnaître un code TeamNexus et d'écarter tout autre QR.
  */
-export const COACH_QR_PREFIX = "FOOTCOACH:COACH:";
+export const COACH_QR_PREFIX = "TEAMNEXUS:COACH:";
 
 export function coachQrPayload(code: string): string {
   return `${COACH_QR_PREFIX}${code}`;
 }
 
-/** Extrait le code d'un QR scanné ; null si ce n'est pas un QR coach FootCoach */
+/** Extrait le code d'un QR scanné ; null si ce n'est pas un QR coach TeamNexus */
 export function parseCoachQr(payload: string): string | null {
   const trimmed = payload.trim();
   if (!trimmed.startsWith(COACH_QR_PREFIX)) return null;

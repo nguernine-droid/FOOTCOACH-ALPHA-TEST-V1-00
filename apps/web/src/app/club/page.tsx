@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, Users } from "lucide-react";
-import type { ClubOverviewDto } from "@footcoach/shared";
+import type { ClubOverviewDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/Skeleton";
 
