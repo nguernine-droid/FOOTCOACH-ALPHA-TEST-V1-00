@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bug, ChevronRight, CircleUserRound, Palette, Settings } from "lucide-react";
 import type { UserDto } from "@footcoach/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
+import { CalendarSyncCard } from "@/components/coach/CalendarSyncCard";
 import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { ThemePicker } from "@/components/ThemePicker";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -68,6 +69,10 @@ export default function CoachSettingsPage() {
           sont des réglages de l'application sur CET appareil, pas des
           informations sur le coach. */}
       {user ? <NotificationsCard user={user} onChange={apply} /> : <Skeleton className="h-48 rounded-card" />}
+
+      {/* La liaison au calendrier du téléphone : même famille que les
+          notifications — un réglage de CET appareil, pas du profil. */}
+      <CalendarSyncCard />
 
       <LinkCard
         href="/coach/profile"

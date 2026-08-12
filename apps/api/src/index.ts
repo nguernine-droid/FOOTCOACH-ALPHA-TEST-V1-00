@@ -27,6 +27,7 @@ import { messageRoutes } from "./routes/messages.js";
 import { publicationRoutes } from "./routes/publications.js";
 import { locationRoutes } from "./routes/location.js";
 import { feedbackRoutes } from "./routes/feedback.js";
+import { calendarRoutes } from "./routes/calendar.js";
 
 const app = Fastify({
   logger: {
@@ -131,6 +132,7 @@ app.register((instance) => messageRoutes(instance));
 app.register((instance) => publicationRoutes(instance));
 app.register((instance) => locationRoutes(instance));
 app.register((instance) => feedbackRoutes(instance));
+app.register((instance) => calendarRoutes(instance));
 
 try {
   await runMigrations();

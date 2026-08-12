@@ -123,6 +123,14 @@ export const users = pgTable("users", {
   // Code personnel du coach : à dicter ou à faire scanner pour créer une relation
   coachCode: text("coach_code").unique(),
   /**
+   * Jeton du flux ICS d'abonnement (agenda du téléphone). NULL = agenda non
+   * lié. C'est un secret de type capability : l'URL du flux est consultée par
+   * les calendriers sans session, ce jeton est donc la seule barrière d'accès.
+   * Délier = le mettre à NULL ; relier en génère un nouveau, l'ancien lien
+   * meurt.
+   */
+  calendarToken: text("calendar_token").unique(),
+  /**
    * Casquettes du coach, cumulables. Tableau vide = « aucune », le cas courant :
    * c'est une valeur en soi et non une donnée manquante, d'où le NOT NULL avec
    * défaut `{}` plutôt qu'un NULL qu'il faudrait interpréter partout.
