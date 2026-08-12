@@ -1049,6 +1049,12 @@ export interface AnnouncementResponseDto {
    */
   teamCategory: MatchCategory | null;
   teamGender: MatchGender | null;
+  /**
+   * Le coach qui a proposé, en personne — à défaut le représentant de son
+   * équipe. C'est lui que l'émetteur veut voir avant d'accepter : sa carte
+   * s'ouvre depuis la proposition. `null` si l'équipe n'a plus d'encadrant.
+   */
+  coach: CoachRefDto | null;
   status: ResponseStatus;
   createdAt: string;
 }
@@ -1283,6 +1289,8 @@ export interface ActivityDto {
   /** Nom mis en gras côté client */
   actor: string;
   detail: string;
+  /** Où mène la notification quand on la touche — null : simple information */
+  href: string | null;
   createdAt: string;
 }
 

@@ -38,6 +38,9 @@ export function activityRoutes(app: FastifyInstance) {
         type: "announcement",
         actor: proposer.name,
         detail: `propose de jouer votre annonce ${announcement.category} du ${dayMonth(announcement.date)} — à valider`,
+        // Mène à « Mes annonces », proposition en paramètre : la page ouvre la
+        // feuille de décision (accepter/décliner, carte du coach répondant).
+        href: `/coach/announcements/mine?proposition=${response.id}`,
         createdAt: response.createdAt.toISOString(),
       });
     }
@@ -57,6 +60,7 @@ export function activityRoutes(app: FastifyInstance) {
         type: "announcement",
         actor: opponent.name,
         detail: `jouera votre annonce ${announcement.category} du ${dayMonth(match.date)} — match confirmé`,
+        href: `/coach/matches/${match.id}`,
         createdAt: match.createdAt.toISOString(),
       });
     }
@@ -93,6 +97,7 @@ export function activityRoutes(app: FastifyInstance) {
         detail: `${iWithdrew ? "vous êtes désisté" : "s'est désisté"} du match du ${dayMonth(match.date)}${
           motif ? ` — ${motif}` : ""
         }${reopened ? ", l'annonce est repartie en SOS" : ""}`,
+        href: `/coach/matches/${match.id}`,
         createdAt: (match.cancelledAt ?? match.createdAt).toISOString(),
       });
     }
@@ -132,6 +137,7 @@ export function activityRoutes(app: FastifyInstance) {
             : iSubmitted
               ? `avez saisi ${score} face à ${opponent} — en attente de validation`
               : `a saisi ${score} — scannez son QR code pour valider`,
+        href: `/coach/matches/${match.id}`,
         createdAt: (match.scoreConfirmedAt ?? match.scoreSubmittedAt!).toISOString(),
       });
     }

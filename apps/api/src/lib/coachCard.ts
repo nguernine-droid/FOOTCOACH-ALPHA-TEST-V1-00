@@ -2,6 +2,7 @@ import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { asMatchCategory, asCoachCategories, levelForPoints, type CoachCardDto, type CoachRefDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
+  announcementResponses,
   coachRelations,
   matchAnnouncements,
   matches,
@@ -59,7 +60,10 @@ async function tournamentIdsAround(teamIds: string[]): Promise<Set<string>> {
  *    pourvue ou périmée.
  * 5. il a signé une publication de contributeur : son billet porte déjà son nom
  *    et sa photo devant tous les coachs, et il reste signé tant qu'il reste
- *    affiché — la carte suit.
+ *    affiché — la carte suit ;
+ * 6. il a proposé de jouer une de mes annonces : répondre, c'est se présenter.
+ *    L'émetteur décide d'accepter ou non en regardant QUI propose — sa carte
+ *    doit s'ouvrir avant la décision, pas après.
  */
 export async function canSeeCoachCard(viewerId: string, targetId: string): Promise<boolean> {
   if (viewerId === targetId) return true;
@@ -120,7 +124,24 @@ export async function canSeeCoachCard(viewerId: string, targetId: string): Promi
       ),
     )
     .limit(1);
-  return openAnnouncement != null;
+  if (openAnnouncement) return true;
+
+  // Répondre, c'est se présenter : une de ses équipes a proposé de jouer une
+  // de MES annonces — je dois pouvoir voir qui propose avant de trancher. La
+  // visibilité survit à la décision : une proposition déclinée a quand même
+  // été faite, comme un match annulé a quand même mis les coachs en rapport.
+  const [respondedToMine] = await db
+    .select({ id: announcementResponses.id })
+    .from(announcementResponses)
+    .innerJoin(matchAnnouncements, eq(announcementResponses.announcementId, matchAnnouncements.id))
+    .where(
+      and(
+        inArray(matchAnnouncements.teamId, viewerTeams),
+        inArray(announcementResponses.teamId, targetTeams),
+      ),
+    )
+    .limit(1);
+  return respondedToMine != null;
 }
 
 /**

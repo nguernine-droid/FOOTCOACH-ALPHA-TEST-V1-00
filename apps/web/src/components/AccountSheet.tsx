@@ -145,8 +145,8 @@ export function AccountSheet({
           )}
           {activities?.map((ev) => {
             const Icon = ACTIVITY_ICONS[ev.type];
-            return (
-              <div key={ev.id} className="flex items-start gap-3 px-3 py-3 rounded-lg">
+            const inner = (
+              <>
                 <span
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
@@ -156,12 +156,29 @@ export function AccountSheet({
                 >
                   <Icon size={14} />
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm text-ink leading-snug">
                     <span className="font-bold">{ev.actor}</span> {ev.detail}
                   </p>
                   <p className="text-[11px] text-ink-soft font-semibold">{timeAgo(ev.createdAt, now)}</p>
                 </div>
+              </>
+            );
+            // Une notification qui sait où mener est un lien : une proposition
+            // ouvre sa feuille de décision, un match sa feuille de match.
+            return ev.href ? (
+              <Link
+                key={ev.id}
+                href={ev.href}
+                onClick={onClose}
+                className="flex items-start gap-3 px-3 py-3 rounded-lg transition active:bg-paper hover:bg-paper"
+              >
+                {inner}
+                <ChevronRight size={16} className="text-ink-faint shrink-0 self-center" aria-hidden />
+              </Link>
+            ) : (
+              <div key={ev.id} className="flex items-start gap-3 px-3 py-3 rounded-lg">
+                {inner}
               </div>
             );
           })}

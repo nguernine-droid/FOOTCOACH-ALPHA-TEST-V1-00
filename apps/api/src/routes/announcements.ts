@@ -28,6 +28,7 @@ import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
 import { tournamentsInRadar } from "./tournaments.js";
 import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard.js";
+import { avatarUrlOf } from "./auth.js";
 import { markRead, openConversation, postSystemMessage } from "../lib/conversations.js";
 
 function toDto(
@@ -104,17 +105,25 @@ async function loadMatchLinks(announcementIds: string[]) {
   return links;
 }
 
-/** Propositions (avec équipe) indexées par annonce */
+/** Propositions (avec équipe et coach répondant) indexées par annonce */
 async function loadResponses(announcementIds: string[]) {
   const byAnnouncement = new Map<string, (AnnouncementResponseDto & { teamId: string })[]>();
   if (announcementIds.length === 0) return byAnnouncement;
   const rows = await db
-    .select({ response: announcementResponses, team: teams })
+    .select({ response: announcementResponses, team: teams, responder: users })
     .from(announcementResponses)
     .innerJoin(teams, eq(announcementResponses.teamId, teams.id))
+    // Jointure externe : `coachId` est nullable (propositions d'avant que la
+    // colonne existe), et le compte a pu être supprimé depuis.
+    .leftJoin(users, eq(announcementResponses.coachId, users.id))
     .where(inArray(announcementResponses.announcementId, announcementIds))
     .orderBy(desc(announcementResponses.createdAt));
-  for (const { response, team } of rows) {
+  // À défaut du coach qui a cliqué, le représentant de l'équipe — chargés en
+  // une fois pour toutes les propositions orphelines.
+  const fallbacks = await representativeCoachesOf(
+    [...new Set(rows.filter((r) => !r.responder).map((r) => r.team.id))],
+  );
+  for (const { response, team, responder } of rows) {
     const list = byAnnouncement.get(response.announcementId) ?? [];
     list.push({
       id: response.id,
@@ -124,6 +133,9 @@ async function loadResponses(announcementIds: string[]) {
       // son annonce U12-U13 masculine.
       teamCategory: asMatchCategory(team.category),
       teamGender: asMatchGender(team.gender),
+      coach: responder
+        ? { id: responder.id, nickname: responder.nickname, avatarUrl: avatarUrlOf(responder.avatarPath) }
+        : (fallbacks.get(team.id) ?? null),
       status: response.status,
       createdAt: response.createdAt.toISOString(),
       teamId: team.id,
@@ -489,6 +501,7 @@ export function announcementRoutes(app: FastifyInstance) {
     const [responderTeam] = await db.select().from(teams).where(eq(teams.id, responderTeamId));
     notifyAnnouncementResponse({
       ownerTeamId: announcement.teamId,
+      responseId: created.id,
       responderTeamName: responderTeam.name,
       city: announcement.city,
     });
