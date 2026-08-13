@@ -19,6 +19,7 @@ import {
 import {
   categoryLabel,
   MATCH_GENDER_LABELS,
+  TOURNAMENT_SESSION_LABELS,
   WITHDRAWAL_REASONS,
   WITHDRAWAL_REASON_LABELS,
   type EncounterResultDto,
@@ -229,7 +230,9 @@ export default function TournamentPage({ params }: { params: Promise<{ id: strin
             <p className="text-xs text-ink-soft">Organisé par {tournament.team.name}</p>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <span className="chip bg-paper text-ink-soft">{categoryLabel(tournament.category)}</span>
+            {tournament.category.map((c) => (
+              <span key={c} className="chip bg-paper text-ink-soft">{categoryLabel(c)}</span>
+            ))}
             {tournament.gender && (
               <span className="chip bg-paper text-ink-soft">{MATCH_GENDER_LABELS[tournament.gender]}</span>
             )}
@@ -240,7 +243,7 @@ export default function TournamentPage({ params }: { params: Promise<{ id: strin
           </div>
           <div className="space-y-1 text-xs text-ink-soft">
             <p className="flex items-center gap-1.5 capitalize">
-              <CalendarDays size={13} className="shrink-0" aria-hidden /> {dates} · {tournament.time}
+              <CalendarDays size={13} className="shrink-0" aria-hidden /> {dates} · {TOURNAMENT_SESSION_LABELS[tournament.session]}
             </p>
             <p className="flex items-center gap-1.5">
               <MapPin size={13} className="shrink-0" aria-hidden /> {tournament.stadium}, {tournament.city}

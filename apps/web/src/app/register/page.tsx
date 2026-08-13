@@ -169,7 +169,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
       // de décider que l'application lui servirait. S'il n'y a rien à lui
       // proposer (déjà installée, navigateur qui ne sait pas faire), on ne
       // l'arrête pas sur un écran vide.
-      if (offer === "none") router.replace("/coach/team?bienvenue=1");
+      if (offer === "none") router.replace("/coach?bienvenue=1");
       else setStep(DONE_STEP);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Inscription impossible");
@@ -192,7 +192,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
           </p>
         </div>
         <InstallAppCard />
-        <Button type="button" size="lg" className="w-full" onClick={() => router.replace("/coach/team?bienvenue=1")}>
+        <Button type="button" size="lg" className="w-full" onClick={() => router.replace("/coach?bienvenue=1")}>
           Continuer vers mon équipe
         </Button>
       </div>

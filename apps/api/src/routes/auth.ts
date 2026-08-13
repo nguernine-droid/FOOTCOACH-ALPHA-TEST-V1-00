@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import {
   asCoachCategories,
+  asDivisionLevel,
   asMatchCategory,
   asMatchGender,
   forgotPasswordSchema,
@@ -77,6 +78,7 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
       category: teams.category,
       gender: teams.gender,
       stadium: teams.stadium,
+      level: teams.level,
     })
     .from(teamCoaches)
     .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
@@ -89,6 +91,7 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
       ...row,
       category: asMatchCategory(row.category),
       gender: asMatchGender(row.gender),
+      level: asDivisionLevel(row.level),
     }));
 }
 

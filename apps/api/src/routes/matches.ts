@@ -59,6 +59,21 @@ function encounterDayReached(match: typeof matches.$inferSelect): boolean {
   return new Date(`${match.date}T00:00`).getTime() <= Date.now();
 }
 
+/** Délai laissé pour valider la rencontre après le coup d'envoi */
+const ENCOUNTER_VALIDATION_WINDOW_HOURS = 24;
+
+/**
+ * Passé ce délai après le coup d'envoi, la rencontre n'est plus validable :
+ * au-delà d'un jour, la fenêtre où les deux coachs se sont réellement croisés
+ * est passée, et une validation tardive n'attesterait plus grand-chose. Le
+ * match n'est pas annulé pour autant — seule la validation se ferme, ce qui le
+ * retire du tableau de bord (`encounterOpen` retombe à `false`).
+ */
+function encounterValidationExpired(match: typeof matches.$inferSelect): boolean {
+  const kickoff = new Date(`${match.date}T${match.time}`).getTime();
+  return Date.now() - kickoff > ENCOUNTER_VALIDATION_WINDOW_HOURS * 3600_000;
+}
+
 function toDto(
   { match, home, away }: MatchRow,
   viewerTeamId: string | null,
@@ -80,7 +95,8 @@ function toDto(
     scoreSubmittedByTeamId: match.scoreSubmittedByTeamId,
     finalScoreDue: kickoffPassed(match) && (match.status === "scheduled" || match.status === "live"),
     encounterConfirmedAt: match.encounterConfirmedAt?.toISOString() ?? null,
-    encounterOpen: encounterDayReached(match) && match.status !== "cancelled",
+    encounterOpen:
+      encounterDayReached(match) && match.status !== "cancelled" && !encounterValidationExpired(match),
     // Jamais servi dans la liste : le jeton ne sort qu'au coach hôte qui demande
     // explicitement à l'afficher (POST /matches/:id/encounter-qr), et qui est
     // alors enregistré comme celui qui a tenu l'écran.
@@ -293,6 +309,9 @@ export function matchRoutes(app: FastifyInstance) {
     if (!encounterDayReached(match)) {
       throw new HttpError(400, "Le QR code de rencontre s'ouvre le jour du match");
     }
+    if (encounterValidationExpired(match)) {
+      throw new HttpError(400, "Le délai pour valider cette rencontre est dépassé");
+    }
 
     const token = match.encounterToken ?? crypto.randomBytes(24).toString("base64url");
     await db
@@ -326,6 +345,9 @@ export function matchRoutes(app: FastifyInstance) {
     }
     if (!match.encounterToken) {
       throw new HttpError(400, "Le coach qui reçoit n'a pas encore affiché son QR code");
+    }
+    if (encounterValidationExpired(match)) {
+      throw new HttpError(400, "Le délai pour valider cette rencontre est dépassé");
     }
     // Comparaison à durée constante. Une comparaison de chaînes s'arrête au
     // premier octet qui diffère : sa durée renseigne sur le nombre d'octets

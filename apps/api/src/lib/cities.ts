@@ -1,49 +1,30 @@
-// Annuaire statique ville → coordonnées (pas d'API externe payante).
-// Précision "centre-ville" : suffisante pour un tri par proximité sur le radar.
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const CITY_COORDS: Record<string, [number, number]> = {
-  paris: [48.8566, 2.3522],
-  marseille: [43.2965, 5.3698],
-  lyon: [45.764, 4.8357],
-  toulouse: [43.6047, 1.4442],
-  nice: [43.7102, 7.262],
-  nantes: [47.2184, -1.5536],
-  montpellier: [43.6108, 3.8767],
-  strasbourg: [48.5734, 7.7521],
-  bordeaux: [44.8378, -0.5792],
-  lille: [50.6292, 3.0573],
-  rennes: [48.1173, -1.6778],
-  reims: [49.2583, 4.0317],
-  "saint-etienne": [45.4397, 4.3872],
-  toulon: [43.1242, 5.928],
-  "le havre": [49.4944, 0.1079],
-  grenoble: [45.1885, 5.7245],
-  dijon: [47.322, 5.0415],
-  angers: [47.4784, -0.5632],
-  nimes: [43.8367, 4.3601],
-  villeurbanne: [45.7719, 4.8902],
-  "clermont-ferrand": [45.7772, 3.087],
-  "le mans": [48.0061, 0.1996],
-  "aix-en-provence": [43.5297, 5.4474],
-  brest: [48.3904, -4.4861],
-  tours: [47.3941, 0.6848],
-  amiens: [49.8942, 2.2957],
-  limoges: [45.8336, 1.2611],
-  annecy: [45.8992, 6.1294],
-  perpignan: [42.6887, 2.8948],
-  besancon: [47.2378, 6.0241],
-  metz: [49.1193, 6.1757],
-  orleans: [47.9029, 1.9092],
-  rouen: [49.4432, 1.0993],
-  mulhouse: [47.7508, 7.3359],
-  caen: [49.1829, -0.3707],
-  nancy: [48.6921, 6.1844],
-  bron: [45.7394, 4.9139],
+// Annuaire ville → coordonnées, chargé depuis `communesCoords.json` : les ~32 700
+// communes de France (source geo.api.gouv.fr, base officielle), chacune à son
+// centre. Une quarantaine de villes ne se trouvaient plus dans le petit
+// annuaire fait main d'avant (46 grandes villes) — Alès, Sète, Frontignan et
+// toutes les autres communes moyennes en étaient absentes, ce qui les rendait
+// invisibles sur le disque du radar (aucune coordonnée = aucun marqueur,
+// silencieusement).
+//
+// En cas d'homonymie (~2 300 noms de commune partagés par plusieurs départements),
+// la première rencontrée l'emporte : la ville seule ne lève de toute façon pas
+// l'ambiguïté sans le département.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const COMMUNES: Record<string, [number, number]> = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "communesCoords.json"), "utf-8"),
+);
+
+// Alias et arrondis conservés de l'ancien annuaire fait main : quelques
+// communes citées sous une forme abrégée (« Caluire » pour Caluire-et-Cuire,
+// « Decines » pour Décines-Charpieu) qui ne sont pas le nom officiel de la
+// commune, donc absentes de l'annuaire ci-dessus tel quel.
+const CITY_ALIASES: Record<string, [number, number]> = {
   caluire: [45.7953, 4.8437],
-  venissieux: [45.6978, 4.8859],
-  "vaulx-en-velin": [45.7768, 4.9203],
   decines: [45.7687, 4.9594],
-  meyzieu: [45.7666, 5.0037],
 };
 
 function normalizeCity(name: string): string {
@@ -56,7 +37,8 @@ function normalizeCity(name: string): string {
 }
 
 export function cityCoords(name: string): { lat: number; lng: number } | null {
-  const hit = CITY_COORDS[normalizeCity(name)];
+  const key = normalizeCity(name);
+  const hit = CITY_ALIASES[key] ?? COMMUNES[key];
   return hit ? { lat: hit[0], lng: hit[1] } : null;
 }
 

@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, CalendarCheck2, ChevronRight, MessageCircle, SendHorizontal } from "lucide-react";
 import { MESSAGE_MAX_LENGTH, type ConversationThreadDto, type MessageDto } from "@teamnexus/shared";
 import { ApiError, api } from "@/lib/api";
@@ -42,11 +43,14 @@ function dayLabel(iso: string): string {
  */
 export default function CoachConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [thread, setThread] = useState<ConversationThreadDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  /** Proposition en cours de décision — le temps de l'appel accepter/décliner */
+  const [deciding, setDeciding] = useState<string | null>(null);
   /** Carte du confrère, ouverte depuis son nom */
   const [cardOpen, setCardOpen] = useState(false);
 
@@ -109,6 +113,32 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
   useEffect(() => {
     if (messageCount > 0) window.scrollTo({ top: document.documentElement.scrollHeight });
   }, [messageCount]);
+
+  /**
+   * Accepter ou décliner une proposition, directement depuis le fil — c'est
+   * ici, et non plus dans un popup à part, que « on joue ou pas » se décide,
+   * une fois qu'on en a discuté si besoin.
+   */
+  async function decide(action: "accept" | "decline", response: NonNullable<MessageDto["response"]>) {
+    setDeciding(response.id);
+    setSendError(null);
+    try {
+      if (action === "accept") {
+        const { matchId } = await api<{ matchId: string }>(
+          `/announcements/${response.announcementId}/responses/${response.id}/accept`,
+          { method: "POST" },
+        );
+        router.push(`/coach/matches/${matchId}`);
+      } else {
+        await api(`/announcements/${response.announcementId}/responses/${response.id}/decline`, { method: "POST" });
+        await load(false);
+      }
+    } catch (err) {
+      setSendError(err instanceof ApiError ? err.message : "Action impossible");
+    } finally {
+      setDeciding(null);
+    }
+  }
 
   // `SyntheticEvent` et non `FormEvent` : l'envoi part aussi d'un raccourci
   // clavier, qui n'est pas une soumission de formulaire.
@@ -229,6 +259,35 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
                         Feuille de match <ChevronRight size={13} aria-hidden />
                       </Link>
                     )}
+                    {/* La proposition se tranche ici, dans le fil : de quoi se
+                        poser des questions avant d'être sûr de jouer, plutôt
+                        qu'un « accepter » demandé sans discussion possible. */}
+                    {message.response &&
+                      (message.response.decidable ? (
+                        <div className="flex items-center justify-center gap-2 pt-1">
+                          <Button
+                            size="sm"
+                            onClick={() => decide("accept", message.response!)}
+                            disabled={deciding === message.response.id}
+                          >
+                            {deciding === message.response.id ? "…" : "Accepter"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => decide("decline", message.response!)}
+                            disabled={deciding === message.response.id}
+                          >
+                            Décliner
+                          </Button>
+                        </div>
+                      ) : message.response.status === "pending" ? (
+                        <p className="text-[11px] font-semibold text-sun">En attente de la décision du coach</p>
+                      ) : message.response.status === "accepted" ? (
+                        <p className="text-[11px] font-semibold text-success">Proposition acceptée</p>
+                      ) : (
+                        <p className="text-[11px] font-semibold text-ink-faint">Proposition déclinée</p>
+                      ))}
                     <p className="text-[10px] text-ink-faint">{hourOf(message.createdAt)}</p>
                   </div>
                 </div>

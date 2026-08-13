@@ -4,16 +4,19 @@ import {
   idParamSchema,
   responseParamsSchema,
   announcementCategoryOf,
+  asDivisionLevel,
   asMatchCategory,
   asMatchGender,
   categoryLabel,
   createAnnouncementSchema,
+  updateAnnouncementSchema,
   isPlateauCategory,
   PLATEAU_TEAMS_WANTED,
   MATCH_GENDER_LABELS,
   type AnnouncementDefaultsDto,
   type AnnouncementDto,
   type AnnouncementResponseDto,
+  type CategoryStatsDto,
   type CoachRefDto,
   type MatchGender,
   type RadarDto,
@@ -61,11 +64,12 @@ function toDto(
     stadium: announcement.stadium,
     category: announcement.category,
     gender: announcement.gender,
-    level: announcement.level,
+    level: asDivisionLevel(announcement.level),
     format: announcement.format,
     comment: announcement.comment,
     status: announcement.status,
     isMine: team.id === myTeamId,
+    viewCount: announcement.viewCount,
     plateau,
     teamsWanted: plateau ? PLATEAU_TEAMS_WANTED : 1,
     teamsAccepted: acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length,
@@ -138,6 +142,7 @@ async function loadResponses(announcementIds: string[]) {
         : (fallbacks.get(team.id) ?? null),
       status: response.status,
       createdAt: response.createdAt.toISOString(),
+      conversationId: response.conversationId,
       teamId: team.id,
     });
     byAnnouncement.set(response.announcementId, list);
@@ -286,7 +291,7 @@ export function announcementRoutes(app: FastifyInstance) {
       return {
         category,
         gender: last.gender,
-        level: last.level,
+        level: asDivisionLevel(last.level),
         format: last.format,
         stadium: last.stadium,
         city: last.city,
@@ -315,6 +320,16 @@ export function announcementRoutes(app: FastifyInstance) {
 
     const myTeamId = request.user.teamId;
     const isMine = row.team.id === myTeamId;
+    // Un vu de plus, mais pas le mien : ce chiffre dit à l'émetteur combien
+    // d'AUTRES coachs se sont penchés sur son annonce, pas combien de fois il
+    // l'a relue lui-même.
+    if (!isMine) {
+      await db
+        .update(matchAnnouncements)
+        .set({ viewCount: sql`${matchAnnouncements.viewCount} + 1` })
+        .where(eq(matchAnnouncements.id, id));
+      row.announcement.viewCount += 1;
+    }
     const links = await loadMatchLinks([id]);
     const all = (await loadResponses([id])).get(id) ?? [];
     const responses = isMine ? all.map(({ teamId: _teamId, ...dto }) => dto) : [];
@@ -419,6 +434,68 @@ export function announcementRoutes(app: FastifyInstance) {
     return { items, tournaments: tournamentItems, beyondRadius };
   });
 
+  /**
+   * Le bandeau du tableau de bord : combien d'équipes de mon groupe d'âges
+   * jouent dans mon secteur, et combien d'entre elles cherchent un match en ce
+   * moment — deux chiffres pour situer sa catégorie avant même d'ouvrir le
+   * radar.
+   *
+   * Même périmètre que le radar (position et rayon du coach), même
+   * regroupement par PAIRE d'âges que les annonces (`announcementCategoryOf`) :
+   * une équipe U13 compte pour le même total qu'une annonce U12-U13.
+   */
+  app.get(
+    "/announcements/category-stats",
+    { preHandler: requireRole("coach") },
+    async (request): Promise<CategoryStatsDto> => {
+      const myTeamId = request.user.teamId;
+      const empty: CategoryStatsDto = { category: null, teamsInCategory: 0, announcementsInCategory: 0 };
+      if (!myTeamId) return empty;
+
+      const [myTeam] = await db.select().from(teams).where(eq(teams.id, myTeamId));
+      const category = myTeam ? announcementCategoryOf(myTeam.category) : null;
+      if (!category) return empty;
+
+      const myCoords = await loadOrigin(request.user.id, myTeamId);
+      const [me] = await db.select({ radiusKm: users.radarRadiusKm }).from(users).where(eq(users.id, request.user.id));
+      const radiusKm = me?.radiusKm ?? null;
+      const unplayable = await teamsSharingCoachWith(myTeamId);
+
+      // Ville inconnue = jamais écartée, comme partout ailleurs sur le radar :
+      // on ne peut pas affirmer qu'elle est hors périmètre.
+      const inPerimeter = (city: string) => {
+        if (!myCoords || radiusKm === null) return true;
+        const coords = cityCoords(city);
+        if (!coords) return true;
+        return haversineKm(myCoords, coords) <= radiusKm;
+      };
+
+      const allTeams = await db
+        .select({ id: teams.id, city: teams.city, category: teams.category })
+        .from(teams)
+        .where(notInArray(teams.id, unplayable));
+      const teamsInCategory = allTeams.filter(
+        (t) => announcementCategoryOf(t.category) === category && inPerimeter(t.city),
+      ).length;
+
+      const openAnnouncements = await db
+        .select({ city: matchAnnouncements.city, category: matchAnnouncements.category })
+        .from(matchAnnouncements)
+        .where(
+          and(
+            eq(matchAnnouncements.status, "open"),
+            gte(matchAnnouncements.date, today()),
+            notInArray(matchAnnouncements.teamId, unplayable),
+          ),
+        );
+      const announcementsInCategory = openAnnouncements.filter(
+        (a) => announcementCategoryOf(a.category) === category && inPerimeter(a.city),
+      ).length;
+
+      return { category, teamsInCategory, announcementsInCategory };
+    },
+  );
+
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {
     if (!request.user.teamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
     const input = createAnnouncementSchema.parse(request.body);
@@ -453,6 +530,36 @@ export function announcementRoutes(app: FastifyInstance) {
       venue: cityCoords(created.city),
     });
     return toDto({ announcement: created, team }, request.user.teamId);
+  });
+
+  // Modifier une annonce : réservé à l'émetteur, et seulement tant qu'elle
+  // cherche encore un adversaire — une fois matchée, ce sont les deux coachs
+  // qui décident ensemble, plus le formulaire d'un seul.
+  app.patch("/announcements/:id", { preHandler: requireRole("coach") }, async (request): Promise<AnnouncementDto> => {
+    const { id } = idParamSchema.parse(request.params);
+    const input = updateAnnouncementSchema.parse(request.body);
+    const [announcement] = await db.select().from(matchAnnouncements).where(eq(matchAnnouncements.id, id));
+    if (!announcement) throw new HttpError(404, "Annonce introuvable");
+    if (announcement.teamId !== request.user.teamId) throw new HttpError(403, "Cette annonce ne vous appartient pas");
+    if (announcement.status !== "open") throw new HttpError(400, "Seule une annonce ouverte peut être modifiée");
+
+    const [updated] = await db
+      .update(matchAnnouncements)
+      .set({
+        date: input.date,
+        time: input.time,
+        city: input.city,
+        stadium: input.stadium,
+        category: input.category,
+        gender: input.gender,
+        level: input.level,
+        format: input.format,
+        comment: input.comment ?? null,
+      })
+      .where(eq(matchAnnouncements.id, id))
+      .returning();
+    const [team] = await db.select().from(teams).where(eq(teams.id, updated.teamId));
+    return toDto({ announcement: updated, team }, request.user.teamId);
   });
 
   app.delete("/announcements/:id", { preHandler: requireRole("coach") }, async (request) => {
@@ -499,11 +606,37 @@ export function announcementRoutes(app: FastifyInstance) {
       .returning();
 
     const [responderTeam] = await db.select().from(teams).where(eq(teams.id, responderTeamId));
+
+    // Le fil s'ouvre dès la proposition, pas seulement à l'acceptation : les
+    // deux coachs peuvent se poser des questions avant d'être sûrs de jouer,
+    // et c'est là — pas dans un popup — que se décide « on joue ou pas ».
+    let conversationId: string | null = null;
+    const ownerCoach = await representativeCoachOf(announcement.teamId);
+    if (ownerCoach) {
+      conversationId = await openConversation(db, ownerCoach.id, request.user.id, null);
+      if (conversationId) {
+        await postSystemMessage(
+          db,
+          conversationId,
+          `${responderTeam.name} propose de jouer votre annonce ${categoryLabel(announcement.category)}${
+            announcement.gender ? ` ${MATCH_GENDER_LABELS[announcement.gender]}` : ""
+          } du ${announcement.date} à ${announcement.time.slice(0, 5)}, ${announcement.city}.`,
+          null,
+          created.id,
+        );
+        await db
+          .update(announcementResponses)
+          .set({ conversationId })
+          .where(eq(announcementResponses.id, created.id));
+      }
+    }
+
     notifyAnnouncementResponse({
       ownerTeamId: announcement.teamId,
       responseId: created.id,
       responderTeamName: responderTeam.name,
       city: announcement.city,
+      conversationId,
     });
 
     reply.code(201);
@@ -703,6 +836,11 @@ export function announcementRoutes(app: FastifyInstance) {
         .update(announcementResponses)
         .set({ status: "declined" })
         .where(eq(announcementResponses.id, responseId));
+
+      // Le fil garde la trace de la décision, là où elle a été discutée.
+      if (response.conversationId) {
+        await postSystemMessage(db, response.conversationId, "Proposition déclinée.", null);
+      }
 
       const [ownTeam] = await db.select().from(teams).where(eq(teams.id, announcement.teamId));
       notifyResponseDecision({

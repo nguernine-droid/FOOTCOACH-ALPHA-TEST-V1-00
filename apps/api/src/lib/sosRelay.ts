@@ -181,7 +181,7 @@ export async function relayPendingTournamentSos(): Promise<number> {
     notifyTournamentSosWidened({
       tournamentId: tournament.id,
       tournamentName: tournament.name,
-      category: tournament.category,
+      category: tournament.category.join(", "),
       city: tournament.city,
       date: tournament.date,
       venue: cityCoords(tournament.city),

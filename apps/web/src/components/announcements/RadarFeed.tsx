@@ -8,10 +8,8 @@ import {
   Clock3,
   Crosshair,
   MapPin,
-  Megaphone,
   Radar,
   SlidersHorizontal,
-  Trophy,
   UserMinus,
   X,
   XCircle,
@@ -20,6 +18,7 @@ import {
   ANNOUNCEMENT_CATEGORIES,
   announcementCategoryOf,
   categoryLabel,
+  DIVISION_LEVEL_LABELS,
   MATCH_GENDERS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
@@ -31,6 +30,7 @@ import {
 } from "@teamnexus/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
+import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { LocationCard } from "@/components/coach/LocationCard";
 import { RADIUS_OPTIONS, RadarScope, toBlips, toTournamentBlips } from "@/components/announcements/RadarScope";
@@ -41,7 +41,6 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 /** Périmètre par défaut : la distance qu'un club accepte de faire pour un amical */
 const DEFAULT_RADIUS_KM = 50;
 
@@ -68,6 +67,7 @@ function bySosThenProximity(a: AnnouncementDto, b: AnnouncementDto): number {
  */
 export function RadarFeed() {
   const router = useRouter();
+  const { activeTeam } = useActiveTeam();
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   /**
    * Tournois du même périmètre. Gardés dans leur propre état plutôt que fondus
@@ -80,9 +80,13 @@ export function RadarFeed() {
   const [beyondRadius, setBeyondRadius] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
-  const [category, setCategory] = useState<string | null>(null);
-  const [gender, setGender] = useState<MatchGender | null>(null);
+  // Préréglés sur les paramètres de l'équipe active : c'est ce qu'un coach
+  // cherche le plus souvent — son propre tableau — modifiable comme les autres.
+  const [category, setCategory] = useState<string | null>(() => announcementCategoryOf(activeTeam?.category ?? null));
+  const [gender, setGender] = useState<MatchGender | null>(activeTeam?.gender ?? null);
   const [date, setDate] = useState("");
+  // Amicaux, tournois, ou les deux : les deux sections du bas suivent ce choix.
+  const [scope, setScope] = useState<"all" | "matches" | "tournaments">("all");
   // Réglages repliés au départ : la carte et les annonces passent devant. Ils
   // restent dépliés une fois ouverts — on règle rarement un seul filtre.
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -241,20 +245,22 @@ export function RadarFeed() {
   const detail = detailId ? (announcements ?? []).find((a) => a.id === detailId) ?? null : null;
 
   /**
-   * Ce que les filtres REPLIÉS retirent de la liste. Ni le périmètre ni la
-   * catégorie n'en font partie : le premier est appliqué par le serveur et
-   * rappelé en toutes lettres, la seconde a sa rangée de pastilles en tête du
-   * radar, toujours visible. On ne résume que ce qu'on ne voit plus.
+   * Ce que les filtres REPLIÉS retirent de la liste. Le périmètre n'en fait
+   * pas partie : il est appliqué par le serveur et rappelé en toutes lettres
+   * juste en dessous. On ne résume que ce qu'on ne voit plus.
    */
   const activeFilters = [
+    category ? categoryLabel(category) : null,
     gender ? MATCH_GENDER_LABELS[gender] : null,
     date ? formatDate(date) : null,
+    scope === "matches" ? "Amicaux" : scope === "tournaments" ? "Tournois" : null,
   ].filter((label): label is string => label !== null);
 
   function clearFilters() {
     setCategory(null);
     setGender(null);
     setDate("");
+    setScope("all");
   }
 
   const header = (
@@ -294,37 +300,6 @@ export function RadarFeed() {
   return (
     <section className="card p-5 space-y-4 animate-rise-in" aria-label="Radar des annonces">
       {header}
-
-      {/* La catégorie en tête, hors du panneau replié : c'est le premier tri
-          d'un coach — il encadre des U13, pas « toutes les équipes du secteur »
-          — et le seul filtre qui change ce que la carte elle-même dessine.
-          Genre, date et périmètre restent des réglages, ils attendent plus bas.
-
-          Rangée qui défile horizontalement plutôt que de se replier : dix
-          pastilles de 44 px ne tiennent sur aucun écran de téléphone. */}
-      {announcements.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5" role="group" aria-label="Filtrer par catégorie">
-          <button
-            type="button"
-            onClick={() => setCategory(null)}
-            aria-pressed={category === null}
-            className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
-          >
-            Toutes
-          </button>
-          {ANNOUNCEMENT_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCategory(category === c ? null : c)}
-              aria-pressed={category === c}
-              className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
-            >
-              {categoryLabel(c)}
-            </button>
-          ))}
-        </div>
-      )}
 
       <RadarScope
         blips={blips}
@@ -440,10 +415,56 @@ export function RadarFeed() {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Quoi voir</p>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Filtrer par type">
+              {(
+                [
+                  { value: "all", label: "Tout" },
+                  { value: "matches", label: "Amicaux" },
+                  { value: "tournaments", label: "Tournois" },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setScope(option.value)}
+                  aria-pressed={scope === option.value}
+                  className={cn("chip-choice !px-2", scope === option.value ? "chip-choice-on" : "chip-choice-off")}
+                >
+                  <span className="truncate">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {announcements.length > 0 && (
             <div className="space-y-2">
-              {/* La catégorie n'est plus ici : elle est remontée en tête du
-                  radar, où elle reste visible sans qu'on déplie quoi que ce soit. */}
+              {/* Catégorie, dans les réglages avec le reste des filtres */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Catégorie</p>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5" role="group" aria-label="Filtrer par catégorie">
+                  <button
+                    type="button"
+                    onClick={() => setCategory(null)}
+                    aria-pressed={category === null}
+                    className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
+                  >
+                    Toutes
+                  </button>
+                  {ANNOUNCEMENT_CATEGORIES.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCategory(category === c ? null : c)}
+                      aria-pressed={category === c}
+                      className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
+                    >
+                      {categoryLabel(c)}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Genre : quatre choix seulement, donc une grille pleine largeur */}
               <div className="grid grid-cols-4 gap-2" role="group" aria-label="Filtrer par genre">
@@ -508,35 +529,28 @@ export function RadarFeed() {
       {/* Tournois du secteur, avant les annonces : ils se préparent plus à
           l'avance qu'un amical, et une place qui se libère part vite. Section
           à part et non fondue dans la grille — un tournoi ne se « propose »
-          pas, il s'organise et on s'y inscrit. */}
-      <section className="space-y-3" aria-label="Tournois du secteur">
-        {/* Plus de bouton « Organiser » ici : le « + » de la barre le propose
-            désormais partout, et deux portes pour la même création se
-            disputaient l'attention au-dessus d'une liste à lire. */}
-        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
-          <Trophy size={13} aria-hidden /> Tournois du secteur
-        </h3>
-        {tournaments.length === 0 ? (
-          <p className="rounded-lg bg-paper px-4 py-4 text-xs text-ink-soft text-center">
-            Aucun tournoi annoncé autour de vous. Vous pouvez être le premier à en organiser un.
-          </p>
-        ) : (
-          <div className="stagger grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
-            {tournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
-        )}
-      </section>
+          pas, il s'organise et on s'y inscrit. Pas d'intitulé : on est déjà
+          sur le radar, inutile de le redire. Masquée par le filtre « Amicaux ». */}
+      {scope !== "matches" && (
+        <section className="space-y-3" aria-label="Tournois du secteur">
+          {tournaments.length === 0 ? (
+            <p className="rounded-lg bg-paper px-4 py-4 text-xs text-ink-soft text-center">
+              Aucun tournoi annoncé autour de vous. Vous pouvez être le premier à en organiser un.
+            </p>
+          ) : (
+            <div className="stagger grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+              {tournaments.map((t) => (
+                <TournamentCard key={t.id} tournament={t} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
-      {/* Les amicaux, titrés comme les tournois : deux listes se suivent, et la
-          seconde n'était annoncée par rien — on ne savait pas où finissaient
-          les tournois. */}
+      {/* Les amicaux, sans intitulé non plus : la section des tournois qui
+          précède suffit à situer où l'on est. Masquée par le filtre « Tournois ». */}
+      {scope !== "tournaments" && (
       <section className="space-y-3" aria-label="Matchs amicaux du secteur">
-        <h3 className="text-xs font-bold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
-          <Megaphone size={13} aria-hidden /> Matchs amicaux du secteur
-        </h3>
-
         {/* Vraiment rien à jouer, périmètre compris : inviter à publier. S'il y a
             des annonces plus loin, c'est l'écran suivant — élargir, pas publier. */}
         {announcements.length === 0 && beyondRadius === 0 ? (
@@ -587,6 +601,7 @@ export function RadarFeed() {
           </div>
         )}
       </section>
+      )}
 
       {/* Réglage de la position, sur place. Le même composant qu'au profil :
           une position se règle de deux façons (l'appareil, une adresse) et il
@@ -690,7 +705,9 @@ export function RadarFeed() {
                 <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[detail.gender]}</span>
               )}
               <span className="chip bg-pitch-soft text-primary">{detail.format}</span>
-              <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[detail.level]}</span>
+              {detail.level && (
+                <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[detail.level]}</span>
+              )}
             </div>
 
             <div className="space-y-1.5 text-xs text-ink-soft font-semibold">

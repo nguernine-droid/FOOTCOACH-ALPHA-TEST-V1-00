@@ -6,6 +6,7 @@ import { Megaphone, Radar } from "lucide-react";
 import type { RadarDto, AnnouncementDto, TournamentDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { MyAnnouncementsList, useMyAnnouncements } from "@/components/announcements/MyAnnouncements";
 import { PublicationsFeedView, usePublicationsFeed } from "@/components/publications/PublicationsFeed";
 import { SectorAnnouncementCard } from "@/components/announcements/SectorAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
@@ -13,15 +14,17 @@ import { ButtonLink } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 /**
- * Tout ce qui se publie autour de soi, en trois catégories : les matchs
- * amicaux du secteur, les tournois, et les publications des contributeurs.
+ * Tout ce qui se publie autour de soi, en quatre catégories : les matchs
+ * amicaux du secteur, les tournois, les publications des contributeurs, et
+ * mes propres annonces.
  *
  * Les deux premières sont ce que les AUTRES cherchent — la même matière que le
  * radar, sans la carte ni les filtres, pour qui préfère lire une liste que
  * viser un maillot. La troisième est le panneau d'affichage du secteur : les
  * billets d'information des coachs contributeurs — poules des matchs
- * officiels, intempéries qui annulent. Ses propres annonces, elles, vivent
- * dans la feuille « Moi › Mes annonces ».
+ * officiels, intempéries qui annulent. La quatrième reprend « Mes annonces »
+ * (accessible aussi depuis « Moi »), pour ne pas avoir à changer d'écran entre
+ * ce qu'on cherche et ce qu'on a soi-même publié.
  *
  * Le périmètre reste celui du radar, réglé sur le tableau de bord : deux
  * réglages de portée qui pourraient diverger seraient un piège.
@@ -34,11 +37,12 @@ function AnnouncementsPageContent() {
   // d'affichage — arriver sur « Amicaux » obligerait à un second geste.
   const searchParams = useSearchParams();
   /** Amicaux d'abord : c'est ce qu'on cherche neuf fois sur dix */
-  const [kind, setKind] = useState<"matches" | "tournaments" | "publications">(() => {
+  const [kind, setKind] = useState<"matches" | "tournaments" | "publications" | "mine">(() => {
     const cat = searchParams.get("cat");
-    return cat === "publications" || cat === "tournaments" ? cat : "matches";
+    return cat === "publications" || cat === "tournaments" || cat === "mine" ? cat : "matches";
   });
   const feed = usePublicationsFeed();
+  const mine = useMyAnnouncements();
 
   const load = useCallback(async () => {
     try {
@@ -112,20 +116,21 @@ function AnnouncementsPageContent() {
         </ButtonLink>
       </div>
 
-      {/* Trois catégories, en haut, une seule à la fois : les listes empilées
+      {/* Quatre catégories, en haut, une seule à la fois : les listes empilées
           obligeaient à faire défiler tout un secteur d'amicaux pour savoir s'il
           y avait un tournoi. On vient chercher l'une ou l'autre, rarement deux
           à la fois.
 
-          Libellés courts et sans icône : à trois par rangée sur un téléphone,
+          Libellés courts et sans icône : à quatre par rangée sur un téléphone,
           « Matchs amicaux » et sa pastille ne tiennent plus, et un libellé
           tronqué renseigne moins qu'un mot entier. */}
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Catégorie d'annonces">
+      <div className="grid grid-cols-4 gap-1.5" role="tablist" aria-label="Catégorie d'annonces">
         {(
           [
             { key: "matches", label: "Amicaux", count: announcements.length },
             { key: "tournaments", label: "Tournois", count: tournaments.length },
             { key: "publications", label: "Publications", count: feed.posts?.length ?? 0 },
+            { key: "mine", label: "Mes annonces", count: mine.activeCount },
           ] as const
         ).map((t) => (
           <button
@@ -134,10 +139,10 @@ function AnnouncementsPageContent() {
             role="tab"
             aria-selected={kind === t.key}
             onClick={() => setKind(t.key)}
-            // `px-2` : à trois par rangée, les 16 px de côté de `.chip-choice`
+            // `!px-1.5` : à quatre par rangée, les 16 px de côté de `.chip-choice`
             // mangeaient le libellé sur un téléphone. La hauteur de 44 px, elle,
             // ne bouge pas — c'est la cible qui compte, pas la marge.
-            className={cn("chip-choice px-2", kind === t.key ? "chip-choice-on" : "chip-choice-off")}
+            className={cn("chip-choice !px-1.5", kind === t.key ? "chip-choice-on" : "chip-choice-off")}
           >
             <span className="truncate">{t.label}</span> ({t.count})
           </button>
@@ -199,6 +204,14 @@ function AnnouncementsPageContent() {
       {kind === "publications" && (
         <section className="space-y-3" aria-label="Publications des contributeurs">
           <PublicationsFeedView feed={feed} />
+        </section>
+      )}
+
+      {/* Ce que J'AI publié — même composant que la feuille « Moi › Mes
+          annonces », pour ne pas tenir deux copies de la même chose. */}
+      {kind === "mine" && (
+        <section aria-label="Mes annonces">
+          <MyAnnouncementsList mine={mine} />
         </section>
       )}
     </div>

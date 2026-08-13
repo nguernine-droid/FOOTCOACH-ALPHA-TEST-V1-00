@@ -8,7 +8,16 @@ import {
   type MessageDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
-import { conversationReads, conversations, messages, teamCoaches, teams, users } from "../db/schema.js";
+import {
+  announcementResponses,
+  conversationReads,
+  conversations,
+  matchAnnouncements,
+  messages,
+  teamCoaches,
+  teams,
+  users,
+} from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { conversationForMember, markRead } from "../lib/conversations.js";
@@ -194,10 +203,36 @@ export function messageRoutes(app: FastifyInstance) {
     ]);
     if (!conversation) throw new HttpError(404, "Conversation introuvable");
 
+    // Propositions dont un message parle : de quoi savoir si c'est encore à
+    // MOI de trancher, pour porter les boutons accepter/décliner dans le fil.
+    const responseIds = [...new Set(rows.flatMap((m) => (m.responseId ? [m.responseId] : [])))];
+    const responseById = new Map<
+      string,
+      { status: (typeof announcementResponses.$inferSelect)["status"]; announcementId: string; decidable: boolean }
+    >();
+    if (responseIds.length > 0) {
+      const withAnnouncement = await db
+        .select({ response: announcementResponses, announcement: matchAnnouncements })
+        .from(announcementResponses)
+        .innerJoin(matchAnnouncements, eq(matchAnnouncements.id, announcementResponses.announcementId))
+        .where(inArray(announcementResponses.id, responseIds));
+      for (const { response, announcement } of withAnnouncement) {
+        responseById.set(response.id, {
+          status: response.status,
+          announcementId: response.announcementId,
+          decidable:
+            announcement.teamId === request.user.teamId &&
+            response.status === "pending" &&
+            announcement.status === "open",
+        });
+      }
+    }
+
     return {
       conversation,
-      messages: rows.map(
-        (m): MessageDto => ({
+      messages: rows.map((m): MessageDto => {
+        const response = m.responseId ? (responseById.get(m.responseId) ?? null) : null;
+        return {
           id: m.id,
           kind: m.kind,
           body: m.body,
@@ -205,9 +240,12 @@ export function messageRoutes(app: FastifyInstance) {
           // côté d'aucun des deux coachs.
           mine: m.kind === "coach" && m.senderId === me,
           matchId: m.matchId,
+          response: response && m.responseId
+            ? { id: m.responseId, announcementId: response.announcementId, status: response.status, decidable: response.decidable }
+            : null,
           createdAt: m.createdAt.toISOString(),
-        }),
-      ),
+        };
+      }),
     };
   });
 
@@ -260,6 +298,7 @@ export function messageRoutes(app: FastifyInstance) {
       body: created.body,
       mine: true,
       matchId: null,
+      response: null,
       createdAt: created.createdAt.toISOString(),
     };
   });

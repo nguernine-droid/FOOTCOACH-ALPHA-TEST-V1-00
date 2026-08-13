@@ -6,7 +6,10 @@ import {
   CalendarX,
   CheckCircle2,
   ChevronRight,
+  Eye,
   MapPin,
+  MessageCircle,
+  Pencil,
   ShieldCheck,
   Trash2,
   UserMinus,
@@ -22,7 +25,6 @@ import {
 import { todayIso } from "@/lib/time";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
-import { Button } from "@/components/ui/Button";
 
 /**
  * Une de mes annonces, avec ses propositions à valider.
@@ -31,15 +33,11 @@ import { Button } from "@/components/ui/Button";
  */
 export function MyAnnouncementCard({
   announcement: a,
-  onAccept,
-  onDecline,
   onCancel,
   showLocation = false,
   onOpenDetail,
 }: {
   announcement: AnnouncementDto;
-  onAccept: (announcementId: string, responseId: string) => void;
-  onDecline: (announcementId: string, responseId: string) => void;
   onCancel: (announcementId: string) => void;
   showLocation?: boolean;
   /**
@@ -54,20 +52,35 @@ export function MyAnnouncementCard({
   // La date est passée : le serveur a retiré l'annonce du radar et refuse les
   // propositions.
   const past = a.date < todayIso();
+  // Rouge/orange/vert, d'un coup d'œil : personne n'a répondu, quelqu'un a
+  // répondu (à trancher), ou c'est validé. Le SOS reste prioritaire — un
+  // adversaire qui se désiste est plus urgent qu'une simple absence de réponse.
+  const hasResponse = pending.length > 0;
 
   const body = (
     <div
       className={cn(
         "rounded-lg border border-line surface px-4 py-3 border-l-4 space-y-1.5 transition",
-        a.status === "open" && (a.isSos ? "border-l-coral" : "border-l-accent"),
+        a.status === "open" &&
+          (a.isSos ? "border-l-coral" : hasResponse ? "border-l-sun" : "border-l-coral"),
         a.status === "matched" && "border-l-success hover:bg-blue-faint",
         a.status === "cancelled" && "border-l-ink-faint opacity-70",
       )}
     >
-      <p className="text-sm font-bold capitalize">
-        {categoryLabel(a.category)}
-        {a.gender && ` ${MATCH_GENDER_LABELS[a.gender]}`} · {a.format} · {formatDate(a.date)} à {a.time}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-bold capitalize">
+          {categoryLabel(a.category)}
+          {a.gender && ` ${MATCH_GENDER_LABELS[a.gender]}`} · {a.format} · {formatDate(a.date)} à {a.time}
+        </p>
+        {/* Combien d'AUTRES coachs ont ouvert le détail — un signal d'intérêt,
+            même sans proposition reçue. */}
+        <span
+          className="shrink-0 flex items-center gap-1 text-[11px] font-semibold text-ink-faint"
+          title="Nombre de fois où d'autres coachs ont ouvert le détail"
+        >
+          <Eye size={12} aria-hidden /> {a.viewCount}
+        </span>
+      </div>
 
       {showLocation && (
         <p className="text-xs text-ink-soft font-semibold flex items-center gap-1.5">
@@ -115,8 +128,14 @@ export function MyAnnouncementCard({
                 Retirée du radar — la date est passée
               </p>
             ) : (
-              <p className="text-xs font-semibold text-sun flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-accent animate-soft-pulse shrink-0" aria-hidden />
+              <p className={cn("text-xs font-semibold flex items-center gap-1.5", hasResponse ? "text-sun" : "text-coral")}>
+                <span
+                  className={cn(
+                    "w-2 h-2 rounded-full animate-soft-pulse shrink-0",
+                    hasResponse ? "bg-sun" : "bg-coral",
+                  )}
+                  aria-hidden
+                />
                 {/* Un plateau se remplit équipe par équipe : dire où il en est,
                     c'est dire pourquoi l'annonce est encore ouverte. */}
                 {pending.length > 0
@@ -128,13 +147,22 @@ export function MyAnnouncementCard({
                     : "En attente de proposition"}
               </p>
             )}
-            <button
-              onClick={() => onCancel(a.id)}
-              className="icon-btn -mr-2 text-ink-faint hover:text-coral hover:bg-coral-soft"
-              aria-label="Annuler cette annonce"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center -mr-2">
+              <Link
+                href={`/coach/announcements/${a.id}/edit`}
+                className="icon-btn text-ink-faint hover:text-blue hover:bg-blue-soft"
+                aria-label="Modifier cette annonce"
+              >
+                <Pencil size={16} />
+              </Link>
+              <button
+                onClick={() => onCancel(a.id)}
+                className="icon-btn text-ink-faint hover:text-coral hover:bg-coral-soft"
+                aria-label="Annuler cette annonce"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
           {/* Adversaire sur une ligne, décision sur la suivante : les deux
               boutons tenaient sinon dans une centaine de pixels. */}
@@ -156,14 +184,17 @@ export function MyAnnouncementCard({
                   </span>
                 </div>
                 <ResponseFit response={r} announcement={a} />
-                <div className="grid grid-cols-2 gap-2">
-                  <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
-                    Accepter
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onDecline(a.id, r.id)}>
-                    Décliner
-                  </Button>
-                </div>
+                {r.conversationId ? (
+                  <Link
+                    href={`/coach/messages/${r.conversationId}`}
+                    className="flex items-center justify-center gap-1.5 min-h-9 rounded-lg bg-blue-soft
+                      text-xs font-bold text-primary transition hover:bg-blue-faint"
+                  >
+                    <MessageCircle size={14} aria-hidden /> Discuter et décider
+                  </Link>
+                ) : (
+                  <p className="text-[11px] text-ink-soft">Discussion indisponible pour cette proposition.</p>
+                )}
               </div>
             ))}
         </>

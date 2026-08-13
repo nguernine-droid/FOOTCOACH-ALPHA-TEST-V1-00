@@ -104,6 +104,16 @@ export default function AdminDashboardPage() {
           <p className="display text-3xl text-primary tabular-nums leading-tight">{stats.pendingResets}</p>
           <p className="text-[11px] text-blue font-semibold">Gérer les comptes</p>
         </Link>
+        <StatTile
+          label="Matchs"
+          value={stats.matchesTotal}
+          hint={`${stats.matchesPlayed} joué${stats.matchesPlayed > 1 ? "s" : ""}`}
+        />
+        <StatTile
+          label="Tournois"
+          value={stats.tournamentsTotal}
+          hint={`${stats.tournamentsPlayed} joué${stats.tournamentsPlayed > 1 ? "s" : ""}`}
+        />
       </div>
 
       {/* Répartition par rôle */}

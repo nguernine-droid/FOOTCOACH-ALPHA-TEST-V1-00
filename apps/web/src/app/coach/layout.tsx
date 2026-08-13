@@ -82,6 +82,18 @@ const PUBLISH_OPTION: QuickChoice = {
   icon: "publication",
 };
 
+/**
+ * Signaler un bug ou proposer une amélioration — raccourci vers l'écran déjà
+ * accessible depuis Réglages. Toujours en dernier : ce n'est pas une création,
+ * mais le « + » reste le seul geste que tout le monde retrouve partout.
+ */
+const FEEDBACK_OPTION: QuickChoice = {
+  href: "/coach/feedback/new",
+  label: "Bug ou amélioration",
+  description: "Un souci, une idée — ça part directement à l'équipe.",
+  icon: "feedback",
+};
+
 /** Ce que crée le bouton central selon la page ouverte */
 function defaultAction(pathname: string, contributor: boolean): QuickAction | null {
   if (pathname.startsWith("/coach/agenda")) {
@@ -95,7 +107,7 @@ function defaultAction(pathname: string, contributor: boolean): QuickAction | nu
   return {
     kind: "choice",
     label: "Créer",
-    options: contributor ? [...CREATE_OPTIONS, PUBLISH_OPTION] : CREATE_OPTIONS,
+    options: [...(contributor ? [...CREATE_OPTIONS, PUBLISH_OPTION] : CREATE_OPTIONS), FEEDBACK_OPTION],
   };
 }
 

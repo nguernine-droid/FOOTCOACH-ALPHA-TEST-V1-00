@@ -4,27 +4,26 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, Trophy, X } from "lucide-react";
 import {
+  categoryLabel,
+  MATCH_CATEGORIES,
   MATCH_GENDERS,
   MATCH_GENDER_LABELS,
   TOURNAMENT_MAX_SLOTS,
   TOURNAMENT_MIN_SLOTS,
+  TOURNAMENT_SESSION_LABELS,
+  TOURNAMENT_SESSIONS,
   type MatchCategory,
   type MatchGender,
+  type TournamentSession,
 } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
-import { CategoryPicker } from "@/components/CategoryPicker";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
-import { TimeField } from "@/components/ui/TimeField";
 import { cn } from "@/lib/utils";
 
 const FORM_ID = "creer-tournoi";
-const LEVELS = [
-  { value: "loisir", label: "Loisir" },
-  { value: "competition", label: "Compétition" },
-] as const;
 const FORMATS = ["5v5", "8v8", "11v11"] as const;
 const MAX_POSTER_BYTES = 2 * 1024 * 1024;
 
@@ -45,14 +44,15 @@ export default function NewTournamentPage() {
     name: "",
     date: "",
     endDate: "",
-    time: "",
+    session: "day" as TournamentSession,
     city: activeTeam?.city ?? "",
     stadium: activeTeam?.stadium ?? "",
-    level: "loisir",
     format: "8v8",
     comment: "",
   });
-  const [category, setCategory] = useState<MatchCategory | null>(activeTeam?.category ?? null);
+  const [categories, setCategories] = useState<MatchCategory[]>(
+    activeTeam?.category ? [activeTeam.category] : [],
+  );
   const [gender, setGender] = useState<MatchGender | null>(null);
   const [slots, setSlots] = useState(8);
   const [poster, setPoster] = useState<File | null>(null);
@@ -64,7 +64,14 @@ export default function NewTournamentPage() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  const incomplete = !form.name.trim() || !form.date || !form.time || !form.city.trim() || !form.stadium.trim() || !category || !gender;
+  function toggleCategory(category: MatchCategory) {
+    setCategories((current) =>
+      current.includes(category) ? current.filter((c) => c !== category) : [...current, category],
+    );
+  }
+
+  const incomplete =
+    !form.name.trim() || !form.date || !form.city.trim() || !form.stadium.trim() || categories.length === 0 || !gender;
 
   useQuickActionOverride({
     kind: "submit",
@@ -102,7 +109,7 @@ export default function NewTournamentPage() {
         method: "POST",
         body: JSON.stringify({
           ...form,
-          category,
+          category: categories,
           gender,
           slots,
           endDate: form.endDate || undefined,
@@ -187,8 +194,20 @@ export default function NewTournamentPage() {
             <DateField id="date" required min={new Date().toISOString().slice(0, 10)} value={form.date} onChange={(v) => set("date", v)} />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="time" className="text-xs font-bold text-ink-soft">Heure</label>
-            <TimeField id="time" required value={form.time} onChange={(v) => set("time", v)} />
+            <span className="text-xs font-bold text-ink-soft">Moment</span>
+            <div className="grid grid-cols-2 gap-2">
+              {TOURNAMENT_SESSIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={form.session === s}
+                  onClick={() => set("session", s)}
+                  className={cn("chip-choice", form.session === s ? "chip-choice-on" : "chip-choice-off")}
+                >
+                  {TOURNAMENT_SESSION_LABELS[s]}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="space-y-1.5">
@@ -197,12 +216,27 @@ export default function NewTournamentPage() {
           <p className="text-[11px] text-ink-soft">Laissez vide pour un tournoi d&apos;une seule journée.</p>
         </div>
 
-        <CategoryPicker
-          value={category}
-          onChange={setCategory}
-          idPrefix="tournament-category"
-          hint={activeTeam?.category ? `Reprise de ${activeTeam.name} — modifiable.` : undefined}
-        />
+        {/* Plusieurs catégories : un même tournoi accueille souvent plusieurs
+            tranches d'âge, en poules séparées. */}
+        <div className="space-y-1.5">
+          <span className="text-xs font-bold text-ink-soft">Catégories</span>
+          <div className="grid grid-cols-4 gap-2" role="group" aria-label="Catégories du tournoi">
+            {MATCH_CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={categories.includes(c)}
+                onClick={() => toggleCategory(c)}
+                className={cn("chip-choice !px-2", categories.includes(c) ? "chip-choice-on" : "chip-choice-off")}
+              >
+                <span className="truncate">{categoryLabel(c)}</span>
+              </button>
+            ))}
+          </div>
+          {activeTeam?.category && (
+            <p className="text-[11px] text-ink-soft">Reprise de {activeTeam.name} — modifiable.</p>
+          )}
+        </div>
 
         <div className="space-y-1.5">
           <span className="text-xs font-bold text-ink-soft">Genre</span>
@@ -210,17 +244,6 @@ export default function NewTournamentPage() {
             {MATCH_GENDERS.map((g) => (
               <button key={g} type="button" aria-pressed={gender === g} onClick={() => setGender(g)} className={cn("chip-choice", gender === g ? "chip-choice-on" : "chip-choice-off")}>
                 {MATCH_GENDER_LABELS[g]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <span className="text-xs font-bold text-ink-soft">Niveau</span>
-          <div className="grid grid-cols-2 gap-2">
-            {LEVELS.map((l) => (
-              <button key={l.value} type="button" aria-pressed={form.level === l.value} onClick={() => set("level", l.value)} className={cn("chip-choice", form.level === l.value ? "chip-choice-on" : "chip-choice-off")}>
-                {l.label}
               </button>
             ))}
           </div>

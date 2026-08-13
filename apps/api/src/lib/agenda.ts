@@ -116,8 +116,10 @@ export async function collectAgendaItems(teamId: string, from: string, to: strin
 
   // Un tournoi de deux jours occupe deux journées d'agenda, numérotées : deux
   // lignes du même nom, sans rien pour les distinguer, se liraient comme un
-  // doublon. L'heure est celle du tournoi — la seule connue, celle du coup
-  // d'envoi ; le détail du programme se lit sur sa fiche, à un tap d'ici.
+  // doublon. Un tournoi n'a pas d'heure réelle (seulement journée/nocturne) :
+  // l'heure affichée n'est qu'un repère de tri, le détail du programme se lit
+  // sur sa fiche, à un tap d'ici.
+  const SESSION_START_TIME: Record<string, string> = { day: "09:00", night: "20:00" };
   for (const tournament of tournamentRows) {
     const lastDay = tournament.endDate ?? tournament.date;
     const days = Math.max(1, daysBetween(tournament.date, lastDay) + 1);
@@ -134,7 +136,7 @@ export async function collectAgendaItems(teamId: string, from: string, to: strin
         occurrenceDate: date,
         type: "tournoi",
         title: days > 1 ? `${tournament.name} — jour ${day + 1}/${days}` : tournament.name,
-        startTime: tournament.time.slice(0, 5),
+        startTime: SESSION_START_TIME[tournament.session] ?? "09:00",
         endTime: null,
         location: `${tournament.stadium}, ${tournament.city}`,
         description: organiser ? "Vous organisez ce tournoi." : "Votre équipe y est inscrite.",

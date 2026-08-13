@@ -70,10 +70,12 @@ export async function postSystemMessage(
   conversationId: string,
   body: string,
   matchId: string | null,
+  /** Proposition dont ce message parle — porte les boutons accepter/décliner tant qu'elle est en attente */
+  responseId: string | null = null,
 ): Promise<void> {
   const [message] = await executor
     .insert(messages)
-    .values({ conversationId, senderId: null, kind: "system", matchId, body })
+    .values({ conversationId, senderId: null, kind: "system", matchId, responseId, body })
     .returning({ createdAt: messages.createdAt });
   await executor
     .update(conversations)

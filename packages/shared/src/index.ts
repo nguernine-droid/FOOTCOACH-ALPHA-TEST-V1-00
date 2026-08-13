@@ -88,9 +88,6 @@ export type MatchSide = (typeof MATCH_SIDES)[number];
 export const RESPONSE_STATUSES = ["pending", "accepted", "declined"] as const;
 export type ResponseStatus = (typeof RESPONSE_STATUSES)[number];
 
-export const MATCH_LEVELS = ["loisir", "competition"] as const;
-export type MatchLevel = (typeof MATCH_LEVELS)[number];
-
 export const MATCH_FORMATS = ["5v5", "8v8", "11v11"] as const;
 export type MatchFormat = (typeof MATCH_FORMATS)[number];
 
@@ -184,6 +181,75 @@ export function isPlateauCategory(category: string | null | undefined): boolean 
 
 /** Équipes cherchées par une annonce de plateau — l'hôte complète le carré */
 export const PLATEAU_TEAMS_WANTED = 3;
+
+/**
+ * Niveau de jeu — le palier réel d'une équipe (district, régional, national),
+ * pas un simple « loisir/compétition ». Sert deux fois : sur l'équipe (« on
+ * joue en D2 »), et sur une annonce (« on cherche du D2 ou mieux »).
+ *
+ * Toutes les valeurs existent dans l'absolu, mais seule une partie a un sens
+ * pour une catégorie d'âge donnée — voir `divisionLevelsFor`. En dessous des
+ * U10, aucun niveau ne s'applique : à cet âge, les districts ne classent pas
+ * les équipes.
+ */
+export const DIVISION_LEVELS = [
+  "debutant", "confirme",
+  "d4", "d3", "d2", "d1", "territoire",
+  "r3", "r2", "r1",
+  "n3", "n2", "n1",
+] as const;
+export type DivisionLevel = (typeof DIVISION_LEVELS)[number];
+
+export const DIVISION_LEVEL_LABELS: Record<DivisionLevel, string> = {
+  debutant: "Débutant",
+  confirme: "Confirmé",
+  d4: "D4",
+  d3: "D3",
+  d2: "D2",
+  d1: "D1",
+  territoire: "Territoire",
+  r3: "R3",
+  r2: "R2",
+  r1: "R1",
+  n3: "N3",
+  n2: "N2",
+  n1: "N1",
+};
+
+/**
+ * Les niveaux qui ont un sens pour une catégorie (fine, comme une équipe — U13
+ * — ou groupée, comme une annonce — U12-U13). Tableau vide = pas de niveau à
+ * cet âge, ni sur l'équipe ni sur l'annonce.
+ */
+export function divisionLevelsFor(category: string | null | undefined): readonly DivisionLevel[] {
+  const group = announcementCategoryOf(category);
+  switch (group) {
+    case "U6-U7":
+    case "U8-U9":
+      return [];
+    case "U10-U11":
+      return ["debutant", "confirme"];
+    case "U12-U13":
+      return ["d4", "d3", "d2", "d1", "territoire"];
+    case "U14-U15":
+    case "U16-U17":
+      return ["d4", "d3", "d2", "d1", "territoire", "r1"];
+    case "U18-U19":
+    case "U20":
+    case "Seniors":
+    case "Veterans":
+      return ["d4", "d3", "d2", "d1", "territoire", "r3", "r2", "r1", "n3", "n2", "n1"];
+    default:
+      // Catégorie absente ou non reconnue : mieux vaut ne rien proposer qu'une
+      // liste qui ne correspond à rien.
+      return [];
+  }
+}
+
+/** Ramène une valeur venue de la base à la liste connue — même précaution que `asMatchCategory`. */
+export function asDivisionLevel(value: string | null | undefined): DivisionLevel | null {
+  return value && (DIVISION_LEVELS as readonly string[]).includes(value) ? (value as DivisionLevel) : null;
+}
 
 /**
  * Genre de l'équipe, distinct de la catégorie : dédoubler les catégories
@@ -426,6 +492,14 @@ export const TOURNAMENT_MAX_SLOTS = 64;
 /** Durée maximale d'un tournoi, en jours. Au-delà, c'est un championnat. */
 export const TOURNAMENT_MAX_DAYS = 7;
 
+/** Pas d'horaire réel pour un tournoi — seulement s'il se joue de jour ou en nocturne */
+export const TOURNAMENT_SESSIONS = ["day", "night"] as const;
+export type TournamentSession = (typeof TOURNAMENT_SESSIONS)[number];
+export const TOURNAMENT_SESSION_LABELS: Record<TournamentSession, string> = {
+  day: "Journée",
+  night: "Nocturne",
+};
+
 export const createTournamentSchema = z
   .object({
     name: z.string().trim().min(3).max(80),
@@ -435,12 +509,13 @@ export const createTournamentSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
-    time: z.string().regex(/^\d{2}:\d{2}$/),
+    session: z.enum(TOURNAMENT_SESSIONS),
     city: z.string().trim().min(1).max(100),
     stadium: z.string().trim().min(1).max(150),
-    category: z.enum(MATCH_CATEGORIES),
+    // Plusieurs catégories d'âge peuvent jouer le même tournoi, en poules
+    // séparées.
+    category: z.array(z.enum(MATCH_CATEGORIES)).min(1),
     gender: z.enum(MATCH_GENDERS),
-    level: z.enum(MATCH_LEVELS),
     format: z.enum(MATCH_FORMATS),
     slots: z.number().int().min(TOURNAMENT_MIN_SLOTS).max(TOURNAMENT_MAX_SLOTS),
     comment: z.string().trim().max(1000).optional(),
@@ -622,26 +697,45 @@ export const coachIdParamSchema = z.object({ coachId: z.string().uuid() });
 export const teamCoachParamsSchema = z.object({ id: z.string().uuid(), coachId: z.string().uuid() });
 export const responseParamsSchema = z.object({ id: z.string().uuid(), responseId: z.string().uuid() });
 
-export const createAnnouncementSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  time: z.string().regex(/^\d{2}:\d{2}$/),
-  city: z.string().min(1).max(100),
-  stadium: z.string().min(1).max(150),
-  // Groupes d'âges, pas catégories fines : une rencontre se cherche en U12-U13,
-  // c'est ainsi que les districts apparient les équipes.
-  category: z.enum(ANNOUNCEMENT_CATEGORIES),
-  // Demandé à la publication : deviner le genre d'une équipe serait présumer,
-  // et une annonce féminine tombée face à une équipe masculine ne se joue pas.
-  gender: z.enum(MATCH_GENDERS),
-  level: z.enum(MATCH_LEVELS),
-  format: z.enum(MATCH_FORMATS),
-  comment: z.string().max(500).optional(),
-  // Plus d'attestation par annonce : la responsabilité de déclarer le match à
-  // la fédération est acceptée à l'inscription (registerCoachSchema →
-  // acceptResponsibility), pour tous les matchs à venir. La redemander à
-  // chaque publication ne renforçait rien et faisait un obstacle de plus.
-});
+/**
+ * Le niveau doit exister pour la catégorie qu'il accompagne — jamais un R1 sur
+ * une annonce U8-U9, jamais un niveau absent là où la catégorie en propose.
+ * Partagée par l'annonce et les références d'équipe : même règle des deux côtés.
+ */
+function levelMatchesCategory(v: { category: string; level?: DivisionLevel | null }): boolean {
+  const allowed = divisionLevelsFor(v.category);
+  if (allowed.length === 0) return !v.level;
+  return !v.level || (allowed as readonly string[]).includes(v.level);
+}
+
+export const createAnnouncementSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    time: z.string().regex(/^\d{2}:\d{2}$/),
+    city: z.string().min(1).max(100),
+    stadium: z.string().min(1).max(150),
+    // Groupes d'âges, pas catégories fines : une rencontre se cherche en U12-U13,
+    // c'est ainsi que les districts apparient les équipes.
+    category: z.enum(ANNOUNCEMENT_CATEGORIES),
+    // Demandé à la publication : deviner le genre d'une équipe serait présumer,
+    // et une annonce féminine tombée face à une équipe masculine ne se joue pas.
+    gender: z.enum(MATCH_GENDERS),
+    // Niveau souhaité de l'adversaire (D2, R1…) — null pour les catégories qui
+    // n'en ont pas (jusqu'aux U9).
+    level: z.enum(DIVISION_LEVELS).nullable(),
+    format: z.enum(MATCH_FORMATS),
+    comment: z.string().max(500).optional(),
+    // Plus d'attestation par annonce : la responsabilité de déclarer le match à
+    // la fédération est acceptée à l'inscription (registerCoachSchema →
+    // acceptResponsibility), pour tous les matchs à venir. La redemander à
+    // chaque publication ne renforçait rien et faisait un obstacle de plus.
+  })
+  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] });
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
+
+/** Modifier une annonce déjà publiée — mêmes champs, tant qu'elle est encore ouverte */
+export const updateAnnouncementSchema = createAnnouncementSchema;
+export type UpdateAnnouncementInput = z.infer<typeof updateAnnouncementSchema>;
 
 /** Coup d'envoi : passage de `scheduled` à `live` */
 export const kickoffSchema = z.object({});
@@ -690,10 +784,18 @@ export type WithdrawMatchInput = z.infer<typeof withdrawMatchSchema>;
  * Le stade est facultatif (tous les clubs n'en ont pas un attitré) ; la chaîne
  * vide vaut « aucun » et sera stockée `null`.
  */
-export const teamReferencesSchema = z.object({
+const teamReferencesShape = {
   category: z.enum(MATCH_CATEGORIES),
   gender: z.enum(MATCH_GENDERS),
   stadium: z.string().trim().max(150).optional(),
+  // Niveau réel de l'équipe (D2, R1…) — absent tant qu'il n'a pas été réglé,
+  // et jamais proposé pour les catégories qui n'en ont pas.
+  level: z.enum(DIVISION_LEVELS).nullable().optional(),
+};
+
+export const teamReferencesSchema = z.object(teamReferencesShape).refine(levelMatchesCategory, {
+  message: "Niveau invalide pour cette catégorie",
+  path: ["level"],
 });
 export type TeamReferencesInput = z.infer<typeof teamReferencesSchema>;
 
@@ -701,10 +803,13 @@ export type TeamReferencesInput = z.infer<typeof teamReferencesSchema>;
  * Création d'une équipe supplémentaire par un coach déjà inscrit. Mêmes bornes
  * que l'équipe créée à l'inscription : c'est la même chose, créée plus tard.
  */
-export const createTeamSchema = teamReferencesSchema.extend({
-  name: z.string().trim().min(2).max(60),
-  city: z.string().trim().min(1).max(60),
-});
+export const createTeamSchema = z
+  .object({
+    ...teamReferencesShape,
+    name: z.string().trim().min(2).max(60),
+    city: z.string().trim().min(1).max(60),
+  })
+  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] });
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
 
 /**
@@ -1032,6 +1137,8 @@ export interface CoachTeamDto {
   category: MatchCategory | null;
   gender: MatchGender | null;
   stadium: string | null;
+  /** Niveau réel de l'équipe (D2, R1…) — null tant qu'il n'a pas été réglé */
+  level: DivisionLevel | null;
 }
 
 /** Proposition d'un coach adverse sur une annonce (visible par l'émetteur) */
@@ -1057,6 +1164,8 @@ export interface AnnouncementResponseDto {
   coach: CoachRefDto | null;
   status: ResponseStatus;
   createdAt: string;
+  /** Le fil ouvert entre les deux coachs pour en discuter et décider — null si aucun des deux comptes ne tient plus */
+  conversationId: string | null;
 }
 
 export interface AnnouncementDto {
@@ -1069,11 +1178,14 @@ export interface AnnouncementDto {
   category: string;
   /** null pour les annonces publiées avant l'ajout du genre */
   gender: MatchGender | null;
-  level: MatchLevel;
+  /** Niveau souhaité de l'adversaire (D2, R1…) — null pour les catégories qui n'en ont pas */
+  level: DivisionLevel | null;
   format: MatchFormat;
   comment: string | null;
   status: AnnouncementStatus;
   isMine: boolean;
+  /** Nombre de fois où un autre coach a ouvert le détail de l'annonce */
+  viewCount: number;
   /**
    * Jusqu'aux U11, l'annonce ne cherche pas UN adversaire mais un PLATEAU de
    * quatre équipes : elle reste ouverte jusqu'à trois acceptations.
@@ -1127,7 +1239,7 @@ export interface AnnouncementDto {
 export interface AnnouncementDefaultsDto {
   category: AnnouncementCategory;
   gender: MatchGender | null;
-  level: MatchLevel;
+  level: DivisionLevel | null;
   format: MatchFormat;
   stadium: string;
   city: string;
@@ -1139,6 +1251,14 @@ export interface AnnouncementDefaultsDto {
  * que le périmètre a écartées, pour proposer de balayer plus large sans avoir à
  * les télécharger.
  */
+/** Le bandeau du tableau de bord : combien d'équipes et d'annonces dans mon groupe d'âges, dans mon secteur */
+export interface CategoryStatsDto {
+  /** Groupe d'âges de mon équipe active — null si elle n'en a pas encore une */
+  category: AnnouncementCategory | null;
+  teamsInCategory: number;
+  announcementsInCategory: number;
+}
+
 export interface RadarDto {
   items: AnnouncementDto[];
   /**
@@ -1216,12 +1336,12 @@ export interface TournamentDto {
   date: string;
   /** null = tournoi d'une seule journée */
   endDate: string | null;
-  time: string;
+  session: TournamentSession;
   city: string;
   stadium: string;
-  category: string;
+  /** Plusieurs catégories d'âge peuvent jouer le même tournoi */
+  category: string[];
   gender: MatchGender | null;
-  level: MatchLevel;
   format: MatchFormat;
   /** Nombre d'équipes attendues */
   slots: number;
@@ -1329,6 +1449,13 @@ export interface AdminStatsDto {
   active30d: number;
   teamsCount: number;
   pendingResets: number;
+  /** Toutes les lignes de la table, quel que soit leur statut */
+  matchesTotal: number;
+  /** Score final entré (`status = "finished"`) */
+  matchesPlayed: number;
+  tournamentsTotal: number;
+  /** Dernier jour passé et non annulé — un tournoi n'a pas de statut "terminé" en base */
+  tournamentsPlayed: number;
   /** 14 derniers jours, ordre chronologique */
   loginsPerDay: { date: string; count: number }[];
   /** 24 entrées (0h-23h) pour le jour demandé */
@@ -1456,6 +1583,8 @@ export interface CoachCardDto extends CoachRefDto {
   clubLabel: string | null;
   /** Catégorie d'âge de son équipe principale (U13…), null si non renseignée */
   teamCategory: string | null;
+  /** Niveau de jeu de son équipe principale (D2, R1…), null si non réglé */
+  teamLevel: DivisionLevel | null;
   level: CoachLevelDto;
   points: number;
   matchesPlayed: number;
@@ -1519,6 +1648,12 @@ export interface MessageDto {
   mine: boolean;
   /** Match annoncé par un message `system` : de quoi ouvrir sa feuille */
   matchId: string | null;
+  /**
+   * Proposition dont ce message `system` parle. Présent tant que ça se
+   * discute, pour porter les boutons Accepter/Décliner directement dans le
+   * fil — `decidable` dit si c'est à MOI de trancher, ici et maintenant.
+   */
+  response: { id: string; announcementId: string; status: ResponseStatus; decidable: boolean } | null;
   createdAt: string;
 }
 

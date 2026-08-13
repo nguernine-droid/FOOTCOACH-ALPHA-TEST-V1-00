@@ -1,5 +1,12 @@
 import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
-import { asMatchCategory, asCoachCategories, levelForPoints, type CoachCardDto, type CoachRefDto } from "@teamnexus/shared";
+import {
+  asDivisionLevel,
+  asMatchCategory,
+  asCoachCategories,
+  levelForPoints,
+  type CoachCardDto,
+  type CoachRefDto,
+} from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import {
   announcementResponses,
@@ -207,7 +214,7 @@ export async function buildCoachCard(coachId: string): Promise<CoachCardDto | nu
 
   // Son équipe principale : la première qu'il encadre, celle qui le situe
   const [team] = await db
-    .select({ name: teams.name, category: teams.category })
+    .select({ name: teams.name, category: teams.category, level: teams.level })
     .from(teamCoaches)
     .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
     .where(eq(teamCoaches.coachId, coachId))
@@ -222,6 +229,7 @@ export async function buildCoachCard(coachId: string): Promise<CoachCardDto | nu
     // Aucun club n'est rattaché en V1 : l'équipe tient ce rôle sur la carte
     clubLabel: team?.name ?? null,
     teamCategory: asMatchCategory(team?.category),
+    teamLevel: asDivisionLevel(team?.level),
     level: levelForPoints(points),
     points,
     matchesPlayed,

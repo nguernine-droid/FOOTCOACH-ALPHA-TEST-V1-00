@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, count, desc, eq, gte, ilike, isNull, max, or } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNull, max, ne, or, sql } from "drizzle-orm";
 import {
   idParamSchema,
   ROLES,
@@ -11,7 +11,7 @@ import {
   type Role,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
-import { clubs, loginEvents, passwordResetRequests, refreshTokens, teams, users } from "../db/schema.js";
+import { clubs, loginEvents, matches, passwordResetRequests, refreshTokens, teams, tournaments, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
@@ -52,6 +52,27 @@ export function adminRoutes(app: FastifyInstance) {
       .select({ value: count() })
       .from(passwordResetRequests)
       .where(eq(passwordResetRequests.status, "pending"));
+
+    // Créés vs joués : un match « créé » est toute ligne de la table, « joué »
+    // celle dont le score est arrivé à son terme (status="finished"). Un
+    // tournoi n'a pas d'état « terminé » en base — seulement open/cancelled —
+    // donc « joué » se déduit de sa date : son dernier jour est passé, et il
+    // n'a pas été annulé.
+    const [{ value: matchesTotal }] = await db.select({ value: count() }).from(matches);
+    const [{ value: matchesPlayed }] = await db
+      .select({ value: count() })
+      .from(matches)
+      .where(eq(matches.status, "finished"));
+    const [{ value: tournamentsTotal }] = await db.select({ value: count() }).from(tournaments);
+    const [{ value: tournamentsPlayed }] = await db
+      .select({ value: count() })
+      .from(tournaments)
+      .where(
+        and(
+          ne(tournaments.status, "cancelled"),
+          sql`coalesce(${tournaments.endDate}, ${tournaments.date}) < ${localDateKey(now)}`,
+        ),
+      );
 
     // Une seule requête sur 30 jours : nourrit actifs 7j/30j et connexions/jour
     const since30d = new Date(now.getTime() - 30 * DAY_MS);
@@ -95,6 +116,10 @@ export function adminRoutes(app: FastifyInstance) {
       active30d: active30.size,
       teamsCount,
       pendingResets,
+      matchesTotal,
+      matchesPlayed,
+      tournamentsTotal,
+      tournamentsPlayed,
       loginsPerDay,
       loginsPerHour: perHour.map((c, hour) => ({ hour, count: c })),
       hourlyDate,

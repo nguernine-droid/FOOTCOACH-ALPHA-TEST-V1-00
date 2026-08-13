@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Megaphone, Trophy } from "lucide-react";
 import { type AnnouncementDto, type TournamentDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
@@ -13,39 +12,40 @@ import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
-type Bucket = "ongoing" | "confirmed" | "past";
+type Bucket = "pending" | "toValidate" | "confirmed" | "past";
 
 const BUCKETS: { key: Bucket; label: string }[] = [
-  { key: "ongoing", label: "En cours" },
-  { key: "confirmed", label: "Confirmées" },
+  { key: "pending", label: "En attente" },
+  { key: "toValidate", label: "À valider" },
+  { key: "confirmed", label: "Confirmé" },
   { key: "past", label: "Passées" },
 ];
 
 /**
- * Dans quel casier tombe une de mes annonces.
+ * Dans quel casier tombe une de mes annonces. Même code couleur que la carte
+ * (rouge/orange/vert) : personne n'a répondu, quelqu'un a répondu et attend
+ * une décision, ou c'est validé.
  *
  * La date prime sur tout : une annonce d'hier est passée, qu'elle ait trouvé
- * preneur ou non — c'est le seul classement qui ne se discute pas. Ensuite, ce
- * qui sépare « en cours » de « confirmée » est qu'un coach se soit manifesté :
- * une proposition à trancher compte, elle aussi. Les annulées rejoignent les
- * passées : elles ne cherchent plus personne.
+ * preneur ou non — c'est le seul classement qui ne se discute pas. Les
+ * annulées rejoignent les passées : elles ne cherchent plus personne.
  */
 function bucketOfAnnouncement(a: AnnouncementDto): Bucket {
   if (a.date < todayIso() || a.status === "cancelled") return "past";
-  if (a.status === "matched" || a.responses.some((r) => r.status === "pending")) return "confirmed";
-  return "ongoing";
+  if (a.status === "matched") return "confirmed";
+  if (a.responses.some((r) => r.status === "pending")) return "toValidate";
+  return "pending";
 }
 
 /**
- * Un tournoi ne se confirme pas comme une annonce : il est « en cours » tant
- * qu'il reste une place. Une seule équipe inscrite sur huit attendues, ce n'est
- * pas un tournoi qui tient — c'est un tournoi qui cherche encore. Il ne passe en
- * confirmé qu'une fois complet.
+ * Un tournoi n'a pas de proposition à trancher — il collecte des inscriptions,
+ * directes. Tant qu'il reste une place, il attend encore des équipes ; complet,
+ * il rejoint les confirmés. Il ne passe jamais par « à valider ».
  */
 function bucketOfTournament(t: TournamentDto): Bucket {
   const lastDay = t.endDate ?? t.date;
   if (lastDay < todayIso() || t.status === "cancelled") return "past";
-  return t.slotsLeft === 0 ? "confirmed" : "ongoing";
+  return t.slotsLeft === 0 ? "confirmed" : "pending";
 }
 
 export type MyAnnouncements = {
@@ -56,8 +56,6 @@ export type MyAnnouncements = {
   /** Ce qui n'est pas encore passé — le nombre à porter sur un onglet */
   activeCount: number;
   reload: () => void;
-  accept: (announcementId: string, responseId: string) => Promise<void>;
-  decline: (announcementId: string, responseId: string) => Promise<void>;
   cancel: (announcementId: string) => Promise<void>;
 };
 
@@ -71,7 +69,6 @@ export type MyAnnouncements = {
  * question d'en tenir deux copies qui finiraient par diverger.
  */
 export function useMyAnnouncements(): MyAnnouncements {
-  const router = useRouter();
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -96,33 +93,6 @@ export function useMyAnnouncements(): MyAnnouncements {
     reload();
   }, [reload]);
 
-  // Accepter une proposition crée le match : on enchaîne sur sa feuille de match
-  const accept = useCallback(
-    async (announcementId: string, responseId: string) => {
-      try {
-        const { matchId } = await api<{ matchId: string }>(
-          `/announcements/${announcementId}/responses/${responseId}/accept`,
-          { method: "POST" },
-        );
-        router.push(`/coach/matches/${matchId}`);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Impossible d'accepter cette proposition");
-        reload();
-      }
-    },
-    [reload, router],
-  );
-
-  const decline = useCallback(
-    async (announcementId: string, responseId: string) => {
-      await api(`/announcements/${announcementId}/responses/${responseId}/decline`, { method: "POST" }).catch(
-        () => undefined,
-      );
-      reload();
-    },
-    [reload],
-  );
-
   const cancel = useCallback(
     async (announcementId: string) => {
       await api(`/announcements/${announcementId}`, { method: "DELETE" }).catch(() => undefined);
@@ -135,7 +105,7 @@ export function useMyAnnouncements(): MyAnnouncements {
     (announcements ?? []).filter((a) => bucketOfAnnouncement(a) !== "past").length +
     tournaments.filter((t) => bucketOfTournament(t) !== "past").length;
 
-  return { announcements, tournaments, error, activeCount, reload, accept, decline, cancel };
+  return { announcements, tournaments, error, activeCount, reload, cancel };
 }
 
 /**
@@ -144,8 +114,8 @@ export function useMyAnnouncements(): MyAnnouncements {
  * catégories de l'onglet « Annonces », et c'est à eux de dire où l'on est.
  */
 export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
-  const { announcements, tournaments, error, accept, decline, cancel } = mine;
-  const [bucket, setBucket] = useState<Bucket>("ongoing");
+  const { announcements, tournaments, error, cancel } = mine;
+  const [bucket, setBucket] = useState<Bucket>("pending");
   /** Annonce dont le détail est ouvert — relue dans la liste, jamais copiée */
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -158,7 +128,7 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
         tournaments.filter((t) => bucketOfTournament(t) === b.key).length;
       return acc;
     },
-    { ongoing: 0, confirmed: 0, past: 0 },
+    { pending: 0, toValidate: 0, confirmed: 0, past: 0 },
   );
 
   const shownAnnouncements = announcements
@@ -173,8 +143,8 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
 
   return (
     <div className="space-y-4">
-      {/* Trois casiers qui se partagent la largeur : cible large, pas de repli */}
-      <div className="grid grid-cols-3 gap-2" role="tablist" aria-label="Filtrer mes annonces">
+      {/* Quatre casiers qui se partagent la largeur : cible large, pas de repli */}
+      <div className="grid grid-cols-4 gap-1.5" role="tablist" aria-label="Filtrer mes annonces">
         {BUCKETS.map((b) => (
           <button
             key={b.key}
@@ -183,9 +153,9 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
             aria-selected={bucket === b.key}
             onClick={() => setBucket(b.key)}
             // Même resserrement que la rangée des catégories au-dessus :
-            // « Confirmées (2) » ne tient pas dans un tiers d'écran de téléphone
+            // « À valider (2) » ne tient pas dans un quart d'écran de téléphone
             // avec les 16 px de côté d'origine.
-            className={cn("chip-choice px-2", bucket === b.key ? "chip-choice-on" : "chip-choice-off")}
+            className={cn("chip-choice !px-1.5", bucket === b.key ? "chip-choice-on" : "chip-choice-off")}
           >
             <span className="truncate">{b.label}</span> ({counts[b.key]})
           </button>
@@ -200,13 +170,15 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
             <Megaphone size={22} />
           </span>
           <p className="text-sm font-bold">
-            {bucket === "ongoing"
+            {bucket === "pending"
               ? "Rien en attente de réponse"
-              : bucket === "confirmed"
-                ? "Rien de confirmé pour l'instant"
-                : "Rien de passé"}
+              : bucket === "toValidate"
+                ? "Rien à valider pour l'instant"
+                : bucket === "confirmed"
+                  ? "Rien de confirmé pour l'instant"
+                  : "Rien de passé"}
           </p>
-          {bucket === "ongoing" && (
+          {bucket === "pending" && (
             <>
               <p className="text-xs text-ink-soft">
                 Publiez une annonce : elle apparaîtra chez les coachs de votre secteur.
@@ -232,8 +204,6 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
                   <MyAnnouncementCard
                     key={a.id}
                     announcement={a}
-                    onAccept={accept}
-                    onDecline={decline}
                     onCancel={async (id) => {
                       setDetailId(null);
                       await cancel(id);
@@ -261,14 +231,7 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
         </div>
       )}
 
-      {detail && (
-        <MyAnnouncementSheet
-          announcement={detail}
-          onClose={() => setDetailId(null)}
-          onAccept={accept}
-          onDecline={decline}
-        />
-      )}
+      {detail && <MyAnnouncementSheet announcement={detail} onClose={() => setDetailId(null)} />}
     </div>
   );
 }

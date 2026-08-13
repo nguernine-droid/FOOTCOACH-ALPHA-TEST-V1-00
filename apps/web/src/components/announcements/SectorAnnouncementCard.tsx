@@ -3,6 +3,7 @@
 import { CalendarDays, Clock3, MapPin, Navigation, UserMinus, Users, XCircle } from "lucide-react";
 import {
   categoryLabel,
+  DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
@@ -10,8 +11,6 @@ import {
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { Button, ButtonLink } from "@/components/ui/Button";
-
-const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 
 /**
  * L'annonce d'un AUTRE coach : ce qu'on lit avant de proposer de jouer.
@@ -97,7 +96,7 @@ export function SectorAnnouncementCard({
         <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
         {a.gender && <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>}
         <span className="chip bg-pitch-soft text-primary">{a.format}</span>
-        <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[a.level]}</span>
+        {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft font-semibold">

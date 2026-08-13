@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, MapPin, Trophy, Users } from "lucide-react";
-import { categoryLabel, MATCH_GENDER_LABELS, type TournamentDto } from "@teamnexus/shared";
+import { categoryLabel, MATCH_GENDER_LABELS, TOURNAMENT_SESSION_LABELS, type TournamentDto } from "@teamnexus/shared";
 import { cn, formatDate } from "@/lib/utils";
 
 /**
@@ -59,7 +59,9 @@ export function TournamentCard({ tournament, className }: { tournament: Tourname
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <span className="chip bg-paper text-ink-soft">{categoryLabel(tournament.category)}</span>
+          {tournament.category.map((c) => (
+            <span key={c} className="chip bg-paper text-ink-soft">{categoryLabel(c)}</span>
+          ))}
           {tournament.gender && (
             <span className="chip bg-paper text-ink-soft">{MATCH_GENDER_LABELS[tournament.gender]}</span>
           )}
@@ -68,7 +70,7 @@ export function TournamentCard({ tournament, className }: { tournament: Tourname
 
         <div className="space-y-1 text-xs text-ink-soft">
           <p className="flex items-center gap-1.5 capitalize">
-            <CalendarDays size={13} className="shrink-0" aria-hidden /> {dates} · {tournament.time}
+            <CalendarDays size={13} className="shrink-0" aria-hidden /> {dates} · {TOURNAMENT_SESSION_LABELS[tournament.session]}
           </p>
           <p className="flex items-center gap-1.5 truncate">
             <MapPin size={13} className="shrink-0" aria-hidden /> {tournament.stadium}, {tournament.city}

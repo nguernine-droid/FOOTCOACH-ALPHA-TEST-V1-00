@@ -1,6 +1,13 @@
 "use client";
 
-import { categoryLabel, COACH_CATEGORY_LABELS, type CoachCategory, type CoachLevelDto } from "@teamnexus/shared";
+import {
+  categoryLabel,
+  COACH_CATEGORY_LABELS,
+  DIVISION_LEVEL_LABELS,
+  type CoachCategory,
+  type CoachLevelDto,
+  type DivisionLevel,
+} from "@teamnexus/shared";
 import { Avatar } from "@/components/Avatar";
 
 /**
@@ -21,6 +28,7 @@ export function CoachCard({
   avatarUrl,
   clubLabel,
   teamCategory,
+  teamLevel,
   level,
   points,
   matchesPlayed,
@@ -33,6 +41,8 @@ export function CoachCard({
   clubLabel: string | null;
   /** Catégorie d'âge de l'équipe active (U13…), null si elle n'en a pas */
   teamCategory: string | null;
+  /** Niveau de jeu de l'équipe active (D2, R1…), null si non réglé */
+  teamLevel?: DivisionLevel | null;
   level: CoachLevelDto;
   points: number;
   matchesPlayed: number;
@@ -71,6 +81,7 @@ export function CoachCard({
         {teamCategory && (
           <p className="mt-2 text-xs font-black tracking-wider text-white/75">
             {categoryLabel(teamCategory).toUpperCase()}
+            {teamLevel && ` · ${DIVISION_LEVEL_LABELS[teamLevel].toUpperCase()}`}
           </p>
         )}
       </div>

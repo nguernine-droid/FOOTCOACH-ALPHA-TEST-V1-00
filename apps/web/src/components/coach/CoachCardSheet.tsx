@@ -65,6 +65,7 @@ export function CoachCardSheet({ coachId, onClose }: { coachId: string; onClose:
             avatarUrl={card.avatarUrl}
             clubLabel={card.clubLabel}
             teamCategory={card.teamCategory}
+            teamLevel={card.teamLevel}
             level={card.level}
             points={card.points}
             matchesPlayed={card.matchesPlayed}

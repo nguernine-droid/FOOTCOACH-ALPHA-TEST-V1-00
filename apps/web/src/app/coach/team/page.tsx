@@ -4,14 +4,18 @@ import { useState } from "react";
 import { MapPin, Pencil, Plus, ShieldCheck, Users } from "lucide-react";
 import {
   categoryLabel,
+  DIVISION_LEVEL_LABELS,
+  divisionLevelsFor,
   MATCH_GENDER_LABELS,
   type CoachTeamDto,
+  type DivisionLevel,
   type MatchCategory,
   type MatchGender,
 } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
 import { GenderPicker } from "@/components/GenderPicker";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -84,6 +88,11 @@ export default function CoachTeamPage() {
                         {MATCH_GENDER_LABELS[team.gender]}
                       </span>
                     )}
+                    {team.level && (
+                      <span className="chip bg-paper text-ink-soft shrink-0">
+                        {DIVISION_LEVEL_LABELS[team.level]}
+                      </span>
+                    )}
                   </span>
                   <span className="block text-xs text-ink-soft truncate">
                     {team.stadium ? `${team.stadium} · ${team.city}` : team.city}
@@ -143,8 +152,16 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
   const [category, setCategory] = useState<MatchCategory | null>(team.category);
   const [gender, setGender] = useState<MatchGender | null>(team.gender);
   const [stadium, setStadium] = useState(team.stadium ?? "");
+  // Le niveau ne survit pas à un changement de catégorie qui ne le propose
+  // plus : rester sur un D2 affiché sous une catégorie U8-U9 mentirait.
+  const [level, setLevel] = useState<DivisionLevel | null>(team.level);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function changeCategory(c: MatchCategory) {
+    setCategory(c);
+    if (!(divisionLevelsFor(c) as readonly string[]).includes(level ?? "")) setLevel(null);
+  }
 
   async function save() {
     if (saving || !category || !gender) return;
@@ -153,7 +170,7 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
     try {
       await api<CoachTeamDto>(`/coach/teams/${team.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ category, gender, stadium: stadium.trim() || undefined }),
+        body: JSON.stringify({ category, gender, stadium: stadium.trim() || undefined, level }),
       });
       // La liste des équipes vit dans la session : sans ce rechargement, les
       // annonces continueraient d'être préremplies avec l'ancienne référence.
@@ -190,9 +207,17 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
 
         <CategoryPicker
           value={category}
-          onChange={setCategory}
+          onChange={changeCategory}
           idPrefix="references-category"
           hint="Proposée d'office à chaque annonce publiée au nom de cette équipe."
+        />
+
+        <DivisionLevelPicker
+          category={category}
+          value={level}
+          onChange={setLevel}
+          idPrefix="references-level"
+          hint="Le niveau réel de l'équipe — affiché sur votre carte de coach."
         />
 
         <GenderPicker

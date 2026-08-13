@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check, ChevronRight, Megaphone, Newspaper, Plus, Trophy, type LucideIcon } from "lucide-react";
+import { Check, ChevronRight, Megaphone, MessageSquareWarning, Newspaper, Plus, Trophy, type LucideIcon } from "lucide-react";
 import type { QuickAction, QuickChoice } from "@/components/QuickActionContext";
 import { useTabBadges } from "@/components/TabBadgesContext";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -18,6 +18,7 @@ const CHOICE_ICONS: Record<QuickChoice["icon"], LucideIcon> = {
   announcement: Megaphone,
   tournament: Trophy,
   publication: Newspaper,
+  feedback: MessageSquareWarning,
 };
 
 export type AppTab = {

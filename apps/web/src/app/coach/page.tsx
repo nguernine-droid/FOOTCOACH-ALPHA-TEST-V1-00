@@ -2,9 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy } from "lucide-react";
-import type { ActivityDto, AnnouncementDto, MatchDto, PublicationDto, TournamentDto } from "@teamnexus/shared";
+import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy, Users } from "lucide-react";
+import {
+  categoryLabel,
+  type ActivityDto,
+  type AnnouncementDto,
+  type CategoryStatsDto,
+  type MatchDto,
+  type PublicationDto,
+  type TournamentDto,
+} from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";
@@ -29,13 +36,13 @@ function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
 }
 
 export default function CoachDashboard() {
-  const router = useRouter();
   const now = useNow(1000);
   const [matches, setMatches] = useState<MatchDto[] | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
   const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
   const [publications, setPublications] = useState<PublicationDto[]>([]);
+  const [categoryStats, setCategoryStats] = useState<CategoryStatsDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadAll = useCallback(() => {
@@ -49,10 +56,15 @@ export default function CoachDashboard() {
       // Les billets des contributeurs — en repli silencieux : un panneau
       // d'affichage vide ne doit pas faire tomber le tableau de bord.
       api<PublicationDto[]>("/publications").catch(() => [] as PublicationDto[]),
+      // Le bandeau du haut — jamais bloquant : sans équipe active ou sans
+      // catégorie réglée, il reste simplement absent.
+      api<CategoryStatsDto>("/announcements/category-stats").catch(() => null),
     ])
-      .then(([m, a, act, t, pubs]) => {
+      .then(([m, a, act, t, pubs, catStats]) => {
         setMatches(m);
-        setAnnouncements(a.filter((x) => x.status !== "cancelled"));
+        // En cours seulement : une annonce matchée devient un match, déjà
+        // montré par la carte du prochain match — la répéter ici ferait doublon.
+        setAnnouncements(a.filter((x) => x.status === "open"));
         setActivity(act);
         // Ceux que j'organise seulement, et seulement s'ils sont à venir : le
         // tableau de bord dit ce qui reste à faire, pas ce qui a eu lieu.
@@ -62,6 +74,7 @@ export default function CoachDashboard() {
         // Les cinq derniers : le tableau de bord donne le fil de l'actualité,
         // l'onglet Annonces garde le panneau entier.
         setPublications(pubs.slice(0, 5));
+        setCategoryStats(catStats);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -72,27 +85,6 @@ export default function CoachDashboard() {
 
   async function cancelAnnouncement(id: string) {
     await api(`/announcements/${id}`, { method: "DELETE" }).catch(() => undefined);
-    loadAll();
-  }
-
-  // Accepter une proposition : le match est créé, on ouvre sa feuille de match
-  async function acceptResponse(announcementId: string, responseId: string) {
-    try {
-      const { matchId } = await api<{ matchId: string }>(
-        `/announcements/${announcementId}/responses/${responseId}/accept`,
-        { method: "POST" },
-      );
-      router.push(`/coach/matches/${matchId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Impossible d'accepter cette proposition");
-      loadAll();
-    }
-  }
-
-  async function declineResponse(announcementId: string, responseId: string) {
-    await api(`/announcements/${announcementId}/responses/${responseId}/decline`, { method: "POST" }).catch(
-      () => undefined,
-    );
     loadAll();
   }
 
@@ -126,13 +118,92 @@ export default function CoachDashboard() {
 
   const kickoff = featured ? kickoffDate(featured.date, featured.time) : null;
   const countdown = kickoff ? formatCountdown(kickoff.getTime() - now.getTime()) : null;
+  // Rien en cours, rien qui attend : le radar EST la tâche du jour, il monte
+  // en tête d'écran plutôt que d'attendre sous des sections vides.
+  const radarToTop = announcements.length === 0 || !featured;
 
   return (
-    <div className="grid gap-4 min-[960px]:grid-cols-[1fr_360px] items-start">
+    <div className="space-y-4">
+      {/* Bandeau : où en est ma catégorie dans le secteur, avant même d'ouvrir
+          le radar. Absent tant que l'équipe active n'a pas de catégorie
+          réglée — rien à situer sans elle. */}
+      {categoryStats?.category && (
+        <section
+          className="card p-4 flex flex-wrap items-center gap-x-6 gap-y-3 animate-rise-in"
+          aria-label="Ma catégorie dans le secteur"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
+              <Users size={16} aria-hidden />
+            </span>
+            <p className="text-xs text-ink-soft font-semibold leading-tight">
+              <span className="block text-lg font-black text-ink leading-none tabular-nums">
+                {categoryStats.teamsInCategory}
+              </span>
+              équipe{categoryStats.teamsInCategory > 1 ? "s" : ""} {categoryLabel(categoryStats.category)} dans le secteur
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-lg bg-accent-surface text-accent flex items-center justify-center shrink-0">
+              <Megaphone size={16} aria-hidden />
+            </span>
+            <p className="text-xs text-ink-soft font-semibold leading-tight">
+              <span className="block text-lg font-black text-ink leading-none tabular-nums">
+                {categoryStats.announcementsInCategory}
+              </span>
+              annonce{categoryStats.announcementsInCategory > 1 ? "s" : ""} {categoryLabel(categoryStats.category)} en ce
+              moment
+            </p>
+          </div>
+        </section>
+      )}
+
+      <div className="grid gap-4 min-[960px]:grid-cols-[1fr_360px] items-start">
       {/* ————— Colonne principale ————— */}
       <div className="space-y-4 min-w-0">
+        {/* Rien en cours, rien qui attend : le radar prend la tête de l'écran,
+            avant même « Mes annonces ». */}
+        {radarToTop && <RadarFeed />}
+
+        {/* Annonces en cours : en tête du dashboard sinon, une annonce publiée
+            doit se voir tout de suite — avant même le prochain match. */}
+        <section className="card p-5 space-y-3 animate-rise-in" aria-label="Annonces en cours">
+          <div className="flex items-center justify-between">
+            <h3 className="display text-lg">Mes annonces en cours</h3>
+            <ButtonLink href="/coach/announcements/new" variant="soft" size="sm">
+              <Megaphone size={14} /> Publier
+            </ButtonLink>
+          </div>
+
+          {announcements.length === 0 && tournaments.length === 0 && (
+            <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
+              Aucune annonce en cours. Publiez-en une pour trouver un adversaire.
+            </p>
+          )}
+
+          {announcements.map((a) => (
+            <MyAnnouncementCard key={a.id} announcement={a} onCancel={cancelAnnouncement} />
+          ))}
+
+          {/* Les tournois que j'organise, sous les annonces : ils se préparent
+              plus à l'avance, et une place vide s'y voit d'un coup d'œil. */}
+          {tournaments.map((t) => (
+            <TournamentCard key={t.id} tournament={t} />
+          ))}
+
+          {(announcements.length > 0 || tournaments.length > 0) && (
+            <Link
+              href="/coach/announcements/mine"
+              className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-blue
+                transition hover:text-blue-dark active:bg-blue-soft"
+            >
+              Voir toutes mes annonces
+            </Link>
+          )}
+        </section>
+
         {/* Prochain match */}
-        {featured ? (
+        {featured && (
           <section className="card p-5 space-y-4 animate-rise-in" aria-label="Prochain match">
             <div className="flex items-center justify-between gap-2">
               {featured.encounterOpen && !featured.encounterConfirmedAt ? (
@@ -198,66 +269,20 @@ export default function CoachDashboard() {
               </ButtonLink>
             </div>
           </section>
-        ) : (
-          // Sans match prévu, trouver un adversaire EST la tâche du jour : le
-          // radar prend la tête de l'écran, l'appel à publier suit.
-          <>
-            <RadarFeed />
-            <NoMatchCard />
-          </>
         )}
 
+        {/* Sans match prévu, l'appel à publier suit le radar (déjà remonté
+            en tête, ou juste en dessous des annonces s'il y en a en cours). */}
+        {!featured && <NoMatchCard />}
+
         {/* Radar : les équipes qui cherchent un adversaire — cœur de la V1.
-            Quand un match est prévu, il vient après la carte du match. */}
-        {featured && <RadarFeed />}
+            Déjà affiché en tête si `radarToTop`, sinon il vient ici, après
+            les annonces et le prochain match. */}
+        {!radarToTop && <RadarFeed />}
       </div>
 
       {/* ————— Colonne latérale ————— */}
       <div className="space-y-4 min-w-0">
-        {/* Annonces actives */}
-        <section className="card p-5 space-y-3 animate-rise-in" aria-label="Annonces actives">
-          <div className="flex items-center justify-between">
-            <h3 className="display text-lg">Mes annonces</h3>
-            <ButtonLink href="/coach/announcements/new" variant="soft" size="sm">
-              <Megaphone size={14} /> Publier
-            </ButtonLink>
-          </div>
-
-          {announcements.length === 0 && tournaments.length === 0 && (
-            <p className="text-xs text-ink-soft bg-paper rounded-lg px-4 py-3">
-              Aucune annonce en cours. Publiez-en une pour trouver un adversaire.
-            </p>
-          )}
-
-          {announcements.map((a) => (
-            <MyAnnouncementCard
-              key={a.id}
-              announcement={a}
-              onAccept={acceptResponse}
-              onDecline={declineResponse}
-              onCancel={cancelAnnouncement}
-            />
-          ))}
-
-          {/* Les tournois que j'organise, sous les annonces : ils se préparent
-              plus à l'avance, et une place vide s'y voit d'un coup d'œil. */}
-          {tournaments.map((t) => (
-            <TournamentCard key={t.id} tournament={t} />
-          ))}
-
-          {(announcements.length > 0 || tournaments.length > 0) && (
-            // Vers « Mes annonces » et non l'onglet du même nom : celui-ci
-            // montre désormais les annonces des autres.
-            <Link
-              href="/coach/announcements/mine"
-              className="flex items-center justify-center min-h-11 rounded-lg text-xs font-bold text-blue
-                transition hover:text-blue-dark active:bg-blue-soft"
-            >
-              Voir toutes mes annonces
-            </Link>
-          )}
-        </section>
-
         {/* Activités récentes */}
         <section className="card p-5 space-y-3 animate-rise-in" aria-label="Activités récentes">
           <h3 className="display text-lg">Activités récentes</h3>
@@ -323,6 +348,7 @@ export default function CoachDashboard() {
             Voir toutes les publications
           </Link>
         </section>
+      </div>
       </div>
     </div>
   );

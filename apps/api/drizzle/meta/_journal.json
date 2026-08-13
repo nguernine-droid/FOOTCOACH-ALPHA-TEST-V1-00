@@ -253,6 +253,34 @@
       "when": 1786519533485,
       "tag": "0035_agenda_telephone",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1786648423596,
+      "tag": "0036_add_chat_response_and_tournament_session",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1786648439465,
+      "tag": "0037_tournament_session_category_array",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1786655264466,
+      "tag": "0038_division_levels",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1786656712630,
+      "tag": "0039_announcement_view_count",
+      "breakpoints": true
     }
   ]
 }

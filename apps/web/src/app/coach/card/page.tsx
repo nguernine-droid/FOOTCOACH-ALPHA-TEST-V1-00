@@ -67,6 +67,7 @@ export default function CoachCardPage() {
               // c'est elle que les autres coachs voient sur le radar.
               clubLabel={user.clubName ?? activeTeam?.name ?? user.teamName}
               teamCategory={activeTeam?.category ?? null}
+              teamLevel={activeTeam?.level ?? null}
               level={user.level ?? levelForPoints(points)}
               points={points}
               matchesPlayed={user.matchesPlayed ?? 0}

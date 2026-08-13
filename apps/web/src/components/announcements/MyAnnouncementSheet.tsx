@@ -1,16 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Eye,
   MapPin,
+  MessageCircle,
   UserMinus,
   XCircle,
 } from "lucide-react";
 import {
   categoryLabel,
+  DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
@@ -20,8 +24,6 @@ import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
-
-const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 
 /**
  * Le détail d'une de mes annonces : ce qu'elle dit, et qui y a répondu.
@@ -33,16 +35,12 @@ const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 export function MyAnnouncementSheet({
   announcement: a,
   onClose,
-  onAccept,
-  onDecline,
 }: {
   announcement: AnnouncementDto;
   onClose: () => void;
-  onAccept: (announcementId: string, responseId: string) => void;
-  onDecline: (announcementId: string, responseId: string) => void;
 }) {
   const past = a.date < todayIso();
-  const decidable = a.status === "open" && !past;
+  const hasResponse = a.responses.some((r) => r.status === "pending");
 
   return (
     <BottomSheet
@@ -56,18 +54,50 @@ export function MyAnnouncementSheet({
     >
       <div className="px-5 pt-1 pb-4 space-y-4">
         <div className="space-y-1">
-          <h2 className="display text-lg capitalize">
-            {categoryLabel(a.category)}
-            {a.gender && ` ${MATCH_GENDER_LABELS[a.gender]}`} · {a.format}
-          </h2>
-          <p className="text-xs text-ink-soft font-semibold">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="display text-lg capitalize">
+              {categoryLabel(a.category)}
+              {a.gender && ` ${MATCH_GENDER_LABELS[a.gender]}`} · {a.format}
+            </h2>
+            {/* Combien d'AUTRES coachs ont ouvert le détail — un signal
+                d'intérêt, même sans proposition reçue. */}
+            <span
+              className="shrink-0 flex items-center gap-1 text-[11px] font-semibold text-ink-faint mt-1"
+              title="Nombre de fois où d'autres coachs ont ouvert le détail"
+            >
+              <Eye size={12} aria-hidden /> {a.viewCount}
+            </span>
+          </div>
+          <p
+            className={cn(
+              "text-xs font-semibold flex items-center gap-1.5",
+              a.status === "matched"
+                ? "text-success"
+                : a.status === "open" && !past
+                  ? hasResponse
+                    ? "text-sun"
+                    : "text-coral"
+                  : "text-ink-soft",
+            )}
+          >
+            {a.status === "open" && !past && (
+              <span
+                className={cn(
+                  "w-2 h-2 rounded-full shrink-0",
+                  hasResponse ? "bg-sun" : "bg-coral",
+                )}
+                aria-hidden
+              />
+            )}
             {a.status === "matched"
               ? "Match confirmé"
               : a.status === "cancelled"
                 ? "Annonce annulée"
                 : past
                   ? "Date passée — retirée du radar"
-                  : "En recherche d'adversaire"}
+                  : hasResponse
+                    ? "Quelqu'un a répondu — à trancher"
+                    : "En recherche d'adversaire"}
           </p>
         </div>
 
@@ -94,7 +124,7 @@ export function MyAnnouncementSheet({
           <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
           {a.gender && <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>}
           <span className="chip bg-pitch-soft text-primary">{a.format}</span>
-          <span className="chip bg-paper text-ink-soft">{LEVEL_LABELS[a.level]}</span>
+          {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
         </div>
 
         {a.comment && (
@@ -161,15 +191,14 @@ export function MyAnnouncementSheet({
                     </span>
                   )}
                 </div>
-                {decidable && r.status === "pending" && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button size="sm" onClick={() => onAccept(a.id, r.id)}>
-                      Accepter
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onDecline(a.id, r.id)}>
-                      Décliner
-                    </Button>
-                  </div>
+                {r.status === "pending" && r.conversationId && (
+                  <Link
+                    href={`/coach/messages/${r.conversationId}`}
+                    className="flex items-center justify-center gap-1.5 min-h-9 rounded-lg bg-blue-soft
+                      text-xs font-bold text-primary transition hover:bg-blue-faint"
+                  >
+                    <MessageCircle size={14} aria-hidden /> Discuter et décider
+                  </Link>
                 )}
               </div>
             ))

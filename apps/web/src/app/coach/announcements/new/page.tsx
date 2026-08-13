@@ -6,20 +6,24 @@ import { Megaphone, SlidersHorizontal, Users } from "lucide-react";
 import {
   ANNOUNCEMENT_CATEGORIES,
   ANNOUNCEMENT_TIME_SLOTS,
+  DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
   PLATEAU_TEAMS_WANTED,
   announcementCategoryOf,
   categoryLabel,
+  divisionLevelsFor,
   isPlateauCategory,
   type AnnouncementCategory,
   type AnnouncementDefaultsDto,
   type CoachTeamDto,
+  type DivisionLevel,
   type MatchGender,
 } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
 import { GenderPicker } from "@/components/GenderPicker";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
@@ -38,11 +42,6 @@ function enumerate(items: string[]): string {
   return items.length > 1 ? `${items.slice(0, -1).join(", ")} et ${items[items.length - 1]}` : items[0];
 }
 
-const LEVELS = [
-  { value: "loisir", label: "Loisir" },
-  { value: "competition", label: "Compétition" },
-] as const;
-const LEVEL_LABELS = { loisir: "Loisir", competition: "Compétition" } as const;
 const FORMATS = ["5v5", "8v8", "11v11"] as const;
 
 /**
@@ -108,7 +107,6 @@ function NewAnnouncementForm({
     category: (defaults?.category ??
       announcementCategoryOf(activeTeam?.category) ??
       "U12-U13") as AnnouncementCategory,
-    level: (defaults?.level ?? "loisir") as (typeof LEVELS)[number]["value"],
     format: (defaults?.format ?? "8v8") as (typeof FORMATS)[number],
     comment: "",
   });
@@ -119,6 +117,9 @@ function NewAnnouncementForm({
    * équipes d'avant, et il ouvre alors le panneau (voir plus bas).
    */
   const [gender, setGender] = useState<MatchGender | null>(defaults?.gender ?? activeTeam?.gender ?? null);
+  // Niveau souhaité de l'adversaire — dépend de la catégorie, donc à part du
+  // reste du formulaire plutôt que dans `form` (même raison que `gender`).
+  const [level, setLevel] = useState<DivisionLevel | null>(defaults?.level ?? null);
   /**
    * Ce qui ne change presque jamais d'une annonce à l'autre — catégorie, genre,
    * niveau, format — se replie derrière un résumé dès la deuxième publication.
@@ -152,6 +153,13 @@ function NewAnnouncementForm({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Le niveau ne survit pas à un changement de catégorie qui ne le propose
+  // plus : rester sur un D2 affiché sous une catégorie U8-U9 mentirait.
+  function changeCategory(category: AnnouncementCategory) {
+    set("category", category);
+    if (!(divisionLevelsFor(category) as readonly string[]).includes(level ?? "")) setLevel(null);
+  }
+
   // Jusqu'aux U11 l'annonce cherche un plateau de quatre équipes, pas un
   // adversaire : le formulaire doit le dire avant la publication, pas après.
   const plateau = isPlateauCategory(form.category);
@@ -177,7 +185,7 @@ function NewAnnouncementForm({
     try {
       await api("/announcements", {
         method: "POST",
-        body: JSON.stringify({ ...form, gender, comment: form.comment || undefined }),
+        body: JSON.stringify({ ...form, gender, level, comment: form.comment || undefined }),
       });
       router.push("/coach/announcements");
     } catch (err) {
@@ -245,7 +253,7 @@ function NewAnnouncementForm({
                 cible pleine et régulière, même à 390 px de large. */}
             <CategoryPicker
               value={form.category}
-              onChange={(c) => set("category", c)}
+              onChange={changeCategory}
               categories={ANNOUNCEMENT_CATEGORIES}
               idPrefix="announcement-category"
               hint={inheritance}
@@ -262,22 +270,14 @@ function NewAnnouncementForm({
               }
             />
 
-            <div className="space-y-1.5">
-              <span className="text-xs font-bold text-ink-soft">Niveau</span>
-              <div className="grid grid-cols-2 gap-2">
-                {LEVELS.map((l) => (
-                  <button
-                    key={l.value}
-                    type="button"
-                    aria-pressed={form.level === l.value}
-                    onClick={() => set("level", l.value)}
-                    className={cn("chip-choice", form.level === l.value ? "chip-choice-on" : "chip-choice-off")}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <DivisionLevelPicker
+              category={form.category}
+              value={level}
+              onChange={setLevel}
+              label="Niveau souhaité"
+              idPrefix="announcement-level"
+              hint="Optionnel — laissez vide pour accepter tous les niveaux."
+            />
 
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-ink-soft">Format</span>
@@ -310,7 +310,8 @@ function NewAnnouncementForm({
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold truncate">
                 {categoryLabel(form.category)}
-                {gender && ` · ${MATCH_GENDER_LABELS[gender]}`} · {LEVEL_LABELS[form.level]} · {form.format}
+                {gender && ` · ${MATCH_GENDER_LABELS[gender]}`}
+                {level && ` · ${DIVISION_LEVEL_LABELS[level]}`} · {form.format}
               </span>
               <span className="block text-[11px] text-ink-soft">Reprises de votre dernière annonce.</span>
             </span>

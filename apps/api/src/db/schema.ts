@@ -64,7 +64,6 @@ export const matchEventType = pgEnum("match_event_type", ["goal", "card", "subst
 export const matchSide = pgEnum("match_side", ["home", "away"]);
 export const bookingStatus = pgEnum("booking_status", ["pending", "approved", "declined"]);
 export const responseStatus = pgEnum("response_status", ["pending", "accepted", "declined"]);
-export const matchLevel = pgEnum("match_level", ["loisir", "competition"]);
 export const matchFormat = pgEnum("match_format", ["5v5", "8v8", "11v11"]);
 // Genre de l'équipe, à côté de la catégorie d'âge (et non fondu dedans)
 export const matchGender = pgEnum("match_gender", ["masculin", "feminin", "mixte"]);
@@ -309,6 +308,10 @@ export const teams = pgTable("teams", {
   // avant — on ne devine pas le genre d'un « FC Exemple ».
   gender: text("gender"),
   stadium: text("stadium"),
+  // Niveau réel de l'équipe (D2, R1…) — même texte libre que catégorie/genre,
+  // validé par zod (DIVISION_LEVELS). NULL tant qu'il n'a pas été réglé, et
+  // pour les catégories qui n'en ont pas (en dessous des U10).
+  level: text("level"),
   // Club propriétaire de l'équipe (NULL = équipe d'un coach indépendant, sans club)
   clubId: uuid("club_id").references(() => clubs.id),
   // Affectation des coachs : voir table team_coaches (une équipe peut avoir
@@ -391,10 +394,19 @@ export const matchAnnouncements = pgTable(
     // NULL pour les annonces publiées avant l'ajout du genre : on ne devine pas
     // rétroactivement le genre d'une équipe.
     gender: matchGender("gender"),
-    level: matchLevel("level").notNull().default("loisir"),
+    // Niveau souhaité de l'adversaire (D2, R1…) — texte libre validé par zod
+    // (DIVISION_LEVELS), NULL pour les catégories qui n'en ont pas.
+    level: text("level"),
     format: matchFormat("format").notNull().default("11v11"),
     comment: text("comment"),
     status: announcementStatus("status").notNull().default("open"),
+    /**
+     * Nombre de fois où un AUTRE coach a ouvert le détail de l'annonce — un
+     * signal d'intérêt pour son émetteur. Incrémenté à chaque lecture de
+     * `GET /announcements/:id` par un coach d'une autre équipe ; mes propres
+     * lectures ne comptent pas, ce n'est pas moi que ce chiffre intéresse.
+     */
+    viewCount: integer("view_count").notNull().default(0),
     /**
      * Attestation « j'ai déclaré ce match à ma fédération », cochée annonce par
      * annonce jusqu'à ce que l'acceptation de responsabilité soit demandée à
@@ -461,6 +473,12 @@ export const announcementResponses = pgTable(
      */
     coachId: uuid("coach_id").references(() => users.id, { onDelete: "set null" }),
     status: responseStatus("status").notNull().default("pending"),
+    /**
+     * Le fil ouvert entre les deux coachs dès la proposition — c'est là que se
+     * discute et se décide « on joue ou pas », plus dans un popup à part.
+     * NULL si l'un des deux comptes a disparu depuis.
+     */
+    conversationId: uuid("conversation_id").references(() => conversations.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("announcement_responses_ann_team_idx").on(t.announcementId, t.teamId)],
@@ -543,12 +561,16 @@ export const tournaments = pgTable(
     date: date("date").notNull(),
     // Un tournoi tient souvent sur un week-end. NULL = une seule journée.
     endDate: date("end_date"),
-    time: time("time").notNull(),
+    // Pas d'horaire réel : un tournoi s'étale sur la journée, seul le moment
+    // (journée ou nocturne) se décide à l'avance.
+    session: text("session").notNull().default("day"),
     city: text("city").notNull(),
     stadium: text("stadium").notNull(),
-    category: text("category").notNull(),
+    // Plusieurs catégories d'âge peuvent jouer le même tournoi (poules
+    // séparées) : un tableau plutôt qu'une table de jointure, pour un besoin
+    // qui reste simple.
+    category: text("category").array().notNull(),
     gender: matchGender("gender"),
-    level: matchLevel("level").notNull().default("loisir"),
     format: matchFormat("format").notNull().default("8v8"),
     /** Nombre d'équipes attendues — c'est lui qui ferme les inscriptions */
     slots: integer("slots").notNull(),
@@ -895,6 +917,12 @@ export const messages = pgTable(
      * elle, permet d'ouvrir la feuille de match telle qu'elle est aujourd'hui.
      */
     matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
+    /**
+     * Proposition dont ce message `system` parle — porte les boutons
+     * Accepter/Décliner tant qu'elle est en attente. NULL pour tout message
+     * qui ne demande pas de décision (le match confirmé, un message de coach).
+     */
+    responseId: uuid("response_id").references(() => announcementResponses.id, { onDelete: "set null" }),
     body: text("body").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

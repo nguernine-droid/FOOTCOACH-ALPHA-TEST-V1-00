@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { and, eq } from "drizzle-orm";
 import {
   asCoachCategories,
+  asDivisionLevel,
   asMatchCategory,
   asMatchGender,
   createTeamSchema,
@@ -141,6 +142,7 @@ export function registrationRoutes(app: FastifyInstance) {
         category: input.category,
         gender: input.gender,
         stadium: stadiumOrNull(input.stadium),
+        level: input.level ?? null,
       });
       await db.insert(teamCoaches).values({ teamId: team.id, coachId: request.user.id, role: "principal" });
 
@@ -153,6 +155,7 @@ export function registrationRoutes(app: FastifyInstance) {
         category: asMatchCategory(team.category),
         gender: asMatchGender(team.gender),
         stadium: team.stadium,
+        level: asDivisionLevel(team.level),
       };
     });
 
@@ -177,7 +180,12 @@ export function registrationRoutes(app: FastifyInstance) {
 
       const [team] = await db
         .update(teams)
-        .set({ category: input.category, gender: input.gender, stadium: stadiumOrNull(input.stadium) })
+        .set({
+          category: input.category,
+          gender: input.gender,
+          stadium: stadiumOrNull(input.stadium),
+          level: input.level ?? null,
+        })
         .where(eq(teams.id, id))
         .returning();
 
@@ -189,6 +197,7 @@ export function registrationRoutes(app: FastifyInstance) {
         category: asMatchCategory(team.category),
         gender: asMatchGender(team.gender),
         stadium: team.stadium,
+        level: asDivisionLevel(team.level),
       };
     });
   });

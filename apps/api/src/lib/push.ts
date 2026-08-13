@@ -195,15 +195,16 @@ async function teamCoachesToNotify(
 /**
  * Une équipe propose de jouer mon annonce.
  *
- * L'url mène à « Mes annonces » avec la proposition en paramètre : la page
- * ouvre alors la feuille de décision — accepter ou décliner, carte du coach
- * répondant sous les yeux — sans avoir à retrouver l'annonce dans la liste.
+ * L'url mène directement au fil ouvert avec le coach répondant : c'est là,
+ * et non dans un popup à part, qu'accepter ou décliner se décide — après en
+ * avoir discuté si besoin.
  */
 export function notifyAnnouncementResponse(input: {
   ownerTeamId: string;
   responseId: string;
   responderTeamName: string;
   city: string;
+  conversationId: string | null;
 }): void {
   if (!pushEnabled()) return;
   fireAndForget(
@@ -211,7 +212,7 @@ export function notifyAnnouncementResponse(input: {
       await sendToUsers(await teamCoachesToNotify(input.ownerTeamId, "notifyAnnouncementResponse"), {
         title: "Une équipe veut jouer votre annonce",
         body: `${input.responderTeamName} propose de jouer à ${input.city}.`,
-        url: `/coach/announcements/mine?proposition=${input.responseId}`,
+        url: input.conversationId ? `/coach/messages/${input.conversationId}` : "/coach/announcements/mine",
         tag: "proposition",
       });
     })(),

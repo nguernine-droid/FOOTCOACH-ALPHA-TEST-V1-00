@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import {
   categoryLabel,
+  DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
@@ -129,7 +130,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           <span className="chip bg-paper text-ink-soft">{categoryLabel(a.category)}</span>
           {a.gender && <span className="chip bg-paper text-ink-soft">{MATCH_GENDER_LABELS[a.gender]}</span>}
           <span className="chip bg-paper text-ink-soft">{a.format}</span>
-          <span className="chip bg-paper text-ink-soft capitalize">{a.level}</span>
+          {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
         </div>
 
         <div className="space-y-1 text-xs text-ink-soft">
