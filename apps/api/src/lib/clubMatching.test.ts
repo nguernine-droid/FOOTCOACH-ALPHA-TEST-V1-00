@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clubKey, clubNamesLookAlike, sameCity } from "./clubMatching.js";
+import { clubKey, clubNamesLookAlike, groupLookAlikeClubs, sameCity } from "./clubMatching.js";
 
 /**
  * Détection du club en double, avant d'en déclarer un second.
@@ -43,4 +43,46 @@ test("la ville se compare aux accents près, mais doit être la même", () => {
 
 test("la forme comparable retire tout ce qui ne distingue pas", () => {
   assert.equal(clubKey("  A.S.  Saint-Étienne  "), "a s saint etienne");
+});
+
+/** Regroupement des doublons — la vue que l'admin ouvre pour les rattraper */
+
+test("les écritures d'un même club se retrouvent dans un seul groupe", () => {
+  const groups = groupLookAlikeClubs([
+    { id: "1", name: "AS Lyon", city: "Lyon" },
+    { id: "2", name: "A.S. LYON", city: "lyon" },
+    { id: "3", name: "FC Villeurbanne", city: "Villeurbanne" },
+  ]);
+  assert.equal(groups.length, 1);
+  assert.deepEqual(
+    groups[0].map((c) => c.id).sort(),
+    ["1", "2"],
+  );
+});
+
+test("le rapprochement est transitif : A~B et B~C font un seul groupe", () => {
+  // « AS Lyon » et « Lyon Football » ne se ressemblent pas directement, mais
+  // les deux ressemblent à « AS Lyon Football » : mieux vaut les trois d'un
+  // coup que deux groupes qui se recoupent.
+  const groups = groupLookAlikeClubs([
+    { id: "1", name: "AS Lyon", city: "Lyon" },
+    { id: "2", name: "AS Lyon Football", city: "Lyon" },
+    { id: "3", name: "Lyon Football", city: "Lyon" },
+  ]);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].length, 3);
+});
+
+test("le même nom dans deux villes n'est pas un doublon", () => {
+  // Le garde-fou essentiel : « AS Saint-Martin » existe dans vingt départements.
+  const groups = groupLookAlikeClubs([
+    { id: "1", name: "AS Saint-Martin", city: "Lyon" },
+    { id: "2", name: "AS Saint-Martin", city: "Rennes" },
+  ]);
+  assert.deepEqual(groups, []);
+});
+
+test("un club seul de son espèce ne forme pas un groupe", () => {
+  assert.deepEqual(groupLookAlikeClubs([{ id: "1", name: "AS Lyon", city: "Lyon" }]), []);
+  assert.deepEqual(groupLookAlikeClubs([]), []);
 });

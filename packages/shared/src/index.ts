@@ -1049,6 +1049,32 @@ export const createClubSchema = z.object({
 });
 export type CreateClubInput = z.infer<typeof createClubSchema>;
 
+/**
+ * Correction d'un club par l'admin — l'orthographe, la ville, le stade.
+ *
+ * Tous les champs sont facultatifs : l'admin corrige souvent un seul mot
+ * (« AS. Lyon » → « AS Lyon ») et ne doit pas avoir à renvoyer le reste.
+ * `stadium` accepte la chaîne vide pour effacer un stade saisi par erreur.
+ */
+export const adminUpdateClubSchema = z
+  .object({
+    name: z.string().trim().min(2).max(80).optional(),
+    city: z.string().trim().min(1).max(60).optional(),
+    stadium: z.string().trim().max(150).optional(),
+  })
+  .refine((v) => Object.values(v).some((field) => field !== undefined), {
+    message: "Aucune modification",
+  });
+export type AdminUpdateClubInput = z.infer<typeof adminUpdateClubSchema>;
+
+/**
+ * Fusion de deux clubs qui n'en sont qu'un : `sourceId` disparaît au profit du
+ * club appelé dans l'URL. Ce qui pointait vers lui — équipes, coachs affiliés,
+ * demandes d'affiliation — est repointé avant sa suppression.
+ */
+export const mergeClubSchema = z.object({ sourceId: z.string().uuid() });
+export type MergeClubInput = z.infer<typeof mergeClubSchema>;
+
 // Gestion des équipes par le club
 export const createClubTeamSchema = z.object({
   name: z.string().min(2).max(60),
@@ -1713,6 +1739,39 @@ export interface AdminAccountDto {
   hasPendingReset: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+}
+
+/**
+ * Un club vu de l'administrateur : la ligne de la table, plus ce qui s'y
+ * accroche. Les compteurs sont là pour une seule décision — celle de fusionner
+ * deux écritures du même club : ils disent ce qui suivra le club gardé et donc
+ * ce qu'on perdrait à se tromper de sens.
+ */
+export interface AdminClubDto {
+  id: string;
+  name: string;
+  city: string;
+  stadium: string | null;
+  /** Club créé par un admin (compte de connexion) vs simplement déclaré par un coach */
+  hasAccount: boolean;
+  /** Email du compte de connexion — null pour un club déclaré */
+  ownerEmail: string | null;
+  teamsCount: number;
+  /** Coachs affiliés (users.clubId) */
+  coachesCount: number;
+  /** Demandes d'affiliation en attente */
+  pendingRequests: number;
+  createdAt: string;
+}
+
+/**
+ * Des clubs qui n'en sont probablement qu'un : même ville, noms qui se
+ * ressemblent. Un groupe est une QUESTION posée à l'admin, jamais un verdict —
+ * c'est lui qui décide lequel garder, ou qu'il s'agit bien de deux clubs.
+ */
+export interface AdminClubDuplicateGroupDto {
+  /** Deux clubs au moins, le plus fourni en premier */
+  clubs: AdminClubDto[];
 }
 
 /**

@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  LandPlot,
+  MapPin,
+  Megaphone,
+  Trophy,
+  UserRound,
+} from "lucide-react";
 import {
   categoryLabel,
   type ActivityDto,
@@ -27,9 +36,20 @@ import { Skeleton } from "@/components/ui/Skeleton";
 /**
  * Une case du bandeau : un chiffre, ce qu'il compte, et où il mène.
  *
- * Trois tons pour trois natures — les confrères (bleu), ce qu'ils cherchent
- * (accent), les tournois (jaune) : on retrouve sa case à la couleur avant
+ * Trois tons pour trois natures : on retrouve sa case à la couleur avant
  * d'avoir lu le libellé, ce qui compte sur un bandeau qu'on balaie.
+ *
+ * Les teintes sont celles des pastilles du RADAR, et pas un choix propre au
+ * bandeau : orange = une équipe qui cherche un adversaire (`--pin-seeking`),
+ * vert = un tournoi (`--pin-tournament`). Deux conventions contraires dans le
+ * même écran feraient chercher deux fois. Les coachs, qui n'ont pas de
+ * pastille sur la carte, prennent l'or resté libre.
+ *
+ * Case EMPILÉE (icône, chiffre, mot) et non en ligne : trois cases côte à côte
+ * font 110 px de large sur un téléphone, où un chiffre suivi d'un libellé se
+ * retrouverait sur quatre lignes. Le libellé se réduit donc à un mot, et la
+ * phrase entière — catégorie et périmètre compris — passe dans `aria-label`,
+ * où elle reste lisible au lecteur d'écran.
  */
 function StatTile({
   href,
@@ -37,36 +57,33 @@ function StatTile({
   tone,
   count,
   label,
-  className,
+  description,
 }: {
   href: string;
   icon: React.ReactNode;
-  tone: "blue" | "accent" | "sun";
+  tone: "coach" | "match" | "tournament";
   count: number;
   label: string;
-  className?: string;
+  /** La phrase complète, pour qui n'a que le libellé d'un mot à sa disposition */
+  description: string;
 }) {
   const tones = {
-    blue: "bg-blue-soft text-blue",
-    accent: "bg-accent-surface text-accent",
-    sun: "bg-sun-soft text-sun",
+    coach: "bg-warning-surface text-warning",
+    match: "bg-accent-surface text-accent",
+    tournament: "bg-success-surface text-success",
   } as const;
   return (
     <Link
       href={href}
-      className={cn(
-        "card p-4 flex items-center gap-2.5 transition hover:bg-blue-faint active:bg-blue-soft",
-        className,
-      )}
+      aria-label={description}
+      className="card p-3 flex flex-col items-center justify-center gap-1.5 text-center
+        transition hover:bg-blue-faint active:bg-blue-soft"
     >
       <span className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", tones[tone])}>
         {icon}
       </span>
-      <span className="min-w-0 flex-1 text-xs text-ink-soft font-semibold leading-tight">
-        <span className="block text-lg font-black text-ink leading-none tabular-nums">{count}</span>
-        {label}
-      </span>
-      <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+      <span className="display text-2xl leading-none tabular-nums text-ink">{count}</span>
+      <span className="text-[11px] font-bold text-ink-soft leading-tight">{label}</span>
     </Link>
   );
 }
@@ -175,37 +192,43 @@ export default function CoachDashboard() {
           le radar. Absent tant que l'équipe active n'a pas de catégorie
           réglée — rien à situer sans elle. */}
       {categoryStats?.category && (
-        <section
-          // Trois cases sur une grille de deux colonnes : les coachs et les
-          // amicaux côte à côte, les tournois en dessous sur toute la largeur —
-          // ce sont eux qu'on consulte le moins souvent.
-          className="grid grid-cols-2 gap-3 animate-rise-in"
-          aria-label="Ma catégorie dans le secteur"
-        >
-          {/* Chaque case MÈNE quelque part : un chiffre qu'on ne peut pas
-              ouvrir laisse le coach devant un constat sans suite. */}
-          <StatTile
-            href="/coach/coachs"
-            icon={<Users size={16} aria-hidden />}
-            tone="blue"
-            count={categoryStats.teamsInCategory}
-            label={`coach${categoryStats.teamsInCategory > 1 ? "s" : ""} ${categoryLabel(categoryStats.category)} dans le secteur`}
-          />
-          <StatTile
-            href={`/coach/announcements?cat=matches&categorie=${encodeURIComponent(categoryStats.category)}`}
-            icon={<Megaphone size={16} aria-hidden />}
-            tone="accent"
-            count={categoryStats.announcementsInCategory}
-            label={`amical${categoryStats.announcementsInCategory > 1 ? "s" : ""} ${categoryLabel(categoryStats.category)} en ce moment`}
-          />
-          <StatTile
-            href={`/coach/announcements?cat=tournaments&categorie=${encodeURIComponent(categoryStats.category)}`}
-            icon={<Trophy size={16} aria-hidden />}
-            tone="sun"
-            count={categoryStats.tournamentsInCategory}
-            label={`tournoi${categoryStats.tournamentsInCategory > 1 ? "s" : ""} ouvert${categoryStats.tournamentsInCategory > 1 ? "s" : ""} à ma catégorie`}
-            className="col-span-2"
-          />
+        <section className="space-y-2 animate-rise-in" aria-label="Ma catégorie dans le secteur">
+          {/* La portée des trois chiffres, écrite une fois au-dessus plutôt que
+              répétée dans chaque case : ce sont des comptes de MA catégorie
+              dans MON périmètre, jamais des totaux de l'application. Sans cette
+              ligne, trois cases réduites à un mot se liraient comme tels. */}
+          <p className="text-[11px] font-bold uppercase tracking-widest text-ink-faint px-1">
+            {categoryLabel(categoryStats.category)} · dans mon secteur
+          </p>
+          {/* Trois cases sur une seule ligne, à parts égales. Chacune MÈNE
+              quelque part : un chiffre qu'on ne peut pas ouvrir laisse le coach
+              devant un constat sans suite. */}
+          <div className="grid grid-cols-3 gap-2">
+            <StatTile
+              href="/coach/coachs"
+              icon={<UserRound size={16} aria-hidden />}
+              tone="coach"
+              count={categoryStats.teamsInCategory}
+              label="Coachs"
+              description={`${categoryStats.teamsInCategory} coach${categoryStats.teamsInCategory > 1 ? "s" : ""} ${categoryLabel(categoryStats.category)} dans le secteur`}
+            />
+            <StatTile
+              href={`/coach/announcements?cat=matches&categorie=${encodeURIComponent(categoryStats.category)}`}
+              icon={<LandPlot size={16} aria-hidden />}
+              tone="match"
+              count={categoryStats.announcementsInCategory}
+              label="Rencontres"
+              description={`${categoryStats.announcementsInCategory} amical${categoryStats.announcementsInCategory > 1 ? "s" : ""} ${categoryLabel(categoryStats.category)} proposé${categoryStats.announcementsInCategory > 1 ? "s" : ""} en ce moment`}
+            />
+            <StatTile
+              href={`/coach/announcements?cat=tournaments&categorie=${encodeURIComponent(categoryStats.category)}`}
+              icon={<Trophy size={16} aria-hidden />}
+              tone="tournament"
+              count={categoryStats.tournamentsInCategory}
+              label="Tournois"
+              description={`${categoryStats.tournamentsInCategory} tournoi${categoryStats.tournamentsInCategory > 1 ? "s" : ""} ouvert${categoryStats.tournamentsInCategory > 1 ? "s" : ""} à ma catégorie`}
+            />
+          </div>
         </section>
       )}
 

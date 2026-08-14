@@ -3,15 +3,29 @@ import { and, count, desc, eq, gte, ilike, isNull, max, ne, or, sql } from "driz
 import {
   idParamSchema,
   ROLES,
+  adminUpdateClubSchema,
   createClubSchema,
+  mergeClubSchema,
   updateAccountEmailSchema,
   type AdminAccountDto,
+  type AdminClubDto,
+  type AdminClubDuplicateGroupDto,
   type AdminCreateClubResultDto,
   type AdminStatsDto,
   type Role,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
-import { clubs, loginEvents, matches, passwordResetRequests, refreshTokens, teams, tournaments, users } from "../db/schema.js";
+import {
+  clubAffiliationRequests,
+  clubs,
+  loginEvents,
+  matches,
+  passwordResetRequests,
+  refreshTokens,
+  teams,
+  tournaments,
+  users,
+} from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
@@ -19,6 +33,7 @@ import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateTempPassword } from "../lib/passwords.js";
 import { clubById } from "../lib/declaredClubs.js";
+import { groupLookAlikeClubs } from "../lib/clubMatching.js";
 import { revokeAllSessions } from "../lib/sessions.js";
 import { hashPassword } from "../lib/passwordHash.js";
 
@@ -26,6 +41,58 @@ const DAY_MS = 24 * 3600 * 1000;
 
 function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Les clubs de la base, avec ce qui s'y accroche.
+ *
+ * Trois comptages agrégés plutôt qu'une jointure unique : compter des équipes
+ * et des coachs dans la même requête multiplierait les lignes entre elles et
+ * gonflerait les deux totaux. Ce sont précisément ces nombres qui disent à
+ * l'admin quel club garder d'un doublon — ils doivent être justes.
+ */
+async function listAdminClubs(): Promise<AdminClubDto[]> {
+  const rows = await db
+    .select({ club: clubs, ownerEmail: users.email })
+    .from(clubs)
+    .leftJoin(users, eq(users.id, clubs.ownerId))
+    .orderBy(clubs.city, clubs.name);
+
+  const countsById = (entries: { clubId: string | null; value: number }[]) =>
+    new Map(entries.filter((e) => e.clubId).map((e) => [e.clubId as string, e.value]));
+
+  const teamCounts = countsById(
+    await db.select({ clubId: teams.clubId, value: count() }).from(teams).groupBy(teams.clubId),
+  );
+  // Les coachs affiliés seulement : le compte de connexion du club (role="club")
+  // n'est pas un encadrant, le compter ferait croire à une équipe technique.
+  const coachCounts = countsById(
+    await db
+      .select({ clubId: users.clubId, value: count() })
+      .from(users)
+      .where(eq(users.role, "coach"))
+      .groupBy(users.clubId),
+  );
+  const requestCounts = countsById(
+    await db
+      .select({ clubId: clubAffiliationRequests.clubId, value: count() })
+      .from(clubAffiliationRequests)
+      .where(eq(clubAffiliationRequests.status, "pending"))
+      .groupBy(clubAffiliationRequests.clubId),
+  );
+
+  return rows.map(({ club, ownerEmail }) => ({
+    id: club.id,
+    name: club.name,
+    city: club.city,
+    stadium: club.stadium,
+    hasAccount: club.ownerId != null,
+    ownerEmail,
+    teamsCount: teamCounts.get(club.id) ?? 0,
+    coachesCount: coachCounts.get(club.id) ?? 0,
+    pendingRequests: requestCounts.get(club.id) ?? 0,
+    createdAt: club.createdAt.toISOString(),
+  }));
 }
 
 export function adminRoutes(app: FastifyInstance) {
@@ -209,6 +276,143 @@ export function adminRoutes(app: FastifyInstance) {
 
     reply.code(201);
     return { club: toClubDto(club), ownerEmail: email, tempPassword };
+  });
+
+  // ————— Gestion des clubs déclarés —————
+
+  app.get("/admin/clubs", async (request): Promise<AdminClubDto[]> => {
+    const { q } = request.query as { q?: string };
+    const all = await listAdminClubs();
+    const term = q?.trim().toLowerCase();
+    if (!term) return all;
+    return all.filter((c) => `${c.name} ${c.city} ${c.stadium ?? ""}`.toLowerCase().includes(term));
+  });
+
+  /**
+   * Les clubs qui n'en sont probablement qu'un. Déclaré statiquement AVANT
+   * `/admin/clubs/:id` n'est pas nécessaire avec le routeur de Fastify (une
+   * route littérale l'emporte toujours sur un paramètre), mais l'ordre de
+   * lecture aide.
+   */
+  app.get("/admin/clubs/duplicates", async (): Promise<AdminClubDuplicateGroupDto[]> => {
+    const all = await listAdminClubs();
+    return groupLookAlikeClubs(all).map((group) => ({
+      // Le plus fourni en tête : c'est presque toujours celui à garder, et le
+      // proposer d'abord évite la fusion faite à l'envers.
+      clubs: [...group].sort(
+        (a, b) =>
+          b.teamsCount + b.coachesCount - (a.teamsCount + a.coachesCount) ||
+          Number(b.hasAccount) - Number(a.hasAccount) ||
+          a.createdAt.localeCompare(b.createdAt),
+      ),
+    }));
+  });
+
+  // Correction d'écriture : le nom mal orthographié, la ville, le stade
+  app.patch("/admin/clubs/:id", async (request): Promise<AdminClubDto> => {
+    const { id } = idParamSchema.parse(request.params);
+    const input = adminUpdateClubSchema.parse(request.body);
+    const club = await clubById(id);
+    if (!club) throw new HttpError(404, "Club introuvable");
+
+    const city = input.city ?? club.city;
+    // Ville changée : ses coordonnées suivent, sinon le club resterait posé sur
+    // l'ancienne commune du radar. Ville inconnue de l'annuaire = pas de point
+    // sur la carte, ce qui vaut mieux qu'un point faux.
+    const moved = input.city != null && input.city !== club.city;
+    const coords = moved ? cityCoords(city) : null;
+
+    const [updated] = await db
+      .update(clubs)
+      .set({
+        name: input.name ?? club.name,
+        city,
+        stadium: input.stadium === undefined ? club.stadium : input.stadium || null,
+        ...(moved ? { lat: coords?.lat ?? null, lng: coords?.lng ?? null } : {}),
+      })
+      .where(eq(clubs.id, club.id))
+      .returning();
+
+    const all = await listAdminClubs();
+    return all.find((c) => c.id === updated.id)!;
+  });
+
+  /**
+   * Fusion de deux écritures du même club : `sourceId` disparaît, le club de
+   * l'URL est celui qu'on garde.
+   *
+   * Tout ce qui pointait vers le club absorbé est repointé AVANT sa suppression,
+   * dans la même transaction — équipes, coachs affiliés, demandes d'affiliation.
+   * Sans cela, la contrainte de clé étrangère refuserait la suppression, et
+   * c'est très bien ainsi : aucune équipe ne doit se retrouver sans club au
+   * motif qu'on a corrigé une orthographe.
+   *
+   * Un club qui a un COMPTE de connexion ne peut pas être absorbé : son compte
+   * et son code d'affiliation disparaîtraient avec lui. L'admin fusionne alors
+   * dans l'autre sens.
+   */
+  app.post("/admin/clubs/:id/merge", async (request) => {
+    const { id } = idParamSchema.parse(request.params);
+    const { sourceId } = mergeClubSchema.parse(request.body);
+    if (id === sourceId) throw new HttpError(400, "Un club ne peut pas être fusionné avec lui-même");
+
+    const target = await clubById(id);
+    if (!target) throw new HttpError(404, "Club à garder introuvable");
+    const source = await clubById(sourceId);
+    if (!source) throw new HttpError(404, "Club à fusionner introuvable");
+    if (source.ownerId) {
+      throw new HttpError(
+        400,
+        "Ce club a un compte de connexion : gardez-le, et fusionnez l'autre dedans",
+      );
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.update(teams).set({ clubId: target.id }).where(eq(teams.clubId, source.id));
+      await tx.update(users).set({ clubId: target.id }).where(eq(users.clubId, source.id));
+      /**
+       * Les demandes en attente suivent aussi : un coach qui attend une réponse
+       * du club absorbé doit la recevoir du club gardé, pas voir sa demande
+       * s'évaporer. L'unicité « une seule demande en attente par coach » n'est
+       * pas menacée — elle porte sur le coach, pas sur le couple coach/club.
+       */
+      await tx
+        .update(clubAffiliationRequests)
+        .set({ clubId: target.id })
+        .where(eq(clubAffiliationRequests.clubId, source.id));
+      await tx.delete(clubs).where(eq(clubs.id, source.id));
+    });
+
+    const all = await listAdminClubs();
+    return all.find((c) => c.id === target.id)!;
+  });
+
+  /**
+   * Suppression d'un club vide — une saisie de test, un nom créé par erreur et
+   * que personne n'a rejoint. Dès qu'une équipe, un coach ou un compte s'y
+   * accroche, c'est une fusion qu'il faut, pas une suppression : elle dirait où
+   * vont les rattachements au lieu de les faire disparaître.
+   */
+  app.delete("/admin/clubs/:id", async (request) => {
+    const { id } = idParamSchema.parse(request.params);
+    const club = await clubById(id);
+    if (!club) throw new HttpError(404, "Club introuvable");
+    if (club.ownerId) throw new HttpError(400, "Ce club a un compte de connexion");
+
+    const [{ value: teamsCount }] = await db
+      .select({ value: count() })
+      .from(teams)
+      .where(eq(teams.clubId, club.id));
+    const [{ value: coachesCount }] = await db
+      .select({ value: count() })
+      .from(users)
+      .where(eq(users.clubId, club.id));
+    if (teamsCount > 0 || coachesCount > 0) {
+      throw new HttpError(400, "Ce club a des équipes ou des coachs : fusionnez-le plutôt");
+    }
+
+    await db.delete(clubs).where(eq(clubs.id, club.id));
+    return { ok: true };
   });
 
   app.get("/admin/accounts", async (request): Promise<AdminAccountDto[]> => {

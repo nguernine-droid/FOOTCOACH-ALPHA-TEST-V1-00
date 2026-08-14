@@ -59,6 +59,44 @@ export function clubNamesEqual(a: string, b: string): boolean {
   return compactKey(a).length > 0 && compactKey(a) === compactKey(b);
 }
 
+/**
+ * Les clubs qui n'en sont probablement qu'un, rassemblés en groupes — la vue
+ * qu'un administrateur ouvre pour rattraper deux écritures du même nom.
+ *
+ * Regroupement par transitivité : si A ressemble à B et B à C, les trois sont
+ * dans le même groupe, même si A et C ne se ressemblent pas directement
+ * (« AS Lyon », « AS Lyon Football », « Lyon Football »). C'est l'admin qui
+ * tranche ensuite, et il vaut mieux lui présenter les trois d'un coup que deux
+ * groupes qui se recoupent.
+ *
+ * Les clubs seuls de leur espèce sont écartés : un groupe d'un club n'est pas
+ * un doublon. Comparaison en O(n²), à l'image de `findSimilarClubs` — la table
+ * se compte en centaines.
+ */
+export function groupLookAlikeClubs<T extends { name: string; city: string }>(clubs: T[]): T[][] {
+  // Union-find sans structure dédiée : chaque club porte l'indice de son groupe,
+  // et une fusion réétiquette les membres du groupe absorbé.
+  const groupOf = clubs.map((_, i) => i);
+  for (let i = 0; i < clubs.length; i++) {
+    for (let j = i + 1; j < clubs.length; j++) {
+      if (groupOf[i] === groupOf[j]) continue;
+      if (!sameCity(clubs[i].city, clubs[j].city)) continue;
+      if (!clubNamesLookAlike(clubs[i].name, clubs[j].name)) continue;
+      const absorbed = groupOf[j];
+      const kept = groupOf[i];
+      for (let k = 0; k < groupOf.length; k++) if (groupOf[k] === absorbed) groupOf[k] = kept;
+    }
+  }
+
+  const groups = new Map<number, T[]>();
+  clubs.forEach((club, i) => {
+    const bucket = groups.get(groupOf[i]);
+    if (bucket) bucket.push(club);
+    else groups.set(groupOf[i], [club]);
+  });
+  return Array.from(groups.values()).filter((group) => group.length > 1);
+}
+
 /** Même commune, aux accents et à la casse près */
 export function sameCity(a: string, b: string): boolean {
   const left = clubKey(a);
