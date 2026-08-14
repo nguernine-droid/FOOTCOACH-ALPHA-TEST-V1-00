@@ -52,6 +52,15 @@ const DEFAULT_RADIUS_KM = 50;
  * c'est le seul créneau où quelques kilomètres de plus ne pèsent rien.
  * Ensuite : proximité (distances inconnues en dernier), puis date.
  */
+/**
+ * Le genre cherché laisse-t-il passer celui de l'annonce ? La même règle que
+ * `teamMatchesAnnouncement` côté appariement : le mixte ne s'oppose à personne,
+ * dans un sens comme dans l'autre, et l'inconnu ne s'oppose à rien.
+ */
+function playableGender(wanted: MatchGender, announced: MatchGender | null): boolean {
+  return announced === null || announced === wanted || wanted === "mixte" || announced === "mixte";
+}
+
 function bySosThenProximity(a: AnnouncementDto, b: AnnouncementDto): number {
   if (a.isSos !== b.isSos) return a.isSos ? -1 : 1;
   if (a.distanceKm !== null && b.distanceKm !== null && a.distanceKm !== b.distanceKm) {
@@ -86,6 +95,30 @@ export function RadarFeed() {
   // cherche le plus souvent — son propre tableau — modifiable comme les autres.
   const [category, setCategory] = useState<string | null>(() => announcementCategoryOf(activeTeam?.category ?? null));
   const [gender, setGender] = useState<MatchGender | null>(activeTeam?.gender ?? null);
+  /**
+   * Le coach a-t-il touché aux filtres ? Tant que non, le préréglage suit
+   * l'équipe active — qui n'est pas toujours connue au premier rendu, et qui
+   * change quand le coach bascule d'équipe. Sans ce rattrapage, le radar
+   * s'ouvrait tantôt filtré tantôt non selon l'instant, et restait réglé sur
+   * l'équipe précédente après une bascule.
+   */
+  const touched = useRef(false);
+  useEffect(() => {
+    if (touched.current) return;
+    setCategory(announcementCategoryOf(activeTeam?.category ?? null));
+    setGender(activeTeam?.gender ?? null);
+  }, [activeTeam?.category, activeTeam?.gender]);
+
+  /** Un choix du coach fige les filtres : l'équipe active ne les reprend plus. */
+  function chooseCategory(value: string | null) {
+    touched.current = true;
+    setCategory(value);
+  }
+  function chooseGender(value: MatchGender | null) {
+    touched.current = true;
+    setGender(value);
+  }
+
   /**
    * Niveau cherché (D2, R1…). Rien de préréglé, contrairement à la catégorie :
    * un coach de R1 joue volontiers un amical contre du D1, alors qu'il ne joue
@@ -217,9 +250,17 @@ export function RadarFeed() {
         // Par GROUPE d'âges : les annonces d'avant le regroupement portent
         // encore une catégorie fine (U13), on les range dans leur paire.
         .filter((a) => (category ? announcementCategoryOf(a.category) === category : true))
+        // Le genre suit la règle d'appariement, pas l'égalité stricte : une
+        // équipe mixte entre partout, une annonce mixte accueille tout le
+        // monde (`teamMatchesAnnouncement`). Comparé à l'identique, le filtre
+        // — préréglé sur l'équipe active — cachait au coach d'une équipe mixte
+        // toutes les annonces masculines et féminines, et réciproquement les
+        // annonces mixtes à tous les autres : des matchs que le serveur accepte
+        // pourtant, et qu'on ne pouvait donc plus trouver.
+        //
         // Le genre non renseigné (annonces d'avant le champ) ne disparaît pas
-        // sur un filtre : on ne sait pas, ce n'est pas une exclusion.
-        .filter((a) => (gender ? a.gender === gender || a.gender === null : true))
+        // non plus : on ne sait pas, ce n'est pas une exclusion.
+        .filter((a) => (gender ? playableGender(gender, a.gender) : true))
         // Même règle pour le niveau : une annonce sans niveau reste affichée.
         // Beaucoup n'en portent pas, et les écarter viderait le radar sur un
         // filtre que le coach croit anodin.
@@ -295,6 +336,9 @@ export function RadarFeed() {
   ].filter((label): label is string => label !== null);
 
   function clearFilters() {
+    // « Effacer » est un choix comme un autre : la catégorie de l'équipe ne
+    // doit pas revenir se poser juste après.
+    touched.current = true;
     setCategory(null);
     setGender(null);
     setLevel(null);
@@ -492,7 +536,7 @@ export function RadarFeed() {
             <select
               id="radar-category"
               value={category ?? ""}
-              onChange={(e) => setCategory(e.target.value || null)}
+              onChange={(e) => chooseCategory(e.target.value || null)}
               className="field"
             >
               <option value="">Toutes les catégories</option>
@@ -535,7 +579,7 @@ export function RadarFeed() {
               <div className="grid grid-cols-4 gap-2" role="group" aria-label="Filtrer par genre">
                 <button
                   type="button"
-                  onClick={() => setGender(null)}
+                  onClick={() => chooseGender(null)}
                   aria-pressed={gender === null}
                   className={cn("chip-choice !px-2", gender === null ? "chip-choice-on" : "chip-choice-off")}
                 >
@@ -545,7 +589,7 @@ export function RadarFeed() {
                   <button
                     key={g}
                     type="button"
-                    onClick={() => setGender(gender === g ? null : g)}
+                    onClick={() => chooseGender(gender === g ? null : g)}
                     aria-pressed={gender === g}
                     className={cn("chip-choice !px-2", gender === g ? "chip-choice-on" : "chip-choice-off")}
                   >

@@ -14,6 +14,13 @@ const EDGE_RESISTANCE = 0.28;
 /** En deçà, on ne sait pas encore si le geste est horizontal ou vertical */
 const AXIS_THRESHOLD = 8;
 
+/**
+ * Ce qui n'appartient pas au carrousel : le bloc collant du haut, la barre du
+ * bas, et tout ce qui s'ouvre par-dessus (feuille, voile, calendrier). Un geste
+ * qui part de là ne fait pas défiler les onglets.
+ */
+const OUTSIDE = ".app-header, .app-tabbar, .app-subnav, .sheet-scrim, [role='dialog']";
+
 export type Pane = { href: string; node: React.ReactNode };
 
 /**
@@ -68,15 +75,108 @@ export function TabPager({ panes, fallback }: { panes: Pane[]; fallback: React.R
   const routeIndex = panes.findIndex((p) => p.href === pathname);
   const index = target ?? routeIndex;
   const armed = compact && routeIndex !== -1;
+  const last = panes.length - 1;
 
   // L'URL a rattrapé le geste : l'index optimiste n'a plus lieu d'être.
   useEffect(() => {
     if (target !== null && routeIndex === target) setTarget(null);
   }, [routeIndex, target]);
 
+  /**
+   * Le geste s'écoute sur la fenêtre, et non sur la bande.
+   *
+   * La bande n'est haute que de son contenu : sous une page courte, la moitié
+   * basse de l'écran ne lui appartient pas, et un doigt posé là ne lui envoyait
+   * rien — il fallait partir d'un élément pour que l'onglet suive. Écouté au
+   * niveau de la fenêtre, le glissé part de n'importe où, y compris du vide.
+   *
+   * Les écouteurs sont posés à la main plutôt que par React, qui ne les
+   * attacherait qu'à la bande. `passive` : on ne cherche jamais à annuler le
+   * défilement, `touch-action: pan-y` s'en charge déjà.
+   *
+   * L'état du geste vit dans des refs (`gesture`, `dragRef`) : ces écouteurs
+   * sont posés une fois, ils ne verraient pas passer un état de rendu.
+   */
+  const dragRef = useRef(0);
+  const stateRef = useRef({ index, last, panes, router });
+  stateRef.current = { index, last, panes, router };
+
+  useEffect(() => {
+    if (!armed) return;
+
+    const onStart = (e: TouchEvent) => {
+      const target = e.target;
+      const el = target instanceof Element ? target : null;
+      if (e.touches.length !== 1 || el?.closest(OUTSIDE) || insideHorizontalScroller(target)) {
+        gesture.current = null;
+        return;
+      }
+      const t = e.touches[0];
+      gesture.current = { x: t.clientX, y: t.clientY, at: Date.now(), axis: null };
+    };
+
+    const onMove = (e: TouchEvent) => {
+      const g = gesture.current;
+      if (!g || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      let dx = t.clientX - g.x;
+      const dy = t.clientY - g.y;
+
+      if (g.axis === null) {
+        if (Math.abs(dx) < AXIS_THRESHOLD && Math.abs(dy) < AXIS_THRESHOLD) return;
+        g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        // Geste vertical : c'est un défilement, on ne s'en mêle plus.
+        if (g.axis === "y") {
+          gesture.current = null;
+          return;
+        }
+        setDragging(true);
+      }
+
+      const { index: i, last: l } = stateRef.current;
+      if ((i === 0 && dx > 0) || (i === l && dx < 0)) dx *= EDGE_RESISTANCE;
+      dragRef.current = dx;
+      setDrag(dx);
+    };
+
+    const onEnd = () => {
+      const g = gesture.current;
+      gesture.current = null;
+      setDragging(false);
+      const dx = dragRef.current;
+      dragRef.current = 0;
+      setDrag(0);
+      if (!g || g.axis !== "x") return;
+
+      const width = viewportRef.current?.clientWidth ?? 1;
+      const elapsed = Math.max(1, Date.now() - g.at);
+      const decisive = Math.abs(dx) > width * SNAP_RATIO || Math.abs(dx) / elapsed > FLICK_VELOCITY;
+      const { index: i, last: l, panes: p, router: r } = stateRef.current;
+      const next = dx < 0 ? i + 1 : i - 1;
+      if (!decisive || next < 0 || next > l) return;
+
+      // L'écran est déjà à sa place, la bande finit sa course toute seule :
+      // l'animation d'entrée de page n'a rien à jouer par-dessus.
+      skipNextPageTransition();
+      setTarget(next);
+      r.push(p[next].href);
+    };
+
+    const opts = { passive: true } as const;
+    window.addEventListener("touchstart", onStart, opts);
+    window.addEventListener("touchmove", onMove, opts);
+    window.addEventListener("touchend", onEnd, opts);
+    window.addEventListener("touchcancel", onEnd, opts);
+    return () => {
+      window.removeEventListener("touchstart", onStart);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onEnd);
+      window.removeEventListener("touchcancel", onEnd);
+    };
+  }, [armed]);
+
   if (!armed) return <>{fallback}</>;
 
-  const last = panes.length - 1;
   const neighbour = drag < 0 ? index + 1 : index - 1;
 
   return (
@@ -84,57 +184,8 @@ export function TabPager({ panes, fallback }: { panes: Pane[]; fallback: React.R
       ref={viewportRef}
       className="overflow-hidden"
       // `pan-y` dit au navigateur : le vertical est à toi, l'horizontal est à
-      // moi. C'est ce qui évite d'avoir à annuler l'événement — React pose des
-      // écouteurs passifs, où `preventDefault` ne ferait rien.
+      // moi — de quoi ne jamais avoir à annuler l'événement.
       style={{ touchAction: "pan-y" }}
-      onTouchStart={(e) => {
-        if (e.touches.length !== 1 || insideHorizontalScroller(e.target)) {
-          gesture.current = null;
-          return;
-        }
-        const t = e.touches[0];
-        gesture.current = { x: t.clientX, y: t.clientY, at: Date.now(), axis: null };
-      }}
-      onTouchMove={(e) => {
-        const g = gesture.current;
-        if (!g || e.touches.length !== 1) return;
-        const t = e.touches[0];
-        let dx = t.clientX - g.x;
-        const dy = t.clientY - g.y;
-
-        if (g.axis === null) {
-          if (Math.abs(dx) < AXIS_THRESHOLD && Math.abs(dy) < AXIS_THRESHOLD) return;
-          g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-          // Geste vertical : c'est un défilement, on ne s'en mêle plus.
-          if (g.axis === "y") {
-            gesture.current = null;
-            return;
-          }
-          setDragging(true);
-        }
-
-        if ((index === 0 && dx > 0) || (index === last && dx < 0)) dx *= EDGE_RESISTANCE;
-        setDrag(dx);
-      }}
-      onTouchEnd={() => {
-        const g = gesture.current;
-        gesture.current = null;
-        setDragging(false);
-        if (!g || g.axis !== "x") return;
-
-        const width = viewportRef.current?.clientWidth ?? 1;
-        const elapsed = Math.max(1, Date.now() - g.at);
-        const decisive = Math.abs(drag) > width * SNAP_RATIO || Math.abs(drag) / elapsed > FLICK_VELOCITY;
-        const next = drag < 0 ? index + 1 : index - 1;
-        setDrag(0);
-        if (!decisive || next < 0 || next > last) return;
-
-        // L'écran est déjà à sa place, la bande finit sa course toute seule :
-        // l'animation d'entrée de page n'a rien à jouer par-dessus.
-        skipNextPageTransition();
-        setTarget(next);
-        router.push(panes[next].href);
-      }}
     >
       <div
         className="flex items-start"
