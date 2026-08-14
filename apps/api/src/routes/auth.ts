@@ -16,10 +16,12 @@ import {
   type AuthResponseDto,
   type CoachLocationDto,
   type CoachTeamDto,
+  type TeamDto,
   type UserDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import {
+  clubs,
   joinRequests,
   loginEvents,
   passwordResetRequests,
@@ -31,6 +33,7 @@ import {
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
+import { toDeclaredClubDto } from "../lib/declaredClubs.js";
 import { originOf } from "../lib/coachOrigin.js";
 import { matchesPlayedBy } from "../lib/coachStats.js";
 import { totalPointsOf } from "../lib/points.js";
@@ -80,25 +83,56 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
       gender: teams.gender,
       stadium: teams.stadium,
       level: teams.level,
+      logoPath: teams.logoPath,
+      // Le club rattaché voyage avec l'équipe : le profil l'affiche, et le
+      // relire équipe par équipe aurait fait une requête par ligne.
+      club: clubs,
     })
     .from(teamCoaches)
     .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
+    .leftJoin(clubs, eq(clubs.id, teams.clubId))
     .where(eq(teamCoaches.coachId, coachId))
     .orderBy(asc(teamCoaches.createdAt));
   // Tri stable : équipe(s) où il est "principal" avant celles où il est "adjoint"
   return rows
     .sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1))
-    .map((row) => ({
+    .map(({ logoPath, club, ...row }) => ({
       ...row,
       category: asMatchCategory(row.category),
       gender: asMatchGender(row.gender),
       level: asDivisionLevel(row.level),
+      logoUrl: uploadUrlOf(logoPath),
+      club: club ? toDeclaredClubDto(club) : null,
     }));
 }
 
-/** URL publique d'une photo de profil (servie par l'API, proxifiée sous /api) */
-export function avatarUrlOf(avatarPath: string | null): string | null {
-  return avatarPath ? `/api/uploads/${avatarPath}` : null;
+/**
+ * URL publique d'un fichier du volume d'uploads (servi par l'API, proxifié sous
+ * /api). Photos de profil, écussons d'équipe et affiches de tournoi y passent —
+ * une seule façon de construire ces adresses.
+ */
+export function uploadUrlOf(fileName: string | null): string | null {
+  return fileName ? `/api/uploads/${fileName}` : null;
+}
+
+/** URL publique d'une photo de profil */
+export const avatarUrlOf = uploadUrlOf;
+
+/** URL publique de l'écusson d'une équipe */
+export const teamLogoUrlOf = uploadUrlOf;
+
+/**
+ * L'équipe telle qu'elle voyage partout : annonces, matchs, tournois, fiches de
+ * relations. Écrite une fois — c'est le seul moyen de garantir que l'écusson
+ * suit l'équipe sur tous les écrans où son nom apparaît.
+ */
+export function toTeamDto(team: {
+  id: string;
+  name: string;
+  city: string;
+  logoPath: string | null;
+}): TeamDto {
+  return { id: team.id, name: team.name, city: team.city, logoUrl: teamLogoUrlOf(team.logoPath) };
 }
 
 /**

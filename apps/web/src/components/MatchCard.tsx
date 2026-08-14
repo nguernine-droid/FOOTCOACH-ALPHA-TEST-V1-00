@@ -38,11 +38,18 @@ function TeamBadge({ team }: { team: TeamDto }) {
     <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
       <div
         className={cn(
-          "w-9 h-9 min-[380px]:w-10 min-[380px]:h-10 min-[420px]:w-12 min-[420px]:h-12 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0",
-          teamColor(team),
+          "w-9 h-9 min-[380px]:w-10 min-[380px]:h-10 min-[420px]:w-12 min-[420px]:h-12 rounded-full overflow-hidden flex items-center justify-center text-sm font-black text-white shrink-0",
+          // L'écusson remplace la pastille de couleur quand il existe : c'est
+          // le maillot qu'on reconnaît d'abord. Sans lui, la couleur d'identité
+          // et les initiales tiennent leur rôle habituel.
+          team.logoUrl ? "bg-paper" : teamColor(team),
         )}
       >
-        {teamInitials(team.name)}
+        {team.logoUrl ? (
+          <img src={team.logoUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          teamInitials(team.name)
+        )}
       </div>
       <p className="text-xs font-bold text-center leading-tight truncate w-full">{team.name}</p>
     </div>

@@ -25,7 +25,14 @@ import { revokeAllSessions } from "../lib/sessions.js";
 import { hashPassword } from "../lib/passwordHash.js";
 
 export function toClubDto(club: typeof clubs.$inferSelect): ClubDto {
-  return { id: club.id, name: club.name, city: club.city, email: club.email, affiliationCode: club.affiliationCode };
+  return {
+    id: club.id,
+    name: club.name,
+    city: club.city,
+    stadium: club.stadium,
+    email: club.email,
+    affiliationCode: club.affiliationCode,
+  };
 }
 
 // Club du compte connecté (role=club), retrouvé via clubs.ownerId

@@ -27,6 +27,7 @@ import { pairOnCooldown, totalPointsOf } from "../lib/points.js";
 import { tokensMatch } from "../lib/tokens.js";
 import { notifyScoreRecorded, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
 import { representativeCoachesOf } from "../lib/coachCard.js";
+import { toTeamDto } from "./auth.js";
 
 const homeTeam = alias(teams, "home_team");
 const awayTeam = alias(teams, "away_team");
@@ -119,8 +120,8 @@ function toDto(
 ): MatchDto {
   return {
     id: match.id,
-    homeTeam: { id: home.id, name: home.name, city: home.city },
-    awayTeam: { id: away.id, name: away.name, city: away.city },
+    homeTeam: toTeamDto(home),
+    awayTeam: toTeamDto(away),
     homeCoach: coaches?.get(home.id) ?? null,
     awayCoach: coaches?.get(away.id) ?? null,
     date: match.date,

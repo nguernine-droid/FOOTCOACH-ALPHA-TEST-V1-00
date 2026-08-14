@@ -62,13 +62,19 @@ export function SectorAnnouncementCard({
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
+          {/* L'écusson d'abord : sur une liste d'annonces, c'est lui qu'on
+              reconnaît avant d'avoir lu le nom du club. */}
           <span
             className={cn(
-              "w-10 h-10 rounded-full text-white flex items-center justify-center text-xs font-black shrink-0",
-              teamColor(a.team),
+              "w-10 h-10 rounded-full overflow-hidden text-white flex items-center justify-center text-xs font-black shrink-0",
+              a.team.logoUrl ? "bg-paper" : teamColor(a.team),
             )}
           >
-            {teamInitials(a.team.name)}
+            {a.team.logoUrl ? (
+              <img src={a.team.logoUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              teamInitials(a.team.name)
+            )}
           </span>
           <div className="min-w-0">
             <p className="font-bold text-sm truncate">{a.team.name}</p>

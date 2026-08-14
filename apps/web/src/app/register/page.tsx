@@ -8,12 +8,18 @@ import {
   PASSWORD_MIN_LENGTH,
   passwordProblem,
   type CoachCategory,
+  type DeclaredClubDto,
   type MatchCategory,
   type MatchGender,
 } from "@teamnexus/shared";
 import { register } from "@/lib/api";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { ClubNameField } from "@/components/ClubNameField";
+import {
+  ClubDeclarationFields,
+  clubPayload,
+  type ClubDeclaration,
+} from "@/components/ClubDeclarationFields";
 import { GenderPicker } from "@/components/GenderPicker";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
@@ -108,6 +114,10 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   // Casquettes : aucune au départ, et aucune est une réponse valable — l'étape
   // se franchit sans rien cocher.
   const [categories, setCategories] = useState<CoachCategory[]>([]);
+  // Le club, facultatif : nommé une fois ici, il permet aux coachs du même club
+  // de se retrouver plus tard (voir ClubDeclarationFields).
+  const [club, setClub] = useState<ClubDeclaration>({ name: "", city: "", stadium: "" });
+  const [pickedClub, setPickedClub] = useState<DeclaredClubDto | null>(null);
   // Les deux acceptations vivent hors de `form` : ce sont des booléens, et
   // surtout ils ne partent jamais d'une valeur « déjà donnée ».
   const [consent, setConsent] = useState({ responsibility: false, terms: false });
@@ -161,6 +171,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         categories,
         teamStadium: form.teamStadium.trim() || undefined,
         licenseNumber: form.licenseNumber.trim() || undefined,
+        ...clubPayload(club, pickedClub),
         acceptTerms: consent.terms,
         acceptResponsibility: consent.responsibility,
       });
@@ -324,6 +335,26 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
             <div className="space-y-1.5">
               <label htmlFor="teamStadium" className="text-xs font-bold text-ink-soft">Stade habituel (optionnel)</label>
               <input id="teamStadium" autoComplete="off" autoCapitalize="words" enterKeyHint="done" maxLength={150} value={form.teamStadium} onChange={(e) => set("teamStadium", e.target.value)} className="field" placeholder="Stade municipal" />
+            </div>
+
+            {/* Le club, distinct de l'équipe et facultatif : « AS Lyon U15 » est
+                l'équipe, « AS Lyon » le club. Le nommer permet aux autres coachs
+                du même club de s'y rattacher plutôt que d'en créer un second —
+                d'où la question posée si le nom en rappelle un déjà connu. */}
+            <div className="space-y-4 border-t border-line pt-4">
+              <div>
+                <h3 className="display text-lg">Mon club</h3>
+                <p className="text-[11px] text-ink-soft">
+                  Facultatif, à remplir si votre club n&apos;apparaît pas dans les suggestions ci-dessus.
+                </p>
+              </div>
+              <ClubDeclarationFields
+                idPrefix="register"
+                value={club}
+                onChange={setClub}
+                picked={pickedClub}
+                onPick={setPickedClub}
+              />
             </div>
             <Button type="submit" size="lg" className="w-full">Continuer</Button>
           </form>

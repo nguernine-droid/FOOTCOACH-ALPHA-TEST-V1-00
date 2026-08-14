@@ -3,7 +3,12 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Ban, Building2, Check, Copy, KeyRound, Mail, Plus, RotateCcw, Search, Trash2, X } from "lucide-react";
-import type { AdminAccountDto, AdminCreateClubResultDto, Role } from "@teamnexus/shared";
+import type {
+  AdminAccountDto,
+  AdminCreateClubResultDto,
+  DeclaredClubDto,
+  Role,
+} from "@teamnexus/shared";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { timeAgo, useNow } from "@/lib/time";
@@ -246,22 +251,69 @@ const CLUB_FORM_ID = "admin-new-club";
 
 // Création d'un compte club : formulaire puis identifiants (affichés une fois)
 function CreateClubModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({ name: "", city: "", contactFirstName: "", contactLastName: "", email: "" });
+  const [form, setForm] = useState({
+    name: "",
+    city: "",
+    stadium: "",
+    contactFirstName: "",
+    contactLastName: "",
+    email: "",
+  });
   const [result, setResult] = useState<AdminCreateClubResultDto | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /**
+   * Clubs déjà connus qui portent ce nom dans cette ville — souvent DÉCLARÉS par
+   * un coach, donc sans compte. Leur ouvrir un compte doit REPRENDRE la ligne
+   * existante : en créer une seconde laisserait les équipes déjà rattachées de
+   * l'autre côté, invisibles du club.
+   */
+  const [similar, setSimilar] = useState<DeclaredClubDto[]>([]);
+  const [claimed, setClaimed] = useState<DeclaredClubDto | null>(null);
 
   function set(key: keyof typeof form, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
+
+  const name = form.name.trim();
+  const city = form.city.trim();
+  useEffect(() => {
+    if (claimed || name.length < 2 || city.length < 1) {
+      setSimilar([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const found = await api<DeclaredClubDto[]>(
+          `/clubs/declared?name=${encodeURIComponent(name)}&city=${encodeURIComponent(city)}`,
+          { signal: controller.signal },
+        );
+        setSimilar(found.filter((c) => !c.hasAccount));
+      } catch {
+        // Recherche indisponible : la création reste possible, sans la question.
+      }
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [name, city, claimed]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const res = await api<AdminCreateClubResultDto>("/admin/clubs", { method: "POST", body: JSON.stringify(form) });
+      const res = await api<AdminCreateClubResultDto>("/admin/clubs", {
+        method: "POST",
+        body: JSON.stringify({
+          ...form,
+          stadium: form.stadium.trim() || undefined,
+          claimClubId: claimed?.id,
+        }),
+      });
       setResult(res);
       onCreated();
     } catch (err) {
@@ -338,6 +390,56 @@ function CreateClubModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <label className="text-xs font-bold text-ink-soft" htmlFor="club-city">Ville</label>
               <input id="club-city" required autoComplete="address-level2" autoCapitalize="words" enterKeyHint="next" value={form.city} onChange={(e) => set("city", e.target.value)} className="field" placeholder="Lyon" />
             </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-ink-soft" htmlFor="club-stadium">Stade</label>
+              <input id="club-stadium" autoCapitalize="words" enterKeyHint="next" maxLength={150} value={form.stadium} onChange={(e) => set("stadium", e.target.value)} className="field" placeholder="Stade municipal" />
+              <p className="text-[11px] text-ink-soft">Repris par défaut sur les équipes rattachées à ce club.</p>
+            </div>
+
+            {/* La question du doublon : ce club a peut-être déjà été déclaré par
+                un de ses coachs. Le reprendre garde ses équipes ; en créer un
+                second les laisserait orphelines. */}
+            {claimed ? (
+              <div className="rounded-lg bg-blue-soft px-4 py-3 flex items-center gap-3">
+                <Building2 size={18} className="text-blue shrink-0" />
+                <span className="min-w-0 flex-1 text-xs">
+                  <span className="block font-bold truncate">Reprise de « {claimed.name} »</span>
+                  <span className="block text-ink-soft truncate">
+                    Déjà déclaré à {claimed.city} — ses équipes suivront.
+                  </span>
+                </span>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setClaimed(null)}>
+                  Annuler
+                </Button>
+              </div>
+            ) : (
+              similar.length > 0 && (
+                <div className="rounded-lg bg-sun-soft px-4 py-3 space-y-2">
+                  <p className="text-xs font-bold">Ce club existe peut-être déjà</p>
+                  <p className="text-[11px] text-ink-soft">
+                    Déclaré par un coach, sans compte de connexion. S&apos;il s&apos;agit du même, reprenez-le.
+                  </p>
+                  {similar.map((club) => (
+                    <button
+                      key={club.id}
+                      type="button"
+                      onClick={() => setClaimed(club)}
+                      className="w-full flex items-center gap-2 rounded-lg surface px-3 py-2 text-left text-xs
+                        transition hover:bg-blue-faint"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-bold truncate">{club.name}</span>
+                        <span className="block text-ink-soft truncate">
+                          {club.city}
+                          {club.stadium ? ` · ${club.stadium}` : ""}
+                        </span>
+                      </span>
+                      <Check size={14} className="text-blue shrink-0" aria-hidden />
+                    </button>
+                  ))}
+                </div>
+              )
+            )}
             {/* Une colonne au pouce : deux champs de nom côte à côte tombent
                 sous 160 px de large sur un téléphone. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

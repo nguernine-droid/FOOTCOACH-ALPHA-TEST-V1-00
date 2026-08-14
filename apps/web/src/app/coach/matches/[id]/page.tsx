@@ -386,49 +386,6 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
 
       <MatchCard match={match} />
 
-      {/* ————— Les deux coachs —————
-          Placés juste sous la feuille : avant de se déplacer, on veut savoir
-          qui l'on va trouver en face — et c'est la première chose qu'on
-          cherche quand on rouvre un match passé. */}
-      {(match.homeCoach || match.awayCoach) && (
-        <section className="card p-5 space-y-3" aria-label="Les coachs">
-          <h3 className="display text-lg">Les coachs</h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {[
-              { coach: match.homeCoach, team: match.homeTeam, side: "Reçoit" },
-              { coach: match.awayCoach, team: match.awayTeam, side: "Se déplace" },
-            ].map(({ coach, team, side }) =>
-              coach ? (
-                <button
-                  key={team.id}
-                  type="button"
-                  onClick={() => setCardOf(coach.id)}
-                  className="flex items-center gap-3 rounded-lg bg-paper px-4 py-3 text-left transition
-                    hover:bg-blue-faint active:bg-blue-soft"
-                >
-                  <Avatar name={coach.nickname} avatarUrl={coach.avatarUrl} size={40} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-bold truncate">
-                      {coach.nickname}
-                    </span>
-                    <span className="block text-xs text-ink-soft truncate">
-                      {side} · {team.name}
-                    </span>
-                  </span>
-                  <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
-                </button>
-              ) : (
-                <p key={team.id} className="rounded-lg bg-paper px-4 py-3 text-xs text-ink-soft">
-                  {team.name} — aucun coach déclaré
-                </p>
-              ),
-            )}
-          </div>
-        </section>
-      )}
-
-      {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
-
       {cancelled ? (
         <section className="card p-5 space-y-4" aria-label="Match annulé">
           <div className="flex items-start gap-3">
@@ -472,30 +429,86 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
         </section>
       ) : (
         <>
-          {/* Se désister : rattaché à la feuille de match, juste sous elle, et
-              non relégué sous la carte du score — c'est là qu'on le cherche.
-              Une ligne discrète : l'action reste rare et lourde de conséquences. */}
-          {match.status === "scheduled" && (
-            <div className="card px-5 py-4 flex flex-wrap items-center gap-3" aria-label="Désistement">
-              <p className="text-xs text-ink-soft min-w-[13rem] flex-1">
-                <span className="font-bold text-ink">Un empêchement ?</span>{" "}
-                {match.mySide === "away"
-                  ? "L'annonce repartira en SOS sur le radar : le coach pourra retrouver une équipe à temps."
-                  : "Le match sera annulé et votre adversaire prévenu."}
-              </p>
-              <Button
-                variant="danger"
-                onClick={() => setWithdrawing(true)}
-                className="w-full sm:w-auto shrink-0"
-              >
-                <UserMinus size={15} /> Se désister
-              </Button>
-            </div>
+        {/* ————— 1) Le match : le direct et le score —————
+            En tête parce que c'est ce qui change le plus souvent d'un instant
+            à l'autre : donner le coup d'envoi, puis saisir le score. Les deux
+            dans la même carte — c'est un seul geste étalé sur une soirée. */}
+        <section className="card p-5 space-y-4" aria-label="Le match">
+          <h3 className="display text-lg">
+            {match.status === "live" ? "En direct" : match.status === "finished" ? "Score final" : "Le match"}
+          </h3>
+
+          {match.status === "live" && (
+            <p className="text-xs font-semibold text-coral flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-coral animate-soft-pulse shrink-0" aria-hidden />
+              Coup d&apos;envoi donné — le score se saisit à la fin.
+            </p>
           )}
 
-        {/* ————— Rencontre : le face-à-face au stade —————
-            Placée AVANT le score : c'est ce qui se passe en premier dans la
-            journée, et c'est elle qui atteste que le match a eu lieu. */}
+          {match.status === "finished" && !correcting ? (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-success-soft px-4 py-4 flex items-center gap-3">
+                <CheckCircle2 size={18} className="text-success shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-success">Score enregistré</p>
+                  <p className="text-xs text-ink-soft">
+                    {match.homeTeam.name} {match.homeScore} – {match.awayScore} {match.awayTeam.name}
+                  </p>
+                </div>
+              </div>
+              {/* Corrigeable par l'un comme par l'autre : sans contre-signature,
+                  une erreur de saisie n'a plus de raison d'être définitive. */}
+              <Button variant="ghost" className="w-full" onClick={() => setCorrecting(true)}>
+                <Pencil size={14} /> Corriger le score
+              </Button>
+            </div>
+          ) : correcting ? (
+            <div className="space-y-2">
+              <FinalScoreForm
+                match={match}
+                onSubmitted={(message) => {
+                  setError(message);
+                  setCorrecting(false);
+                  load();
+                }}
+              />
+              <Button variant="ghost" className="w-full" onClick={() => setCorrecting(false)}>
+                Annuler la correction
+              </Button>
+            </div>
+          ) : match.finalScoreDue ? (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-coral-soft px-4 py-3 flex items-start gap-2.5">
+                <AlertTriangle size={16} className="text-coral shrink-0 mt-0.5" />
+                <p className="text-xs text-ink-soft">
+                  <span className="font-bold text-coral">Le match a eu lieu.</span> Saisissez le score final —
+                  l&apos;un ou l&apos;autre coach peut le faire.
+                </p>
+              </div>
+              <FinalScoreForm
+                match={match}
+                onSubmitted={(message) => {
+                  setError(message);
+                  load();
+                }}
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-ink-soft">Le score final se saisit à la fin de la rencontre.</p>
+              {match.status === "scheduled" && (
+                <Button variant="soft" size="lg" className="w-full" onClick={kickoff} disabled={busy}>
+                  <Play size={16} /> Donner le coup d&apos;envoi
+                </Button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* ————— 2) Rencontre : le face-à-face au stade —————
+            Le QR arrive après le direct et le score. L'ordre suit la question
+            qu'on se pose en ouvrant l'écran : d'abord « où en est le match »,
+            ensuite « attestons notre venue », enfin « qui est en face ». */}
         <section className="card p-5 space-y-4" aria-label="Validation de la rencontre">
           <div className="flex items-baseline justify-between gap-3">
             <h3 className="display text-lg">Rencontre</h3>
@@ -574,71 +587,63 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
           )}
         </section>
 
-        {/* ————— Score final ————— */}
-        <section className="card p-5 space-y-4" aria-label="Score final">
-          <h3 className="display text-lg">Score final</h3>
-
-          {match.status === "finished" && !correcting ? (
-            <div className="space-y-3">
-              <div className="rounded-lg bg-success-soft px-4 py-4 flex items-center gap-3">
-                <CheckCircle2 size={18} className="text-success shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-success">Score enregistré</p>
-                  <p className="text-xs text-ink-soft">
-                    {match.homeTeam.name} {match.homeScore} – {match.awayScore} {match.awayTeam.name}
-                  </p>
-                </div>
-              </div>
-              {/* Corrigeable par l'un comme par l'autre : sans contre-signature,
-                  une erreur de saisie n'a plus de raison d'être définitive. */}
-              <Button variant="ghost" className="w-full" onClick={() => setCorrecting(true)}>
-                <Pencil size={14} /> Corriger le score
-              </Button>
-            </div>
-          ) : correcting ? (
-            <div className="space-y-2">
-              <FinalScoreForm
-                match={match}
-                onSubmitted={(message) => {
-                  setError(message);
-                  setCorrecting(false);
-                  load();
-                }}
-              />
-              <Button variant="ghost" className="w-full" onClick={() => setCorrecting(false)}>
-                Annuler la correction
-              </Button>
-            </div>
-          ) : match.finalScoreDue ? (
-            <div className="space-y-4">
-              <div className="rounded-lg bg-coral-soft px-4 py-3 flex items-start gap-2.5">
-                <AlertTriangle size={16} className="text-coral shrink-0 mt-0.5" />
-                <p className="text-xs text-ink-soft">
-                  <span className="font-bold text-coral">Le match a eu lieu.</span> Saisissez le score final —
-                  l&apos;un ou l&apos;autre coach peut le faire.
-                </p>
-              </div>
-              <FinalScoreForm
-                match={match}
-                onSubmitted={(message) => {
-                  setError(message);
-                  load();
-                }}
-              />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-xs text-ink-soft">Le score final se saisit à la fin de la rencontre.</p>
-              {match.status === "scheduled" && (
-                <Button variant="soft" size="lg" className="w-full" onClick={kickoff} disabled={busy}>
-                  <Play size={16} /> Donner le coup d&apos;envoi
-                </Button>
-              )}
-            </div>
-          )}
-        </section>
-
         </>
+      )}
+
+      {/* ————— 3) Les deux coachs —————
+          En dernier : on veut savoir qui l'on va trouver en face, mais c'est
+          une information de préparation — elle ne se consulte pas au bord du
+          terrain, contrairement au score et au QR. */}
+      {(match.homeCoach || match.awayCoach) && (
+        <section className="card p-5 space-y-3" aria-label="Les coachs">
+          <h3 className="display text-lg">Les coachs</h3>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {[
+              { coach: match.homeCoach, team: match.homeTeam, side: "Reçoit" },
+              { coach: match.awayCoach, team: match.awayTeam, side: "Se déplace" },
+            ].map(({ coach, team, side }) =>
+              coach ? (
+                <button
+                  key={team.id}
+                  type="button"
+                  onClick={() => setCardOf(coach.id)}
+                  className="flex items-center gap-3 rounded-lg bg-paper px-4 py-3 text-left transition
+                    hover:bg-blue-faint active:bg-blue-soft"
+                >
+                  <Avatar name={coach.nickname} avatarUrl={coach.avatarUrl} size={40} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold truncate">{coach.nickname}</span>
+                    <span className="block text-xs text-ink-soft truncate">
+                      {side} · {team.name}
+                    </span>
+                  </span>
+                  <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+                </button>
+              ) : (
+                <p key={team.id} className="rounded-lg bg-paper px-4 py-3 text-xs text-ink-soft">
+                  {team.name} — aucun coach déclaré
+                </p>
+              ),
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Se désister, tout en bas et sur une ligne discrète : l'action est rare
+          et lourde de conséquences, elle n'a rien à faire au-dessus de ce qu'on
+          vient consulter dix fois. */}
+      {!cancelled && match.status === "scheduled" && (
+        <div className="card px-5 py-4 flex flex-wrap items-center gap-3" aria-label="Désistement">
+          <p className="text-xs text-ink-soft min-w-[13rem] flex-1">
+            <span className="font-bold text-ink">Un empêchement ?</span>{" "}
+            {match.mySide === "away"
+              ? "L'annonce repartira en SOS sur le radar : le coach pourra retrouver une équipe à temps."
+              : "Le match sera annulé et votre adversaire prévenu."}
+          </p>
+          <Button variant="danger" onClick={() => setWithdrawing(true)} className="w-full sm:w-auto shrink-0">
+            <UserMinus size={15} /> Se désister
+          </Button>
+        </div>
       )}
 
       {scanning && <QrScanner onResult={confirmEncounter} onClose={() => setScanning(false)} />}

@@ -27,6 +27,7 @@ export function CoachCard({
   name,
   avatarUrl,
   clubLabel,
+  clubLogoUrl,
   teamCategory,
   teamLevel,
   level,
@@ -39,6 +40,8 @@ export function CoachCard({
   avatarUrl: string | null;
   /** Club du coach, ou à défaut son équipe active — le libellé est décidé par l'appelant */
   clubLabel: string | null;
+  /** Écusson de son équipe, affiché devant le libellé (null s'il n'y en a pas) */
+  clubLogoUrl?: string | null;
   /** Catégorie d'âge de l'équipe active (U13…), null si elle n'en a pas */
   teamCategory: string | null;
   /** Niveau de jeu de l'équipe active (D2, R1…), null si non réglé */
@@ -108,7 +111,18 @@ export function CoachCard({
         <div className="mt-5 w-full text-center min-w-0">
           <p className="display text-2xl leading-tight truncate">{name}</p>
           {clubLabel && (
-            <p className="text-[11px] font-bold tracking-wider text-white/60 truncate uppercase">{clubLabel}</p>
+            // L'écusson devant le nom du club, quand il y en a un : c'est ce
+            // qui fait ressembler la carte à celle d'un joueur.
+            <p className="text-[11px] font-bold tracking-wider text-white/60 truncate uppercase flex items-center justify-center gap-1.5">
+              {clubLogoUrl && (
+                <img
+                  src={clubLogoUrl}
+                  alt=""
+                  className="w-4 h-4 rounded-sm object-cover shrink-0"
+                />
+              )}
+              {clubLabel}
+            </p>
           )}
         </div>
 

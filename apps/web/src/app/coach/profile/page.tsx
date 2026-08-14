@@ -9,6 +9,7 @@ import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/ap
 import { Avatar } from "@/components/Avatar";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { LocationCard } from "@/components/coach/LocationCard";
+import { TeamLogoCard } from "@/components/coach/TeamLogoCard";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -348,6 +349,10 @@ export default function CoachProfilePage() {
           </p>
         )}
       </section>
+
+      {/* L'écusson du club, équipe par équipe : c'est de l'identité, sa place
+          est ici, entre la photo du coach et son code. */}
+      <TeamLogoCard />
 
       {/* Trois options pour deux casquettes : « Coach simple » dit le cas
           ordinaire au lieu de le laisser deviner. Les deux vraies restent

@@ -874,14 +874,52 @@ export type TeamReferencesInput = z.infer<typeof teamReferencesSchema>;
  * Création d'une équipe supplémentaire par un coach déjà inscrit. Mêmes bornes
  * que l'équipe créée à l'inscription : c'est la même chose, créée plus tard.
  */
+/**
+ * Le club d'une équipe, à la création comme à l'inscription. Deux formes
+ * exclusives, et l'absence des deux vaut « pas de club » :
+ *
+ * - `clubId` : le coach a reconnu un club DÉJÀ déclaré (celui que la détection
+ *   de doublon lui a proposé) — on s'y rattache, on n'en crée pas un second ;
+ * - `club` : personne ne l'avait déclaré, il le nomme lui-même.
+ *
+ * Le champ est facultatif de bout en bout : beaucoup de coachs n'ont pas de
+ * club à nommer, et rien de ce que fait l'application n'en dépend.
+ */
+export const clubChoiceShape = {
+  clubId: z.string().uuid().optional(),
+  club: z
+    .object({
+      name: z.string().trim().min(2, "Nom du club trop court").max(80),
+      city: z.string().trim().min(1).max(60),
+      stadium: z.string().trim().max(150).optional(),
+    })
+    .optional(),
+};
+
+/** Un seul des deux : se rattacher ET déclarer n'aurait pas de sens */
+export function oneClubChoice(value: { clubId?: string; club?: unknown }): boolean {
+  return !(value.clubId && value.club);
+}
+export const CLUB_CHOICE_CONFLICT = "Choisissez un club existant OU déclarez-en un, pas les deux.";
+
 export const createTeamSchema = z
   .object({
     ...teamReferencesShape,
+    ...clubChoiceShape,
     name: z.string().trim().min(2).max(60),
     city: z.string().trim().min(1).max(60),
   })
-  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] });
+  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] })
+  .refine(oneClubChoice, { message: CLUB_CHOICE_CONFLICT, path: ["club"] });
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
+
+/** Déclaration d'un club depuis un écran qui ne crée pas d'équipe (espace admin) */
+export const declareClubSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  city: z.string().trim().min(1).max(60),
+  stadium: z.string().trim().max(150).optional(),
+});
+export type DeclareClubInput = z.infer<typeof declareClubSchema>;
 
 /**
  * Mise à jour des seules références. Le nom et la ville n'en font pas partie :
@@ -922,6 +960,7 @@ export const coachLicenseSchema = z
 export const nicknameSchema = z.string().trim().min(1, "Choisissez un surnom").max(30);
 
 export const registerCoachSchema = z.object({
+  ...clubChoiceShape,
   nickname: nicknameSchema,
   // Facultatifs depuis l'arrivée du surnom : ils ne s'affichent qu'au
   // titulaire (profil) et aux gestionnaires (admin, club), jamais aux
@@ -950,16 +989,25 @@ export const registerCoachSchema = z.object({
   // pas être présentée comme noyée dans un renvoi aux conditions générales.
   acceptTerms: acceptedSchema("conditions générales d'utilisation"),
   acceptResponsibility: acceptedSchema("responsabilités du coach et de son club"),
-});
+}).refine(oneClubChoice, { message: CLUB_CHOICE_CONFLICT, path: ["club"] });
 export type RegisterCoachInput = z.infer<typeof registerCoachSchema>;
 
 // Création d'un compte club par l'admin : le club + son compte de connexion (contact)
 export const createClubSchema = z.object({
   name: z.string().min(2).max(80),
   city: z.string().min(1).max(60),
+  /** Stade du club — repris par les équipes qui s'y rattacheront */
+  stadium: z.string().trim().max(150).optional(),
   contactFirstName: z.string().min(1).max(50),
   contactLastName: z.string().min(1).max(50),
   email: z.string().email(),
+  /**
+   * Club DÉJÀ déclaré que ce compte vient reprendre. C'est la sortie de la
+   * détection de doublon : un club nommé par un coach ne doit pas être créé une
+   * seconde fois le jour où l'administrateur lui ouvre un espace — les équipes
+   * déjà rattachées resteraient de l'autre côté.
+   */
+  claimClubId: z.string().uuid().optional(),
 });
 export type CreateClubInput = z.infer<typeof createClubSchema>;
 
@@ -1180,6 +1228,12 @@ export interface TeamDto {
   id: string;
   name: string;
   city: string;
+  /**
+   * Écusson de l'équipe, servi depuis le volume d'uploads. `null` quand aucun
+   * n'a été envoyé : l'affichage retombe alors sur les initiales, qui restent
+   * le repli partout où ce logo apparaît.
+   */
+  logoUrl: string | null;
 }
 
 /**
@@ -1210,6 +1264,28 @@ export interface CoachTeamDto {
   stadium: string | null;
   /** Niveau réel de l'équipe (D2, R1…) — null tant qu'il n'a pas été réglé */
   level: DivisionLevel | null;
+  /** Écusson de l'équipe (null tant qu'aucun n'a été envoyé) */
+  logoUrl: string | null;
+  /** Club déclaré auquel elle se rattache — null pour une équipe sans club */
+  club: DeclaredClubDto | null;
+}
+
+/**
+ * Un club tel que l'application le connaît : nommé une fois, retrouvé ensuite
+ * par les autres coachs du même club.
+ *
+ * `hasAccount` distingue les clubs créés par un administrateur — qui ont un
+ * espace de gestion et un code d'affiliation — de ceux simplement DÉCLARÉS par
+ * un coach. Les seconds n'existent que pour être reconnus et partagés ; c'est
+ * ce qui permet à un club amateur absent de tout annuaire d'exister ici sans
+ * qu'on lui fabrique un compte dont personne n'a demandé les clés.
+ */
+export interface DeclaredClubDto {
+  id: string;
+  name: string;
+  city: string;
+  stadium: string | null;
+  hasAccount: boolean;
 }
 
 /** Proposition d'un coach adverse sur une annonce (visible par l'émetteur) */
@@ -1609,9 +1685,15 @@ export interface ClubDto {
   id: string;
   name: string;
   city: string;
+  /** Stade du club — repris par ses équipes */
+  stadium: string | null;
   email: string | null;
-  /** Code partagé aux coachs existants pour rejoindre le club (affiliation) */
-  affiliationCode: string;
+  /**
+   * Code partagé aux coachs existants pour rejoindre le club (affiliation).
+   * `null` pour un club simplement déclaré par un coach : sans compte pour
+   * approuver les demandes, un code ne mènerait nulle part.
+   */
+  affiliationCode: string | null;
 }
 
 /** Une équipe du club (vue club) : encadrants et effectif */
@@ -1686,6 +1768,8 @@ export interface CoachRefDto {
 export interface CoachCardDto extends CoachRefDto {
   /** Club, ou à défaut l'équipe — le libellé est décidé par le serveur */
   clubLabel: string | null;
+  /** Écusson de son équipe principale, affiché à côté du libellé (null s'il n'y en a pas) */
+  clubLogoUrl: string | null;
   /** Catégorie d'âge de son équipe principale (U13…), null si non renseignée */
   teamCategory: string | null;
   /** Niveau de jeu de son équipe principale (D2, R1…), null si non réglé */

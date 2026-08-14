@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
-import type { CoachTeamDto, MatchCategory, MatchGender } from "@teamnexus/shared";
+import type { CoachTeamDto, DeclaredClubDto, MatchCategory, MatchGender } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { ClubNameField } from "@/components/ClubNameField";
+import {
+  ClubDeclarationFields,
+  clubPayload,
+  type ClubDeclaration,
+} from "@/components/ClubDeclarationFields";
 import { GenderPicker } from "@/components/GenderPicker";
 import { Button } from "@/components/ui/Button";
 
@@ -36,6 +41,10 @@ export default function NewTeamPage() {
   const [stadium, setStadium] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Le club, facultatif : ce qui distingue « l'équipe » (les U15) du « club »
+  // (l'AS Exemple), et ce qui permet à deux coachs du même club de se retrouver.
+  const [club, setClub] = useState<ClubDeclaration>({ name: "", city: "", stadium: "" });
+  const [pickedClub, setPickedClub] = useState<DeclaredClubDto | null>(null);
 
   const incomplete = name.trim().length < 2 || city.trim().length < 1 || !category || !gender;
   useQuickActionOverride({
@@ -59,6 +68,7 @@ export default function NewTeamPage() {
           category,
           gender,
           stadium: stadium.trim() || undefined,
+          ...clubPayload(club, pickedClub),
         }),
       });
       // La liste des équipes vit dans la session : sans ce rechargement, la
@@ -159,6 +169,27 @@ export default function NewTeamPage() {
           <p className="text-[11px] text-ink-soft">
             Celui où vous recevez. Il sera proposé d&apos;office quand vous publierez une annonce.
           </p>
+        </div>
+
+        {/* Le club, à part de l'équipe : « AS Lyon U15 » est une équipe, « AS
+            Lyon » est le club. Le déclarer permet aux autres coachs du même
+            club de s'y rattacher au lieu d'en créer un second — d'où la
+            question posée quand le nom saisi en rappelle un déjà connu. */}
+        <div className="space-y-4 border-t border-line pt-4">
+          <div>
+            <h3 className="display text-lg">Mon club</h3>
+            <p className="text-[11px] text-ink-soft">
+              Facultatif. À remplir si votre club n&apos;apparaît pas dans les suggestions du nom
+              d&apos;équipe — le stade indiqué ici sert de stade par défaut.
+            </p>
+          </div>
+          <ClubDeclarationFields
+            idPrefix="team"
+            value={club}
+            onChange={setClub}
+            picked={pickedClub}
+            onPick={setPickedClub}
+          />
         </div>
 
         {error &&<p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}

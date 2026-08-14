@@ -31,7 +31,7 @@ import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
 import { tournamentsInRadar } from "./tournaments.js";
 import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard.js";
-import { avatarUrlOf } from "./auth.js";
+import { avatarUrlOf, toTeamDto } from "./auth.js";
 import { markRead, openConversation, postSystemMessage } from "../lib/conversations.js";
 
 function toDto(
@@ -58,7 +58,7 @@ function toDto(
   const bearing = myCoords && venueCoords ? bearingDeg(myCoords, venueCoords) : null;
   return {
     id: announcement.id,
-    team: { id: team.id, name: team.name, city: team.city },
+    team: toTeamDto(team),
     date: announcement.date,
     time: announcement.time.slice(0, 5),
     city: announcement.city,
@@ -108,7 +108,7 @@ async function loadMatchLinks(announcementIds: string[]) {
   for (const { match, opponent } of rows) {
     links.set(match.announcementId, {
       matchId: match.id,
-      opponentTeam: { id: opponent.id, name: opponent.name, city: opponent.city },
+      opponentTeam: toTeamDto(opponent),
     });
   }
   return links;
@@ -136,7 +136,7 @@ async function loadResponses(announcementIds: string[]) {
     const list = byAnnouncement.get(response.announcementId) ?? [];
     list.push({
       id: response.id,
-      team: { id: team.id, name: team.name, city: team.city },
+      team: toTeamDto(team),
       // Références de l'équipe qui propose, portées jusqu'à l'émetteur : c'est
       // lui qui doit voir, avant d'accepter, que des U15 féminines répondent à
       // son annonce U12-U13 masculine.

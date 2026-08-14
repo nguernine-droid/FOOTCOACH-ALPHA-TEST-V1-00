@@ -263,7 +263,10 @@ function ClubCoaches() {
 
   return (
     <div className="space-y-4">
-      <AffiliationCodeCard code={overview.club.affiliationCode} />
+      {/* Un club sans code, c'est un club simplement DÉCLARÉ par un coach, qui
+          n'a pas encore de compte — cet écran n'est alors pas atteignable, mais
+          le type le dit et on ne prétend pas le contraire. */}
+      {overview.club.affiliationCode && <AffiliationCodeCard code={overview.club.affiliationCode} />}
 
       <AffiliationRequestsCard requests={requests} onDecided={load} />
 

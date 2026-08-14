@@ -66,6 +66,7 @@ export default function CoachCardPage() {
               // Aucun club n'est rattaché en V1 : l'équipe active tient ce rôle,
               // c'est elle que les autres coachs voient sur le radar.
               clubLabel={user.clubName ?? activeTeam?.name ?? user.teamName}
+              clubLogoUrl={activeTeam?.logoUrl ?? null}
               teamCategory={activeTeam?.category ?? null}
               teamLevel={activeTeam?.level ?? null}
               level={user.level ?? levelForPoints(points)}

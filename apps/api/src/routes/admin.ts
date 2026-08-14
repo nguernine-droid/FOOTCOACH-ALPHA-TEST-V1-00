@@ -18,6 +18,7 @@ import { generateCode } from "../lib/codes.js";
 import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
 import { generateTempPassword } from "../lib/passwords.js";
+import { clubById } from "../lib/declaredClubs.js";
 import { revokeAllSessions } from "../lib/sessions.js";
 import { hashPassword } from "../lib/passwordHash.js";
 
@@ -138,6 +139,15 @@ export function adminRoutes(app: FastifyInstance) {
     const passwordHash = await hashPassword(tempPassword);
     const coords = cityCoords(input.city);
 
+    /**
+     * Club DÉJÀ déclaré que ce compte vient reprendre. Le vérifier avant la
+     * transaction : rattacher un compte à un club inexistant créerait un compte
+     * orphelin, et il vaut mieux le refuser tout de suite.
+     */
+    const claimed = input.claimClubId ? await clubById(input.claimClubId) : null;
+    if (input.claimClubId && !claimed) throw new HttpError(404, "Club à reprendre introuvable");
+    if (claimed?.ownerId) throw new HttpError(400, "Ce club a déjà un compte de connexion");
+
     const club = await db.transaction(async (tx) => {
       const [owner] = await tx
         .insert(users)
@@ -155,11 +165,32 @@ export function adminRoutes(app: FastifyInstance) {
       // Code d'affiliation unique (retry en cas de collision)
       for (let attempt = 0; attempt < 4; attempt++) {
         try {
+          // Reprise d'un club déclaré : on lui pose son compte et son code sans
+          // rien créer de neuf. Les équipes déjà rattachées le restent — c'est
+          // tout l'intérêt de la question de doublon posée à la saisie.
+          if (claimed) {
+            const [updated] = await tx
+              .update(clubs)
+              .set({
+                name: input.name,
+                city: input.city,
+                stadium: input.stadium?.trim() || claimed.stadium,
+                email,
+                ownerId: owner.id,
+                affiliationCode: generateCode(),
+                lat: coords?.lat ?? claimed.lat,
+                lng: coords?.lng ?? claimed.lng,
+              })
+              .where(eq(clubs.id, claimed.id))
+              .returning();
+            return updated;
+          }
           const [created] = await tx
             .insert(clubs)
             .values({
               name: input.name,
               city: input.city,
+              stadium: input.stadium?.trim() || null,
               email,
               ownerId: owner.id,
               affiliationCode: generateCode(),

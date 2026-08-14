@@ -15,7 +15,7 @@ import { db } from "../db/client.js";
 import { clubs, coachRelations, teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
-import { avatarUrlOf, toUserDto } from "./auth.js";
+import { avatarUrlOf, toTeamDto, toUserDto } from "./auth.js";
 import { totalPointsOfMany } from "../lib/points.js";
 import { UPLOADS_DIR } from "../lib/uploads.js";
 import { ALLOWED_IMAGE_TYPES, MAX_AVATAR_BYTES, sniffImageType } from "../lib/images.js";
@@ -36,7 +36,13 @@ async function buildRelations(coachIds: string[], createdAtById: Map<string, Dat
   const clubById = new Map(clubRows.map((c) => [c.id, c.name]));
 
   const teamRows = await db
-    .select({ coachId: teamCoaches.coachId, id: teams.id, name: teams.name, city: teams.city })
+    .select({
+      coachId: teamCoaches.coachId,
+      id: teams.id,
+      name: teams.name,
+      city: teams.city,
+      logoPath: teams.logoPath,
+    })
     .from(teamCoaches)
     .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
     .where(inArray(teamCoaches.coachId, coachIds));
@@ -51,7 +57,7 @@ async function buildRelations(coachIds: string[], createdAtById: Map<string, Dat
     phone: c.phone,
     avatarUrl: avatarUrlOf(c.avatarPath),
     clubName: c.clubId ? (clubById.get(c.clubId) ?? null) : null,
-    teams: teamRows.filter((t) => t.coachId === c.id).map(({ id, name, city }) => ({ id, name, city })),
+    teams: teamRows.filter((t) => t.coachId === c.id).map(toTeamDto),
     createdAt: (createdAtById.get(c.id) ?? new Date()).toISOString(),
     // Le palier seul, jamais le total : on donne un repère de fiabilité, pas de
     // quoi comparer deux confrères au point près.

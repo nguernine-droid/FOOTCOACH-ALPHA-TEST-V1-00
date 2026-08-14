@@ -319,6 +319,17 @@ export const teams = pgTable("teams", {
   // avant — on ne devine pas le genre d'un « FC Exemple ».
   gender: text("gender"),
   stadium: text("stadium"),
+  /**
+   * Écusson de l'équipe — le « logo du club » tel que le coach le comprend.
+   * Nom du fichier dans le volume d'uploads, comme une photo de profil, servi
+   * en /api/uploads/. NULL tant qu'aucun n'a été envoyé : rien n'est deviné, et
+   * l'affichage retombe alors sur les initiales.
+   *
+   * Porté par l'ÉQUIPE et non par le club : un coach indépendant n'a pas de
+   * ligne `clubs`, et c'est justement lui qui a le plus besoin qu'on reconnaisse
+   * son maillot sur le radar.
+   */
+  logoPath: text("logo_path"),
   // Niveau réel de l'équipe (D2, R1…) — même texte libre que catégorie/genre,
   // validé par zod (DIVISION_LEVELS). NULL tant qu'il n'a pas été réglé, et
   // pour les catégories qui n'en ont pas (en dessous des U10).
@@ -341,14 +352,28 @@ export const clubs = pgTable("clubs", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   city: text("city").notNull(),
+  /** Stade habituel du club — préremplit celui des équipes qui s'y rattachent */
+  stadium: text("stadium"),
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
   email: text("email"),
+  /**
+   * Compte de connexion du club. **NULL pour un club DÉCLARÉ par un coach** :
+   * celui-ci nomme son club pour que les autres le reconnaissent, il ne crée
+   * pas un espace de gestion — cela reste le geste d'un administrateur. Un club
+   * déclaré peut donc être « repris » plus tard par un compte, sans rien perdre
+   * des équipes déjà rattachées.
+   */
   ownerId: uuid("owner_id")
-    .notNull()
     .unique()
     .references(() => users.id),
-  affiliationCode: text("affiliation_code").notNull().unique(),
+  /**
+   * Code d'affiliation, NULL tant que le club n'a pas de compte : sans personne
+   * pour approuver les demandes, un code distribuable ne mènerait qu'à des
+   * attentes sans réponse. L'index unique tolère les NULL, ils ne se comparent
+   * pas entre eux.
+   */
+  affiliationCode: text("affiliation_code").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
