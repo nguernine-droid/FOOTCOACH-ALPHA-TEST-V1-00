@@ -438,6 +438,7 @@ export function tournamentRoutes(app: FastifyInstance) {
         tournamentName: tournament.name,
         organizerTeamName: organizer.name,
         category: tournament.category.join(", "),
+        categories: tournament.category,
         city: tournament.city,
         date: tournament.date,
         venue: cityCoords(tournament.city),

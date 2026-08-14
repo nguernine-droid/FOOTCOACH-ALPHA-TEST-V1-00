@@ -12,13 +12,21 @@ import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
+/**
+ * Trois casiers, et un quatrième état qui n'en est pas un : `past`.
+ *
+ * Les annonces passées ne se rangent plus nulle part — elles ne demandent rien
+ * et ne se décident plus. Elles gardaient un onglet à elles, qui n'était jamais
+ * ouvert et rétrécissait les trois autres sur un téléphone. Le casier reste
+ * calculé (c'est lui qui écarte le passé des trois listes), il n'a simplement
+ * plus de puce : ce qui s'est joué se retrouve dans « Mes matchs ».
+ */
 type Bucket = "pending" | "toValidate" | "confirmed" | "past";
 
-const BUCKETS: { key: Bucket; label: string }[] = [
+const BUCKETS: { key: Exclude<Bucket, "past">; label: string }[] = [
   { key: "pending", label: "En attente" },
   { key: "toValidate", label: "À valider" },
   { key: "confirmed", label: "Confirmé" },
-  { key: "past", label: "Passées" },
 ];
 
 /**
@@ -64,9 +72,10 @@ export type MyAnnouncements = {
  * avec les décisions qui vont avec (accepter, décliner, annuler).
  *
  * Les données et les gestes vivent dans ce hook, la mise en page dans le
- * composant plus bas : le même contenu se lit depuis deux endroits — sa page
- * dédiée (« Moi › Mes annonces ») et l'onglet « Annonces » — et il n'était pas
- * question d'en tenir deux copies qui finiraient par diverger.
+ * composant plus bas. Deux appelants, deux besoins : la page « Moi › Mes
+ * annonces » affiche la liste entière, l'onglet « Annonces » n'en tire que
+ * `activeCount` pour son raccourci — un seul chargement à tenir, et un compte
+ * qui ne peut pas mentir sur ce que le raccourci va ouvrir.
  */
 export function useMyAnnouncements(): MyAnnouncements {
   const [announcements, setAnnouncements] = useState<AnnouncementDto[] | null>(null);
@@ -109,26 +118,25 @@ export function useMyAnnouncements(): MyAnnouncements {
 }
 
 /**
- * Mes annonces, rangées en trois casiers. Sans en-tête ni titre : ce
- * composant est posé tantôt sous le bandeau de sa page, tantôt sous les
- * catégories de l'onglet « Annonces », et c'est à eux de dire où l'on est.
+ * Mes annonces, rangées en trois casiers. Sans en-tête ni titre : le bandeau de
+ * la page dit déjà où l'on est.
  */
 export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
   const { announcements, tournaments, error, cancel } = mine;
-  const [bucket, setBucket] = useState<Bucket>("pending");
+  const [bucket, setBucket] = useState<Exclude<Bucket, "past">>("pending");
   /** Annonce dont le détail est ouvert — relue dans la liste, jamais copiée */
   const [detailId, setDetailId] = useState<string | null>(null);
 
   if (!announcements) return <CardGridSkeleton cards={3} />;
 
-  const counts = BUCKETS.reduce<Record<Bucket, number>>(
+  const counts = BUCKETS.reduce<Record<string, number>>(
     (acc, b) => {
       acc[b.key] =
         announcements.filter((a) => bucketOfAnnouncement(a) === b.key).length +
         tournaments.filter((t) => bucketOfTournament(t) === b.key).length;
       return acc;
     },
-    { pending: 0, toValidate: 0, confirmed: 0, past: 0 },
+    {},
   );
 
   const shownAnnouncements = announcements
@@ -143,8 +151,8 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
 
   return (
     <div className="space-y-4">
-      {/* Quatre casiers qui se partagent la largeur : cible large, pas de repli */}
-      <div className="grid grid-cols-4 gap-1.5" role="tablist" aria-label="Filtrer mes annonces">
+      {/* Trois casiers qui se partagent la largeur : cible large, pas de repli */}
+      <div className="grid grid-cols-3 gap-1.5" role="tablist" aria-label="Filtrer mes annonces">
         {BUCKETS.map((b) => (
           <button
             key={b.key}
@@ -152,8 +160,8 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
             role="tab"
             aria-selected={bucket === b.key}
             onClick={() => setBucket(b.key)}
-            // Même resserrement que la rangée des catégories au-dessus :
-            // « À valider (2) » ne tient pas dans un quart d'écran de téléphone
+            // Resserré comme les catégories de l'onglet « Annonces » :
+            // « À valider (2) » ne tient pas dans un tiers d'écran de téléphone
             // avec les 16 px de côté d'origine.
             className={cn("chip-choice !px-1.5", bucket === b.key ? "chip-choice-on" : "chip-choice-off")}
           >
@@ -174,9 +182,7 @@ export function MyAnnouncementsList({ mine }: { mine: MyAnnouncements }) {
               ? "Rien en attente de réponse"
               : bucket === "toValidate"
                 ? "Rien à valider pour l'instant"
-                : bucket === "confirmed"
-                  ? "Rien de confirmé pour l'instant"
-                  : "Rien de passé"}
+                : "Rien de confirmé pour l'instant"}
           </p>
           {bucket === "pending" && (
             <>

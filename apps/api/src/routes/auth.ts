@@ -34,6 +34,7 @@ import { generateCode } from "../lib/codes.js";
 import { originOf } from "../lib/coachOrigin.js";
 import { matchesPlayedBy } from "../lib/coachStats.js";
 import { totalPointsOf } from "../lib/points.js";
+import { notifyCoachCategoriesAdopted } from "../lib/push.js";
 import { authRateLimit } from "../lib/rateLimits.js";
 import {
   emailKey,
@@ -364,13 +365,32 @@ export function authRoutes(app: FastifyInstance) {
   app.patch("/me/categories", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
     if (request.user.role !== "coach") throw new HttpError(403, "Réservé aux coachs");
     const input = updateCoachCategoriesSchema.parse(request.body);
+    const wanted = asCoachCategories(input.categories);
+    // Lues AVANT l'écriture : c'est l'écart entre les deux qui dit ce que le
+    // coach vient de prendre, et donc s'il y a lieu de le remercier.
+    const [before] = await db
+      .select({ categories: users.coachCategories })
+      .from(users)
+      .where(eq(users.id, request.user.id));
     const [updated] = await db
       .update(users)
       // Dédoublonné à l'entrée : deux fois « joker » dans le corps de la requête
       // ne doit pas se retrouver tel quel en base.
-      .set({ coachCategories: asCoachCategories(input.categories) })
+      .set({ coachCategories: wanted })
       .where(eq(users.id, request.user.id))
       .returning();
+
+    /**
+     * Une casquette PRISE mérite un merci ; une casquette rendue, non — et un
+     * enregistrement qui ne change rien (le formulaire renvoyé tel quel) ne
+     * doit rien envoyer du tout. D'où la comparaison avec l'état d'avant plutôt
+     * qu'un envoi à chaque passage.
+     */
+    const had = asCoachCategories(before?.categories);
+    notifyCoachCategoriesAdopted({
+      coachId: request.user.id,
+      adopted: wanted.filter((c) => !had.includes(c)),
+    });
     return toUserDto(updated);
   });
 }

@@ -1,6 +1,13 @@
 import webpush from "web-push";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
-import { WITHDRAWAL_REASON_LABELS, type WithdrawalReason } from "@teamnexus/shared";
+import {
+  COACH_CATEGORY_LABELS,
+  fineCategoriesOf,
+  sosCategoryReach,
+  WITHDRAWAL_REASON_LABELS,
+  type CoachCategory,
+  type WithdrawalReason,
+} from "@teamnexus/shared";
 import { env } from "../env.js";
 import { db } from "../db/client.js";
 import { pushSubscriptions, teamCoaches, teams, users } from "../db/schema.js";
@@ -283,8 +290,15 @@ export function notifyWithdrawal(input: {
  * préférence « nouvelle annonce », qui répond à une autre question. Un coach
  * qui a coupé le flot des annonces neuves mais s'est déclaré joker veut
  * précisément cela — n'être dérangé que quand quelqu'un est en panne.
+ *
+ * `reach` restreint l'appel aux jokers de la bonne tranche d'âge : les
+ * catégories visées et l'année de chaque côté (voir `sosCategoryReach`). Un
+ * joker qui encadre plusieurs équipes est retenu dès que l'UNE d'elles est dans
+ * la tranche — c'est bien lui qui peut dépanner. Celui dont aucune équipe n'a
+ * de catégorie renseignée reste appelé : on ne sait pas, et ce qu'on ne sait
+ * pas ne doit pas priver un coach d'un SOS.
  */
-async function jokerCandidates() {
+async function jokerCandidates(reach?: Set<string>) {
   const rows = await db
     .select({ user: users, team: teams })
     .from(users)
@@ -300,9 +314,29 @@ async function jokerCandidates() {
       ),
     );
 
+  // Le point de rayonnement vient de la PREMIÈRE équipe, comme partout
+  // ailleurs ; les catégories, elles, se cumulent sur toutes.
   const byUser = new Map<string, { user: typeof users.$inferSelect; team: typeof teams.$inferSelect | null }>();
-  for (const row of rows) if (!byUser.has(row.user.id)) byUser.set(row.user.id, row);
-  return [...byUser.values()];
+  const categoriesByUser = new Map<string, string[]>();
+  for (const row of rows) {
+    if (!byUser.has(row.user.id)) byUser.set(row.user.id, row);
+    if (row.team?.category) {
+      categoriesByUser.set(row.user.id, [...(categoriesByUser.get(row.user.id) ?? []), row.team.category]);
+    }
+  }
+
+  const candidates = [...byUser.values()];
+  if (!reach) return candidates;
+  return candidates.filter(({ user }) => {
+    const categories = categoriesByUser.get(user.id);
+    if (!categories) return true;
+    // `fineCategoriesOf` par sécurité : une équipe porte en principe une
+    // catégorie fine (U13), mais une valeur de groupe venue d'un import se
+    // comparerait sinon à rien et priverait ce joker de tout SOS.
+    return categories.some(
+      (category) => reach.has(category) || fineCategoriesOf(category).some((fine) => reach.has(fine)),
+    );
+  });
 }
 
 /**
@@ -314,6 +348,9 @@ async function jokerCandidates() {
  * Sans joker à portée, ce premier appel ne réveille personne — mais l'annonce
  * n'est pas perdue pour autant : passé le délai, `notifySosWidened` élargit à
  * tous les coachs du secteur (voir lib/sosRelay.ts).
+ *
+ * « À portée » se dit de deux façons : le périmètre, et la tranche d'âge — les
+ * catégories de l'annonce plus l'année de chaque côté (`sosCategoryReach`).
  */
 export function notifySosAnnouncement(input: {
   teamName: string;
@@ -330,7 +367,7 @@ export function notifySosAnnouncement(input: {
     (async () => {
       const excluded = await coachIdsOfTeams(input.excludeTeamIds);
       const targets: string[] = [];
-      for (const { user, team } of await jokerCandidates()) {
+      for (const { user, team } of await jokerCandidates(sosCategoryReach([input.category]))) {
         if (excluded.has(user.id)) continue;
         const origin = originOf(user, team);
         if (!origin) continue;
@@ -358,7 +395,10 @@ export function notifyTournamentSos(input: {
   tournamentId: string;
   tournamentName: string;
   organizerTeamName: string;
+  /** Libellé affiché — les catégories du tournoi mises bout à bout */
   category: string;
+  /** Les mêmes, une par une : c'est de là que se calcule la tranche d'âge appelée */
+  categories: readonly string[];
   city: string;
   date: string;
   venue: { lat: number; lng: number } | null;
@@ -369,7 +409,7 @@ export function notifyTournamentSos(input: {
     (async () => {
       const excluded = await coachIdsOfTeams(input.excludeTeamIds);
       const targets: string[] = [];
-      for (const { user, team } of await jokerCandidates()) {
+      for (const { user, team } of await jokerCandidates(sosCategoryReach(input.categories))) {
         if (excluded.has(user.id)) continue;
         const origin = originOf(user, team);
         if (!origin) continue;
@@ -395,6 +435,7 @@ export function notifyTournamentSosWidened(input: {
   tournamentId: string;
   tournamentName: string;
   category: string;
+  categories: readonly string[];
   city: string;
   date: string;
   venue: { lat: number; lng: number } | null;
@@ -404,7 +445,11 @@ export function notifyTournamentSosWidened(input: {
   fireAndForget(
     (async () => {
       const excluded = await coachIdsOfTeams(input.excludeTeamIds);
-      const jokers = new Set((await jokerCandidates()).map(({ user }) => user.id));
+      // Seuls les jokers RÉELLEMENT appelés au premier tour sont écartés : un
+      // joker hors tranche d'âge n'a rien reçu, il redevient un coach ordinaire.
+      const jokers = new Set(
+        (await jokerCandidates(sosCategoryReach(input.categories))).map(({ user }) => user.id),
+      );
       const targets: string[] = [];
       for (const { user, team } of await candidates("notifyNewAnnouncement")) {
         if (excluded.has(user.id) || jokers.has(user.id)) continue;
@@ -452,7 +497,11 @@ export function notifySosWidened(input: {
   fireAndForget(
     (async () => {
       const excluded = await coachIdsOfTeams(input.excludeTeamIds);
-      const jokers = new Set((await jokerCandidates()).map(({ user }) => user.id));
+      // Comme pour les tournois : n'est écarté que le joker que le premier
+      // appel a vraiment réveillé — donc celui de la bonne tranche d'âge.
+      const jokers = new Set(
+        (await jokerCandidates(sosCategoryReach([input.category]))).map(({ user }) => user.id),
+      );
       const targets: string[] = [];
       for (const { user, team } of await candidates("notifyNewAnnouncement")) {
         if (excluded.has(user.id) || jokers.has(user.id)) continue;
@@ -468,6 +517,41 @@ export function notifySosWidened(input: {
         body: `Match du ${day} à ${input.city} · ${input.category} · ${input.format} — personne n'a encore répondu.`,
         url: "/coach",
         tag: `sos-relance-${input.announcementId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Le coach vient de prendre une casquette : on le remercie.
+ *
+ * Envoyée alors qu'il a lui-même coché la case, ce qui pourrait passer pour un
+ * écho inutile — mais c'est le seul moment où l'application dit merci, et une
+ * casquette n'est pas un réglage : c'est un engagement envers les autres coachs
+ * du secteur. La notification le reconnaît, et rappelle au passage ce à quoi
+ * elle engage.
+ *
+ * Rien n'est envoyé quand une casquette est RENDUE : remercier quelqu'un qui
+ * s'en va serait au mieux maladroit.
+ */
+export function notifyCoachCategoriesAdopted(input: {
+  coachId: string;
+  adopted: readonly CoachCategory[];
+}): void {
+  if (!pushEnabled() || input.adopted.length === 0) return;
+  fireAndForget(
+    (async () => {
+      const labels = input.adopted.map((c) => COACH_CATEGORY_LABELS[c]);
+      await sendToUsers([input.coachId], {
+        title: labels.length > 1 ? `Merci — ${labels.join(" et ")}` : `Merci — ${labels[0]}`,
+        body:
+          input.adopted.includes("joker") && input.adopted.includes("contributeur")
+            ? "Vous serez alerté des SOS de votre secteur en premier, et vos publications seront lues par tous les coachs."
+            : input.adopted.includes("joker")
+              ? "Vous serez alerté en premier quand un coach de votre secteur se retrouve sans adversaire."
+              : "Vos informations seront lues par tous les coachs du secteur, et vous avez la ligne directe avec l'équipe TeamNexus.",
+        url: "/coach/profile",
+        tag: "casquette",
       });
     })(),
   );

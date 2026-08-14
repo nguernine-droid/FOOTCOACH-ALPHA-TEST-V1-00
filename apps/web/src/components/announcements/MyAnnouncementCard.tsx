@@ -201,12 +201,29 @@ export function MyAnnouncementCard({
       )}
 
       {a.status === "matched" && (
-        <p className="text-xs font-semibold text-success flex items-center gap-1.5">
-          <CheckCircle2 size={12} className="shrink-0" />
-          {a.plateau
-            ? `Plateau complet — ${a.teamsWanted} équipes trouvées`
-            : `Match confirmé — ${a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}`}
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs font-semibold text-success flex items-center gap-1.5">
+            <CheckCircle2 size={12} className="shrink-0" />
+            {a.plateauReduced
+              ? // L'heure est passée sans que le carré se remplisse : le plateau
+                // se joue à effectif réduit, comme le font les clubs plutôt que
+                // de renvoyer les enfants à la maison. Dire « complet » ici
+                // serait faux, et dire « incomplet » laisserait croire qu'il est
+                // tombé à l'eau.
+                // Compté en équipes PRÉSENTES, la mienne incluse — c'est ce qu'on
+                // voit au bord du terrain, là où `teamsWanted` compte celles
+                // qu'il restait à trouver.
+                `Plateau réduit — ${a.teamsAccepted + 1} équipes au total au lieu de ${a.teamsWanted + 1}`
+              : a.plateau
+                ? `Plateau complet — ${a.teamsWanted + 1} équipes`
+                : `Match confirmé — ${a.opponentTeam ? `${a.opponentTeam.name} (${a.opponentTeam.city})` : "adversaire trouvé"}`}
+          </p>
+          {a.plateauReduced && (
+            <p className="text-[11px] text-ink-soft">
+              Il se joue tel quel : scannez le QR de rencontre sur place, les points sont les mêmes.
+            </p>
+          )}
+        </div>
       )}
 
       {a.status === "cancelled" && <p className="text-xs font-semibold text-ink-faint">Annonce annulée</p>}

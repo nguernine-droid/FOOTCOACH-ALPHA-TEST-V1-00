@@ -1,20 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bug, Lightbulb, Save } from "lucide-react";
+import { Bug, Lightbulb, MessagesSquare, Save, Send } from "lucide-react";
 import {
   FEEDBACK_STATUSES,
   FEEDBACK_STATUS_LABELS,
   FEEDBACK_TYPE_LABELS,
   type AdminFeedbackDto,
   type FeedbackStatus,
+  type FeedbackThreadMessageDto,
 } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { timeAgo, useNow } from "@/lib/time";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/Button";
-import { CardGridSkeleton } from "@/components/ui/Skeleton";
+import { CardGridSkeleton, Skeleton } from "@/components/ui/Skeleton";
 
 const STATUS_CHIP: Record<FeedbackStatus, string> = {
   nouveau: "bg-blue-soft text-primary",
@@ -28,12 +29,121 @@ const FILTERS: { key: FeedbackStatus | "all"; label: string }[] = [
   ...FEEDBACK_STATUSES.map((s) => ({ key: s, label: FEEDBACK_STATUS_LABELS[s] })),
 ];
 
+/**
+ * Le fil du signalement, côté admin : ce que le contributeur a envoyé, les
+ * réponses de l'équipe, et de quoi répondre.
+ *
+ * La messagerie est entre coachs — l'admin n'y a pas sa place. C'est donc ici
+ * qu'il lit et écrit dans le fil, au même endroit que le triage : deux écrans
+ * pour un même échange feraient répondre sans avoir lu le statut, ou l'inverse.
+ *
+ * Chargé à la demande, quand on ouvre le fil : l'inbox affiche parfois cinquante
+ * cartes, et cinquante fils chargés d'avance pour en lire un seul ne se
+ * justifient pas.
+ */
+function FeedbackThread({ feedbackId }: { feedbackId: string }) {
+  const now = useNow(60000);
+  const [messages, setMessages] = useState<FeedbackThreadMessageDto[] | null>(null);
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setMessages(await api<FeedbackThreadMessageDto[]>(`/admin/feedback/${feedbackId}/thread`));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fil illisible");
+    }
+  }, [feedbackId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function reply() {
+    if (busy || body.trim().length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/admin/feedback/${feedbackId}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ body: body.trim() }),
+      });
+      setBody("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Envoi impossible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-line pt-3 space-y-2">
+      {!messages ? (
+        <Skeleton className="h-16 rounded-lg" />
+      ) : messages.length === 0 ? (
+        <p className="text-[11px] text-ink-soft">
+          Aucun fil : ce signalement est arrivé avant la discussion avec l&apos;équipe.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {messages.map((m) => (
+            <li
+              key={m.id}
+              className={cn(
+                "rounded-lg px-3 py-2 text-xs whitespace-pre-wrap",
+                m.kind === "system"
+                  ? "bg-paper text-ink-soft"
+                  : m.fromAdmin
+                    ? "bg-blue-soft text-primary"
+                    : "bg-paper text-ink",
+              )}
+            >
+              <span className="block text-[10px] font-bold uppercase tracking-wider opacity-70">
+                {m.kind === "system" ? "Signalement" : m.fromAdmin ? "Équipe" : "Le coach"} ·{" "}
+                {timeAgo(m.createdAt, now).toLowerCase()}
+              </span>
+              {m.body}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
+
+      {messages && messages.length > 0 && (
+        <>
+          <label className="text-xs font-bold text-ink-soft" htmlFor={`reply-${feedbackId}`}>
+            Répondre au coach (il le lit dans sa messagerie)
+          </label>
+          <textarea
+            id={`reply-${feedbackId}`}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            className="field resize-none"
+            rows={3}
+            maxLength={2000}
+            placeholder="Ce que vous avez compris, ce qui va être fait, la question qui reste…"
+          />
+          <Button size="sm" className="w-full" disabled={busy || body.trim().length === 0} onClick={reply}>
+            <Send size={13} /> Envoyer la réponse
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function FeedbackAdminCard({ feedback, onChanged }: { feedback: AdminFeedbackDto; onChanged: () => void }) {
   const now = useNow(60000);
   const [status, setStatus] = useState<FeedbackStatus>(feedback.status);
   const [adminNote, setAdminNote] = useState(feedback.adminNote ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Le fil reste replié : on triage plus souvent qu'on ne répond */
+  const [threadOpen, setThreadOpen] = useState(false);
   const Icon = feedback.type === "bug" ? Bug : Lightbulb;
   const dirty = status !== feedback.status || adminNote.trim() !== (feedback.adminNote ?? "");
 
@@ -104,6 +214,20 @@ function FeedbackAdminCard({ feedback, onChanged }: { feedback: AdminFeedbackDto
           <Save size={13} /> Enregistrer
         </Button>
       </div>
+
+      {/* La discussion avec le contributeur, dépliée à la demande */}
+      {threadOpen ? (
+        <FeedbackThread feedbackId={feedback.id} />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setThreadOpen(true)}
+          className="w-full min-h-11 flex items-center justify-center gap-1.5 rounded-lg text-xs font-bold
+            text-blue transition hover:bg-blue-faint active:bg-blue-soft"
+        >
+          <MessagesSquare size={14} aria-hidden /> Ouvrir la discussion avec {feedback.author.nickname}
+        </button>
+      )}
     </div>
   );
 }

@@ -2,11 +2,12 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Megaphone, Radar } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Megaphone, Radar } from "lucide-react";
 import type { RadarDto, AnnouncementDto, TournamentDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { MyAnnouncementsList, useMyAnnouncements } from "@/components/announcements/MyAnnouncements";
+import { useMyAnnouncements } from "@/components/announcements/MyAnnouncements";
 import { PublicationsFeedView, usePublicationsFeed } from "@/components/publications/PublicationsFeed";
 import { SectorAnnouncementCard } from "@/components/announcements/SectorAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
@@ -22,9 +23,13 @@ import { CardGridSkeleton } from "@/components/ui/Skeleton";
  * radar, sans la carte ni les filtres, pour qui préfère lire une liste que
  * viser un maillot. La troisième est le panneau d'affichage du secteur : les
  * billets d'information des coachs contributeurs — poules des matchs
- * officiels, intempéries qui annulent. La quatrième reprend « Mes annonces »
- * (accessible aussi depuis « Moi »), pour ne pas avoir à changer d'écran entre
- * ce qu'on cherche et ce qu'on a soi-même publié.
+ * officiels, intempéries qui annulent.
+ *
+ * « Mes annonces » n'est PLUS une quatrième catégorie mais un raccourci vers sa
+ * page : ce que j'ai publié n'est pas de la même nature que ce que je cherche,
+ * et l'empiler ici imposait deux rangées de puces — les catégories, puis les
+ * casiers — dont la seconde changeait de sens selon la première. Le raccourci
+ * porte le nombre d'annonces en cours : c'est ce qu'on venait vérifier.
  *
  * Le périmètre reste celui du radar, réglé sur le tableau de bord : deux
  * réglages de portée qui pourraient diverger seraient un piège.
@@ -37,9 +42,9 @@ function AnnouncementsPageContent() {
   // d'affichage — arriver sur « Amicaux » obligerait à un second geste.
   const searchParams = useSearchParams();
   /** Amicaux d'abord : c'est ce qu'on cherche neuf fois sur dix */
-  const [kind, setKind] = useState<"matches" | "tournaments" | "publications" | "mine">(() => {
+  const [kind, setKind] = useState<"matches" | "tournaments" | "publications">(() => {
     const cat = searchParams.get("cat");
-    return cat === "publications" || cat === "tournaments" || cat === "mine" ? cat : "matches";
+    return cat === "publications" || cat === "tournaments" ? cat : "matches";
   });
   const feed = usePublicationsFeed();
   const mine = useMyAnnouncements();
@@ -116,21 +121,20 @@ function AnnouncementsPageContent() {
         </ButtonLink>
       </div>
 
-      {/* Quatre catégories, en haut, une seule à la fois : les listes empilées
+      {/* Trois catégories, en haut, une seule à la fois : les listes empilées
           obligeaient à faire défiler tout un secteur d'amicaux pour savoir s'il
           y avait un tournoi. On vient chercher l'une ou l'autre, rarement deux
           à la fois.
 
-          Libellés courts et sans icône : à quatre par rangée sur un téléphone,
-          « Matchs amicaux » et sa pastille ne tiennent plus, et un libellé
-          tronqué renseigne moins qu'un mot entier. */}
-      <div className="grid grid-cols-4 gap-1.5" role="tablist" aria-label="Catégorie d'annonces">
+          Libellés courts et sans icône : sur un téléphone, « Matchs amicaux »
+          et sa pastille ne tiennent pas, et un libellé tronqué renseigne moins
+          qu'un mot entier. */}
+      <div className="grid grid-cols-3 gap-1.5" role="tablist" aria-label="Catégorie d'annonces">
         {(
           [
             { key: "matches", label: "Amicaux", count: announcements.length },
             { key: "tournaments", label: "Tournois", count: tournaments.length },
             { key: "publications", label: "Publications", count: feed.posts?.length ?? 0 },
-            { key: "mine", label: "Mes annonces", count: mine.activeCount },
           ] as const
         ).map((t) => (
           <button
@@ -139,15 +143,40 @@ function AnnouncementsPageContent() {
             role="tab"
             aria-selected={kind === t.key}
             onClick={() => setKind(t.key)}
-            // `!px-1.5` : à quatre par rangée, les 16 px de côté de `.chip-choice`
-            // mangeaient le libellé sur un téléphone. La hauteur de 44 px, elle,
-            // ne bouge pas — c'est la cible qui compte, pas la marge.
+            // `!px-1.5` : les 16 px de côté de `.chip-choice` mangeaient le
+            // libellé sur un téléphone. La hauteur de 44 px, elle, ne bouge
+            // pas — c'est la cible qui compte, pas la marge.
             className={cn("chip-choice !px-1.5", kind === t.key ? "chip-choice-on" : "chip-choice-off")}
           >
             <span className="truncate">{t.label}</span> ({t.count})
           </button>
         ))}
       </div>
+
+      {/* Le raccourci vers ce que J'AI publié. Une ligne pleine largeur et non
+          une puce de plus : ce n'est pas une catégorie d'annonces du secteur, et
+          il quitte l'écran au lieu d'en changer le contenu — la flèche le dit.
+          Le nombre affiché est celui des annonces EN COURS : les passées ne
+          demandent rien. */}
+      <Link
+        href="/coach/announcements/mine"
+        className="card px-4 py-3 flex items-center gap-3 hover:bg-paper transition-colors"
+      >
+        <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
+          <Megaphone size={17} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold">Mes annonces</span>
+          <span className="block text-xs text-ink-soft">
+            {mine.announcements === null
+              ? "Chargement…"
+              : mine.activeCount === 0
+                ? "Rien en cours — publiez la vôtre"
+                : `${mine.activeCount} en cours · propositions à trancher, matchs confirmés`}
+          </span>
+        </span>
+        <ChevronRight size={18} className="text-ink-soft shrink-0" aria-hidden />
+      </Link>
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 
@@ -207,13 +236,6 @@ function AnnouncementsPageContent() {
         </section>
       )}
 
-      {/* Ce que J'AI publié — même composant que la feuille « Moi › Mes
-          annonces », pour ne pas tenir deux copies de la même chose. */}
-      {kind === "mine" && (
-        <section aria-label="Mes annonces">
-          <MyAnnouncementsList mine={mine} />
-        </section>
-      )}
     </div>
   );
 }

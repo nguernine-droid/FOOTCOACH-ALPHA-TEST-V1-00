@@ -81,12 +81,18 @@ export default function CoachSettingsPage() {
         hint="Votre surnom, votre photo, votre position, vos casquettes et votre code coach."
       />
 
-      <LinkCard
-        href="/coach/feedback/new"
-        icon={<Bug size={18} />}
-        title="Signaler un bug ou une suggestion"
-        hint="Reçu directement par l'équipe TeamNexus, qui triage chaque envoi."
-      />
+      {/* Réservé aux contributeurs : le signalement ouvre une discussion avec
+          l'équipe, et c'est cette casquette-là qui l'engage. L'API le vérifie de
+          son côté — la casquette peut avoir été rendue depuis que la session a
+          été stockée. */}
+      {(user?.categories ?? []).includes("contributeur") && (
+        <LinkCard
+          href="/coach/feedback/new"
+          icon={<Bug size={18} />}
+          title="Signaler un bug ou une suggestion"
+          hint="Ça ouvre une discussion avec l'équipe TeamNexus, dans votre messagerie."
+        />
+      )}
     </div>
   );
 }

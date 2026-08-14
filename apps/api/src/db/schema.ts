@@ -269,6 +269,17 @@ export const coachFeedback = pgTable(
     status: feedbackStatus("status").notNull().default("nouveau"),
     // Réponse courte de l'admin, visible de l'auteur : pourquoi refusé, ce qui a été fait…
     adminNote: text("admin_note"),
+    /**
+     * Fil ouvert entre le contributeur et l'équipe TeamNexus à l'envoi. C'est là
+     * que la conversation se poursuit : l'admin répond depuis son inbox, le
+     * contributeur lit et relance depuis sa messagerie, au même endroit que ses
+     * échanges avec les autres coachs.
+     *
+     * NULL sur les signalements d'avant cette colonne, et le jour où aucun
+     * compte admin n'existe encore : un signalement reçu vaut mieux qu'un
+     * signalement refusé faute d'interlocuteur.
+     */
+    conversationId: uuid("conversation_id").references(() => conversations.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     // Posé au premier changement de statut fait par un admin ; NULL = encore "nouveau"
     handledAt: timestamp("handled_at", { withTimezone: true }),

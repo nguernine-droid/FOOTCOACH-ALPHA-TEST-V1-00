@@ -174,13 +174,75 @@ export function announcementCategoryOf(teamCategory: string | null | undefined):
  * équipes, pas un adversaire. Les valeurs fines (U6…U11) sont reconnues aussi :
  * les annonces antérieures au regroupement les portent encore.
  */
+export const PLATEAU_CATEGORIES = [
+  "U6-U7", "U8-U9", "U10-U11", "U6", "U7", "U8", "U9", "U10", "U11",
+] as const;
+
 export function isPlateauCategory(category: string | null | undefined): boolean {
   if (!category) return false;
-  return ["U6-U7", "U8-U9", "U10-U11", "U6", "U7", "U8", "U9", "U10", "U11"].includes(category);
+  return (PLATEAU_CATEGORIES as readonly string[]).includes(category);
 }
 
 /** Équipes cherchées par une annonce de plateau — l'hôte complète le carré */
 export const PLATEAU_TEAMS_WANTED = 3;
+
+/**
+ * Un plateau qui n'a pas fait le plein se joue quand même : trois équipes, ou
+ * deux. À partir de ce seuil, la rencontre a lieu et le scan de points avec
+ * elle — c'est ce qui distingue un plateau réduit d'un plateau désert.
+ */
+export const PLATEAU_MIN_TEAMS_ACCEPTED = 1;
+
+/**
+ * Les catégories fines couvertes par une catégorie d'annonce (U12-U13 →
+ * U12, U13). Une catégorie fine se rend elle-même : la fonction accepte les
+ * deux, les annonces d'avant le regroupement portant encore « U13 ».
+ */
+export function fineCategoriesOf(category: string | null | undefined): MatchCategory[] {
+  if (!category) return [];
+  if ((MATCH_CATEGORIES as readonly string[]).includes(category)) return [category as MatchCategory];
+  return (MATCH_CATEGORIES as readonly MatchCategory[]).filter(
+    (fine) => ANNOUNCEMENT_GROUP_OF[fine] === category,
+  );
+}
+
+/** L'échelle des U, dans l'ordre — c'est elle qui donne un sens à « l'année d'à côté » */
+const U_SCALE = (MATCH_CATEGORIES as readonly MatchCategory[]).filter((c) => c.startsWith("U"));
+
+/** De combien d'années on s'écarte de la catégorie visée pour alerter un joker */
+export const SOS_AGE_TOLERANCE = 1;
+
+/**
+ * Les catégories d'équipe qu'un SOS doit réveiller : celles de l'annonce, plus
+ * l'année en dessous et celle au-dessus.
+ *
+ * Un U14 qui se retrouve sans adversaire joue volontiers contre des U13 ou des
+ * U15 — à un an près, un amical reste jouable, et c'est justement quand on est
+ * en panne qu'on élargit. Un U9 n'a en revanche rien à faire d'un SOS Seniors :
+ * sans ce voisinage, l'alerte partait à tous les jokers du secteur, toutes
+ * catégories confondues, et une alerte qui ne concerne jamais celui qui la
+ * reçoit finit par ne plus être lue du tout.
+ *
+ * Seniors et Vétérans n'ont pas de voisin : ils ne sont pas sur l'échelle des
+ * âges, et « l'année d'à côté » n'y veut rien dire.
+ */
+export function sosCategoryReach(categories: readonly (string | null | undefined)[]): Set<string> {
+  const reach = new Set<string>();
+  for (const raw of categories) {
+    for (const fine of fineCategoriesOf(raw)) {
+      const index = U_SCALE.indexOf(fine);
+      if (index === -1) {
+        reach.add(fine);
+        continue;
+      }
+      for (let offset = -SOS_AGE_TOLERANCE; offset <= SOS_AGE_TOLERANCE; offset++) {
+        const neighbour = U_SCALE[index + offset];
+        if (neighbour) reach.add(neighbour);
+      }
+    }
+  }
+  return reach;
+}
 
 /**
  * Niveau de jeu — le palier réel d'une équipe (district, régional, national),
@@ -372,7 +434,7 @@ export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
   joker:
     "Vous acceptez d'être alerté quand un coach de votre secteur se retrouve sans adversaire. Ces alertes SOS ne partent qu'aux jokers.",
   contributeur:
-    "Vous partagez les informations du secteur — poules des matchs officiels, intempéries, plateaux annulés. Vos publications sont lues par tous les coachs.",
+    "Vous faites vivre le projet : vous partagez les informations du secteur (poules, intempéries, plateaux annulés), vous le faites connaître autour de vous, et vous avez la ligne directe avec l'équipe TeamNexus — vos signalements de bugs et vos idées d'amélioration ouvrent une discussion avec elle.",
 };
 
 /**
@@ -426,6 +488,15 @@ export const updateFeedbackStatusSchema = z.object({
   adminNote: z.string().trim().max(500).optional(),
 });
 export type UpdateFeedbackStatusInput = z.infer<typeof updateFeedbackStatusSchema>;
+
+/**
+ * Réponse de l'admin dans le fil du signalement. Même longueur qu'un message
+ * de coach : c'est le même fil, lu dans le même écran.
+ */
+export const replyFeedbackSchema = z.object({
+  body: z.string().trim().min(1, "Écrivez votre réponse").max(2000),
+});
+export type ReplyFeedbackInput = z.infer<typeof replyFeedbackSchema>;
 
 /** Valeurs venues de la base ramenées à la liste connue, sans doublon */
 export function asCoachCategories(values: readonly string[] | null | undefined): CoachCategory[] {
@@ -1196,6 +1267,14 @@ export interface AnnouncementDto {
   /** Équipes déjà acceptées — ce qui reste se déduit */
   teamsAccepted: number;
   /**
+   * Plateau clos sans avoir fait le plein : le jour du match est arrivé avec
+   * deux ou trois équipes au lieu de quatre. Il se joue tel quel, et les
+   * rencontres qu'il contient rapportent leurs points normalement — d'où le
+   * besoin de le NOMMER plutôt que de le laisser passer pour un plateau
+   * complet.
+   */
+  plateauReduced: boolean;
+  /**
    * Coach qui représente l'équipe émettrice — de quoi ouvrir sa carte depuis
    * l'annonce. Publier, c'est se montrer : le nom sort de l'anonymat le temps
    * que l'annonce cherche un adversaire.
@@ -1307,6 +1386,14 @@ export interface MatchDto {
    * impossible à distance.
    */
   encounterToken: string | null;
+  /**
+   * Plateau dont ce match fait partie (≤ U11), `null` pour un amical ordinaire.
+   * `teams` compte les équipes réunies, hôte comprise ; en dessous de `wanted`,
+   * le plateau est RÉDUIT — il se joue, et le scan de rencontre y donne les
+   * mêmes points qu'ailleurs. C'est ce qu'il faut dire au bord du terrain à
+   * deux coachs qui pourraient croire leur déplacement non comptabilisé.
+   */
+  plateau: { teams: number; wanted: number } | null;
   /** Désistement : équipe qui a renoncé, et son motif (null si le match tient toujours) */
   withdrawnByTeamId: string | null;
   withdrawalReason: WithdrawalReason | null;
@@ -1480,9 +1567,12 @@ export interface AdminAccountDto {
 }
 
 /**
- * Un signalement (bug ou suggestion). Réservé à l'admin — l'auteur n'a aucune
- * vue en retour sur ce qu'il a envoyé, ni sur son statut : c'est un canal vers
- * l'éditeur, pas un historique personnel.
+ * Un signalement (bug ou suggestion), réservé aux coachs contributeurs.
+ *
+ * Le statut et la note de triage restent à l'admin ; ce que le contributeur
+ * retrouve, lui, c'est le FIL ouvert avec l'équipe TeamNexus au moment de
+ * l'envoi — c'est là que la réponse arrive, dans sa messagerie, et non dans un
+ * écran « mes signalements » qu'il faudrait aller consulter.
  */
 export interface FeedbackDto {
   id: string;
@@ -1492,11 +1582,26 @@ export interface FeedbackDto {
   adminNote: string | null;
   createdAt: string;
   handledAt: string | null;
+  /** Fil ouvert avec l'équipe TeamNexus — null si aucun compte admin n'existe */
+  conversationId: string | null;
 }
 
 /** Vue admin : la même chose, avec l'auteur — l'inbox mélange tous les coachs */
 export interface AdminFeedbackDto extends FeedbackDto {
   author: CoachRefDto;
+}
+
+/**
+ * Un message du fil d'un signalement, vu de l'admin. `fromAdmin` distingue les
+ * réponses de l'équipe du signalement lui-même et de ce que le contributeur
+ * écrit ensuite — l'admin doit voir qui parle sans avoir à deviner.
+ */
+export interface FeedbackThreadMessageDto {
+  id: string;
+  body: string;
+  kind: MessageKind;
+  fromAdmin: boolean;
+  createdAt: string;
 }
 
 // ---------- Espace club ----------

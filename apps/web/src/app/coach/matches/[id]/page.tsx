@@ -506,6 +506,20 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
             )}
           </div>
 
+          {/* Plateau qui n'a pas fait le plein. Le dire ICI, dans la carte de la
+              rencontre, et non en tête de feuille : c'est au moment de scanner
+              que deux coachs seuls sur le terrain se demandent si leur
+              déplacement compte encore. Il compte — le scan rapporte les mêmes
+              points qu'à quatre équipes. */}
+          {match.plateau && match.plateau.teams < match.plateau.wanted && (
+            <p className="text-xs bg-paper rounded-lg px-4 py-3">
+              <span className="font-bold">
+                Plateau réduit — {match.plateau.teams} équipes au total au lieu de {match.plateau.wanted}.
+              </span>{" "}
+              Il se joue tel quel, et la rencontre rapporte ses points normalement.
+            </p>
+          )}
+
           {encounterDone ? (
             <div className="space-y-3">
               <div className="rounded-lg bg-success-soft px-4 py-4 flex items-center gap-3">

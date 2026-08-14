@@ -281,6 +281,13 @@
       "when": 1786656712630,
       "tag": "0039_announcement_view_count",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1786693780001,
+      "tag": "0040_signalement_fil_admin",
+      "breakpoints": true
     }
   ]
 }

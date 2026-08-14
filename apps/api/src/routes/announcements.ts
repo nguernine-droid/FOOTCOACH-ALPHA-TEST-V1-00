@@ -48,6 +48,7 @@ function toDto(
 ): AnnouncementDto {
   const { announcement, team } = row;
   const plateau = isPlateauCategory(announcement.category);
+  const teamsAccepted = acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length;
   // Position relative du LIEU DU MATCH, pas du siège du club : une annonce
   // peut se jouer loin de la ville de l'équipe qui la publie, et c'est le
   // déplacement réel qui intéresse le coach. `null` si la ville du match est
@@ -72,7 +73,11 @@ function toDto(
     viewCount: announcement.viewCount,
     plateau,
     teamsWanted: plateau ? PLATEAU_TEAMS_WANTED : 1,
-    teamsAccepted: acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length,
+    teamsAccepted,
+    // Plateau clos sans avoir fait le plein : il se joue à deux ou trois
+    // équipes. Déduit et non stocké — c'est exactement « pourvu, mais pas
+    // complet », et une colonne de plus pourrait mentir sur ce couple-là.
+    plateauReduced: plateau && announcement.status === "matched" && teamsAccepted < PLATEAU_TEAMS_WANTED,
     coach: coach ?? null,
     createdAt: announcement.createdAt.toISOString(),
     matchId: link?.matchId ?? null,

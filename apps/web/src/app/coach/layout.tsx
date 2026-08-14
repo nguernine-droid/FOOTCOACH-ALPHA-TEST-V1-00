@@ -84,13 +84,16 @@ const PUBLISH_OPTION: QuickChoice = {
 
 /**
  * Signaler un bug ou proposer une amélioration — raccourci vers l'écran déjà
- * accessible depuis Réglages. Toujours en dernier : ce n'est pas une création,
- * mais le « + » reste le seul geste que tout le monde retrouve partout.
+ * accessible depuis Réglages. Toujours en dernier : ce n'est pas une création.
+ *
+ * Réservée aux contributeurs, comme la publication : faire remonter ce qui ne va
+ * pas fait partie de ce que la casquette engage, et le retour ouvre une
+ * discussion avec l'équipe — un canal qui se suit, pas une boîte à idées.
  */
 const FEEDBACK_OPTION: QuickChoice = {
   href: "/coach/feedback/new",
   label: "Bug ou amélioration",
-  description: "Un souci, une idée — ça part directement à l'équipe.",
+  description: "Un souci, une idée — ça ouvre une discussion avec l'équipe.",
   icon: "feedback",
 };
 
@@ -107,7 +110,7 @@ function defaultAction(pathname: string, contributor: boolean): QuickAction | nu
   return {
     kind: "choice",
     label: "Créer",
-    options: [...(contributor ? [...CREATE_OPTIONS, PUBLISH_OPTION] : CREATE_OPTIONS), FEEDBACK_OPTION],
+    options: contributor ? [...CREATE_OPTIONS, PUBLISH_OPTION, FEEDBACK_OPTION] : [...CREATE_OPTIONS],
   };
 }
 

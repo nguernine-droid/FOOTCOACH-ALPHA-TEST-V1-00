@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Bug, CheckCircle2, Lightbulb, MessageSquareWarning } from "lucide-react";
-import { FEEDBACK_TYPES, FEEDBACK_TYPE_LABELS, type FeedbackType } from "@teamnexus/shared";
-import { api } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { Bug, CheckCircle2, Lightbulb, MessageCircle, MessageSquareWarning } from "lucide-react";
+import {
+  FEEDBACK_TYPES,
+  FEEDBACK_TYPE_LABELS,
+  type FeedbackDto,
+  type FeedbackType,
+} from "@teamnexus/shared";
+import { api, getStoredUser } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
 
 const FORM_ID = "nouveau-signalement";
@@ -16,9 +22,20 @@ export default function NewFeedbackPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  // Pas de liste « mes signalements » : seul l'admin les consulte. Une simple
-  // confirmation suffit à fermer la boucle côté coach.
+  // Pas de liste « mes signalements » : la suite se lit dans le FIL ouvert avec
+  // l'équipe, à sa place, dans la messagerie.
   const [sent, setSent] = useState(false);
+  /** Le fil ouvert par l'envoi — de quoi y aller directement depuis la confirmation */
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  /**
+   * La casquette est lue APRÈS le montage, comme dans le layout coach : elle vit
+   * dans le stockage local, absent du rendu serveur. `null` le temps de la lire
+   * — l'écran ne doit ni s'ouvrir ni se refuser avant de savoir.
+   */
+  const [contributor, setContributor] = useState<boolean | null>(null);
+  useEffect(() => {
+    setContributor((getStoredUser()?.categories ?? []).includes("contributeur"));
+  }, []);
 
   useQuickActionOverride(
     sent
@@ -32,12 +49,39 @@ export default function NewFeedbackPage() {
     setLoading(true);
     setError(null);
     try {
-      await api("/feedback", { method: "POST", body: JSON.stringify({ type, message: message.trim() }) });
+      const created = await api<FeedbackDto>("/feedback", {
+        method: "POST",
+        body: JSON.stringify({ type, message: message.trim() }),
+      });
+      setConversationId(created.conversationId);
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Envoi impossible");
       setLoading(false);
     }
+  }
+
+  // La casquette n'est pas encore lue : rien ne s'affiche plutôt qu'un écran
+  // qui s'ouvre puis se referme.
+  if (contributor === null) return <Skeleton className="h-64 max-w-[560px] mx-auto rounded-card" />;
+
+  if (!contributor) {
+    return (
+      <div className="max-w-[560px] mx-auto card p-6 space-y-3 text-center">
+        <span className="w-12 h-12 rounded-lg bg-blue-soft text-blue flex items-center justify-center mx-auto">
+          <MessageSquareWarning size={22} />
+        </span>
+        <p className="text-sm font-bold">Réservé aux coachs contributeurs</p>
+        <p className="text-xs text-ink-soft">
+          Signaler un bug ou proposer une amélioration fait partie de ce qu&apos;engage la casquette
+          contributeur : chaque retour ouvre une discussion avec l&apos;équipe TeamNexus, qui se suit dans le
+          temps. Vous pouvez la prendre depuis votre profil.
+        </p>
+        <ButtonLink href="/coach/profile" variant="soft" className="w-full">
+          Voir mes casquettes
+        </ButtonLink>
+      </div>
+    );
   }
 
   if (sent) {
@@ -47,13 +91,23 @@ export default function NewFeedbackPage() {
           <CheckCircle2 size={22} />
         </span>
         <p className="text-sm font-bold">Signalement envoyé</p>
-        <p className="text-xs text-ink-soft">Transmis à l&apos;équipe TeamNexus, qui s&apos;en occupe.</p>
+        <p className="text-xs text-ink-soft">
+          {conversationId
+            ? "Il ouvre une discussion avec l'équipe TeamNexus : sa réponse arrivera dans votre messagerie, et vous pouvez y ajouter des précisions."
+            : "Transmis à l'équipe TeamNexus, qui s'en occupe."}
+        </p>
+        {conversationId && (
+          <ButtonLink href={`/coach/messages/${conversationId}`} className="w-full">
+            <MessageCircle size={15} /> Ouvrir la discussion
+          </ButtonLink>
+        )}
         <Button
           variant="soft"
           className="w-full"
           onClick={() => {
             setType("bug");
             setMessage("");
+            setConversationId(null);
             setSent(false);
           }}
         >
@@ -71,7 +125,9 @@ export default function NewFeedbackPage() {
         </span>
         <div>
           <h2 className="display text-lg">Signaler un bug ou une idée</h2>
-          <p className="text-xs text-white/85">Reçu directement par l&apos;équipe TeamNexus.</p>
+          <p className="text-xs text-white/85">
+            Votre retour ouvre une discussion avec l&apos;équipe TeamNexus.
+          </p>
         </div>
       </div>
 
