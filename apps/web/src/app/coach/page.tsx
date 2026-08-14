@@ -24,6 +24,53 @@ import { NoMatchCard } from "@/components/coach/NoMatchCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 
+/**
+ * Une case du bandeau : un chiffre, ce qu'il compte, et où il mène.
+ *
+ * Trois tons pour trois natures — les confrères (bleu), ce qu'ils cherchent
+ * (accent), les tournois (jaune) : on retrouve sa case à la couleur avant
+ * d'avoir lu le libellé, ce qui compte sur un bandeau qu'on balaie.
+ */
+function StatTile({
+  href,
+  icon,
+  tone,
+  count,
+  label,
+  className,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  tone: "blue" | "accent" | "sun";
+  count: number;
+  label: string;
+  className?: string;
+}) {
+  const tones = {
+    blue: "bg-blue-soft text-blue",
+    accent: "bg-accent-surface text-accent",
+    sun: "bg-sun-soft text-sun",
+  } as const;
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "card p-4 flex items-center gap-2.5 transition hover:bg-blue-faint active:bg-blue-soft",
+        className,
+      )}
+    >
+      <span className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", tones[tone])}>
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1 text-xs text-ink-soft font-semibold leading-tight">
+        <span className="block text-lg font-black text-ink leading-none tabular-nums">{count}</span>
+        {label}
+      </span>
+      <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+    </Link>
+  );
+}
+
 function TeamSide({ team }: { team: MatchDto["homeTeam"] }) {
   return (
     <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
@@ -129,32 +176,36 @@ export default function CoachDashboard() {
           réglée — rien à situer sans elle. */}
       {categoryStats?.category && (
         <section
-          className="card p-4 flex flex-wrap items-center gap-x-6 gap-y-3 animate-rise-in"
+          // Trois cases sur une grille de deux colonnes : les coachs et les
+          // amicaux côte à côte, les tournois en dessous sur toute la largeur —
+          // ce sont eux qu'on consulte le moins souvent.
+          className="grid grid-cols-2 gap-3 animate-rise-in"
           aria-label="Ma catégorie dans le secteur"
         >
-          <div className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
-              <Users size={16} aria-hidden />
-            </span>
-            <p className="text-xs text-ink-soft font-semibold leading-tight">
-              <span className="block text-lg font-black text-ink leading-none tabular-nums">
-                {categoryStats.teamsInCategory}
-              </span>
-              équipe{categoryStats.teamsInCategory > 1 ? "s" : ""} {categoryLabel(categoryStats.category)} dans le secteur
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-lg bg-accent-surface text-accent flex items-center justify-center shrink-0">
-              <Megaphone size={16} aria-hidden />
-            </span>
-            <p className="text-xs text-ink-soft font-semibold leading-tight">
-              <span className="block text-lg font-black text-ink leading-none tabular-nums">
-                {categoryStats.announcementsInCategory}
-              </span>
-              annonce{categoryStats.announcementsInCategory > 1 ? "s" : ""} {categoryLabel(categoryStats.category)} en ce
-              moment
-            </p>
-          </div>
+          {/* Chaque case MÈNE quelque part : un chiffre qu'on ne peut pas
+              ouvrir laisse le coach devant un constat sans suite. */}
+          <StatTile
+            href="/coach/coachs"
+            icon={<Users size={16} aria-hidden />}
+            tone="blue"
+            count={categoryStats.teamsInCategory}
+            label={`coach${categoryStats.teamsInCategory > 1 ? "s" : ""} ${categoryLabel(categoryStats.category)} dans le secteur`}
+          />
+          <StatTile
+            href={`/coach/announcements?cat=matches&categorie=${encodeURIComponent(categoryStats.category)}`}
+            icon={<Megaphone size={16} aria-hidden />}
+            tone="accent"
+            count={categoryStats.announcementsInCategory}
+            label={`amical${categoryStats.announcementsInCategory > 1 ? "s" : ""} ${categoryLabel(categoryStats.category)} en ce moment`}
+          />
+          <StatTile
+            href={`/coach/announcements?cat=tournaments&categorie=${encodeURIComponent(categoryStats.category)}`}
+            icon={<Trophy size={16} aria-hidden />}
+            tone="sun"
+            count={categoryStats.tournamentsInCategory}
+            label={`tournoi${categoryStats.tournamentsInCategory > 1 ? "s" : ""} ouvert${categoryStats.tournamentsInCategory > 1 ? "s" : ""} à ma catégorie`}
+            className="col-span-2"
+          />
         </section>
       )}
 

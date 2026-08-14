@@ -23,7 +23,7 @@ import {
   type TeamDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, matches, teamCoaches, teams, users } from "../db/schema.js";
+import { announcementResponses, matchAnnouncements, matches, teamCoaches, teams, tournaments, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
@@ -454,7 +454,12 @@ export function announcementRoutes(app: FastifyInstance) {
     { preHandler: requireRole("coach") },
     async (request): Promise<CategoryStatsDto> => {
       const myTeamId = request.user.teamId;
-      const empty: CategoryStatsDto = { category: null, teamsInCategory: 0, announcementsInCategory: 0 };
+      const empty: CategoryStatsDto = {
+        category: null,
+        teamsInCategory: 0,
+        announcementsInCategory: 0,
+        tournamentsInCategory: 0,
+      };
       if (!myTeamId) return empty;
 
       const [myTeam] = await db.select().from(teams).where(eq(teams.id, myTeamId));
@@ -497,7 +502,21 @@ export function announcementRoutes(app: FastifyInstance) {
         (a) => announcementCategoryOf(a.category) === category && inPerimeter(a.city),
       ).length;
 
-      return { category, teamsInCategory, announcementsInCategory };
+      // Les tournois du secteur ouverts à ma catégorie. Un tournoi en couvre
+      // souvent plusieurs (U12 et U13 le même week-end) : il compte dès que
+      // l'UNE d'elles tombe dans mon groupe d'âges.
+      const openTournaments = await db
+        .select({ city: tournaments.city, category: tournaments.category, teamId: tournaments.teamId })
+        .from(tournaments)
+        .where(and(eq(tournaments.status, "open"), gte(tournaments.date, today())));
+      const tournamentsInCategory = openTournaments.filter(
+        (t) =>
+          !unplayable.includes(t.teamId) &&
+          t.category.some((c) => announcementCategoryOf(c) === category) &&
+          inPerimeter(t.city),
+      ).length;
+
+      return { category, teamsInCategory, announcementsInCategory, tournamentsInCategory };
     },
   );
 

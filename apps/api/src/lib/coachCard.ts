@@ -21,6 +21,7 @@ import {
   users,
 } from "../db/schema.js";
 import { avatarUrlOf, teamLogoUrlOf } from "../routes/auth.js";
+import { teamsInMyCategory } from "./categoryCoaches.js";
 import { matchesPlayedBy } from "./coachStats.js";
 import { totalPointsOf } from "./points.js";
 
@@ -71,6 +72,13 @@ async function tournamentIdsAround(teamIds: string[]): Promise<Set<string>> {
  * 6. il a proposé de jouer une de mes annonces : répondre, c'est se présenter.
  *    L'émetteur décide d'accepter ou non en regardant QUI propose — sa carte
  *    doit s'ouvrir avant la décision, pas après.
+ * 7. **il encadre une équipe de MON groupe d'âges dans MON périmètre** — ce
+ *    sont les confrères que le bandeau du tableau de bord met en liste. C'est
+ *    la seule règle qui n'exige aucun contact préalable : elle a été demandée
+ *    pour que le voisinage sportif se découvre avant de jouer, et elle reste
+ *    bornée par la catégorie ET par le rayon de radar de celui qui regarde.
+ *    Élargir ce rayon élargit donc ce qu'on voit, ce qui est cohérent : c'est
+ *    déjà vrai des annonces.
  */
 export async function canSeeCoachCard(viewerId: string, targetId: string): Promise<boolean> {
   if (viewerId === targetId) return true;
@@ -148,7 +156,22 @@ export async function canSeeCoachCard(viewerId: string, targetId: string): Promi
       ),
     )
     .limit(1);
-  return respondedToMine != null;
+  if (respondedToMine) return true;
+
+  /**
+   * Le voisinage sportif : une de ses équipes joue dans mon groupe d'âges, dans
+   * mon périmètre. Vérifié en dernier — c'est la règle la plus large, et les
+   * six précédentes coûtent moins cher.
+   *
+   * Chacune de MES équipes est examinée, et non la première venue : un coach
+   * qui a les U13 et les U17 voit le voisinage des deux catégories, comme son
+   * bandeau le lui montre selon l'équipe active.
+   */
+  for (const myTeamId of viewerTeams) {
+    const { teams: neighbours } = await teamsInMyCategory(viewerId, myTeamId);
+    if (neighbours.some((t) => targetTeams.includes(t.id))) return true;
+  }
+  return false;
 }
 
 /**

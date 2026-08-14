@@ -1412,6 +1412,30 @@ export interface CategoryStatsDto {
   category: AnnouncementCategory | null;
   teamsInCategory: number;
   announcementsInCategory: number;
+  /** Tournois ouverts du secteur qui accueillent ma catégorie */
+  tournamentsInCategory: number;
+}
+
+/**
+ * Un coach de ma catégorie, dans mon secteur — la liste qu'ouvre le bandeau du
+ * tableau de bord.
+ *
+ * Son identité y est visible sans qu'on se soit encore croisés : c'est un
+ * annuaire de voisinage, limité à MON groupe d'âges et à MON périmètre. La
+ * règle de visibilité des cartes de coach (`canSeeCoachCard`) a été élargie en
+ * conséquence — voir son commentaire.
+ */
+export interface CategoryCoachDto {
+  id: string;
+  nickname: string;
+  avatarUrl: string | null;
+  /** L'équipe qui le situe : celle de MA catégorie qu'il encadre */
+  team: TeamDto;
+  /** Distance entre mon point de balayage et la ville de son équipe (null si inconnue) */
+  distanceKm: number | null;
+  level: CoachLevelDto;
+  /** A-t-il une annonce ouverte en ce moment ? De quoi aller lui répondre */
+  hasOpenAnnouncement: boolean;
 }
 
 export interface RadarDto {

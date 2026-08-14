@@ -4,7 +4,13 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Megaphone, Radar } from "lucide-react";
-import type { RadarDto, AnnouncementDto, TournamentDto } from "@teamnexus/shared";
+import {
+  announcementCategoryOf,
+  categoryLabel,
+  type RadarDto,
+  type AnnouncementDto,
+  type TournamentDto,
+} from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useMyAnnouncements } from "@/components/announcements/MyAnnouncements";
@@ -46,6 +52,14 @@ function AnnouncementsPageContent() {
     const cat = searchParams.get("cat");
     return cat === "publications" || cat === "tournaments" ? cat : "matches";
   });
+  /**
+   * Catégorie imposée par l'appelant (`?categorie=U12-U13`) : le bandeau du
+   * tableau de bord y envoie depuis un chiffre qui ne comptait QUE cette
+   * catégorie. Arriver sur la liste entière ferait mentir le chiffre sur lequel
+   * on vient d'appuyer. Elle se retire d'un appui, la liste complète reste à
+   * portée.
+   */
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(() => searchParams.get("categorie"));
   const feed = usePublicationsFeed();
   const mine = useMyAnnouncements();
 
@@ -94,14 +108,22 @@ function AnnouncementsPageContent() {
 
   // Les plus proches d'abord, les distances inconnues à la fin : c'est l'ordre
   // dans lequel on décide de se déplacer.
-  const announcements = [...radar.items].sort((a: AnnouncementDto, b: AnnouncementDto) => {
-    if (a.distanceKm === null) return b.distanceKm === null ? a.date.localeCompare(b.date) : 1;
-    if (b.distanceKm === null) return -1;
-    return a.distanceKm - b.distanceKm || a.date.localeCompare(b.date);
-  });
-  const tournaments = [...radar.tournaments].sort((a: TournamentDto, b: TournamentDto) =>
-    a.date.localeCompare(b.date),
-  );
+  const announcements = radar.items
+    .filter((a: AnnouncementDto) =>
+      categoryFilter ? announcementCategoryOf(a.category) === categoryFilter : true,
+    )
+    .sort((a: AnnouncementDto, b: AnnouncementDto) => {
+      if (a.distanceKm === null) return b.distanceKm === null ? a.date.localeCompare(b.date) : 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm || a.date.localeCompare(b.date);
+    });
+  // Un tournoi couvre parfois plusieurs catégories : il reste dès que l'UNE
+  // d'elles tombe dans le groupe d'âges demandé.
+  const tournaments = radar.tournaments
+    .filter((t: TournamentDto) =>
+      categoryFilter ? t.category.some((c) => announcementCategoryOf(c) === categoryFilter) : true,
+    )
+    .sort((a: TournamentDto, b: TournamentDto) => a.date.localeCompare(b.date));
 
   return (
     <div className="space-y-6">
@@ -177,6 +199,23 @@ function AnnouncementsPageContent() {
         </span>
         <ChevronRight size={18} className="text-ink-soft shrink-0" aria-hidden />
       </Link>
+
+      {/* Le filtre venu du bandeau, en toutes lettres et retirable : un écran
+          qui cache la moitié des annonces sans le dire est un écran qui ment. */}
+      {categoryFilter && (
+        <div className="flex items-center gap-2 rounded-lg bg-blue-soft px-4 py-2.5">
+          <span className="min-w-0 flex-1 text-xs">
+            Filtré sur <span className="font-bold">{categoryLabel(categoryFilter)}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setCategoryFilter(null)}
+            className="text-xs font-bold text-blue shrink-0 min-h-11 px-2"
+          >
+            Tout voir
+          </button>
+        </div>
+      )}
 
       {error && <p className="text-sm font-semibold text-coral bg-coral-soft rounded-lg px-4 py-3">{error}</p>}
 

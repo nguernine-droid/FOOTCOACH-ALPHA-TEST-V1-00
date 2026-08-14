@@ -18,11 +18,13 @@ import {
   ANNOUNCEMENT_CATEGORIES,
   announcementCategoryOf,
   categoryLabel,
+  DIVISION_LEVELS,
   DIVISION_LEVEL_LABELS,
   MATCH_GENDERS,
   MATCH_GENDER_LABELS,
   WITHDRAWAL_REASON_LABELS,
   type AnnouncementDto,
+  type DivisionLevel,
   type MatchGender,
   type RadarDto,
   type TournamentDto,
@@ -84,6 +86,13 @@ export function RadarFeed() {
   // cherche le plus souvent — son propre tableau — modifiable comme les autres.
   const [category, setCategory] = useState<string | null>(() => announcementCategoryOf(activeTeam?.category ?? null));
   const [gender, setGender] = useState<MatchGender | null>(activeTeam?.gender ?? null);
+  /**
+   * Niveau cherché (D2, R1…). Rien de préréglé, contrairement à la catégorie :
+   * un coach de R1 joue volontiers un amical contre du D1, alors qu'il ne joue
+   * jamais contre une autre tranche d'âge.
+   */
+  const [level, setLevel] = useState<DivisionLevel | null>(null);
+  /** Ne sert plus qu'aux TOURNOIS : un amical se cherche pour bientôt, pas pour une date précise */
   const [date, setDate] = useState("");
   // Amicaux, tournois, ou les deux : les deux sections du bas suivent ce choix.
   const [scope, setScope] = useState<"all" | "matches" | "tournaments">("all");
@@ -211,8 +220,28 @@ export function RadarFeed() {
         // Le genre non renseigné (annonces d'avant le champ) ne disparaît pas
         // sur un filtre : on ne sait pas, ce n'est pas une exclusion.
         .filter((a) => (gender ? a.gender === gender || a.gender === null : true))
-        .filter((a) => (date ? a.date === date : true)),
-    [announcements, category, gender, date],
+        // Même règle pour le niveau : une annonce sans niveau reste affichée.
+        // Beaucoup n'en portent pas, et les écarter viderait le radar sur un
+        // filtre que le coach croit anodin.
+        .filter((a) => (level ? a.level === level || a.level === null : true)),
+    [announcements, category, gender, level],
+  );
+
+  /**
+   * Les tournois suivent leurs propres filtres — catégorie et date, les seuls
+   * qui aient un sens pour eux. Un tournoi couvre parfois plusieurs catégories :
+   * il passe le filtre dès que l'UNE d'elles correspond.
+   */
+  const tournamentsFiltered = useMemo(
+    () =>
+      tournaments
+        .filter((t) =>
+          category ? t.category.some((c) => announcementCategoryOf(c) === category) : true,
+        )
+        // Un tournoi peut durer deux jours : la date cherchée doit tomber dans
+        // l'intervalle, pas seulement sur le premier jour.
+        .filter((t) => (date ? t.date <= date && date <= (t.endDate ?? t.date) : true)),
+    [tournaments, category, date],
   );
 
   // Le périmètre est appliqué par le serveur (celles hors rayon ne descendent
@@ -228,16 +257,23 @@ export function RadarFeed() {
   const farthest = Math.max(
     0,
     ...inRange.map((a) => a.distanceKm ?? 0),
-    ...tournaments.map((t) => t.distanceKm ?? 0),
+    ...tournamentsFiltered.map((t) => t.distanceKm ?? 0),
   );
   const scaleKm = radiusKm ?? Math.max(10, Math.ceil(farthest / 10) * 10);
-  const blips = useMemo(() => toBlips(inRange, scaleKm), [inRange, scaleKm]);
   /**
-   * Les tournois échappent aux filtres de catégorie, de genre et de date, comme
-   * dans leur section : ils y échappent donc aussi sur la carte. Un tournoi que
-   * le filtre d'un amical ferait disparaître serait une occasion perdue.
+   * La carte montre ce que montrent les sections du bas, filtre de type
+   * compris : « Tournois » ne laisse que des trophées, « Amicaux » que des
+   * maillots. Une carte qui contredirait la liste juste en dessous ferait
+   * douter des deux.
    */
-  const tournamentBlips = useMemo(() => toTournamentBlips(tournaments, scaleKm), [tournaments, scaleKm]);
+  const blips = useMemo(
+    () => toBlips(scope === "tournaments" ? [] : inRange, scaleKm),
+    [inRange, scaleKm, scope],
+  );
+  const tournamentBlips = useMemo(
+    () => toTournamentBlips(scope === "matches" ? [] : tournamentsFiltered, scaleKm),
+    [tournamentsFiltered, scaleKm, scope],
+  );
 
   // L'annonce dont la feuille est ouverte. Relue dans la liste courante plutôt
   // que copiée : un rechargement (réponse envoyée, retrait) la met à jour, et
@@ -251,14 +287,17 @@ export function RadarFeed() {
    */
   const activeFilters = [
     category ? categoryLabel(category) : null,
-    gender ? MATCH_GENDER_LABELS[gender] : null,
-    date ? formatDate(date) : null,
-    scope === "matches" ? "Amicaux" : scope === "tournaments" ? "Tournois" : null,
+    // Genre et niveau ne s'appliquent qu'aux amicaux, la date qu'aux tournois :
+    // le résumé ne mentionne que ce qui filtre vraiment ce qui est affiché.
+    scope !== "tournaments" && gender ? MATCH_GENDER_LABELS[gender] : null,
+    scope !== "tournaments" && level ? DIVISION_LEVEL_LABELS[level] : null,
+    scope === "tournaments" && date ? formatDate(date) : null,
   ].filter((label): label is string => label !== null);
 
   function clearFilters() {
     setCategory(null);
     setGender(null);
+    setLevel(null);
     setDate("");
     setScope("all");
   }
@@ -281,7 +320,11 @@ export function RadarFeed() {
           un « 0 » pendant le chargement se lirait comme un secteur vide. */}
       {announcements && (
         <span className="chip bg-accent-surface text-accent shrink-0 tabular-nums">
-          {inRange.length} annonce{inRange.length > 1 ? "s" : ""}
+          {/* Le compteur suit le type choisi : afficher « 8 annonces » alors que
+              l'écran ne montre que des tournois ferait douter du filtre. */}
+          {scope === "tournaments"
+            ? `${tournamentsFiltered.length} tournoi${tournamentsFiltered.length > 1 ? "s" : ""}`
+            : `${inRange.length} annonce${inRange.length > 1 ? "s" : ""}`}
         </span>
       )}
     </div>
@@ -300,6 +343,30 @@ export function RadarFeed() {
   return (
     <section className="card p-5 space-y-4 animate-rise-in" aria-label="Radar des annonces">
       {header}
+
+      {/* Ce qu'on balaie : amicaux, tournois, ou les deux. AU-DESSUS de la carte
+          et hors du panneau de filtres — ce n'est pas un réglage fin qu'on
+          ouvre au besoin, c'est le choix qui décide de tout ce qui suit, carte
+          comprise. Enfoui dans « Filtrer », il se manquait. */}
+      <div className="grid grid-cols-3 gap-2" role="group" aria-label="Ce que le radar montre">
+        {(
+          [
+            { value: "all", label: "Tout" },
+            { value: "matches", label: "Amicaux" },
+            { value: "tournaments", label: "Tournois" },
+          ] as const
+        ).map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setScope(option.value)}
+            aria-pressed={scope === option.value}
+            className={cn("chip-choice !px-2", scope === option.value ? "chip-choice-on" : "chip-choice-off")}
+          >
+            <span className="truncate">{option.label}</span>
+          </button>
+        ))}
+      </div>
 
       <RadarScope
         blips={blips}
@@ -415,55 +482,53 @@ export function RadarFeed() {
             </div>
           </div>
 
+          {/* La catégorie en menu déroulant : dix groupes d'âges ne tiennent
+              pas en pastilles sans une bande qui défile, où l'on ne voit jamais
+              plus de trois choix à la fois. */}
           <div className="space-y-1.5">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Quoi voir</p>
-            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Filtrer par type">
-              {(
-                [
-                  { value: "all", label: "Tout" },
-                  { value: "matches", label: "Amicaux" },
-                  { value: "tournaments", label: "Tournois" },
-                ] as const
-              ).map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setScope(option.value)}
-                  aria-pressed={scope === option.value}
-                  className={cn("chip-choice !px-2", scope === option.value ? "chip-choice-on" : "chip-choice-off")}
-                >
-                  <span className="truncate">{option.label}</span>
-                </button>
+            <label htmlFor="radar-category" className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+              Catégorie
+            </label>
+            <select
+              id="radar-category"
+              value={category ?? ""}
+              onChange={(e) => setCategory(e.target.value || null)}
+              className="field"
+            >
+              <option value="">Toutes les catégories</option>
+              {ANNOUNCEMENT_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {categoryLabel(c)}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
-          {announcements.length > 0 && (
-            <div className="space-y-2">
-              {/* Catégorie, dans les réglages avec le reste des filtres */}
+          {/* Amicaux : le niveau et le genre. Un tournoi, lui, accueille toutes
+              les équipes qui s'inscrivent — l'y filtrer n'aurait rien à filtrer. */}
+          {scope !== "tournaments" && (
+            <>
               <div className="space-y-1.5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Catégorie</p>
-                <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5" role="group" aria-label="Filtrer par catégorie">
-                  <button
-                    type="button"
-                    onClick={() => setCategory(null)}
-                    aria-pressed={category === null}
-                    className={cn("chip-choice shrink-0", category === null ? "chip-choice-on" : "chip-choice-off")}
-                  >
-                    Toutes
-                  </button>
-                  {ANNOUNCEMENT_CATEGORIES.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCategory(category === c ? null : c)}
-                      aria-pressed={category === c}
-                      className={cn("chip-choice shrink-0", category === c ? "chip-choice-on" : "chip-choice-off")}
-                    >
-                      {categoryLabel(c)}
-                    </button>
+                <label htmlFor="radar-level" className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                  Niveau
+                </label>
+                <select
+                  id="radar-level"
+                  value={level ?? ""}
+                  onChange={(e) => setLevel((e.target.value || null) as DivisionLevel | null)}
+                  className="field"
+                >
+                  <option value="">Tous les niveaux</option>
+                  {DIVISION_LEVELS.map((l) => (
+                    <option key={l} value={l}>
+                      {DIVISION_LEVEL_LABELS[l]}
+                    </option>
                   ))}
-                </div>
+                </select>
+                <p className="text-[11px] text-ink-soft">
+                  Les annonces sans niveau renseigné restent affichées : on ne sait pas, ce n&apos;est pas un
+                  refus.
+                </p>
               </div>
 
               {/* Genre : quatre choix seulement, donc une grille pleine largeur */}
@@ -488,6 +553,16 @@ export function RadarFeed() {
                   </button>
                 ))}
               </div>
+            </>
+          )}
+
+          {/* La date ne subsiste que pour les tournois : ils s'annoncent des
+              semaines à l'avance et se choisissent sur un week-end précis. Un
+              amical, lui, se cherche « pour bientôt » — filtrer sur un jour
+              donné n'y cachait que des occasions. */}
+          {scope === "tournaments" && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Date</p>
               <div className="flex items-center gap-2 min-[960px]:max-w-64">
                 <div className="flex-1 min-w-0">
                   <DateField value={date} onChange={setDate} placeholder="Toutes les dates" />
@@ -533,13 +608,15 @@ export function RadarFeed() {
           sur le radar, inutile de le redire. Masquée par le filtre « Amicaux ». */}
       {scope !== "matches" && (
         <section className="space-y-3" aria-label="Tournois du secteur">
-          {tournaments.length === 0 ? (
+          {tournamentsFiltered.length === 0 ? (
             <p className="rounded-lg bg-paper px-4 py-4 text-xs text-ink-soft text-center">
-              Aucun tournoi annoncé autour de vous. Vous pouvez être le premier à en organiser un.
+              {tournaments.length === 0
+                ? "Aucun tournoi annoncé autour de vous. Vous pouvez être le premier à en organiser un."
+                : "Aucun tournoi ne correspond aux filtres."}
             </p>
           ) : (
             <div className="stagger grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
-              {tournaments.map((t) => (
+              {tournamentsFiltered.map((t) => (
                 <TournamentCard key={t.id} tournament={t} />
               ))}
             </div>
