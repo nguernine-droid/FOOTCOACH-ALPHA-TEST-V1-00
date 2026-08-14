@@ -1,13 +1,17 @@
+import { readdir, unlink } from "node:fs/promises";
+import path from "node:path";
 import type { FastifyInstance } from "fastify";
-import { and, count, desc, eq, gte, ilike, isNull, max, ne, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNull, max, ne, or, sql } from "drizzle-orm";
 import {
   idParamSchema,
   ROLES,
   adminUpdateClubSchema,
   createClubSchema,
   mergeClubSchema,
+  resetDatabaseSchema,
   updateAccountEmailSchema,
   type AdminAccountDto,
+  type AdminResetResultDto,
   type AdminClubDto,
   type AdminClubDuplicateGroupDto,
   type AdminCreateClubResultDto,
@@ -16,13 +20,33 @@ import {
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import {
+  announcementResponses,
+  attendances,
+  carpoolBookings,
   clubAffiliationRequests,
   clubs,
+  coachFeedback,
+  coachPoints,
+  coachRelations,
+  conversationReads,
+  conversations,
+  eventAttendances,
+  joinRequests,
+  lineups,
+  loginAttempts,
   loginEvents,
+  matchAnnouncements,
+  matchEvents,
   matches,
+  messages,
   passwordResetRequests,
+  publications,
+  pushSubscriptions,
   refreshTokens,
+  teamCoaches,
+  teamEvents,
   teams,
+  tournamentRegistrations,
   tournaments,
   users,
 } from "../db/schema.js";
@@ -36,6 +60,7 @@ import { clubById } from "../lib/declaredClubs.js";
 import { groupLookAlikeClubs } from "../lib/clubMatching.js";
 import { revokeAllSessions } from "../lib/sessions.js";
 import { hashPassword } from "../lib/passwordHash.js";
+import { UPLOADS_DIR } from "../lib/uploads.js";
 
 const DAY_MS = 24 * 3600 * 1000;
 
@@ -544,5 +569,135 @@ export function adminRoutes(app: FastifyInstance) {
       throw err;
     }
     return { ok: true };
+  });
+
+  /**
+   * Remise à zéro de la base — le geste de l'ouverture réelle : tout ce que
+   * l'alpha a laissé derrière elle disparaît, seuls les comptes administrateurs
+   * restent.
+   *
+   * IRRÉVERSIBLE et sans filet applicatif : la seule reprise possible est la
+   * sauvegarde `pg_dump` prise avant. Trois barrières, donc — le rôle admin, la
+   * phrase exacte à retaper, et le compte rendu qui dit ce qui est parti.
+   *
+   * Les suppressions sont explicites, table par table, des filles vers les
+   * mères, plutôt qu'un TRUNCATE : `users` est le seul cas partiel de toute
+   * l'opération, et un `TRUNCATE … CASCADE` sur `teams` ou `clubs` — que
+   * `users` référence — emporterait justement les administrateurs qu'on veut
+   * garder. Une liste longue mais lisible vaut mieux qu'une commande brève dont
+   * l'effet dépasse ce qu'elle nomme.
+   */
+  app.post("/admin/reset", async (request): Promise<AdminResetResultDto> => {
+    resetDatabaseSchema.parse(request.body);
+
+    // Compté AVANT : après, il n'y a plus rien à compter.
+    const [{ value: accounts }] = await db
+      .select({ value: count() })
+      .from(users)
+      .where(ne(users.role, "admin"));
+    const [{ value: teamsCount }] = await db.select({ value: count() }).from(teams);
+    const [{ value: clubsCount }] = await db.select({ value: count() }).from(clubs);
+    const [{ value: announcementsCount }] = await db.select({ value: count() }).from(matchAnnouncements);
+    const [{ value: matchesCount }] = await db.select({ value: count() }).from(matches);
+    const [{ value: tournamentsCount }] = await db.select({ value: count() }).from(tournaments);
+    const [{ value: messagesCount }] = await db.select({ value: count() }).from(messages);
+
+    request.log.warn(
+      { adminId: request.user.id, accounts, teams: teamsCount, clubs: clubsCount },
+      "Remise à zéro de la base demandée",
+    );
+
+    await db.transaction(async (tx) => {
+      /**
+       * Les liens que les COMPTES portent, d'abord : `users.team_id` et
+       * `users.club_id` n'ont pas de suppression en cascade, et un
+       * administrateur qui aurait été rattaché à une équipe empêcherait sa
+       * suppression. `parent_id` tombe pour la même raison.
+       */
+      await tx.update(users).set({ teamId: null, clubId: null, parentId: null });
+
+      // Messagerie (les signalements pointent vers un fil : ils partent avant)
+      await tx.delete(coachFeedback);
+      await tx.delete(conversationReads);
+      await tx.delete(messages);
+      await tx.delete(conversations);
+
+      // Vie des équipes
+      await tx.delete(eventAttendances);
+      await tx.delete(teamEvents);
+      await tx.delete(lineups);
+      await tx.delete(carpoolBookings);
+      await tx.delete(matchEvents);
+      await tx.delete(attendances);
+
+      // Points, tournois, matchs, annonces
+      await tx.delete(coachPoints);
+      await tx.delete(tournamentRegistrations);
+      await tx.delete(tournaments);
+      await tx.delete(matches);
+      await tx.delete(announcementResponses);
+      await tx.delete(matchAnnouncements);
+
+      // Appartenances, puis les équipes et les clubs eux-mêmes
+      await tx.delete(joinRequests);
+      await tx.delete(teamCoaches);
+      await tx.delete(clubAffiliationRequests);
+      await tx.delete(teams);
+      await tx.delete(clubs);
+
+      // Réseau, publications, journal de connexion
+      await tx.delete(coachRelations);
+      await tx.delete(publications);
+      await tx.delete(pushSubscriptions);
+      await tx.delete(passwordResetRequests);
+      await tx.delete(loginEvents);
+      await tx.delete(loginAttempts);
+      /**
+       * Les sessions des ADMINISTRATEURS survivent : celui qui vient de lancer
+       * l'opération serait déconnecté avant même d'en lire le compte rendu.
+       * Celles de tous les autres partent avec leur compte.
+       */
+      await tx
+        .delete(refreshTokens)
+        .where(
+          inArray(
+            refreshTokens.userId,
+            tx.select({ id: users.id }).from(users).where(ne(users.role, "admin")),
+          ),
+        );
+
+      await tx.delete(users).where(ne(users.role, "admin"));
+    });
+
+    /**
+     * Les fichiers ensuite, jamais avant : la base est la référence, et des
+     * images effacées sur une transaction qui échoue laisseraient des avatars
+     * cassés sur des comptes bien vivants. L'inverse — un fichier oublié sans
+     * ligne qui le désigne — ne se voit nulle part.
+     */
+    let files = 0;
+    try {
+      const entries = await readdir(UPLOADS_DIR, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        await unlink(path.join(UPLOADS_DIR, entry.name));
+        files++;
+      }
+    } catch (err) {
+      // Volume absent ou en lecture seule : la base est déjà remise à zéro, et
+      // c'est elle qui compte. On le dit dans le journal, sans faire échouer.
+      request.log.error({ err }, "Remise à zéro : purge des fichiers envoyés impossible");
+    }
+
+    return {
+      accounts,
+      teams: teamsCount,
+      clubs: clubsCount,
+      announcements: announcementsCount,
+      matches: matchesCount,
+      tournaments: tournamentsCount,
+      messages: messagesCount,
+      files,
+    };
   });
 }

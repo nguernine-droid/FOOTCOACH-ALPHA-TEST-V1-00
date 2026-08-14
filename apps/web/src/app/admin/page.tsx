@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Shield, UserCheck, Users, X } from "lucide-react";
-import type { AdminStatsDto, Role } from "@teamnexus/shared";
-import { api } from "@/lib/api";
+import { KeyRound, Shield, TriangleAlert, UserCheck, Users, X } from "lucide-react";
+import { RESET_CONFIRMATION, type AdminResetResultDto, type AdminStatsDto, type Role } from "@teamnexus/shared";
+import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { BarChart } from "@/components/admin/BarChart";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -31,10 +33,141 @@ function StatTile({ label, value, hint }: { label: string; value: number; hint?:
   );
 }
 
+/**
+ * Remise à zéro de la base — le geste de l'ouverture réelle.
+ *
+ * La feuille dit d'abord ce qui va disparaître, chiffres à l'appui, et n'arme
+ * son bouton qu'une fois la phrase retapée à l'identique. Ni case à cocher ni
+ * second « êtes-vous sûr ? » : seule une saisie exacte ne se franchit pas d'un
+ * geste réflexe, et cette opération-là ne se répare qu'avec une sauvegarde.
+ */
+function ResetSheet({ stats, onClose, onDone }: { stats: AdminStatsDto; onClose: () => void; onDone: () => void }) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<AdminResetResultDto | null>(null);
+  const armed = typed.trim().toUpperCase() === RESET_CONFIRMATION;
+  const nonAdmins = stats.totalAccounts - stats.byRole.admin;
+
+  async function reset() {
+    setBusy(true);
+    setError(null);
+    try {
+      setResult(
+        await api<AdminResetResultDto>("/admin/reset", {
+          method: "POST",
+          body: JSON.stringify({ confirm: RESET_CONFIRMATION }),
+        }),
+      );
+      onDone();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Remise à zéro impossible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <BottomSheet
+      label="Remise à zéro de la base"
+      onClose={onClose}
+      footer={
+        result ? (
+          <Button className="w-full" onClick={onClose}>
+            Fermer
+          </Button>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button type="button" variant="danger" disabled={!armed || busy} onClick={reset}>
+              <TriangleAlert size={14} /> Tout effacer
+            </Button>
+          </div>
+        )
+      }
+    >
+      <div className="p-5 pt-2 space-y-4">
+        {result ? (
+          <>
+            <div className="space-y-1">
+              <h3 className="text-base font-black">Base remise à zéro</h3>
+              <p className="text-sm text-ink-soft">
+                L&apos;application est vierge. Votre compte administrateur et votre session sont intacts.
+              </p>
+            </div>
+            <ul className="text-xs bg-paper rounded-lg px-4 py-3 space-y-1">
+              {(
+                [
+                  ["Comptes", result.accounts],
+                  ["Équipes", result.teams],
+                  ["Clubs", result.clubs],
+                  ["Annonces", result.announcements],
+                  ["Matchs", result.matches],
+                  ["Tournois", result.tournaments],
+                  ["Messages", result.messages],
+                  ["Fichiers envoyés", result.files],
+                ] as const
+              ).map(([label, value]) => (
+                <li key={label} className="flex items-center justify-between gap-3">
+                  <span className="text-ink-soft font-semibold">{label}</span>
+                  <span className="font-black tabular-nums">{value}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <div className="space-y-1">
+              <h3 className="text-base font-black">Effacer toutes les données</h3>
+              <p className="text-sm text-ink-soft">
+                Pour ouvrir l&apos;application pour de vrai, sur une base vierge. Cette opération est
+                <span className="font-bold"> définitive</span> : seule une sauvegarde de la base permet de revenir
+                en arrière.
+              </p>
+            </div>
+
+            <ul className="text-xs bg-coral-soft text-coral rounded-lg px-4 py-3 space-y-1 font-semibold">
+              <li>{nonAdmins} compte{nonAdmins > 1 ? "s" : ""} (coachs, clubs, joueurs…) — les admins restent</li>
+              <li>{stats.teamsCount} équipe{stats.teamsCount > 1 ? "s" : ""} et leurs clubs</li>
+              <li>
+                {stats.matchesTotal} match{stats.matchesTotal > 1 ? "s" : ""} et {stats.tournamentsTotal} tournoi
+                {stats.tournamentsTotal > 1 ? "s" : ""}
+              </li>
+              <li>Annonces, relations, messages, publications, points</li>
+              <li>Photos de profil et écussons envoyés</li>
+            </ul>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-ink-soft" htmlFor="reset-confirm">
+                Tapez {RESET_CONFIRMATION} pour confirmer
+              </label>
+              <input
+                id="reset-confirm"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                autoComplete="off"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                className="field font-mono tracking-widest"
+                placeholder={RESET_CONFIRMATION}
+              />
+            </div>
+            {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">{error}</p>}
+          </>
+        )}
+      </div>
+    </BottomSheet>
+  );
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStatsDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hourlyDate, setHourlyDate] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const load = useCallback(async (date?: string) => {
     try {
@@ -158,6 +291,27 @@ export default function AdminDashboardPage() {
         </div>
         <BarChart data={perHour} ariaLabel={`Connexions heure par heure le ${stats.hourlyDate}`} />
       </section>
+
+      {/* Zone de danger, tout en bas et à part : rien de ce qui précède ne se
+          répare avec une sauvegarde, elle si — elle ne doit jamais se trouver
+          sous le pouce au milieu d'une consultation de statistiques. */}
+      <section className="card p-5 space-y-3 border-coral/30" aria-label="Zone de danger">
+        <div className="flex items-center gap-2">
+          <TriangleAlert size={16} className="text-coral shrink-0" />
+          <h3 className="text-sm font-black">Zone de danger</h3>
+        </div>
+        <p className="text-xs text-ink-soft">
+          Effacer toutes les données de l&apos;alpha pour ouvrir l&apos;application sur une base vierge. Les comptes
+          administrateurs sont conservés. Prenez une sauvegarde de la base avant.
+        </p>
+        <Button variant="danger" size="sm" onClick={() => setResetting(true)}>
+          <TriangleAlert size={13} /> Remettre la base à zéro
+        </Button>
+      </section>
+
+      {resetting && (
+        <ResetSheet stats={stats} onClose={() => setResetting(false)} onDone={() => load(hourlyDate || undefined)} />
+      )}
     </div>
   );
 }
