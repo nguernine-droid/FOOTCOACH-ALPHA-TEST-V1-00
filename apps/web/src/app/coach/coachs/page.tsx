@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Megaphone, Users } from "lucide-react";
+import { ChevronRight, EyeOff, Megaphone, Users } from "lucide-react";
 import { categoryLabel, type CategoryCoachDto, type CategoryStatsDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
@@ -84,39 +84,64 @@ export default function CategoryCoachesPage() {
         </div>
       ) : (
         <ul className="card divide-y divide-line overflow-hidden">
-          {coaches.map((coach) => (
-            <li key={coach.id}>
-              <button
-                type="button"
-                onClick={() => setCardOf(coach.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left transition
-                  hover:bg-blue-faint active:bg-blue-soft"
-              >
-                <Avatar name={coach.nickname} avatarUrl={coach.avatarUrl} size={44} />
-                <span className="min-w-0 flex-1">
-                  <span className="font-bold flex items-center gap-1.5 flex-wrap">
-                    <span className="truncate">{coach.nickname}</span>
-                    <LevelBadge level={coach.level} />
-                  </span>
-                  <span className="flex items-center gap-1.5 text-xs text-ink-soft">
-                    <TeamLogo name={coach.team.name} logoUrl={coach.team.logoUrl} size={16} />
-                    <span className="truncate">
-                      {coach.team.name} · {coach.team.city}
-                      {coach.distanceKm !== null && ` · ${coach.distanceKm.toLocaleString("fr-FR")} km`}
-                    </span>
-                  </span>
-                  {/* Celui qui cherche un adversaire en ce moment : c'est avec
-                      lui qu'il y a quelque chose à faire tout de suite. */}
-                  {coach.hasOpenAnnouncement && (
-                    <span className="chip bg-accent-surface text-accent mt-1">
-                      <Megaphone size={11} /> cherche un adversaire
-                    </span>
-                  )}
+          {coaches.map((coach) =>
+            /**
+             * Profil privé : le surnom, et rien d'autre. Pas de ligne cliquable
+             * non plus — il n'y a pas de carte à ouvrir, et un appui qui ne fait
+             * rien se lit comme une panne. La ligne reste dans la liste : ce
+             * coach existe dans le secteur, le cacher tout à fait ferait mentir
+             * le compteur du tableau de bord.
+             */
+            !coach.isPublic ? (
+              <li key={coach.id} className="flex items-center gap-3 px-4 py-3">
+                <span
+                  aria-hidden
+                  className="w-11 h-11 rounded-full bg-paper border border-line text-ink-faint
+                    flex items-center justify-center shrink-0"
+                >
+                  <EyeOff size={16} />
                 </span>
-                <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
-              </button>
-            </li>
-          ))}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-bold truncate">{coach.nickname}</span>
+                  <span className="block text-xs text-ink-soft">Profil privé</span>
+                </span>
+              </li>
+            ) : (
+              <li key={coach.id}>
+                <button
+                  type="button"
+                  onClick={() => setCardOf(coach.id)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition
+                    hover:bg-blue-faint active:bg-blue-soft"
+                >
+                  <Avatar name={coach.nickname} avatarUrl={coach.avatarUrl} size={44} />
+                  <span className="min-w-0 flex-1">
+                    <span className="font-bold flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate">{coach.nickname}</span>
+                      {coach.level && <LevelBadge level={coach.level} />}
+                    </span>
+                    {coach.team && (
+                      <span className="flex items-center gap-1.5 text-xs text-ink-soft">
+                        <TeamLogo name={coach.team.name} logoUrl={coach.team.logoUrl} size={16} />
+                        <span className="truncate">
+                          {coach.team.name} · {coach.team.city}
+                          {coach.distanceKm !== null && ` · ${coach.distanceKm.toLocaleString("fr-FR")} km`}
+                        </span>
+                      </span>
+                    )}
+                    {/* Celui qui cherche un adversaire en ce moment : c'est avec
+                        lui qu'il y a quelque chose à faire tout de suite. */}
+                    {coach.hasOpenAnnouncement && (
+                      <span className="chip bg-accent-surface text-accent mt-1">
+                        <Megaphone size={11} /> cherche un adversaire
+                      </span>
+                    )}
+                  </span>
+                  <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+                </button>
+              </li>
+            ),
+          )}
         </ul>
       )}
 

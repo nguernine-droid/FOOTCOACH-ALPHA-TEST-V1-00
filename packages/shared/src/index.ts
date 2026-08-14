@@ -49,11 +49,25 @@ export function daysBetweenIso(from: string, to: string): number {
  * déclaration annonce par annonce — §5 le disait, ce n'est plus vrai. La règle
  * elle-même n'a pas bougé, seul ce que le service en fait a changé.
  *
+ * Version 3 (14 août 2026) : mise à jour de fond des deux textes, dont deux
+ * points substantiels — les coachs d'une même catégorie se voient désormais
+ * dans une liste de secteur, avec un réglage public/privé pour s'en retirer ;
+ * et le score n'est plus contre-signé, c'est le scan de rencontre au stade qui
+ * atteste le match et donne les points. Le reste met les textes au niveau du
+ * service : messagerie, tournois, publications, signalements, écusson d'équipe,
+ * club déclaré.
+ *
+ * ⚠ Rien ne redemande son accord à un coach déjà inscrit : `terms_version` n'est
+ * écrite qu'à l'inscription, il n'existe aucun écran de ré-acceptation. Les
+ * comptes créés avant restent donc estampillés « 2 ». C'est un choix assumé
+ * pour l'instant, pas un oubli — le §2 des CGU promet en revanche une
+ * information dans l'application, qui reste à faire.
+ *
  * À tenir aligné sur l'en-tête de `site/cgu.html` et de
- * `site/confidentialite.html` (« Version : 2 »).
+ * `site/confidentialite.html` (« Version : 3 »).
  */
-export const LEGAL_VERSION = "2";
-export const LEGAL_UPDATED_AT = "2026-08-11";
+export const LEGAL_VERSION = "3";
+export const LEGAL_UPDATED_AT = "2026-08-14";
 
 /**
  * Cycle de vie d'un match : `scheduled` → `live` au coup d'envoi → `finished`
@@ -457,6 +471,23 @@ export const updateCoachCategoriesSchema = z.object({
   categories: z.array(z.enum(COACH_CATEGORIES)).max(COACH_CATEGORIES.length),
 });
 export type UpdateCoachCategoriesInput = z.infer<typeof updateCoachCategoriesSchema>;
+
+/**
+ * Profil public ou privé dans la liste des coachs de sa catégorie. Une route à
+ * part comme les casquettes : une case qu'on décoche pour se retirer d'une
+ * liste doit prendre effet sur-le-champ, pas au prochain enregistrement d'un
+ * formulaire d'identité.
+ */
+export const updateProfileVisibilitySchema = z.object({ profilePublic: z.boolean() });
+export type UpdateProfileVisibilityInput = z.infer<typeof updateProfileVisibilitySchema>;
+
+/** Ce que le réglage engage, dit au coach à l'inscription comme au profil */
+export const PROFILE_PUBLIC_LABEL = "Profil public";
+export const PROFILE_PUBLIC_DESCRIPTION =
+  "Les coachs de votre catégorie et de votre secteur vous voient dans leur liste : surnom, photo, équipe et distance. C'est ainsi qu'on se trouve avant même d'avoir publié une annonce.";
+export const PROFILE_PRIVATE_LABEL = "Profil privé";
+export const PROFILE_PRIVATE_DESCRIPTION =
+  "Dans cette liste, ils ne voient que votre surnom — ni photo, ni équipe, ni distance. Le reste ne change pas : une annonce que vous publiez vous montre, et vos matchs et relations vous connaissent déjà.";
 
 // ---------- Signalements (bug / suggestion) ----------
 
@@ -983,6 +1014,13 @@ export const registerCoachSchema = z.object({
   // ordinaire : le défaut évite qu'un client plus ancien, qui ne les envoie
   // pas, se voie refuser l'inscription. Modifiables ensuite dans le profil.
   categories: z.array(z.enum(COACH_CATEGORIES)).max(COACH_CATEGORIES.length).default([]),
+  /**
+   * Profil public dans la liste des coachs de sa catégorie. Le défaut vaut
+   * « public » : c'est l'état de tous les comptes créés avant ce réglage, et un
+   * client plus ancien qui n'envoie pas le champ ne doit pas se voir refuser
+   * l'inscription. La question est posée en clair dans le parcours.
+   */
+  profilePublic: z.boolean().default(true),
   // Deux acceptations distinctes, et non une case unique fourre-tout : la
   // clause de responsabilité (déclaration à la fédération, licences, transport)
   // est celle qui protège réellement l'éditeur. Acceptée à part, elle ne peut
@@ -1180,6 +1218,11 @@ export interface UserDto {
   level?: CoachLevelDto;
   /** Coach : ses casquettes (tableau vide = simple coach) */
   categories?: CoachCategory[];
+  /**
+   * Coach : profil public dans la liste des coachs de sa catégorie. À `false`,
+   * les coachs qu'il n'a pas encore croisés n'y voient que son surnom.
+   */
+  profilePublic?: boolean;
   /** Coach : matchs terminés par les équipes qu'il encadre — son compteur d'expérience */
   matchesPlayed?: number;
 }
@@ -1428,12 +1471,18 @@ export interface CategoryStatsDto {
 export interface CategoryCoachDto {
   id: string;
   nickname: string;
+  /**
+   * Profil public. À `false`, TOUT le reste de cette fiche est vide : le coach a
+   * choisi de n'apparaître ici que sous son surnom. Ce n'est pas au client de
+   * décider quoi masquer — le serveur ne l'envoie pas.
+   */
+  isPublic: boolean;
   avatarUrl: string | null;
-  /** L'équipe qui le situe : celle de MA catégorie qu'il encadre */
-  team: TeamDto;
-  /** Distance entre mon point de balayage et la ville de son équipe (null si inconnue) */
+  /** L'équipe qui le situe : celle de MA catégorie qu'il encadre (null si profil privé) */
+  team: TeamDto | null;
+  /** Distance entre mon point de balayage et la ville de son équipe (null si inconnue ou profil privé) */
   distanceKm: number | null;
-  level: CoachLevelDto;
+  level: CoachLevelDto | null;
   /** A-t-il une annonce ouverte en ce moment ? De quoi aller lui répondre */
   hasOpenAnnouncement: boolean;
 }

@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Camera, ChevronRight, Copy, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
+import { Bell, Camera, ChevronRight, Copy, Eye, LogOut, Mail, QrCode, Trash2, Trophy, Users } from "lucide-react";
 import { coachQrPayload, type CoachCategory, type UserDto } from "@teamnexus/shared";
 import { ApiError, api, getStoredUser, logout, updateStoredUser } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { LocationCard } from "@/components/coach/LocationCard";
+import { ProfileVisibilityPicker } from "@/components/coach/ProfileVisibilityPicker";
 import { TeamLogoCard } from "@/components/coach/TeamLogoCard";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
 import { Button } from "@/components/ui/Button";
@@ -74,6 +75,24 @@ export default function CoachProfilePage() {
   async function clearCategories() {
     if ((user?.categories ?? []).length === 0) return;
     await saveCategories([]);
+  }
+
+  /** Enregistré sur-le-champ : se retirer d'une liste ne s'accompagne pas d'un « valider » */
+  async function saveVisibility(profilePublic: boolean) {
+    if ((user?.profilePublic ?? true) === profilePublic) return;
+    setError(null);
+    setMessage(null);
+    try {
+      apply(
+        await api<UserDto>("/me/visibility", {
+          method: "PATCH",
+          body: JSON.stringify({ profilePublic }),
+        }),
+      );
+      setMessage(profilePublic ? "Profil public" : "Profil privé — seul votre surnom apparaît");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Enregistrement impossible");
+    }
   }
 
   async function saveCategories(categories: CoachCategory[]) {
@@ -348,6 +367,29 @@ export default function CoachProfilePage() {
             Votre code sera généré à votre prochaine connexion.
           </p>
         )}
+      </section>
+
+      {/* Qui me voit dans la liste des coachs de ma catégorie. Rangé avec
+          l'identité, juste après elle : c'est la portée de ce qu'on vient de
+          renseigner au-dessus. */}
+      <section className="card p-5 space-y-3" aria-label="Visibilité de mon profil">
+        <div className="flex items-center gap-2.5">
+          <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
+            <Eye size={18} />
+          </span>
+          <div className="min-w-0">
+            <h3 className="display text-lg">Qui me voit</h3>
+            <p className="text-xs text-ink-soft">
+              Dans la liste des coachs de votre catégorie, celle qu&apos;ouvre leur tableau de bord.
+            </p>
+          </div>
+        </div>
+        <ProfileVisibilityPicker
+          idPrefix="profil-visibilite"
+          value={user?.profilePublic ?? true}
+          onChange={saveVisibility}
+          disabled={!user}
+        />
       </section>
 
       {/* L'écusson du club, équipe par équipe : c'est de l'identité, sa place

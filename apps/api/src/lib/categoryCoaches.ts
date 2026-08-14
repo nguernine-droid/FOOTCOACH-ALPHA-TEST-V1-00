@@ -113,13 +113,32 @@ export async function coachesOfTeams(
   const seekingTeamIds = new Set(openAnnouncements.map((a) => a.teamId));
 
   return coachIds
-    .map((id) => {
+    .map((id): CategoryCoachDto => {
       const coach = coachById.get(id)!;
       const team = firstTeamOf.get(id)!;
+      /**
+       * Profil privé : le serveur n'envoie QUE le surnom. Masquer côté client
+       * aurait laissé la photo, l'équipe et la distance dans la réponse — donc
+       * accessibles à qui regarde le réseau. Ce qu'on ne veut pas montrer, on
+       * ne l'envoie pas.
+       */
+      if (!coach.profilePublic) {
+        return {
+          id: coach.id,
+          nickname: coach.nickname,
+          isPublic: false,
+          avatarUrl: null,
+          team: null,
+          distanceKm: null,
+          level: null,
+          hasOpenAnnouncement: false,
+        };
+      }
       const coords = cityCoords(team.city);
       return {
         id: coach.id,
         nickname: coach.nickname,
+        isPublic: true,
         avatarUrl: avatarUrlOf(coach.avatarPath),
         team: {
           id: team.id,
@@ -132,12 +151,21 @@ export async function coachesOfTeams(
         hasOpenAnnouncement: seekingTeamIds.has(team.id),
       };
     })
-    // Les plus proches d'abord ; les distances inconnues à la fin, comme sur le
-    // radar. À distance égale, celui qui cherche un adversaire passe devant :
-    // c'est avec lui qu'il y a quelque chose à faire tout de suite.
+    /**
+     * Les plus proches d'abord ; les distances inconnues à la fin, comme sur le
+     * radar. À distance égale, celui qui cherche un adversaire passe devant :
+     * c'est avec lui qu'il y a quelque chose à faire tout de suite.
+     *
+     * Les profils privés n'ont pas de distance : ils tombent donc en fin de
+     * liste, rangés par surnom. C'est cohérent — sans équipe ni distance, il n'y
+     * a rien à en faire dans l'ordre de proximité, et les intercaler
+     * renseignerait indirectement sur leur éloignement.
+     */
     .sort((a, b) => {
-      if (a.distanceKm === null) return b.distanceKm === null ? 0 : 1;
-      if (b.distanceKm === null) return -1;
+      if (a.distanceKm === null || b.distanceKm === null) {
+        if (a.distanceKm === b.distanceKm) return a.nickname.localeCompare(b.nickname, "fr");
+        return a.distanceKm === null ? 1 : -1;
+      }
       return (
         a.distanceKm - b.distanceKm ||
         Number(b.hasOpenAnnouncement) - Number(a.hasOpenAnnouncement)

@@ -23,6 +23,7 @@ import {
 import { GenderPicker } from "@/components/GenderPicker";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
+import { ProfileVisibilityPicker } from "@/components/coach/ProfileVisibilityPicker";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
 import { useInstallOffer } from "@/lib/install";
@@ -114,6 +115,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   // Casquettes : aucune au départ, et aucune est une réponse valable — l'étape
   // se franchit sans rien cocher.
   const [categories, setCategories] = useState<CoachCategory[]>([]);
+  // Public par défaut, comme les comptes créés avant ce réglage — mais la
+  // question est posée, pas subie (étape « Vos casquettes »).
+  const [profilePublic, setProfilePublic] = useState(true);
   // Le club, facultatif : nommé une fois ici, il permet aux coachs du même club
   // de se retrouver plus tard (voir ClubDeclarationFields).
   const [club, setClub] = useState<ClubDeclaration>({ name: "", city: "", stadium: "" });
@@ -171,6 +175,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         categories,
         teamStadium: form.teamStadium.trim() || undefined,
         licenseNumber: form.licenseNumber.trim() || undefined,
+        profilePublic,
         ...clubPayload(club, pickedClub),
         acceptTerms: consent.terms,
         acceptResponsibility: consent.responsibility,
@@ -381,6 +386,22 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
             <p className="text-[11px] text-ink-soft">
               Vous pourrez en prendre une, ou les retirer, plus tard dans Mon profil.
             </p>
+
+            {/* La visibilité se décide ici, dans la même étape que les
+                casquettes : ce sont les deux questions du parcours qui portent
+                sur ce que les AUTRES coachs verront de vous. Posée en clair
+                plutôt que subie — la liste des coachs de secteur ne doit
+                surprendre personne. */}
+            <div className="space-y-2 border-t border-line pt-4">
+              <h3 className="display text-lg">Qui vous voit</h3>
+              <ProfileVisibilityPicker
+                idPrefix="register-visibilite"
+                value={profilePublic}
+                onChange={setProfilePublic}
+              />
+              <p className="text-[11px] text-ink-soft">Modifiable à tout moment dans Mon profil.</p>
+            </div>
+
             <Button type="button" size="lg" className="w-full" onClick={() => advance(4, false)}>
               Continuer
             </Button>

@@ -135,6 +135,20 @@ export const users = pgTable("users", {
    * défaut `{}` plutôt qu'un NULL qu'il faudrait interpréter partout.
    */
   coachCategories: coachCategory("coach_categories").array().notNull().default([]),
+  /**
+   * Profil public ou privé — ce que voient les coachs du VOISINAGE, ceux qui ne
+   * se sont pas encore croisés (liste des coachs de ma catégorie).
+   *
+   * `false` : seul le surnom apparaît dans cette liste, rien d'autre. Le reste
+   * de l'application ne change pas — une annonce publiée continue de montrer
+   * qui la publie, un match convenu de montrer l'adversaire : ce sont des gens
+   * avec qui on s'est engagé, pas des inconnus qui passent.
+   *
+   * Défaut `true` : c'est l'état des comptes créés avant ce réglage, et la
+   * question est posée explicitement à l'inscription pour que le choix soit fait
+   * en connaissance de cause.
+   */
+  profilePublic: boolean("profile_public").notNull().default(true),
   // Nom du fichier photo dans le volume d'uploads (NULL = initiales)
   avatarPath: text("avatar_path"),
   // Joueur : compte parent assigné (valide ses réservations de covoiturage)

@@ -295,6 +295,13 @@
       "when": 1786697458186,
       "tag": "0041_logo_equipe_et_club_declare",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1786700937855,
+      "tag": "0042_profil_public",
+      "breakpoints": true
     }
   ]
 }

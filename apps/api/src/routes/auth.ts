@@ -10,6 +10,7 @@ import {
   isV1Role,
   levelForPoints,
   updateCoachCategoriesSchema,
+  updateProfileVisibilitySchema,
   updateProfileSchema,
   loginSchema,
   refreshSchema,
@@ -217,6 +218,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
           points,
           level: levelForPoints(points),
           categories: asCoachCategories(user.coachCategories),
+          profilePublic: user.profilePublic,
           matchesPlayed,
           notifications: {
             newAnnouncement: user.notifyNewAnnouncement,
@@ -425,6 +427,24 @@ export function authRoutes(app: FastifyInstance) {
       coachId: request.user.id,
       adopted: wanted.filter((c) => !had.includes(c)),
     });
+    return toUserDto(updated);
+  });
+
+  /**
+   * Profil public ou privé dans la liste des coachs de sa catégorie.
+   *
+   * Route à part, comme les casquettes et pour la même raison : se retirer d'une
+   * liste est un geste qui doit prendre effet immédiatement, sans attendre
+   * l'enregistrement d'un formulaire d'identité.
+   */
+  app.patch("/me/visibility", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
+    if (request.user.role !== "coach") throw new HttpError(403, "Réservé aux coachs");
+    const input = updateProfileVisibilitySchema.parse(request.body);
+    const [updated] = await db
+      .update(users)
+      .set({ profilePublic: input.profilePublic })
+      .where(eq(users.id, request.user.id))
+      .returning();
     return toUserDto(updated);
   });
 }

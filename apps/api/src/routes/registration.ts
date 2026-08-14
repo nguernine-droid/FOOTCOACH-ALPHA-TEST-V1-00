@@ -127,6 +127,7 @@ export function registrationRoutes(app: FastifyInstance) {
           // Dédoublonnées ici comme partout ailleurs : la colonne est un
           // tableau, rien en base n'empêcherait deux fois « joker ».
           coachCategories: asCoachCategories(input.categories),
+          profilePublic: input.profilePublic,
         })
         .returning();
       const coords = cityCoords(input.teamCity);
