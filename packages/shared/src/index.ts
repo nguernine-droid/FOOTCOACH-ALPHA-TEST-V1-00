@@ -1075,36 +1075,6 @@ export type AdminUpdateClubInput = z.infer<typeof adminUpdateClubSchema>;
 export const mergeClubSchema = z.object({ sourceId: z.string().uuid() });
 export type MergeClubInput = z.infer<typeof mergeClubSchema>;
 
-/**
- * Remise à zéro de la base avant l'ouverture réelle de l'application : la
- * phrase à retaper en toutes lettres.
- *
- * Un mot exact plutôt qu'un second bouton « confirmer » : c'est la seule
- * barrière qui ne se franchit pas d'un geste réflexe, et cette opération-là ne
- * se répare qu'avec une sauvegarde.
- */
-export const RESET_CONFIRMATION = "REINITIALISER";
-export const resetDatabaseSchema = z.object({
-  confirm: z.literal(RESET_CONFIRMATION, {
-    errorMap: () => ({ message: `Tapez ${RESET_CONFIRMATION} pour confirmer` }),
-  }),
-});
-export type ResetDatabaseInput = z.infer<typeof resetDatabaseSchema>;
-
-/** Ce que la remise à zéro a effectivement effacé — le compte rendu de l'opération */
-export interface AdminResetResultDto {
-  /** Comptes supprimés : tous sauf les administrateurs */
-  accounts: number;
-  teams: number;
-  clubs: number;
-  announcements: number;
-  matches: number;
-  tournaments: number;
-  messages: number;
-  /** Fichiers envoyés (photos, écussons) retirés du volume */
-  files: number;
-}
-
 // Gestion des équipes par le club
 export const createClubTeamSchema = z.object({
   name: z.string().min(2).max(60),
