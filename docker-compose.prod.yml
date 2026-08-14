@@ -15,7 +15,11 @@ services:
   postgres:
     restart: unless-stopped
     logging: *logging
-    ports: []
+    # `!override` et non `[]` : compose FUSIONNE les séquences par défaut, si
+    # bien qu'une liste vide n'efface rien du tout. Le 127.0.0.1:5433 du fichier
+    # de développement survivait donc en production — la protection était écrite
+    # mais inopérante, ce qui est pire que pas de protection : on la croit là.
+    ports: !override []
     # `?` : compose refuse de démarrer si la variable est absente ou vide.
     # Le mot de passe par défaut du fichier de développement n'a rien à faire
     # sur une base exposée.
