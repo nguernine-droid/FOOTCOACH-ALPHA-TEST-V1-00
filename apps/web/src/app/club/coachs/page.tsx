@@ -263,7 +263,7 @@ function ClubCoaches() {
 
   return (
     <div className="space-y-4">
-      <AffiliationCodeCard code={overview.club.affiliationCode} />
+      {overview.club.affiliationCode && <AffiliationCodeCard code={overview.club.affiliationCode} />}
 
       <AffiliationRequestsCard requests={requests} onDecided={load} />
 

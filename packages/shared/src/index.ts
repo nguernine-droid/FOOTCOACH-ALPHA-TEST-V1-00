@@ -49,11 +49,25 @@ export function daysBetweenIso(from: string, to: string): number {
  * déclaration annonce par annonce — §5 le disait, ce n'est plus vrai. La règle
  * elle-même n'a pas bougé, seul ce que le service en fait a changé.
  *
+ * Version 3 (14 août 2026) : mise à jour de fond des deux textes, dont deux
+ * points substantiels — les coachs d'une même catégorie se voient désormais
+ * dans une liste de secteur, avec un réglage public/privé pour s'en retirer ;
+ * et le score n'est plus contre-signé, c'est le scan de rencontre au stade qui
+ * atteste le match et donne les points. Le reste met les textes au niveau du
+ * service : messagerie, tournois, publications, signalements, écusson d'équipe,
+ * club déclaré.
+ *
+ * ⚠ Rien ne redemande son accord à un coach déjà inscrit : `terms_version` n'est
+ * écrite qu'à l'inscription, il n'existe aucun écran de ré-acceptation. Les
+ * comptes créés avant restent donc estampillés « 2 ». C'est un choix assumé
+ * pour l'instant, pas un oubli — le §2 des CGU promet en revanche une
+ * information dans l'application, qui reste à faire.
+ *
  * À tenir aligné sur l'en-tête de `site/cgu.html` et de
- * `site/confidentialite.html` (« Version : 2 »).
+ * `site/confidentialite.html` (« Version : 3 »).
  */
-export const LEGAL_VERSION = "2";
-export const LEGAL_UPDATED_AT = "2026-08-11";
+export const LEGAL_VERSION = "3";
+export const LEGAL_UPDATED_AT = "2026-08-14";
 
 /**
  * Cycle de vie d'un match : `scheduled` → `live` au coup d'envoi → `finished`
@@ -174,13 +188,75 @@ export function announcementCategoryOf(teamCategory: string | null | undefined):
  * équipes, pas un adversaire. Les valeurs fines (U6…U11) sont reconnues aussi :
  * les annonces antérieures au regroupement les portent encore.
  */
+export const PLATEAU_CATEGORIES = [
+  "U6-U7", "U8-U9", "U10-U11", "U6", "U7", "U8", "U9", "U10", "U11",
+] as const;
+
 export function isPlateauCategory(category: string | null | undefined): boolean {
   if (!category) return false;
-  return ["U6-U7", "U8-U9", "U10-U11", "U6", "U7", "U8", "U9", "U10", "U11"].includes(category);
+  return (PLATEAU_CATEGORIES as readonly string[]).includes(category);
 }
 
 /** Équipes cherchées par une annonce de plateau — l'hôte complète le carré */
 export const PLATEAU_TEAMS_WANTED = 3;
+
+/**
+ * Un plateau qui n'a pas fait le plein se joue quand même : trois équipes, ou
+ * deux. À partir de ce seuil, la rencontre a lieu et le scan de points avec
+ * elle — c'est ce qui distingue un plateau réduit d'un plateau désert.
+ */
+export const PLATEAU_MIN_TEAMS_ACCEPTED = 1;
+
+/**
+ * Les catégories fines couvertes par une catégorie d'annonce (U12-U13 →
+ * U12, U13). Une catégorie fine se rend elle-même : la fonction accepte les
+ * deux, les annonces d'avant le regroupement portant encore « U13 ».
+ */
+export function fineCategoriesOf(category: string | null | undefined): MatchCategory[] {
+  if (!category) return [];
+  if ((MATCH_CATEGORIES as readonly string[]).includes(category)) return [category as MatchCategory];
+  return (MATCH_CATEGORIES as readonly MatchCategory[]).filter(
+    (fine) => ANNOUNCEMENT_GROUP_OF[fine] === category,
+  );
+}
+
+/** L'échelle des U, dans l'ordre — c'est elle qui donne un sens à « l'année d'à côté » */
+const U_SCALE = (MATCH_CATEGORIES as readonly MatchCategory[]).filter((c) => c.startsWith("U"));
+
+/** De combien d'années on s'écarte de la catégorie visée pour alerter un joker */
+export const SOS_AGE_TOLERANCE = 1;
+
+/**
+ * Les catégories d'équipe qu'un SOS doit réveiller : celles de l'annonce, plus
+ * l'année en dessous et celle au-dessus.
+ *
+ * Un U14 qui se retrouve sans adversaire joue volontiers contre des U13 ou des
+ * U15 — à un an près, un amical reste jouable, et c'est justement quand on est
+ * en panne qu'on élargit. Un U9 n'a en revanche rien à faire d'un SOS Seniors :
+ * sans ce voisinage, l'alerte partait à tous les jokers du secteur, toutes
+ * catégories confondues, et une alerte qui ne concerne jamais celui qui la
+ * reçoit finit par ne plus être lue du tout.
+ *
+ * Seniors et Vétérans n'ont pas de voisin : ils ne sont pas sur l'échelle des
+ * âges, et « l'année d'à côté » n'y veut rien dire.
+ */
+export function sosCategoryReach(categories: readonly (string | null | undefined)[]): Set<string> {
+  const reach = new Set<string>();
+  for (const raw of categories) {
+    for (const fine of fineCategoriesOf(raw)) {
+      const index = U_SCALE.indexOf(fine);
+      if (index === -1) {
+        reach.add(fine);
+        continue;
+      }
+      for (let offset = -SOS_AGE_TOLERANCE; offset <= SOS_AGE_TOLERANCE; offset++) {
+        const neighbour = U_SCALE[index + offset];
+        if (neighbour) reach.add(neighbour);
+      }
+    }
+  }
+  return reach;
+}
 
 /**
  * Niveau de jeu — le palier réel d'une équipe (district, régional, national),
@@ -372,7 +448,7 @@ export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
   joker:
     "Vous acceptez d'être alerté quand un coach de votre secteur se retrouve sans adversaire. Ces alertes SOS ne partent qu'aux jokers.",
   contributeur:
-    "Vous partagez les informations du secteur — poules des matchs officiels, intempéries, plateaux annulés. Vos publications sont lues par tous les coachs.",
+    "Vous faites vivre le projet : vous partagez les informations du secteur (poules, intempéries, plateaux annulés), vous le faites connaître autour de vous, et vous avez la ligne directe avec l'équipe TeamNexus — vos signalements de bugs et vos idées d'amélioration ouvrent une discussion avec elle.",
 };
 
 /**
@@ -395,6 +471,23 @@ export const updateCoachCategoriesSchema = z.object({
   categories: z.array(z.enum(COACH_CATEGORIES)).max(COACH_CATEGORIES.length),
 });
 export type UpdateCoachCategoriesInput = z.infer<typeof updateCoachCategoriesSchema>;
+
+/**
+ * Profil public ou privé dans la liste des coachs de sa catégorie. Une route à
+ * part comme les casquettes : une case qu'on décoche pour se retirer d'une
+ * liste doit prendre effet sur-le-champ, pas au prochain enregistrement d'un
+ * formulaire d'identité.
+ */
+export const updateProfileVisibilitySchema = z.object({ profilePublic: z.boolean() });
+export type UpdateProfileVisibilityInput = z.infer<typeof updateProfileVisibilitySchema>;
+
+/** Ce que le réglage engage, dit au coach à l'inscription comme au profil */
+export const PROFILE_PUBLIC_LABEL = "Profil public";
+export const PROFILE_PUBLIC_DESCRIPTION =
+  "Les coachs de votre catégorie et de votre secteur vous voient dans leur liste : surnom, photo, équipe et distance. C'est ainsi qu'on se trouve avant même d'avoir publié une annonce.";
+export const PROFILE_PRIVATE_LABEL = "Profil privé";
+export const PROFILE_PRIVATE_DESCRIPTION =
+  "Dans cette liste, ils ne voient que votre surnom — ni photo, ni équipe, ni distance. Le reste ne change pas : une annonce que vous publiez vous montre, et vos matchs et relations vous connaissent déjà.";
 
 // ---------- Signalements (bug / suggestion) ----------
 
@@ -426,6 +519,15 @@ export const updateFeedbackStatusSchema = z.object({
   adminNote: z.string().trim().max(500).optional(),
 });
 export type UpdateFeedbackStatusInput = z.infer<typeof updateFeedbackStatusSchema>;
+
+/**
+ * Réponse de l'admin dans le fil du signalement. Même longueur qu'un message
+ * de coach : c'est le même fil, lu dans le même écran.
+ */
+export const replyFeedbackSchema = z.object({
+  body: z.string().trim().min(1, "Écrivez votre réponse").max(2000),
+});
+export type ReplyFeedbackInput = z.infer<typeof replyFeedbackSchema>;
 
 /** Valeurs venues de la base ramenées à la liste connue, sans doublon */
 export function asCoachCategories(values: readonly string[] | null | undefined): CoachCategory[] {
@@ -803,14 +905,52 @@ export type TeamReferencesInput = z.infer<typeof teamReferencesSchema>;
  * Création d'une équipe supplémentaire par un coach déjà inscrit. Mêmes bornes
  * que l'équipe créée à l'inscription : c'est la même chose, créée plus tard.
  */
+/**
+ * Le club d'une équipe, à la création comme à l'inscription. Deux formes
+ * exclusives, et l'absence des deux vaut « pas de club » :
+ *
+ * - `clubId` : le coach a reconnu un club DÉJÀ déclaré (celui que la détection
+ *   de doublon lui a proposé) — on s'y rattache, on n'en crée pas un second ;
+ * - `club` : personne ne l'avait déclaré, il le nomme lui-même.
+ *
+ * Le champ est facultatif de bout en bout : beaucoup de coachs n'ont pas de
+ * club à nommer, et rien de ce que fait l'application n'en dépend.
+ */
+export const clubChoiceShape = {
+  clubId: z.string().uuid().optional(),
+  club: z
+    .object({
+      name: z.string().trim().min(2, "Nom du club trop court").max(80),
+      city: z.string().trim().min(1).max(60),
+      stadium: z.string().trim().max(150).optional(),
+    })
+    .optional(),
+};
+
+/** Un seul des deux : se rattacher ET déclarer n'aurait pas de sens */
+export function oneClubChoice(value: { clubId?: string; club?: unknown }): boolean {
+  return !(value.clubId && value.club);
+}
+export const CLUB_CHOICE_CONFLICT = "Choisissez un club existant OU déclarez-en un, pas les deux.";
+
 export const createTeamSchema = z
   .object({
     ...teamReferencesShape,
+    ...clubChoiceShape,
     name: z.string().trim().min(2).max(60),
     city: z.string().trim().min(1).max(60),
   })
-  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] });
+  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] })
+  .refine(oneClubChoice, { message: CLUB_CHOICE_CONFLICT, path: ["club"] });
 export type CreateTeamInput = z.infer<typeof createTeamSchema>;
+
+/** Déclaration d'un club depuis un écran qui ne crée pas d'équipe (espace admin) */
+export const declareClubSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  city: z.string().trim().min(1).max(60),
+  stadium: z.string().trim().max(150).optional(),
+});
+export type DeclareClubInput = z.infer<typeof declareClubSchema>;
 
 /**
  * Mise à jour des seules références. Le nom et la ville n'en font pas partie :
@@ -851,6 +991,7 @@ export const coachLicenseSchema = z
 export const nicknameSchema = z.string().trim().min(1, "Choisissez un surnom").max(30);
 
 export const registerCoachSchema = z.object({
+  ...clubChoiceShape,
   nickname: nicknameSchema,
   // Facultatifs depuis l'arrivée du surnom : ils ne s'affichent qu'au
   // titulaire (profil) et aux gestionnaires (admin, club), jamais aux
@@ -873,24 +1014,66 @@ export const registerCoachSchema = z.object({
   // ordinaire : le défaut évite qu'un client plus ancien, qui ne les envoie
   // pas, se voie refuser l'inscription. Modifiables ensuite dans le profil.
   categories: z.array(z.enum(COACH_CATEGORIES)).max(COACH_CATEGORIES.length).default([]),
+  /**
+   * Profil public dans la liste des coachs de sa catégorie. Le défaut vaut
+   * « public » : c'est l'état de tous les comptes créés avant ce réglage, et un
+   * client plus ancien qui n'envoie pas le champ ne doit pas se voir refuser
+   * l'inscription. La question est posée en clair dans le parcours.
+   */
+  profilePublic: z.boolean().default(true),
   // Deux acceptations distinctes, et non une case unique fourre-tout : la
   // clause de responsabilité (déclaration à la fédération, licences, transport)
   // est celle qui protège réellement l'éditeur. Acceptée à part, elle ne peut
   // pas être présentée comme noyée dans un renvoi aux conditions générales.
   acceptTerms: acceptedSchema("conditions générales d'utilisation"),
   acceptResponsibility: acceptedSchema("responsabilités du coach et de son club"),
-});
+}).refine(oneClubChoice, { message: CLUB_CHOICE_CONFLICT, path: ["club"] });
 export type RegisterCoachInput = z.infer<typeof registerCoachSchema>;
 
 // Création d'un compte club par l'admin : le club + son compte de connexion (contact)
 export const createClubSchema = z.object({
   name: z.string().min(2).max(80),
   city: z.string().min(1).max(60),
+  /** Stade du club — repris par les équipes qui s'y rattacheront */
+  stadium: z.string().trim().max(150).optional(),
   contactFirstName: z.string().min(1).max(50),
   contactLastName: z.string().min(1).max(50),
   email: z.string().email(),
+  /**
+   * Club DÉJÀ déclaré que ce compte vient reprendre. C'est la sortie de la
+   * détection de doublon : un club nommé par un coach ne doit pas être créé une
+   * seconde fois le jour où l'administrateur lui ouvre un espace — les équipes
+   * déjà rattachées resteraient de l'autre côté.
+   */
+  claimClubId: z.string().uuid().optional(),
 });
 export type CreateClubInput = z.infer<typeof createClubSchema>;
+
+/**
+ * Correction d'un club par l'admin — l'orthographe, la ville, le stade.
+ *
+ * Tous les champs sont facultatifs : l'admin corrige souvent un seul mot
+ * (« AS. Lyon » → « AS Lyon ») et ne doit pas avoir à renvoyer le reste.
+ * `stadium` accepte la chaîne vide pour effacer un stade saisi par erreur.
+ */
+export const adminUpdateClubSchema = z
+  .object({
+    name: z.string().trim().min(2).max(80).optional(),
+    city: z.string().trim().min(1).max(60).optional(),
+    stadium: z.string().trim().max(150).optional(),
+  })
+  .refine((v) => Object.values(v).some((field) => field !== undefined), {
+    message: "Aucune modification",
+  });
+export type AdminUpdateClubInput = z.infer<typeof adminUpdateClubSchema>;
+
+/**
+ * Fusion de deux clubs qui n'en sont qu'un : `sourceId` disparaît au profit du
+ * club appelé dans l'URL. Ce qui pointait vers lui — équipes, coachs affiliés,
+ * demandes d'affiliation — est repointé avant sa suppression.
+ */
+export const mergeClubSchema = z.object({ sourceId: z.string().uuid() });
+export type MergeClubInput = z.infer<typeof mergeClubSchema>;
 
 // Gestion des équipes par le club
 export const createClubTeamSchema = z.object({
@@ -1061,6 +1244,11 @@ export interface UserDto {
   level?: CoachLevelDto;
   /** Coach : ses casquettes (tableau vide = simple coach) */
   categories?: CoachCategory[];
+  /**
+   * Coach : profil public dans la liste des coachs de sa catégorie. À `false`,
+   * les coachs qu'il n'a pas encore croisés n'y voient que son surnom.
+   */
+  profilePublic?: boolean;
   /** Coach : matchs terminés par les équipes qu'il encadre — son compteur d'expérience */
   matchesPlayed?: number;
 }
@@ -1109,6 +1297,12 @@ export interface TeamDto {
   id: string;
   name: string;
   city: string;
+  /**
+   * Écusson de l'équipe, servi depuis le volume d'uploads. `null` quand aucun
+   * n'a été envoyé : l'affichage retombe alors sur les initiales, qui restent
+   * le repli partout où ce logo apparaît.
+   */
+  logoUrl: string | null;
 }
 
 /**
@@ -1139,6 +1333,28 @@ export interface CoachTeamDto {
   stadium: string | null;
   /** Niveau réel de l'équipe (D2, R1…) — null tant qu'il n'a pas été réglé */
   level: DivisionLevel | null;
+  /** Écusson de l'équipe (null tant qu'aucun n'a été envoyé) */
+  logoUrl: string | null;
+  /** Club déclaré auquel elle se rattache — null pour une équipe sans club */
+  club: DeclaredClubDto | null;
+}
+
+/**
+ * Un club tel que l'application le connaît : nommé une fois, retrouvé ensuite
+ * par les autres coachs du même club.
+ *
+ * `hasAccount` distingue les clubs créés par un administrateur — qui ont un
+ * espace de gestion et un code d'affiliation — de ceux simplement DÉCLARÉS par
+ * un coach. Les seconds n'existent que pour être reconnus et partagés ; c'est
+ * ce qui permet à un club amateur absent de tout annuaire d'exister ici sans
+ * qu'on lui fabrique un compte dont personne n'a demandé les clés.
+ */
+export interface DeclaredClubDto {
+  id: string;
+  name: string;
+  city: string;
+  stadium: string | null;
+  hasAccount: boolean;
 }
 
 /** Proposition d'un coach adverse sur une annonce (visible par l'émetteur) */
@@ -1195,6 +1411,14 @@ export interface AnnouncementDto {
   teamsWanted: number;
   /** Équipes déjà acceptées — ce qui reste se déduit */
   teamsAccepted: number;
+  /**
+   * Plateau clos sans avoir fait le plein : le jour du match est arrivé avec
+   * deux ou trois équipes au lieu de quatre. Il se joue tel quel, et les
+   * rencontres qu'il contient rapportent leurs points normalement — d'où le
+   * besoin de le NOMMER plutôt que de le laisser passer pour un plateau
+   * complet.
+   */
+  plateauReduced: boolean;
   /**
    * Coach qui représente l'équipe émettrice — de quoi ouvrir sa carte depuis
    * l'annonce. Publier, c'est se montrer : le nom sort de l'anonymat le temps
@@ -1257,6 +1481,36 @@ export interface CategoryStatsDto {
   category: AnnouncementCategory | null;
   teamsInCategory: number;
   announcementsInCategory: number;
+  /** Tournois ouverts du secteur qui accueillent ma catégorie */
+  tournamentsInCategory: number;
+}
+
+/**
+ * Un coach de ma catégorie, dans mon secteur — la liste qu'ouvre le bandeau du
+ * tableau de bord.
+ *
+ * Son identité y est visible sans qu'on se soit encore croisés : c'est un
+ * annuaire de voisinage, limité à MON groupe d'âges et à MON périmètre. La
+ * règle de visibilité des cartes de coach (`canSeeCoachCard`) a été élargie en
+ * conséquence — voir son commentaire.
+ */
+export interface CategoryCoachDto {
+  id: string;
+  nickname: string;
+  /**
+   * Profil public. À `false`, TOUT le reste de cette fiche est vide : le coach a
+   * choisi de n'apparaître ici que sous son surnom. Ce n'est pas au client de
+   * décider quoi masquer — le serveur ne l'envoie pas.
+   */
+  isPublic: boolean;
+  avatarUrl: string | null;
+  /** L'équipe qui le situe : celle de MA catégorie qu'il encadre (null si profil privé) */
+  team: TeamDto | null;
+  /** Distance entre mon point de balayage et la ville de son équipe (null si inconnue ou profil privé) */
+  distanceKm: number | null;
+  level: CoachLevelDto | null;
+  /** A-t-il une annonce ouverte en ce moment ? De quoi aller lui répondre */
+  hasOpenAnnouncement: boolean;
 }
 
 export interface RadarDto {
@@ -1307,6 +1561,14 @@ export interface MatchDto {
    * impossible à distance.
    */
   encounterToken: string | null;
+  /**
+   * Plateau dont ce match fait partie (≤ U11), `null` pour un amical ordinaire.
+   * `teams` compte les équipes réunies, hôte comprise ; en dessous de `wanted`,
+   * le plateau est RÉDUIT — il se joue, et le scan de rencontre y donne les
+   * mêmes points qu'ailleurs. C'est ce qu'il faut dire au bord du terrain à
+   * deux coachs qui pourraient croire leur déplacement non comptabilisé.
+   */
+  plateau: { teams: number; wanted: number } | null;
   /** Désistement : équipe qui a renoncé, et son motif (null si le match tient toujours) */
   withdrawnByTeamId: string | null;
   withdrawalReason: WithdrawalReason | null;
@@ -1480,9 +1742,45 @@ export interface AdminAccountDto {
 }
 
 /**
- * Un signalement (bug ou suggestion). Réservé à l'admin — l'auteur n'a aucune
- * vue en retour sur ce qu'il a envoyé, ni sur son statut : c'est un canal vers
- * l'éditeur, pas un historique personnel.
+ * Un club vu de l'administrateur : la ligne de la table, plus ce qui s'y
+ * accroche. Les compteurs sont là pour une seule décision — celle de fusionner
+ * deux écritures du même club : ils disent ce qui suivra le club gardé et donc
+ * ce qu'on perdrait à se tromper de sens.
+ */
+export interface AdminClubDto {
+  id: string;
+  name: string;
+  city: string;
+  stadium: string | null;
+  /** Club créé par un admin (compte de connexion) vs simplement déclaré par un coach */
+  hasAccount: boolean;
+  /** Email du compte de connexion — null pour un club déclaré */
+  ownerEmail: string | null;
+  teamsCount: number;
+  /** Coachs affiliés (users.clubId) */
+  coachesCount: number;
+  /** Demandes d'affiliation en attente */
+  pendingRequests: number;
+  createdAt: string;
+}
+
+/**
+ * Des clubs qui n'en sont probablement qu'un : même ville, noms qui se
+ * ressemblent. Un groupe est une QUESTION posée à l'admin, jamais un verdict —
+ * c'est lui qui décide lequel garder, ou qu'il s'agit bien de deux clubs.
+ */
+export interface AdminClubDuplicateGroupDto {
+  /** Deux clubs au moins, le plus fourni en premier */
+  clubs: AdminClubDto[];
+}
+
+/**
+ * Un signalement (bug ou suggestion), réservé aux coachs contributeurs.
+ *
+ * Le statut et la note de triage restent à l'admin ; ce que le contributeur
+ * retrouve, lui, c'est le FIL ouvert avec l'équipe TeamNexus au moment de
+ * l'envoi — c'est là que la réponse arrive, dans sa messagerie, et non dans un
+ * écran « mes signalements » qu'il faudrait aller consulter.
  */
 export interface FeedbackDto {
   id: string;
@@ -1492,6 +1790,8 @@ export interface FeedbackDto {
   adminNote: string | null;
   createdAt: string;
   handledAt: string | null;
+  /** Fil ouvert avec l'équipe TeamNexus — null si aucun compte admin n'existe */
+  conversationId: string | null;
 }
 
 /** Vue admin : la même chose, avec l'auteur — l'inbox mélange tous les coachs */
@@ -1499,14 +1799,33 @@ export interface AdminFeedbackDto extends FeedbackDto {
   author: CoachRefDto;
 }
 
+/**
+ * Un message du fil d'un signalement, vu de l'admin. `fromAdmin` distingue les
+ * réponses de l'équipe du signalement lui-même et de ce que le contributeur
+ * écrit ensuite — l'admin doit voir qui parle sans avoir à deviner.
+ */
+export interface FeedbackThreadMessageDto {
+  id: string;
+  body: string;
+  kind: MessageKind;
+  fromAdmin: boolean;
+  createdAt: string;
+}
+
 // ---------- Espace club ----------
 export interface ClubDto {
   id: string;
   name: string;
   city: string;
+  /** Stade du club — repris par ses équipes */
+  stadium: string | null;
   email: string | null;
-  /** Code partagé aux coachs existants pour rejoindre le club (affiliation) */
-  affiliationCode: string;
+  /**
+   * Code partagé aux coachs existants pour rejoindre le club (affiliation).
+   * `null` pour un club simplement déclaré par un coach : sans compte pour
+   * approuver les demandes, un code ne mènerait nulle part.
+   */
+  affiliationCode: string | null;
 }
 
 /** Une équipe du club (vue club) : encadrants et effectif */
@@ -1581,6 +1900,8 @@ export interface CoachRefDto {
 export interface CoachCardDto extends CoachRefDto {
   /** Club, ou à défaut l'équipe — le libellé est décidé par le serveur */
   clubLabel: string | null;
+  /** Écusson de son équipe principale, affiché à côté du libellé (null s'il n'y en a pas) */
+  clubLogoUrl: string | null;
   /** Catégorie d'âge de son équipe principale (U13…), null si non renseignée */
   teamCategory: string | null;
   /** Niveau de jeu de son équipe principale (D2, R1…), null si non réglé */

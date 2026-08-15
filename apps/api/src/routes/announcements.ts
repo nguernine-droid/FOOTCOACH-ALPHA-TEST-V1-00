@@ -23,7 +23,7 @@ import {
   type TeamDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, matches, teamCoaches, teams, users } from "../db/schema.js";
+import { announcementResponses, matchAnnouncements, matches, teamCoaches, teams, tournaments, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
@@ -31,7 +31,7 @@ import { loadOrigin } from "../lib/coachOrigin.js";
 import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
 import { tournamentsInRadar } from "./tournaments.js";
 import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard.js";
-import { avatarUrlOf } from "./auth.js";
+import { avatarUrlOf, toTeamDto } from "./auth.js";
 import { markRead, openConversation, postSystemMessage } from "../lib/conversations.js";
 
 function toDto(
@@ -48,6 +48,7 @@ function toDto(
 ): AnnouncementDto {
   const { announcement, team } = row;
   const plateau = isPlateauCategory(announcement.category);
+  const teamsAccepted = acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length;
   // Position relative du LIEU DU MATCH, pas du siège du club : une annonce
   // peut se jouer loin de la ville de l'équipe qui la publie, et c'est le
   // déplacement réel qui intéresse le coach. `null` si la ville du match est
@@ -57,7 +58,7 @@ function toDto(
   const bearing = myCoords && venueCoords ? bearingDeg(myCoords, venueCoords) : null;
   return {
     id: announcement.id,
-    team: { id: team.id, name: team.name, city: team.city },
+    team: toTeamDto(team),
     date: announcement.date,
     time: announcement.time.slice(0, 5),
     city: announcement.city,
@@ -72,7 +73,11 @@ function toDto(
     viewCount: announcement.viewCount,
     plateau,
     teamsWanted: plateau ? PLATEAU_TEAMS_WANTED : 1,
-    teamsAccepted: acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length,
+    teamsAccepted,
+    // Plateau clos sans avoir fait le plein : il se joue à deux ou trois
+    // équipes. Déduit et non stocké — c'est exactement « pourvu, mais pas
+    // complet », et une colonne de plus pourrait mentir sur ce couple-là.
+    plateauReduced: plateau && announcement.status === "matched" && teamsAccepted < PLATEAU_TEAMS_WANTED,
     coach: coach ?? null,
     createdAt: announcement.createdAt.toISOString(),
     matchId: link?.matchId ?? null,
@@ -103,7 +108,7 @@ async function loadMatchLinks(announcementIds: string[]) {
   for (const { match, opponent } of rows) {
     links.set(match.announcementId, {
       matchId: match.id,
-      opponentTeam: { id: opponent.id, name: opponent.name, city: opponent.city },
+      opponentTeam: toTeamDto(opponent),
     });
   }
   return links;
@@ -131,7 +136,7 @@ async function loadResponses(announcementIds: string[]) {
     const list = byAnnouncement.get(response.announcementId) ?? [];
     list.push({
       id: response.id,
-      team: { id: team.id, name: team.name, city: team.city },
+      team: toTeamDto(team),
       // Références de l'équipe qui propose, portées jusqu'à l'émetteur : c'est
       // lui qui doit voir, avant d'accepter, que des U15 féminines répondent à
       // son annonce U12-U13 masculine.
@@ -449,7 +454,12 @@ export function announcementRoutes(app: FastifyInstance) {
     { preHandler: requireRole("coach") },
     async (request): Promise<CategoryStatsDto> => {
       const myTeamId = request.user.teamId;
-      const empty: CategoryStatsDto = { category: null, teamsInCategory: 0, announcementsInCategory: 0 };
+      const empty: CategoryStatsDto = {
+        category: null,
+        teamsInCategory: 0,
+        announcementsInCategory: 0,
+        tournamentsInCategory: 0,
+      };
       if (!myTeamId) return empty;
 
       const [myTeam] = await db.select().from(teams).where(eq(teams.id, myTeamId));
@@ -492,7 +502,21 @@ export function announcementRoutes(app: FastifyInstance) {
         (a) => announcementCategoryOf(a.category) === category && inPerimeter(a.city),
       ).length;
 
-      return { category, teamsInCategory, announcementsInCategory };
+      // Les tournois du secteur ouverts à ma catégorie. Un tournoi en couvre
+      // souvent plusieurs (U12 et U13 le même week-end) : il compte dès que
+      // l'UNE d'elles tombe dans mon groupe d'âges.
+      const openTournaments = await db
+        .select({ city: tournaments.city, category: tournaments.category, teamId: tournaments.teamId })
+        .from(tournaments)
+        .where(and(eq(tournaments.status, "open"), gte(tournaments.date, today())));
+      const tournamentsInCategory = openTournaments.filter(
+        (t) =>
+          !unplayable.includes(t.teamId) &&
+          t.category.some((c) => announcementCategoryOf(c) === category) &&
+          inPerimeter(t.city),
+      ).length;
+
+      return { category, teamsInCategory, announcementsInCategory, tournamentsInCategory };
     },
   );
 

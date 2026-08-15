@@ -25,6 +25,7 @@ import { MAX_POSTER_BYTES } from "../lib/images.js";
 import { totalPointsOf } from "../lib/points.js";
 import { tokensMatch } from "../lib/tokens.js";
 import { notifyTournamentSos } from "../lib/push.js";
+import { toTeamDto } from "./auth.js";
 
 type TournamentRow = { tournament: typeof tournaments.$inferSelect; team: typeof teams.$inferSelect };
 
@@ -51,7 +52,7 @@ function toRegistrationDto(
 ): TournamentRegistrationDto {
   return {
     id: registration.id,
-    team: { id: team.id, name: team.name, city: team.city },
+    team: toTeamDto(team),
     status: registration.status,
     checkedInAt: registration.checkedInAt?.toISOString() ?? null,
     createdAt: registration.createdAt.toISOString(),
@@ -93,7 +94,7 @@ export function toTournamentDto(
   const mine = registrations.find((r) => r.registration.teamId === myTeamId) ?? null;
   return {
     id: tournament.id,
-    team: { id: team.id, name: team.name, city: team.city },
+    team: toTeamDto(team),
     name: tournament.name,
     date: tournament.date,
     endDate: tournament.endDate,
@@ -438,6 +439,7 @@ export function tournamentRoutes(app: FastifyInstance) {
         tournamentName: tournament.name,
         organizerTeamName: organizer.name,
         category: tournament.category.join(", "),
+        categories: tournament.category,
         city: tournament.city,
         date: tournament.date,
         venue: cityCoords(tournament.city),

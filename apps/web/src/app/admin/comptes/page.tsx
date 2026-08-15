@@ -76,7 +76,7 @@ function AccountCard({ account, onChanged }: { account: AdminAccountDto; onChang
   const [confirmDelete, setConfirmDelete] = useState(false);
   const meta = ROLE_META[account.role];
   const manageable = account.role !== "admin";
-  const deletable = manageable && account.role !== "coach";
+  const deletable = manageable && account.role !== "club";
 
   async function action(fn: () => Promise<void>) {
     setBusy(true);
@@ -209,6 +209,12 @@ function AccountCard({ account, onChanged }: { account: AdminAccountDto; onChang
           {deletable &&
             (confirmDelete ? (
               <>
+                {account.role === "coach" && (
+                  <p className="col-span-2 text-[11px] font-semibold text-coral bg-coral-soft rounded-lg px-3 py-2">
+                    Son équipe part avec lui : matchs, annonces, tournois organisés et agenda seront effacés
+                    définitivement, y compris l&apos;historique partagé avec les équipes adverses.
+                  </p>
+                )}
                 <Button
                   size="sm"
                   variant="danger"

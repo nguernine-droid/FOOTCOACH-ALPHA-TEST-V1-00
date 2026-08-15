@@ -10,16 +10,19 @@ import {
   isV1Role,
   levelForPoints,
   updateCoachCategoriesSchema,
+  updateProfileVisibilitySchema,
   updateProfileSchema,
   loginSchema,
   refreshSchema,
   type AuthResponseDto,
   type CoachLocationDto,
   type CoachTeamDto,
+  type TeamDto,
   type UserDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
 import {
+  clubs,
   joinRequests,
   loginEvents,
   passwordResetRequests,
@@ -31,9 +34,11 @@ import {
 import { requireAuth, signAccessToken, type AuthUser } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
+import { toDeclaredClubDto } from "../lib/declaredClubs.js";
 import { originOf } from "../lib/coachOrigin.js";
 import { matchesPlayedBy } from "../lib/coachStats.js";
 import { totalPointsOf } from "../lib/points.js";
+import { notifyCoachCategoriesAdopted } from "../lib/push.js";
 import { authRateLimit } from "../lib/rateLimits.js";
 import {
   emailKey,
@@ -79,25 +84,56 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
       gender: teams.gender,
       stadium: teams.stadium,
       level: teams.level,
+      logoPath: teams.logoPath,
+      // Le club rattaché voyage avec l'équipe : le profil l'affiche, et le
+      // relire équipe par équipe aurait fait une requête par ligne.
+      club: clubs,
     })
     .from(teamCoaches)
     .innerJoin(teams, eq(teamCoaches.teamId, teams.id))
+    .leftJoin(clubs, eq(clubs.id, teams.clubId))
     .where(eq(teamCoaches.coachId, coachId))
     .orderBy(asc(teamCoaches.createdAt));
   // Tri stable : équipe(s) où il est "principal" avant celles où il est "adjoint"
   return rows
     .sort((a, b) => (a.role === "principal" ? 0 : 1) - (b.role === "principal" ? 0 : 1))
-    .map((row) => ({
+    .map(({ logoPath, club, ...row }) => ({
       ...row,
       category: asMatchCategory(row.category),
       gender: asMatchGender(row.gender),
       level: asDivisionLevel(row.level),
+      logoUrl: uploadUrlOf(logoPath),
+      club: club ? toDeclaredClubDto(club) : null,
     }));
 }
 
-/** URL publique d'une photo de profil (servie par l'API, proxifiée sous /api) */
-export function avatarUrlOf(avatarPath: string | null): string | null {
-  return avatarPath ? `/api/uploads/${avatarPath}` : null;
+/**
+ * URL publique d'un fichier du volume d'uploads (servi par l'API, proxifié sous
+ * /api). Photos de profil, écussons d'équipe et affiches de tournoi y passent —
+ * une seule façon de construire ces adresses.
+ */
+export function uploadUrlOf(fileName: string | null): string | null {
+  return fileName ? `/api/uploads/${fileName}` : null;
+}
+
+/** URL publique d'une photo de profil */
+export const avatarUrlOf = uploadUrlOf;
+
+/** URL publique de l'écusson d'une équipe */
+export const teamLogoUrlOf = uploadUrlOf;
+
+/**
+ * L'équipe telle qu'elle voyage partout : annonces, matchs, tournois, fiches de
+ * relations. Écrite une fois — c'est le seul moyen de garantir que l'écusson
+ * suit l'équipe sur tous les écrans où son nom apparaît.
+ */
+export function toTeamDto(team: {
+  id: string;
+  name: string;
+  city: string;
+  logoPath: string | null;
+}): TeamDto {
+  return { id: team.id, name: team.name, city: team.city, logoUrl: teamLogoUrlOf(team.logoPath) };
 }
 
 /**
@@ -182,6 +218,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
           points,
           level: levelForPoints(points),
           categories: asCoachCategories(user.coachCategories),
+          profilePublic: user.profilePublic,
           matchesPlayed,
           notifications: {
             newAnnouncement: user.notifyNewAnnouncement,
@@ -364,11 +401,48 @@ export function authRoutes(app: FastifyInstance) {
   app.patch("/me/categories", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
     if (request.user.role !== "coach") throw new HttpError(403, "Réservé aux coachs");
     const input = updateCoachCategoriesSchema.parse(request.body);
+    const wanted = asCoachCategories(input.categories);
+    // Lues AVANT l'écriture : c'est l'écart entre les deux qui dit ce que le
+    // coach vient de prendre, et donc s'il y a lieu de le remercier.
+    const [before] = await db
+      .select({ categories: users.coachCategories })
+      .from(users)
+      .where(eq(users.id, request.user.id));
     const [updated] = await db
       .update(users)
       // Dédoublonné à l'entrée : deux fois « joker » dans le corps de la requête
       // ne doit pas se retrouver tel quel en base.
-      .set({ coachCategories: asCoachCategories(input.categories) })
+      .set({ coachCategories: wanted })
+      .where(eq(users.id, request.user.id))
+      .returning();
+
+    /**
+     * Une casquette PRISE mérite un merci ; une casquette rendue, non — et un
+     * enregistrement qui ne change rien (le formulaire renvoyé tel quel) ne
+     * doit rien envoyer du tout. D'où la comparaison avec l'état d'avant plutôt
+     * qu'un envoi à chaque passage.
+     */
+    const had = asCoachCategories(before?.categories);
+    notifyCoachCategoriesAdopted({
+      coachId: request.user.id,
+      adopted: wanted.filter((c) => !had.includes(c)),
+    });
+    return toUserDto(updated);
+  });
+
+  /**
+   * Profil public ou privé dans la liste des coachs de sa catégorie.
+   *
+   * Route à part, comme les casquettes et pour la même raison : se retirer d'une
+   * liste est un geste qui doit prendre effet immédiatement, sans attendre
+   * l'enregistrement d'un formulaire d'identité.
+   */
+  app.patch("/me/visibility", { preHandler: requireAuth }, async (request): Promise<UserDto> => {
+    if (request.user.role !== "coach") throw new HttpError(403, "Réservé aux coachs");
+    const input = updateProfileVisibilitySchema.parse(request.body);
+    const [updated] = await db
+      .update(users)
+      .set({ profilePublic: input.profilePublic })
       .where(eq(users.id, request.user.id))
       .returning();
     return toUserDto(updated);

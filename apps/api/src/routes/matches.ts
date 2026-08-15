@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { alias } from "drizzle-orm/pg-core";
-import { and, desc, eq, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   idParamSchema,
   confirmEncounterSchema,
@@ -10,6 +10,7 @@ import {
   levelForPoints,
   withdrawMatchSchema,
   MATCH_POINTS,
+  PLATEAU_TEAMS_WANTED,
   POINTS_COOLDOWN_DAYS,
   type EncounterResultDto,
   type CoachRefDto,
@@ -26,6 +27,7 @@ import { pairOnCooldown, totalPointsOf } from "../lib/points.js";
 import { tokensMatch } from "../lib/tokens.js";
 import { notifyScoreRecorded, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
 import { representativeCoachesOf } from "../lib/coachCard.js";
+import { toTeamDto } from "./auth.js";
 
 const homeTeam = alias(teams, "home_team");
 const awayTeam = alias(teams, "away_team");
@@ -74,15 +76,52 @@ function encounterValidationExpired(match: typeof matches.$inferSelect): boolean
   return Date.now() - kickoff > ENCOUNTER_VALIDATION_WINDOW_HOURS * 3600_000;
 }
 
+/**
+ * Les plateaux dont ces matchs font partie, indexés par annonce : combien
+ * d'équipes réunies, combien cherchées.
+ *
+ * Nécessaire pour dire au bord du terrain « plateau réduit — 2 équipes » : sans
+ * ça, deux coachs qui se retrouvent seuls peuvent croire que leur déplacement
+ * ne compte pas, et repartir sans avoir scanné. L'hôte est comptée avec les
+ * équipes acceptées — c'est le nombre d'équipes PRÉSENTES qui parle.
+ */
+async function loadPlateaus(
+  announcementIds: string[],
+): Promise<Map<string, { teams: number; wanted: number }>> {
+  const byAnnouncement = new Map<string, { teams: number; wanted: number }>();
+  const ids = [...new Set(announcementIds)];
+  if (ids.length === 0) return byAnnouncement;
+  const rows = await db
+    .select({
+      id: matchAnnouncements.id,
+      category: matchAnnouncements.category,
+      accepted: sql<number>`(
+        select count(*)::int from announcement_responses r
+        where r.announcement_id = ${matchAnnouncements.id} and r.status = 'accepted'
+      )`,
+    })
+    .from(matchAnnouncements)
+    .where(inArray(matchAnnouncements.id, ids));
+  for (const row of rows) {
+    if (!isPlateauCategory(row.category)) continue;
+    byAnnouncement.set(row.id, {
+      teams: row.accepted + 1,
+      wanted: PLATEAU_TEAMS_WANTED + 1,
+    });
+  }
+  return byAnnouncement;
+}
+
 function toDto(
   { match, home, away }: MatchRow,
   viewerTeamId: string | null,
   coaches?: Map<string, CoachRefDto>,
+  plateaus?: Map<string, { teams: number; wanted: number }>,
 ): MatchDto {
   return {
     id: match.id,
-    homeTeam: { id: home.id, name: home.name, city: home.city },
-    awayTeam: { id: away.id, name: away.name, city: away.city },
+    homeTeam: toTeamDto(home),
+    awayTeam: toTeamDto(away),
     homeCoach: coaches?.get(home.id) ?? null,
     awayCoach: coaches?.get(away.id) ?? null,
     date: match.date,
@@ -101,6 +140,7 @@ function toDto(
     // explicitement à l'afficher (POST /matches/:id/encounter-qr), et qui est
     // alors enregistré comme celui qui a tenu l'écran.
     encounterToken: null,
+    plateau: plateaus?.get(match.announcementId) ?? null,
     withdrawnByTeamId: match.withdrawnByTeamId,
     withdrawalReason: match.withdrawalReason,
     withdrawalDetails: match.withdrawalDetails,
@@ -131,8 +171,11 @@ export function matchRoutes(app: FastifyInstance) {
     // Une seule lecture pour toutes les équipes de la liste : le coach d'en
     // face s'affiche sur chaque carte, et une requête par match aurait suffi à
     // rendre l'écran lent au bout d'une saison.
-    const coaches = await representativeCoachesOf(rows.flatMap((r) => [r.home.id, r.away.id]));
-    return rows.map((r) => toDto(r, teamId, coaches));
+    const [coaches, plateaus] = await Promise.all([
+      representativeCoachesOf(rows.flatMap((r) => [r.home.id, r.away.id])),
+      loadPlateaus(rows.map((r) => r.match.announcementId)),
+    ]);
+    return rows.map((r) => toDto(r, teamId, coaches, plateaus));
   });
 
   /**
@@ -150,8 +193,11 @@ export function matchRoutes(app: FastifyInstance) {
     const { id } = idParamSchema.parse(request.params);
     const row = await getMatchOr404(id);
     assertCoachOfMatch(row.match, request.user.teamId);
-    const coaches = await representativeCoachesOf([row.home.id, row.away.id]);
-    return toDto(row, request.user.teamId, coaches);
+    const [coaches, plateaus] = await Promise.all([
+      representativeCoachesOf([row.home.id, row.away.id]),
+      loadPlateaus([row.match.announcementId]),
+    ]);
+    return toDto(row, request.user.teamId, coaches, plateaus);
   });
 
   /**
