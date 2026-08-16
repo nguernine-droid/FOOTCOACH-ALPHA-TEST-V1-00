@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, ChevronRight, MapPin, Megaphone, Trophy, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronRight, CircleUserRound, Landmark, MapPin, Megaphone, Trophy } from "lucide-react";
 import {
-  categoryLabel,
   type ActivityDto,
   type AnnouncementDto,
-  type CategoryStatsDto,
   type MatchDto,
+  type PlatformStatsDto,
   type PublicationDto,
   type TournamentDto,
 } from "@teamnexus/shared";
@@ -42,7 +41,7 @@ export default function CoachDashboard() {
   const [tournaments, setTournaments] = useState<TournamentDto[]>([]);
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
   const [publications, setPublications] = useState<PublicationDto[]>([]);
-  const [categoryStats, setCategoryStats] = useState<CategoryStatsDto | null>(null);
+  const [platformStats, setPlatformStats] = useState<PlatformStatsDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadAll = useCallback(() => {
@@ -56,11 +55,11 @@ export default function CoachDashboard() {
       // Les billets des contributeurs — en repli silencieux : un panneau
       // d'affichage vide ne doit pas faire tomber le tableau de bord.
       api<PublicationDto[]>("/publications").catch(() => [] as PublicationDto[]),
-      // Le bandeau du haut — jamais bloquant : sans équipe active ou sans
-      // catégorie réglée, il reste simplement absent.
-      api<CategoryStatsDto>("/announcements/category-stats").catch(() => null),
+      // Le bandeau du haut — jamais bloquant : trois chiffres d'ambiance, pas
+      // une donnée dont dépend le reste de l'écran.
+      api<PlatformStatsDto>("/stats/platform").catch(() => null),
     ])
-      .then(([m, a, act, t, pubs, catStats]) => {
+      .then(([m, a, act, t, pubs, stats]) => {
         setMatches(m);
         // En cours seulement : une annonce matchée devient un match, déjà
         // montré par la carte du prochain match — la répéter ici ferait doublon.
@@ -74,7 +73,7 @@ export default function CoachDashboard() {
         // Les cinq derniers : le tableau de bord donne le fil de l'actualité,
         // l'onglet Annonces garde le panneau entier.
         setPublications(pubs.slice(0, 5));
-        setCategoryStats(catStats);
+        setPlatformStats(stats);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -124,37 +123,52 @@ export default function CoachDashboard() {
 
   return (
     <div className="space-y-4">
-      {/* Bandeau : où en est ma catégorie dans le secteur, avant même d'ouvrir
-          le radar. Absent tant que l'équipe active n'a pas de catégorie
-          réglée — rien à situer sans elle. */}
-      {categoryStats?.category && (
-        <section
-          className="card p-4 flex flex-wrap items-center gap-x-6 gap-y-3 animate-rise-in"
-          aria-label="Ma catégorie dans le secteur"
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
-              <Users size={16} aria-hidden />
-            </span>
-            <p className="text-xs text-ink-soft font-semibold leading-tight">
-              <span className="block text-lg font-black text-ink leading-none tabular-nums">
-                {categoryStats.teamsInCategory}
-              </span>
-              équipe{categoryStats.teamsInCategory > 1 ? "s" : ""} {categoryLabel(categoryStats.category)} dans le secteur
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5">
+      {/* Bandeau : l'application en trois chiffres, avant même d'ouvrir le
+          radar. Chaque carré mène à l'écran qu'il annonce. */}
+      {platformStats && (
+        <section className="grid grid-cols-3 gap-2.5 animate-rise-in" aria-label="TeamNexus en chiffres">
+          <Link
+            href="/coach/coachs"
+            className="card p-3 flex flex-col items-center text-center gap-1.5 transition hover:border-accent/40 active:bg-accent-surface"
+          >
             <span className="w-9 h-9 rounded-lg bg-accent-surface text-accent flex items-center justify-center shrink-0">
-              <Megaphone size={16} aria-hidden />
+              <CircleUserRound size={16} aria-hidden />
             </span>
-            <p className="text-xs text-ink-soft font-semibold leading-tight">
-              <span className="block text-lg font-black text-ink leading-none tabular-nums">
-                {categoryStats.announcementsInCategory}
-              </span>
-              annonce{categoryStats.announcementsInCategory > 1 ? "s" : ""} {categoryLabel(categoryStats.category)} en ce
-              moment
-            </p>
-          </div>
+            <span className="block text-lg font-black text-ink leading-none tabular-nums">
+              {platformStats.coachesCount}
+            </span>
+            <span className="text-[11px] text-ink-soft font-semibold leading-tight">
+              coach{platformStats.coachesCount > 1 ? "s" : ""} inscrit{platformStats.coachesCount > 1 ? "s" : ""}
+            </span>
+          </Link>
+          <Link
+            href="/coach/announcements"
+            className="card p-3 flex flex-col items-center text-center gap-1.5 transition hover:border-success/40 active:bg-success-surface"
+          >
+            <span className="w-9 h-9 rounded-lg bg-success-surface text-success flex items-center justify-center shrink-0">
+              <Landmark size={16} aria-hidden />
+            </span>
+            <span className="block text-lg font-black text-ink leading-none tabular-nums">
+              {platformStats.matchesCount}
+            </span>
+            <span className="text-[11px] text-ink-soft font-semibold leading-tight">
+              rencontre{platformStats.matchesCount > 1 ? "s" : ""}
+            </span>
+          </Link>
+          <Link
+            href="/coach/announcements?cat=tournaments"
+            className="card p-3 flex flex-col items-center text-center gap-1.5 transition hover:border-sun/40 active:bg-sun-soft"
+          >
+            <span className="w-9 h-9 rounded-lg bg-sun-soft text-sun flex items-center justify-center shrink-0">
+              <Trophy size={16} aria-hidden />
+            </span>
+            <span className="block text-lg font-black text-ink leading-none tabular-nums">
+              {platformStats.tournamentsCount}
+            </span>
+            <span className="text-[11px] text-ink-soft font-semibold leading-tight">
+              tournoi{platformStats.tournamentsCount > 1 ? "s" : ""}
+            </span>
+          </Link>
         </section>
       )}
 

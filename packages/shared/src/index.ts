@@ -1485,6 +1485,13 @@ export interface CategoryStatsDto {
   tournamentsInCategory: number;
 }
 
+/** Le bandeau du tableau de bord : trois chiffres à l'échelle de toute l'application, pas de mon seul secteur */
+export interface PlatformStatsDto {
+  coachesCount: number;
+  matchesCount: number;
+  tournamentsCount: number;
+}
+
 /**
  * Un coach de ma catégorie, dans mon secteur — la liste qu'ouvre le bandeau du
  * tableau de bord.
