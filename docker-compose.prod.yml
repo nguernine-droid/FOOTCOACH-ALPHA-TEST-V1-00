@@ -2,10 +2,24 @@
 # Scalabilité : docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --scale api=3
 name: footcoach
 
+# Journaux : sans plafond, le pilote json-file de Docker écrit sans fin et finit
+# par remplir le disque de l'hôte — une panne franche, à l'heure que le trafic
+# choisit. Trois services, même règle.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
     restart: unless-stopped
-    ports: []
+    logging: *logging
+    # `!override` et non `[]` : compose FUSIONNE les séquences par défaut, si
+    # bien qu'une liste vide n'efface rien du tout. Le 127.0.0.1:5433 du fichier
+    # de développement survivait donc en production — la protection était écrite
+    # mais inopérante, ce qui est pire que pas de protection : on la croit là.
+    ports: !override []
     # `?` : compose refuse de démarrer si la variable est absente ou vide.
     # Le mot de passe par défaut du fichier de développement n'a rien à faire
     # sur une base exposée.
@@ -16,6 +30,7 @@ services:
     build:
       target: prod
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
       # Secrets obligatoires : sans eux la pile ne démarre pas. Les générer une
@@ -49,6 +64,19 @@ services:
     build:
       target: prod
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
     volumes: []
+    # AUCUN port publié sur l'hôte en production.
+    #
+    # Le reverse proxy en façade est membre du réseau `footcoach` : il joint le
+    # conteneur par son nom (`footcoach-web-1:3000`), sans passer par l'hôte. Un
+    # port publié n'ajoutait donc rien — mais il servait l'application en clair
+    # sur http://<ip-du-vps>:3002, hors TLS et hors du nom de domaine : mots de
+    # passe et jetons de session en clair sur le réseau pour qui connaissait
+    # l'adresse. Les règles ufw ne l'auraient pas empêché, Docker écrivant ses
+    # propres règles iptables en amont.
+    #
+    # `!override` REMPLACE la liste du fichier de base au lieu de la fusionner.
+    ports: !override []
