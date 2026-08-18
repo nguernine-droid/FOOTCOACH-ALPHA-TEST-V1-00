@@ -70,7 +70,7 @@ export const CONTACT = {
    * peuvent venir de quelqu'un qui n'en a pas — et le RGPD comme la LCEN
    * s'adressent à tout le monde, pas aux seuls inscrits.
    */
-  email: "contact@teamnexus.fr" as Fillable,
+  email: "nguernine@gmail.com" as Fillable,
   /** Signalement de contenus illicites — à défaut, `email` fait l'office */
   abuseEmail: null as Fillable,
   /** Délégué à la protection des données : non désigné, non requis ici */
