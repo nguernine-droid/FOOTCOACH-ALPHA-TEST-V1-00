@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { communeKey } from "./cityAliases.js";
 
 /**
  * Ville → département, l'annuaire jumeau de `communesCoords.json`.
@@ -29,15 +30,6 @@ const DEPARTMENTS: Record<string, string> = JSON.parse(
   fs.readFileSync(path.join(__dirname, "communeDepartments.json"), "utf-8"),
 );
 
-/** Normalisation identique à celle de `cities.ts` : les deux annuaires partagent leurs clés */
-function normalizeCity(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/\s+/g, " ");
-}
 
 /**
  * Le code du département d'une ville, ou `null` si elle est absente de
@@ -46,5 +38,8 @@ function normalizeCity(name: string): string {
  */
 export function departmentOf(city: string | null | undefined): string | null {
   if (!city) return null;
-  return DEPARTMENTS[normalizeCity(city)] ?? null;
+  // `communeKey` plutôt qu'une normalisation locale : les alias de noms
+  // abrégés sont partagés avec l'annuaire des coordonnées, et c'est ce qui
+  // maintient l'invariant énoncé plus haut.
+  return DEPARTMENTS[communeKey(city)] ?? null;
 }

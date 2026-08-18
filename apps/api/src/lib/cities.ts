@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { communeKey } from "./cityAliases.js";
 
 // Annuaire ville → coordonnées, chargé depuis `communesCoords.json` : les ~32 700
 // communes de France (source geo.api.gouv.fr, base officielle), chacune à son
@@ -18,28 +19,13 @@ const COMMUNES: Record<string, [number, number]> = JSON.parse(
   fs.readFileSync(path.join(__dirname, "communesCoords.json"), "utf-8"),
 );
 
-// Alias et arrondis conservés de l'ancien annuaire fait main : quelques
-// communes citées sous une forme abrégée (« Caluire » pour Caluire-et-Cuire,
-// « Decines » pour Décines-Charpieu) qui ne sont pas le nom officiel de la
-// commune, donc absentes de l'annuaire ci-dessus tel quel.
-const CITY_ALIASES: Record<string, [number, number]> = {
-  caluire: [45.7953, 4.8437],
-  decines: [45.7687, 4.9594],
-  valras: [43.2471, 3.2909],
-};
-
-function normalizeCity(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/\s+/g, " ");
-}
-
+// Les noms abrégés (« Caluire » pour Caluire-et-Cuire, « Valras » pour
+// Valras-Plage) passent par `communeKey`, partagé avec l'annuaire des
+// départements. Ils y renvoient vers le nom OFFICIEL plutôt que de porter leurs
+// propres coordonnées : une commune connue d'un seul des deux annuaires est
+// précisément ce que l'invariant de `districts.ts` interdit.
 export function cityCoords(name: string): { lat: number; lng: number } | null {
-  const key = normalizeCity(name);
-  const hit = CITY_ALIASES[key] ?? COMMUNES[key];
+  const hit = COMMUNES[communeKey(name)];
   return hit ? { lat: hit[0], lng: hit[1] } : null;
 }
 
