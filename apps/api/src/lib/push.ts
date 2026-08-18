@@ -625,3 +625,80 @@ export function notifyAvailabilityProposal(input: {
   );
 }
 
+/**
+ * Coachs d'une équipe abonnés à une préférence donnée. Même règle que
+ * `teamCoachesToNotify`, ouverte aux préférences du balayeur.
+ */
+async function teamCoachesForPref(
+  teamId: string,
+  pref: "notifyNewAnnouncement" | "notifyFreeWeekend",
+): Promise<string[]> {
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .innerJoin(teamCoaches, eq(teamCoaches.coachId, users.id))
+    .where(and(eq(teamCoaches.teamId, teamId), isNull(users.disabledAt), eq(users[pref], true)));
+  return [...new Set(rows.map((r) => r.id))];
+}
+
+/**
+ * Des équipes répondent aux dates que j'ai déclarées.
+ *
+ * Envoyée par le balayeur, pas par une action du coach : c'est le moment où
+ * l'application cesse d'être un endroit qu'on pense à ouvrir. Le corps donne le
+ * nombre d'équipes et la première date — de quoi décider d'ouvrir ou non sans
+ * ouvrir.
+ *
+ * Une seule notification par date, même si d'autres équipes se déclarent
+ * ensuite : l'écran porte le compte à jour, insister serait du harcèlement.
+ */
+export function notifySuggestionsReady(input: {
+  teamId: string;
+  teamName: string;
+  firstDate: string;
+  teamsCount: number;
+  datesCount: number;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      const targets = await teamCoachesForPref(input.teamId, "notifyNewAnnouncement");
+      const teamsLabel = `${input.teamsCount} équipe${input.teamsCount > 1 ? "s" : ""}`;
+      await sendToUsers(targets, {
+        title: `${teamsLabel} libre${input.teamsCount > 1 ? "s" : ""} en face`,
+        body:
+          input.datesCount > 1
+            ? `${input.teamName} — à partir du ${formatDay(input.firstDate)}, sur ${input.datesCount} de vos dates.`
+            : `${input.teamName} — le ${formatDay(input.firstDate)}.`,
+        url: "/coach/availabilities",
+        tag: `suggestions-${input.teamId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Ce week-end-là est vide et personne ne l'avait remarqué.
+ *
+ * La relance qui arrive AVANT que le coach y pense : ni match, ni annonce, ni
+ * événement d'agenda, ni date déclarée. Elle ne prétend pas connaître le
+ * calendrier officiel du district — nous ne l'avons pas — elle constate un vide
+ * dans ce que l'application sait, et pose la question.
+ *
+ * D'où sa formulation prudente : elle propose de se déclarer libre, elle
+ * n'affirme pas que l'équipe l'est.
+ */
+export function notifyFreeWeekend(input: { teamId: string; teamName: string; date: string }): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      const targets = await teamCoachesForPref(input.teamId, "notifyFreeWeekend");
+      await sendToUsers(targets, {
+        title: `Rien de prévu le ${formatDay(input.date)}`,
+        body: `${input.teamName} n'a ni match ni annonce ce jour-là. Déclarez-vous libres et voyez qui l'est aussi.`,
+        url: "/coach/availabilities",
+        tag: `weekend-${input.teamId}-${input.date}`,
+      });
+    })(),
+  );
+}

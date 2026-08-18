@@ -9,6 +9,7 @@ import { UPLOADS_DIR, ensureUploadsDir } from "./lib/uploads.js";
 import { MAX_AVATAR_BYTES } from "./lib/images.js";
 import { rateLimitOptions } from "./plugins/rateLimit.js";
 import { startSosRelay } from "./lib/sosRelay.js";
+import { startWeekendRelay } from "./lib/weekendRelay.js";
 import { runMigrations } from "./db/migrate.js";
 import { registerErrorHandler } from "./plugins/errors.js";
 import { authRoutes } from "./routes/auth.js";
@@ -158,6 +159,7 @@ try {
   // Relance des SOS restés sans réponse. Tourne dans chaque réplique : la
   // réclamation en base garantit qu'une annonce n'est relancée qu'une fois.
   startSosRelay({ info: (msg) => app.log.info(msg), error: (err) => app.log.error(err) });
+  startWeekendRelay({ info: (msg) => app.log.info(msg), error: (err) => app.log.error(err) });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

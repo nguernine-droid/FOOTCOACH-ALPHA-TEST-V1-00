@@ -1274,6 +1274,8 @@ export interface NotificationPrefsDto {
   score: boolean;
   /** Un coach m'écrit dans une conversation */
   message: boolean;
+  /** Mon équipe n'a rien de prévu sur son jour de match habituel, dans une dizaine de jours */
+  freeWeekend: boolean;
 }
 
 /** Une suggestion d'adresse renvoyée par la recherche géographique */
@@ -2203,4 +2205,83 @@ export function availabilitiesFit(
   }
 
   return true;
+}
+
+/* ───────────────────── Relance des week-ends libres ───────────────────── */
+
+/**
+ * Le jour où cette catégorie joue d'habitude : samedi pour les jeunes,
+ * dimanche à partir des U20.
+ *
+ * C'est une CONVENTION des districts, pas une règle : elle sert uniquement à
+ * choisir la date sur laquelle relancer un coach qui n'a rien déclaré. Se
+ * tromper de jour ne coûte qu'une relance à côté, et le coach garde la main —
+ * déclarer un autre jour éteint la relance pour la semaine.
+ *
+ * Renvoie le jour au sens de `Date.getUTCDay()` : 0 = dimanche, 6 = samedi.
+ */
+export function usualMatchDay(category: string | null | undefined): 0 | 6 {
+  const group = announcementCategoryOf(category);
+  if (group === null) return 6;
+  return group === "U20" || group === "Seniors" || group === "Veterans" ? 0 : 6;
+}
+
+/**
+ * Combien de jours à l'avance relancer. Dix jours et non trois : sous ce délai,
+ * un coach n'a plus le temps de convenir d'un match, de le déclarer à son
+ * district (FFF_NOTICE_DAYS) et de prévenir ses parents. Au-delà de seize, il
+ * ne sait pas encore s'il sera libre.
+ *
+ * L'intervalle couvre exactement une semaine : chaque équipe est donc relancée
+ * au plus une fois par semaine, sans qu'aucun compteur ait à le garantir.
+ */
+export const FREE_WEEKEND_LEAD_MIN_DAYS = 10;
+export const FREE_WEEKEND_LEAD_MAX_DAYS = 16;
+
+/**
+ * La date à relancer pour cette catégorie, ou `null` si aucune ne tombe dans
+ * la fenêtre. Calculée à partir d'un « aujourd'hui » passé en paramètre : une
+ * fonction qui lirait l'horloge ne se testerait pas.
+ */
+export function freeWeekendTarget(today: Date, category: string | null | undefined): string | null {
+  const day = usualMatchDay(category);
+  for (let offset = FREE_WEEKEND_LEAD_MIN_DAYS; offset <= FREE_WEEKEND_LEAD_MAX_DAYS; offset++) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + offset));
+    if (d.getUTCDay() === day) return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+/**
+ * Plage horaire des relances, heure de Paris. Rien ici n'est urgent : un coach
+ * réveillé à 3 h du matin pour un match dans dix jours désinstalle
+ * l'application, et il aura raison.
+ *
+ * Le SOS, lui, ne connaît pas ces bornes — quelqu'un est en panne.
+ */
+export const RELAY_HOUR_START = 9;
+export const RELAY_HOUR_END = 21;
+
+/**
+ * L'heure de Paris est-elle dans la plage d'envoi ?
+ *
+ * `formatToParts` et non `format` : en français, l'heure se formate « 03 h »,
+ * que `Number()` lit comme NaN — la plage était alors toujours fermée et plus
+ * aucune relance ne partait. Le découpage en parties donne le nombre seul,
+ * quelle que soit la langue.
+ *
+ * Le fuseau est celui de Paris et non celui du serveur : la prod tourne en UTC,
+ * et « 9 h » doit vouloir dire 9 h pour le coach, pas pour la machine.
+ */
+export function withinRelayHours(now: Date): boolean {
+  const parts = new Intl.DateTimeFormat("fr-FR", {
+    hour: "numeric",
+    hour12: false,
+    timeZone: "Europe/Paris",
+  }).formatToParts(now);
+  const raw = parts.find((p) => p.type === "hour")?.value;
+  if (raw === undefined) return false;
+  const hour = Number.parseInt(raw, 10);
+  if (Number.isNaN(hour)) return false;
+  return hour >= RELAY_HOUR_START && hour < RELAY_HOUR_END;
 }

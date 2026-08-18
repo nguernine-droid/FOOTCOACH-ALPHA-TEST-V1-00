@@ -33,6 +33,10 @@ export const teamCoachRole = pgEnum("team_coach_role", ["principal", "adjoint"])
 // Où une équipe accepte de jouer le jour qu'elle a déclaré libre. `any` est
 // le cas le plus fréquent : sans créneau réservé, un coach joue où on veut.
 export const availabilityVenue = pgEnum("availability_venue", ["home", "away", "any"]);
+// Nature d'une relance déjà envoyée. `suggestion` : des équipes répondent à
+// une date que j'ai déclarée. `free_weekend` : je n'ai rien déclaré et ce
+// week-end est vide dans mon agenda.
+export const availabilityNoticeKind = pgEnum("availability_notice_kind", ["suggestion", "free_weekend"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
 export const matchStatus = pgEnum("match_status", [
   "scheduled",
@@ -181,6 +185,13 @@ export const users = pgTable("users", {
   notifyResponseDecision: boolean("notify_response_decision").notNull().default(true),
   notifyScore: boolean("notify_score").notNull().default(true),
   notifyMessage: boolean("notify_message").notNull().default(true),
+  /**
+   * Relance des week-ends libres : « vos U13 n'ont pas de match le 11 octobre ».
+   * Sa propre préférence et non celle des annonces neuves : celle-ci parle de
+   * ce que font les AUTRES, celle-là de ce que fait — ou ne fait pas — ma
+   * propre équipe. Un coach peut vouloir l'une sans l'autre.
+   */
+  notifyFreeWeekend: boolean("notify_free_weekend").notNull().default(true),
   // Compte désactivé par l'admin : connexion et refresh refusés
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   // ————— Acceptation des conditions —————
@@ -1070,5 +1081,35 @@ export const teamAvailabilities = pgTable(
     uniqueIndex("team_availabilities_team_date_idx").on(t.teamId, t.date),
     // Le matcheur balaie toujours par date, à partir d'aujourd'hui
     index("team_availabilities_date_idx").on(t.date),
+  ],
+);
+
+/**
+ * Trace des relances envoyées — et VERROU du balayeur.
+ *
+ * L'insertion en `onConflictDoNothing` joue les deux rôles à la fois : seule
+ * la réplique qui gagne la ligne envoie la notification. C'est l'équivalent de
+ * l'UPDATE conditionnel sur `sos_widened_at`, en plus simple ici puisqu'il n'y
+ * a pas de ligne préexistante à marquer.
+ *
+ * Une équipe n'est donc relancée qu'une fois par date et par nature. Si trois
+ * nouvelles équipes se déclarent libres après coup, elles n'entraînent pas une
+ * seconde alerte : le coach a été prévenu, l'écran des disponibilités porte le
+ * compte à jour, et insister serait du harcèlement.
+ */
+export const availabilityNotices = pgTable(
+  "availability_notices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    kind: availabilityNoticeKind("kind").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // La contrainte qui fait le verrou : une relance par équipe, date et nature
+    uniqueIndex("availability_notices_team_date_kind_idx").on(t.teamId, t.date, t.kind),
   ],
 );

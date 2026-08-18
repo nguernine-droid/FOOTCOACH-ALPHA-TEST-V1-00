@@ -28,6 +28,7 @@ const notificationPrefsSchema = z.object({
   responseDecision: z.boolean(),
   score: z.boolean(),
   message: z.boolean(),
+  freeWeekend: z.boolean(),
 });
 
 const subscribeSchema = z.object({
@@ -115,6 +116,7 @@ export function locationRoutes(app: FastifyInstance) {
         notifyResponseDecision: prefs.responseDecision,
         notifyScore: prefs.score,
         notifyMessage: prefs.message,
+        notifyFreeWeekend: prefs.freeWeekend,
       })
       .where(eq(users.id, request.user.id))
       .returning();

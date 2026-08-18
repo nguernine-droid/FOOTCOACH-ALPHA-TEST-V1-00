@@ -222,6 +222,7 @@ export async function toUserDto(user: typeof users.$inferSelect): Promise<UserDt
           matchesPlayed,
           notifications: {
             newAnnouncement: user.notifyNewAnnouncement,
+            freeWeekend: user.notifyFreeWeekend,
             announcementResponse: user.notifyAnnouncementResponse,
             responseDecision: user.notifyResponseDecision,
             score: user.notifyScore,

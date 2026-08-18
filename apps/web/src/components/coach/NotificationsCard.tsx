@@ -26,6 +26,11 @@ const TOGGLES: { key: keyof NotificationPrefsDto; label: string; hint: string }[
   },
   { key: "score", label: "Score à valider", hint: "L'adversaire a saisi le score final" },
   { key: "message", label: "Message d'un coach", hint: "Un confrère vous écrit dans une conversation" },
+  {
+    key: "freeWeekend",
+    label: "Week-end sans match",
+    hint: "Votre équipe n'a rien de prévu dans une dizaine de jours",
+  },
 ];
 
 /** Interrupteur pleine largeur : toute la ligne est cliquable */
@@ -82,6 +87,7 @@ export function NotificationsCard({ user, onChange }: { user: UserDto; onChange:
     responseDecision: true,
     score: true,
     message: true,
+    freeWeekend: true,
   };
 
   useEffect(() => {
