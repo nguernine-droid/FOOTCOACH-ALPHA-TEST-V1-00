@@ -27,7 +27,7 @@ export function AppPreview() {
       <div className="rounded-[2rem] border-8 border-structure-1 bg-surface-1 overflow-hidden shadow-pop">
         <div className="bg-structure-1 text-on-structure px-4 pt-3 pb-4">
           <p className="display text-sm">
-            TEAM<span className="text-accent">NEXUS</span>
+            TEAM<span className="text-accent-solid">NEXUS</span>
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export function AppPreview() {
             une page web. */}
         <div className="bg-structure-1 text-on-structure flex items-center justify-around px-2 py-2.5">
           {[Users, CalendarDays, MapPin].map((Icon, i) => (
-            <span key={i} className={i === 0 ? "text-accent" : "text-white/40"}>
+            <span key={i} className={i === 0 ? "text-accent-solid" : "text-white/40"}>
               <Icon size={14} />
             </span>
           ))}
