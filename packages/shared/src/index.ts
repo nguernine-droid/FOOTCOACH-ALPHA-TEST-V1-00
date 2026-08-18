@@ -2884,3 +2884,38 @@ export function venueLabel(venue: Pick<VenueDto, "name" | "pitchName">): string 
   const generic = /^terrain( de)?( football| foot)?$/i.test(pitch);
   return generic ? venue.name : `${venue.name} — ${pitch}`;
 }
+
+/* ─────────────────── Chiffres de la page d'accueil ────────────────────── */
+
+/**
+ * Ce que la vitrine affiche de l'activité du service.
+ *
+ * `coaches` ne compte QUE les comptes actifs : un chiffre gonflé des comptes
+ * désactivés serait faux le jour où quelqu'un le vérifie, et c'est précisément
+ * le genre de chiffre qu'un dirigeant vérifie.
+ */
+export interface PublicStatsDto {
+  coaches: number;
+  /** Annonces publiées depuis l'ouverture — l'activité cumulée, pas l'instantané */
+  announcements: number;
+  /** Matchs effectivement joués : le seul chiffre qui prouve que ça fonctionne */
+  matchesPlayed: number;
+}
+
+/**
+ * En dessous de ce nombre de coachs, la vitrine n'affiche AUCUN chiffre.
+ *
+ * « 3 coachs nous font confiance » fait plus de mal que le silence : le
+ * visiteur en déduit que personne ne s'en sert, et il a raison. Un service qui
+ * démarre a le droit de ne pas parler de sa taille — il n'a pas le droit de
+ * mentir dessus.
+ *
+ * Le seuil est volontairement bas : il ne s'agit pas d'attendre le succès, mais
+ * de passer le stade où le chiffre dessert.
+ */
+export const SHOWCASE_MIN_COACHES = 20;
+
+/** Les chiffres méritent-ils d'être montrés ? */
+export function showcaseWorthShowing(stats: PublicStatsDto | null): boolean {
+  return stats !== null && stats.coaches >= SHOWCASE_MIN_COACHES;
+}

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import {
   categoryFromSlug,
   departmentLabel,
@@ -14,10 +14,11 @@ import {
   type PublicBoardDto,
   type PublicCategoryCountDto,
   type PublicDistrictDto,
+  type PublicStatsDto,
   type DivisionLevel,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, teams } from "../db/schema.js";
+import { announcementResponses, matchAnnouncements, matches, teams, users } from "../db/schema.js";
 import { HttpError } from "../plugins/errors.js";
 import { asDivisionLevel, asMatchGender } from "@teamnexus/shared";
 import { departmentOf } from "../lib/districts.js";
@@ -102,6 +103,40 @@ function toPublicDto(
 }
 
 export function publicBoardRoutes(app: FastifyInstance) {
+
+  /**
+   * Les chiffres de la vitrine : combien de coachs, combien d'annonces publiées,
+   * combien de matchs réellement joués.
+   *
+   * Ouverte à tous, comme le reste de cette couche, et volontairement pauvre :
+   * trois entiers agrégés, rien qui décrive un club ou une personne. On ne peut
+   * rien en déduire sur qui que ce soit.
+   *
+   * Les coachs DÉSACTIVÉS ne comptent pas. Un chiffre gonflé des comptes fermés
+   * est faux, et c'est exactement celui qu'un dirigeant vérifiera.
+   *
+   * `matchesPlayed` compte les matchs terminés, pas les annonces matchées : un
+   * match convenu puis annulé n'a rien prouvé, et c'est le seul chiffre des
+   * trois qui dise que le service tient sa promesse.
+   */
+  app.get("/public/stats", publicBoardRateLimit, async (_request, reply): Promise<PublicStatsDto> => {
+    const [[coaches], [announcements], [played]] = await Promise.all([
+      db
+        .select({ value: count() })
+        .from(users)
+        .where(and(eq(users.role, "coach"), isNull(users.disabledAt))),
+      db.select({ value: count() }).from(matchAnnouncements),
+      db.select({ value: count() }).from(matches).where(eq(matches.status, "finished")),
+    ]);
+
+    reply.header("Cache-Control", "public, max-age=300");
+    return {
+      coaches: coaches.value,
+      announcements: announcements.value,
+      matchesPlayed: played.value,
+    };
+  });
+
   /**
    * L'index : les départements où quelque chose se passe.
    *

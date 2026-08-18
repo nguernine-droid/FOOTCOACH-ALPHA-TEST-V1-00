@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarCheck, MapPinned, Radar, ShieldCheck } from "lucide-react";
-import { fetchDistricts } from "@/lib/publicApi";
+import { showcaseWorthShowing } from "@teamnexus/shared";
+import { fetchDistricts, fetchPublicStats } from "@/lib/publicApi";
+import { AppPreview } from "@/components/public/AppPreview";
 import { HomeRedirect } from "./HomeRedirect";
 
 // Recalculée toutes les cinq minutes : les chiffres affichés viennent de la
@@ -29,9 +31,14 @@ export const metadata: Metadata = {
  * annonces en cours, et rien d'autre.
  */
 export default async function Home() {
-  const districts = await fetchDistricts();
-  const announcements = districts?.reduce((sum, d) => sum + d.announcements, 0) ?? 0;
+  const [districts, stats] = await Promise.all([fetchDistricts(), fetchPublicStats()]);
   const busiest = districts?.slice(0, 6) ?? [];
+  /**
+   * Les chiffres ne s'affichent qu'à partir d'un certain nombre de coachs.
+   * « 3 coachs nous font confiance » fait plus de mal que le silence : le
+   * visiteur en conclut que personne ne s'en sert, et il a raison.
+   */
+  const showStats = showcaseWorthShowing(stats);
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -58,7 +65,7 @@ export default async function Home() {
       </header>
 
       <main className="flex-1">
-        <section className="max-w-[900px] mx-auto px-4 py-10 space-y-6">
+        <section className="max-w-[900px] mx-auto px-4 py-10 grid gap-10 min-[900px]:grid-cols-[1fr_300px] min-[900px]:items-center">
           <div className="space-y-4">
             <h1 className="display text-4xl min-[640px]:text-5xl leading-tight">
               Trouvez un adversaire pour votre prochain match amical.
@@ -89,16 +96,30 @@ export default async function Home() {
             </p>
           </div>
 
-          {/* Les chiffres réels, ou rien. Une page d'accueil qui annonce des
-              milliers d'équipes quand la base en compte quarante se retourne
-              contre celui qui l'écrit dès la première visite. */}
-          {announcements > 0 && districts && (
-            <p className="text-sm font-semibold text-ink-soft bg-paper rounded-lg px-4 py-3">
-              {announcements} annonce{announcements > 1 ? "s" : ""} en cours dans {districts.length} département
-              {districts.length > 1 ? "s" : ""}.
-            </p>
-          )}
+          {/* L'aperçu à droite du texte, sous lui au téléphone : montrer
+              l'écran des disponibilités dit en une seconde ce que trois
+              paragraphes expliquent mal. */}
+          <AppPreview />
         </section>
+
+        {/* Les chiffres réels, ou rien du tout. Une page d'accueil qui annonce
+            des milliers d'équipes quand la base en compte quarante se retourne
+            contre celui qui l'écrit dès la première visite. */}
+        {showStats && stats && (
+          <section className="max-w-[900px] mx-auto px-4 pb-10" aria-label="TeamNexus en chiffres">
+            <dl className="grid grid-cols-3 gap-3">
+              <Stat value={stats.coaches} label={`coach${stats.coaches > 1 ? "s" : ""} inscrit${stats.coaches > 1 ? "s" : ""}`} />
+              <Stat
+                value={stats.announcements}
+                label={`match${stats.announcements > 1 ? "s" : ""} publié${stats.announcements > 1 ? "s" : ""}`}
+              />
+              <Stat
+                value={stats.matchesPlayed}
+                label={`rencontre${stats.matchesPlayed > 1 ? "s" : ""} jouée${stats.matchesPlayed > 1 ? "s" : ""}`}
+              />
+            </dl>
+          </section>
+        )}
 
         <section className="max-w-[900px] mx-auto px-4 pb-10 space-y-4" aria-label="Comment ça marche">
           <h2 className="display text-2xl">Comment ça marche</h2>
@@ -169,6 +190,21 @@ export default async function Home() {
           </p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+/** Un chiffre en gros, ce qu'il compte en dessous */
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="card p-4 text-center">
+      <dt className="sr-only">{label}</dt>
+      <dd>
+        <span className="display text-3xl min-[640px]:text-4xl tabular-nums text-primary block leading-none">
+          {value.toLocaleString("fr-FR")}
+        </span>
+        <span className="block text-[11px] font-semibold text-ink-soft mt-1.5 leading-tight">{label}</span>
+      </dd>
     </div>
   );
 }

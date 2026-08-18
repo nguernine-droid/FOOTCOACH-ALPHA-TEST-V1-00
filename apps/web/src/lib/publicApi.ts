@@ -1,4 +1,4 @@
-import type { PublicBoardDto, PublicDistrictDto } from "@teamnexus/shared";
+import type { PublicBoardDto, PublicDistrictDto, PublicStatsDto } from "@teamnexus/shared";
 
 /**
  * Appels de la couche publique, faits DEPUIS LE SERVEUR.
@@ -30,6 +30,10 @@ async function get<T>(path: string): Promise<T | null> {
 
 export function fetchDistricts(): Promise<PublicDistrictDto[] | null> {
   return get<PublicDistrictDto[]>("/public/board");
+}
+
+export function fetchPublicStats(): Promise<PublicStatsDto | null> {
+  return get<PublicStatsDto>("/public/stats");
 }
 
 export function fetchBoard(code: string, categorySlug?: string): Promise<PublicBoardDto | null> {
