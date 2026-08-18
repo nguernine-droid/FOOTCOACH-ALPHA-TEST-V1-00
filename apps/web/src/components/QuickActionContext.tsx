@@ -13,7 +13,7 @@ export type QuickChoice = {
   label: string;
   /** Ce que ça fait, en une ligne : deux créations voisines se confondent vite */
   description: string;
-  icon: "announcement" | "tournament" | "publication" | "feedback";
+  icon: "announcement" | "availability" | "tournament" | "publication" | "feedback";
 };
 
 /**

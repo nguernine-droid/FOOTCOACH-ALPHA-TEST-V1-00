@@ -13,6 +13,7 @@ import { runMigrations } from "./db/migrate.js";
 import { registerErrorHandler } from "./plugins/errors.js";
 import { authRoutes } from "./routes/auth.js";
 import { announcementRoutes } from "./routes/announcements.js";
+import { availabilityRoutes } from "./routes/availabilities.js";
 import { matchRoutes } from "./routes/matches.js";
 import { tournamentRoutes } from "./routes/tournaments.js";
 import { clubDirectoryRoutes } from "./routes/clubs.js";
@@ -134,6 +135,7 @@ app.get("/health", async () => ({ status: "ok" }));
 
 app.register((instance) => authRoutes(instance));
 app.register((instance) => announcementRoutes(instance));
+app.register((instance) => availabilityRoutes(instance));
 app.register((instance) => matchRoutes(instance));
 app.register((instance) => tournamentRoutes(instance));
 app.register((instance) => clubRoutes(instance));

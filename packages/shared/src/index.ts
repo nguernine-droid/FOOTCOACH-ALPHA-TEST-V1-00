@@ -2015,3 +2015,192 @@ export interface AuthResponseDto {
   refreshToken: string;
   user: UserDto;
 }
+
+/* ─────────────────────────── Disponibilités ───────────────────────────── */
+
+/**
+ * Où l'équipe accepte de jouer ce jour-là.
+ *
+ * `any` n'est pas un défaut mou : c'est le cas le plus fréquent chez les
+ * équipes sans terrain réservé, et c'est lui qui fait matcher. Un coach qui
+ * répond « domicile » alors qu'il n'a pas son créneau bloque un appariement
+ * qu'il aurait accepté.
+ */
+export const AVAILABILITY_VENUES = ["home", "away", "any"] as const;
+export type AvailabilityVenue = (typeof AVAILABILITY_VENUES)[number];
+
+export const AVAILABILITY_VENUE_LABELS: Record<AvailabilityVenue, string> = {
+  home: "À domicile",
+  away: "En déplacement",
+  any: "Peu importe",
+};
+
+/**
+ * Deux préférences de lieu se rencontrent-elles ? L'une doit recevoir, l'autre
+ * se déplacer. `any` s'accommode des deux — et deux `any` s'entendent aussi :
+ * elles règleront entre elles qui reçoit, ce n'est pas au système de trancher.
+ */
+export function venuesFit(mine: AvailabilityVenue, theirs: AvailabilityVenue): boolean {
+  if (mine === "any" || theirs === "any") return true;
+  return mine !== theirs;
+}
+
+/**
+ * Qui reçoit, une fois les deux préférences connues ? `null` quand aucune des
+ * deux ne tranche (deux `any`) : la question reste ouverte entre les coachs, et
+ * l'interface ne doit pas prétendre le contraire.
+ */
+export function hostOf(mine: AvailabilityVenue, theirs: AvailabilityVenue): "mine" | "theirs" | null {
+  if (mine === "home" || theirs === "away") return "mine";
+  if (mine === "away" || theirs === "home") return "theirs";
+  return null;
+}
+
+/**
+ * Le rayon proposé à la déclaration. Repris des paliers du radar : le coach ne
+ * doit pas apprendre deux échelles de distance dans la même application.
+ */
+export const AVAILABILITY_RADIUS_OPTIONS = [15, 25, 50, 100] as const;
+
+/** Nombre de dates déclarables en une fois — une saison se remplit par vagues, pas d'un coup */
+export const AVAILABILITY_MAX_DATES = 20;
+
+/** Au-delà, la disponibilité ne dit plus rien d'utile : les effectifs d'un club changent */
+export const AVAILABILITY_MAX_DAYS_AHEAD = 120;
+
+export const createAvailabilitySchema = z.object({
+  /**
+   * Plusieurs dates en un envoi : « je suis libre les trois prochains
+   * dimanches » est une seule décision, elle ne doit pas coûter trois
+   * formulaires. Le serveur en fait une ligne par date.
+   */
+  dates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(AVAILABILITY_MAX_DATES),
+  venue: z.enum(AVAILABILITY_VENUES),
+  /** Heure souhaitée, purement indicative — elle prérremplira l'annonce */
+  time: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+  /**
+   * Niveaux d'adversaire acceptés. Liste VIDE = tous niveaux, et c'est le
+   * défaut : un coach qui n'a pas d'avis ne doit pas se fermer le secteur sans
+   * l'avoir voulu.
+   */
+  acceptedLevels: z.array(z.enum(DIVISION_LEVELS)).max(DIVISION_LEVELS.length),
+  /** Rayon propre à cette déclaration ; null = celui du radar du coach */
+  radiusKm: z.number().int().min(1).max(300).nullable(),
+});
+export type CreateAvailabilityInput = z.infer<typeof createAvailabilitySchema>;
+
+/**
+ * Une disponibilité déclarée par une équipe, telle que son propre coach la voit.
+ */
+export interface AvailabilityDto {
+  id: string;
+  date: string;
+  venue: AvailabilityVenue;
+  time: string | null;
+  acceptedLevels: DivisionLevel[];
+  radiusKm: number | null;
+  /** Combien d'équipes lui répondent aujourd'hui — recalculé à chaque lecture, jamais stocké */
+  suggestionCount: number;
+  createdAt: string;
+}
+
+/**
+ * Un appariement proposé par le système : ma disponibilité, l'équipe d'en face,
+ * et de quoi décider sans ouvrir trois écrans.
+ */
+export interface SuggestionDto {
+  availabilityId: string;
+  date: string;
+  team: TeamDto;
+  /** Le coach à qui la proposition sera adressée (null si son profil est privé) */
+  coach: CoachRefDto | null;
+  /** Catégorie d'annonce commune aux deux équipes — celle que portera la proposition */
+  category: AnnouncementCategory;
+  gender: MatchGender | null;
+  /** Niveau déclaré de l'équipe d'en face, tel quel (null s'il n'est pas réglé) */
+  level: DivisionLevel | null;
+  distanceKm: number | null;
+  /** Qui reçoit, si les deux préférences le disent — null quand ça reste à convenir */
+  host: "mine" | "theirs" | null;
+  /** L'heure retenue pour la proposition : la mienne, sinon la sienne, sinon 15:00 */
+  time: string;
+  /**
+   * L'annonce déjà ouverte de mon équipe pour cette date, s'il y en a une.
+   * Prévenir cette équipe s'y raccroche alors au lieu d'en publier une
+   * seconde : deux annonces le même jour pour la même équipe diraient
+   * qu'elle cherche deux matchs.
+   */
+  announcementId: string | null;
+}
+
+/** Heure de repli quand aucune des deux équipes n'a exprimé de préférence */
+export const AVAILABILITY_DEFAULT_TIME = "15:00";
+
+export const proposeSuggestionSchema = z.object({
+  availabilityId: z.string().uuid(),
+  teamId: z.string().uuid(),
+});
+export type ProposeSuggestionInput = z.infer<typeof proposeSuggestionSchema>;
+
+/**
+ * Deux disponibilités s'apparient-elles ?
+ *
+ * Même philosophie que `teamMatchesAnnouncement` : ce qu'on ne sait pas ne
+ * s'oppose pas. Une équipe dont la catégorie ou le genre n'est pas réglé n'est
+ * pas écartée — elle serait invisible pour toujours, sans jamais savoir
+ * pourquoi. Le niveau suit la même règle : un filtre sur les niveaux acceptés
+ * ne rejette que ce qu'il connaît.
+ *
+ * La distance, elle, est une VRAIE contrainte des deux côtés : chacun a réglé
+ * son rayon, et un appariement à 80 km proposé à qui en accepte 25 n'est pas
+ * une suggestion, c'est du bruit.
+ *
+ * @param distanceKm distance entre les deux équipes, `null` si inconnue — auquel
+ *   cas elle ne bloque pas : une ville absente de l'annuaire ne doit pas
+ *   exclure l'équipe de tout appariement.
+ */
+export function availabilitiesFit(
+  mine: {
+    venue: AvailabilityVenue;
+    acceptedLevels: readonly DivisionLevel[];
+    radiusKm: number | null;
+    team: { category: MatchCategory | null; gender: MatchGender | null; level: DivisionLevel | null };
+  },
+  theirs: {
+    venue: AvailabilityVenue;
+    acceptedLevels: readonly DivisionLevel[];
+    radiusKm: number | null;
+    team: { category: MatchCategory | null; gender: MatchGender | null; level: DivisionLevel | null };
+  },
+  distanceKm: number | null,
+): boolean {
+  const myGroup = announcementCategoryOf(mine.team.category);
+  const theirGroup = announcementCategoryOf(theirs.team.category);
+  if (myGroup !== null && theirGroup !== null && myGroup !== theirGroup) return false;
+
+  const myGender = mine.team.gender;
+  const theirGender = theirs.team.gender;
+  const genderFits =
+    myGender === null ||
+    theirGender === null ||
+    myGender === theirGender ||
+    myGender === "mixte" ||
+    theirGender === "mixte";
+  if (!genderFits) return false;
+
+  if (!venuesFit(mine.venue, theirs.venue)) return false;
+
+  // Une liste vide n'exprime aucune exigence ; un niveau inconnu en face ne
+  // peut pas la contredire.
+  if (mine.acceptedLevels.length > 0 && theirs.team.level !== null && !mine.acceptedLevels.includes(theirs.team.level))
+    return false;
+  if (theirs.acceptedLevels.length > 0 && mine.team.level !== null && !theirs.acceptedLevels.includes(mine.team.level))
+    return false;
+
+  if (distanceKm !== null) {
+    if (mine.radiusKm !== null && distanceKm > mine.radiusKm) return false;
+    if (theirs.radiusKm !== null && distanceKm > theirs.radiusKm) return false;
+  }
+
+  return true;
+}

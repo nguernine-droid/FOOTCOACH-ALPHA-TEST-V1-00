@@ -60,6 +60,12 @@ const CREATE_OPTIONS: QuickChoice[] = [
     icon: "announcement",
   },
   {
+    href: "/coach/availabilities",
+    label: "Dates libres",
+    description: "Dites quand vous êtes libres — les équipes libres en face vous sont proposées.",
+    icon: "availability",
+  },
+  {
     href: "/coach/tournaments/new",
     label: "Tournoi",
     description: "Annoncez le vôtre et ouvrez les inscriptions aux équipes du secteur.",

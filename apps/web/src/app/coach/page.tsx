@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
+  CalendarCheck,
   CheckCircle2,
   ChevronRight,
   CircleUserRound,
@@ -224,6 +225,26 @@ export default function CoachDashboard() {
             </Link>
           )}
         </section>
+
+        {/* Ce que je ne publie pas, mais que je déclare. Sa place est juste
+            sous les annonces : c'est la même intention — trouver un match —
+            par l'autre bout, et c'est là qu'un coach sans annonce en cours
+            découvre qu'il n'est pas obligé d'en publier une. */}
+        <Link
+          href="/coach/availabilities"
+          className="card p-4 flex items-center gap-3 animate-rise-in transition hover:border-blue/40 active:scale-[0.995]"
+        >
+          <span className="w-10 h-10 rounded-lg bg-blue-soft text-blue flex items-center justify-center shrink-0">
+            <CalendarCheck size={18} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold text-sm">Nos disponibilités</span>
+            <span className="block text-xs text-ink-soft">
+              Déclarez vos dates libres : les équipes libres en face vous sont proposées.
+            </span>
+          </span>
+          <ChevronRight size={16} className="text-ink-faint shrink-0" aria-hidden />
+        </Link>
 
         {/* Prochain match */}
         {featured && (

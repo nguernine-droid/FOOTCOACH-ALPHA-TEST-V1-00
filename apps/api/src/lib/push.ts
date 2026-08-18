@@ -580,3 +580,48 @@ export function notifyScoreRecorded(input: {
     })(),
   );
 }
+
+/**
+ * Une équipe libre le même jour que vous vous invite à jouer.
+ *
+ * C'est la notification qui renverse le produit : le coach n'a rien ouvert,
+ * rien surveillé — il a déclaré une date, et on vient le chercher.
+ *
+ * Adressée à l'équipe suggérée, et à elle seule : c'est une invitation
+ * nominative, pas une diffusion de plus sur le secteur. Le lien mène à
+ * l'annonce, où répondre se fait par le chemin habituel.
+ *
+ * Elle emprunte la préférence « nouvelle annonce » plutôt que d'en ajouter
+ * une : c'est la même nature d'information — « il y a un match à jouer près
+ * de chez vous » — et un coach qui a coupé celle-là ne veut pas de celle-ci.
+ */
+export function notifyAvailabilityProposal(input: {
+  targetTeamId: string;
+  fromTeamName: string;
+  date: string;
+  announcementId: string;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      const rows = await db
+        .select({ id: users.id })
+        .from(users)
+        .innerJoin(teamCoaches, eq(teamCoaches.coachId, users.id))
+        .where(
+          and(
+            eq(teamCoaches.teamId, input.targetTeamId),
+            isNull(users.disabledAt),
+            eq(users.notifyNewAnnouncement, true),
+          ),
+        );
+      await sendToUsers([...new Set(rows.map((r) => r.id))], {
+        title: `${input.fromTeamName} vous propose un match`,
+        body: `Vous êtes libres le même jour — ${formatDay(input.date)}.`,
+        url: `/coach/announcements/${input.announcementId}`,
+        tag: `suggestion-${input.announcementId}`,
+      });
+    })(),
+  );
+}
+

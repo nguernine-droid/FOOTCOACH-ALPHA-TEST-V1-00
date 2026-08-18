@@ -163,7 +163,7 @@ async function loadResponses(announcementIds: string[]) {
  * retrouverait sur les deux bancs. La règle porte sur les ÉQUIPES et non sur
  * celui qui agit — sinon un second coach de l'équipe suffirait à la contourner.
  */
-async function teamsSharingCoachWith(teamId: string): Promise<string[]> {
+export async function teamsSharingCoachWith(teamId: string): Promise<string[]> {
   const staff = await db
     .select({ coachId: teamCoaches.coachId })
     .from(teamCoaches)

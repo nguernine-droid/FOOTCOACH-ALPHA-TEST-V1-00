@@ -30,6 +30,9 @@ export const userRole = pgEnum("user_role", ["coach", "player", "parent", "suppo
 export const coachCategory = pgEnum("coach_category", ["joker", "contributeur"]);
 // Rôle d'un coach au sein d'une équipe (une équipe peut avoir plusieurs coachs).
 export const teamCoachRole = pgEnum("team_coach_role", ["principal", "adjoint"]);
+// Où une équipe accepte de jouer le jour qu'elle a déclaré libre. `any` est
+// le cas le plus fréquent : sans créneau réservé, un coach joue où on veut.
+export const availabilityVenue = pgEnum("availability_venue", ["home", "away", "any"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
 export const matchStatus = pgEnum("match_status", [
   "scheduled",
@@ -1022,4 +1025,50 @@ export const publications = pgTable(
   },
   // Le fil se lit toujours du plus récent au plus ancien
   (t) => [index("publications_created_idx").on(t.createdAt)],
+);
+
+/**
+ * Disponibilité déclarée : « cette équipe est libre ce jour-là ».
+ *
+ * L'inverse d'une annonce. L'annonce dit « je propose un match, venez » et
+ * suppose qu'un autre coach passe la voir ; la disponibilité dit seulement « je
+ * suis libre », et c'est le système qui rapproche deux libertés compatibles.
+ * Un coach déclare une fois, il ne surveille plus.
+ *
+ * Rien n'est stocké de l'appariement lui-même : les suggestions se recalculent
+ * à chaque lecture. Une équipe change de niveau, un coach élargit son rayon, et
+ * une table de couples figés mentirait dès le lendemain.
+ *
+ * La catégorie et le genre ne sont pas repris ici : ce sont ceux de l'équipe,
+ * et les recopier les ferait diverger le jour où elle change de catégorie.
+ */
+export const teamAvailabilities = pgTable(
+  "team_availabilities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    /** Le coach qui a déclaré — une équipe en compte parfois plusieurs */
+    coachId: uuid("coach_id").references(() => users.id, { onDelete: "set null" }),
+    date: date("date").notNull(),
+    venue: availabilityVenue("venue").notNull().default("any"),
+    /** Heure souhaitée, indicative : elle préremplit l'annonce, elle ne filtre rien */
+    time: time("time"),
+    /**
+     * Niveaux d'adversaire acceptés. Tableau VIDE = tous niveaux, et c'est le
+     * défaut : ne pas avoir d'avis ne doit pas fermer le secteur.
+     */
+    acceptedLevels: text("accepted_levels").array().notNull().default([]),
+    /** Rayon propre à cette date ; NULL = celui du radar du coach (users.radar_radius_km) */
+    radiusKm: integer("radius_km"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Une seule déclaration par équipe et par date : deux lignes pour le même
+    // dimanche diraient deux choses contradictoires au matcheur.
+    uniqueIndex("team_availabilities_team_date_idx").on(t.teamId, t.date),
+    // Le matcheur balaie toujours par date, à partir d'aujourd'hui
+    index("team_availabilities_date_idx").on(t.date),
+  ],
 );
