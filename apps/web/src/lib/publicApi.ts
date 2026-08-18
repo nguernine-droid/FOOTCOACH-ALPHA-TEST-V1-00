@@ -1,4 +1,9 @@
-import type { PublicBoardDto, PublicDistrictDto, PublicStatsDto } from "@teamnexus/shared";
+import type {
+  PublicAnnouncementDto,
+  PublicBoardDto,
+  PublicDistrictDto,
+  PublicStatsDto,
+} from "@teamnexus/shared";
 
 /**
  * Appels de la couche publique, faits DEPUIS LE SERVEUR.
@@ -30,6 +35,14 @@ async function get<T>(path: string): Promise<T | null> {
 
 export function fetchDistricts(): Promise<PublicDistrictDto[] | null> {
   return get<PublicDistrictDto[]>("/public/board");
+}
+
+/**
+ * Les prochaines annonces, toutes zones confondues. Le nombre est décidé par
+ * le serveur : la page affiche ce qu'elle reçoit, elle ne le négocie pas.
+ */
+export function fetchLatestAnnouncements(): Promise<PublicAnnouncementDto[] | null> {
+  return get<PublicAnnouncementDto[]>("/public/announcements");
 }
 
 export function fetchPublicStats(): Promise<PublicStatsDto | null> {

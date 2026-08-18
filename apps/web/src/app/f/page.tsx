@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { fetchDistricts } from "@/lib/publicApi";
+import { fetchDistricts, fetchLatestAnnouncements } from "@/lib/publicApi";
+import { PublicAnnouncementCard } from "@/components/public/PublicAnnouncementCard";
+import { VButtonLink, VCard } from "@/components/public/primitives";
 
 // Next exige une valeur LITTÉRALE ici : il lit ce champ statiquement, sans
 // exécuter le module, et une constante importée le laisse sans réponse. Elle
@@ -9,65 +11,106 @@ import { fetchDistricts } from "@/lib/publicApi";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Matchs amicaux de football par département — TeamNexus",
+  title: "Matchs amicaux de football — les annonces en cours | TeamNexus",
   description:
-    "Les équipes de football amateur qui cherchent un adversaire, département par département. Consultation libre, sans compte.",
+    "Les équipes de football amateur qui cherchent un adversaire pour un match amical. Consultation libre, sans compte.",
   alternates: { canonical: "/f" },
 };
 
 /**
- * L'index public : les départements où des équipes cherchent un adversaire.
+ * L'aperçu public : les prochaines annonces, tout de suite.
  *
- * Un département sans annonce ouverte n'y figure pas. Une page vide indexée
- * dessert plus qu'elle ne sert — elle apprend au moteur que le site répond mal
- * à la question qu'on lui pose — et elle reviendra d'elle-même dès qu'un coach
- * y publiera.
+ * ── Pourquoi des annonces et non des départements ───────────────────────
+ * Cette page est ce qu'on atteint depuis « Voir les annonces ». Elle montrait
+ * jusqu'ici la liste des départements actifs : un visiteur devait donc choisir
+ * une zone AVANT de voir le moindre match, c'est-à-dire décider quelque chose
+ * avant de savoir de quoi il s'agit. Les annonces passent devant ; les
+ * départements restent, en dessous.
+ *
+ * Aucun filtre, volontairement : trier suppose de savoir ce qu'on cherche, et
+ * quelqu'un qui découvre le service ne le sait pas encore. Le tri fin vit dans
+ * l'application, sur le radar, une fois le compte créé.
+ *
+ * ── Le maillage reste ───────────────────────────────────────────────────
+ * Les liens par département en bas de page ne sont pas décoratifs : ce sont eux
+ * qui font découvrir les pages `/f/[district]` aux moteurs, et ces pages sont
+ * la seule couche du site qui rapporte des visiteurs dans la durée. Les retirer
+ * pour « simplifier » couperait la branche.
  */
 export default async function PublicIndexPage() {
-  const districts = await fetchDistricts();
+  const [announcements, districts] = await Promise.all([fetchLatestAnnouncements(), fetchDistricts()]);
+  const total = districts?.reduce((sum, d) => sum + d.announcements, 0) ?? 0;
+  const shown = announcements?.length ?? 0;
 
   return (
-    <div className="max-w-[900px] mx-auto space-y-6">
-      <div className="space-y-2">
-        <h1 className="display text-3xl">Qui cherche un match, près de chez vous ?</h1>
-        <p className="text-sm text-ink-soft max-w-[60ch]">
-          Les équipes de football amateur qui cherchent un adversaire pour un match amical, département par
-          département. La consultation est libre ; un compte n&apos;est nécessaire que pour répondre à une annonce.
+    <div className="max-w-[820px] mx-auto space-y-8">
+      <div className="space-y-3">
+        <h1 className="display text-3xl md:text-4xl leading-[0.95] text-primary">
+          Qui cherche un match en ce moment ?
+        </h1>
+        <p className="text-sm md:text-base text-secondary max-w-[62ch] leading-relaxed">
+          Les équipes de football amateur qui cherchent un adversaire, les plus proches dans le temps
+          d&apos;abord. La consultation est libre ; un compte n&apos;est nécessaire que pour répondre à une
+          annonce.
         </p>
       </div>
 
-      {!districts ? (
-        <p className="text-sm text-ink-soft bg-paper rounded-lg px-4 py-3">
-          La liste est momentanément indisponible. Revenez dans quelques instants.
-        </p>
-      ) : districts.length === 0 ? (
-        <p className="text-sm text-ink-soft bg-paper rounded-lg px-4 py-3">
-          Aucune annonce ouverte en ce moment.
-        </p>
+      {announcements === null ? (
+        <VCard className="p-5">
+          <p className="text-sm text-secondary">
+            La liste est momentanément indisponible. Revenez dans quelques instants.
+          </p>
+        </VCard>
+      ) : shown === 0 ? (
+        <VCard className="p-6 space-y-3">
+          <p className="text-sm font-bold text-primary">Aucune annonce ouverte en ce moment.</p>
+          <p className="text-sm text-secondary max-w-[55ch]">
+            Les annonces passées ne restent pas affichées. Créez un compte pour publier la vôtre : elle
+            apparaîtra ici et sur le radar des coachs de votre secteur.
+          </p>
+          <VButtonLink href="/register">Créer un compte coach</VButtonLink>
+        </VCard>
       ) : (
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {districts.map((district) => (
-            <li key={district.code}>
-              <Link
-                href={`/f/${district.slug}`}
-                className="card p-4 flex items-center justify-between gap-3 transition hover:border-blue/40"
-              >
-                <span className="min-w-0">
-                  <span className="block font-bold text-sm truncate">{district.label}</span>
-                  <span className="block text-xs text-ink-soft">
-                    {district.categories
-                      .slice(0, 3)
-                      .map((c) => c.category)
-                      .join(" · ")}
-                  </span>
-                </span>
-                <span className="chip bg-blue-soft text-primary shrink-0 tabular-nums">
-                  {district.announcements}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="space-y-3">
+            {announcements.map((a) => (
+              <PublicAnnouncementCard key={a.id} announcement={a} />
+            ))}
+          </ul>
+
+          {/* Ne s'affiche que s'il y a vraiment plus à voir : annoncer « et
+              d'autres » quand la liste est complète serait une promesse vide. */}
+          {total > shown && (
+            <p className="text-xs text-muted">
+              {shown} annonces affichées sur {total} ouvertes. Les autres se trouvent par département,
+              ci-dessous.
+            </p>
+          )}
+        </>
+      )}
+
+      <VCard className="p-6 space-y-3">
+        <p className="font-bold text-sm text-primary">Vous encadrez une équipe ?</p>
+        <p className="text-sm text-secondary max-w-[58ch] leading-relaxed">
+          Créez un compte pour répondre à ces annonces, publier les vôtres, et déclarer les dates où votre
+          équipe est libre — les équipes libres en face vous sont alors proposées.
+        </p>
+        <VButtonLink href="/register">Créer un compte coach</VButtonLink>
+      </VCard>
+
+      {districts && districts.length > 0 && (
+        <section className="space-y-3" aria-label="Annonces par département">
+          <h2 className="display text-xl text-primary">Par département</h2>
+          <ul className="flex flex-wrap gap-2">
+            {districts.map((district) => (
+              <li key={district.code}>
+                <Link href={`/f/${district.slug}`} className="v-chip v-lift inline-flex min-h-11 px-4">
+                  {district.label} ({district.announcements})
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

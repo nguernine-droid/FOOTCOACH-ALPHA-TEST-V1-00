@@ -1,24 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import {
-  categoryLabel,
-  categorySlug,
-  DIVISION_LEVEL_LABELS,
-  MATCH_GENDER_LABELS,
-  type PublicBoardDto,
-} from "@teamnexus/shared";
-
-/** « 2026-10-11 » → « dimanche 11 octobre » */
-function formatDate(iso: string): string {
-  const parsed = new Date(`${iso}T12:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone: "UTC",
-  });
-}
+import { categoryLabel, categorySlug, type PublicBoardDto } from "@teamnexus/shared";
+import { PublicAnnouncementCard } from "@/components/public/PublicAnnouncementCard";
 
 /**
  * Le corps d'une page publique de département, avec ou sans catégorie.
@@ -142,33 +125,9 @@ export async function PublicBoard({ board }: { board: PublicBoardDto }) {
       )}
 
       {announcements.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {announcements.map((a) => (
-            <li key={a.id} className="card p-4 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-sm truncate">{a.teamName}</p>
-                  <p className="text-xs text-ink-soft">{a.city}</p>
-                </div>
-                {a.isSos && <span className="chip bg-coral-soft text-coral shrink-0">Place libérée</span>}
-              </div>
-
-              <p className="text-xs text-ink-soft capitalize">
-                {formatDate(a.date)} à {a.time}
-              </p>
-
-              <div className="flex flex-wrap gap-1.5">
-                <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
-                {a.gender && <span className="chip bg-paper text-ink-soft">{MATCH_GENDER_LABELS[a.gender]}</span>}
-                <span className="chip bg-paper text-ink-soft">{a.format}</span>
-                {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
-                {a.slotsLeft !== null && a.slotsLeft > 0 && (
-                  <span className="chip bg-accent-surface text-accent">
-                    Plateau · {a.slotsLeft} place{a.slotsLeft > 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
-            </li>
+            <PublicAnnouncementCard key={a.id} announcement={a} />
           ))}
         </ul>
       )}

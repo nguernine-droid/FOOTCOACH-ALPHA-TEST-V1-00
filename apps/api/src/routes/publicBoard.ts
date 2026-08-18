@@ -51,6 +51,15 @@ function today(): string {
 }
 
 /**
+ * Combien d'annonces la page d'aperçu montre au plus.
+ *
+ * Dix : de quoi voir que le service est vivant et repérer une occasion, sans
+ * demander à un visiteur qui découvre le site de dépouiller une liste. Ce qui
+ * dépasse se trouve par département, en dessous.
+ */
+const PUBLIC_LATEST_LIMIT = 10;
+
+/**
  * Les annonces ouvertes à venir, avec le département de l'équipe qui publie.
  *
  * Chargées d'un bloc puis réparties en mémoire : les départements se déduisent
@@ -135,6 +144,26 @@ export function publicBoardRoutes(app: FastifyInstance) {
       announcements: announcements.value,
       matchesPlayed: played.value,
     };
+  });
+
+  /**
+   * Les prochaines annonces, toutes zones confondues.
+   *
+   * Sert la page qu'on atteint depuis « Voir les annonces » : un visiteur qui
+   * clique là veut VOIR des matchs, pas choisir un département d'abord. L'index
+   * par département reste, un cran plus bas — il est le maillage qui fait vivre
+   * les pages indexables, mais il n'a rien à faire en travers du premier regard.
+   *
+   * Triées par date croissante : ce qui se joue bientôt d'abord. Le plafond est
+   * SERVEUR et non négociable par le client — une page publique qui accepterait
+   * `?limit=10000` serait un aspirateur à base offert à qui le demande.
+   */
+  app.get("/public/announcements", publicBoardRateLimit, async (_request, reply): Promise<PublicAnnouncementDto[]> => {
+    const rows = (await openAnnouncements()).slice(0, PUBLIC_LATEST_LIMIT);
+    const counts = await acceptedCounts(rows.map((r) => r.announcement.id));
+
+    reply.header("Cache-Control", "public, max-age=300");
+    return rows.map((row) => toPublicDto(row.announcement, row.team, counts.get(row.announcement.id) ?? 0));
   });
 
   /**
