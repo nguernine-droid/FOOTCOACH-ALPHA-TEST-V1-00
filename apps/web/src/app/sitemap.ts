@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { categorySlug } from "@teamnexus/shared";
 import { fetchDistricts, siteUrl } from "@/lib/publicApi";
+import { legalIsComplete } from "@/lib/legal";
 
 /**
  * Le plan du site : uniquement ce qui est PUBLIC.
@@ -31,6 +32,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: base, changeFrequency: "weekly", priority: 1 },
     { url: `${base}/f`, changeFrequency: "daily", priority: 0.9 },
   ];
+
+  // Les pages légales ne sont déclarées qu'une fois RENSEIGNÉES. Tant qu'il y
+  // manque une information d'identification, chacune porte déjà un `noindex`
+  // dans ses métadonnées ; l'annoncer au plan du site en même temps reviendrait
+  // à demander au moteur de venir voir une page qu'on lui interdit de garder.
+  if (legalIsComplete()) {
+    for (const path of ["/mentions-legales", "/confidentialite", "/cgu"]) {
+      entries.push({ url: `${base}${path}`, changeFrequency: "yearly", priority: 0.3 });
+    }
+  }
 
   for (const district of districts) {
     entries.push({

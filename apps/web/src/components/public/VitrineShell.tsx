@@ -51,6 +51,17 @@ export function VitrineShell({ children }: { children: React.ReactNode }) {
               Créer un compte
             </Link>
           </p>
+          <p className="flex flex-wrap gap-x-5 gap-y-2 pt-3 border-t border-[var(--v-rim-soft)]">
+            <Link href="/mentions-legales" className="hover:text-primary transition underline underline-offset-4">
+              Mentions légales
+            </Link>
+            <Link href="/confidentialite" className="hover:text-primary transition underline underline-offset-4">
+              Confidentialité
+            </Link>
+            <Link href="/cgu" className="hover:text-primary transition underline underline-offset-4">
+              CGU
+            </Link>
+          </p>
         </div>
       </footer>
     </div>

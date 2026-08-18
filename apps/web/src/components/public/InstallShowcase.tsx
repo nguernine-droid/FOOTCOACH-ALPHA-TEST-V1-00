@@ -75,7 +75,7 @@ export function InstallShowcase() {
     <p className="text-sm text-ink-soft flex items-start gap-2.5">
       <Smartphone size={16} className="shrink-0 mt-0.5 text-blue" aria-hidden />
       <span>
-        Ouvrez <strong className="text-ink font-bold">teamnexus.fr</strong> sur votre téléphone : l&apos;installation
+        Ouvrez <strong className="text-ink font-bold">teamnexus.fr</strong>{" "}sur votre téléphone : l&apos;installation
         vous y sera proposée en une touche.
       </span>
     </p>
