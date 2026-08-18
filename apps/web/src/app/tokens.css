@@ -370,6 +370,83 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   JETONS DE LA VITRINE
+
+   La vitrine publique (`/` et `/f/*`) est la SEULE partie du site qui ne suit
+   pas le thème du visiteur : elle est sombre en toutes circonstances. Un site
+   de présentation se regarde une fois, de l'extérieur — il doit toujours
+   présenter le même visage, là où l'application, qu'on ouvre tous les jours au
+   bord d'un terrain, doit s'adapter au réglage de celui qui s'en sert.
+
+   D'où un jeu de jetons à part, préfixé `--v-`, défini UNE fois sur `:root` :
+   ce sont des valeurs nocturnes, mais l'application ne les consomme jamais
+   (aucune de ses classes ne les lit), donc elles ne peuvent pas fuir dans le
+   thème clair. La vitrine, elle, pose `data-theme="dark"` sur son conteneur
+   racine et hérite du reste des jetons de l'application par ce biais.
+
+   ── Élévation par strates ────────────────────────────────────────────────
+   Quatre niveaux explicites, chacun un cran plus clair que le précédent : la
+   hiérarchie se lit par la VALEUR, pas par la bordure. Les gris restent chauds
+   (R > G > B), comme ceux de l'application — un gris froid à côté de cet
+   orange le fait virer au rouge.
+
+   ── Traduction des ombres ────────────────────────────────────────────────
+   Une ombre noire sur un fond noir ne se voit pas. Chaque surface élevée est
+   donc détachée par TROIS choses ensemble : un liseré clair en haut (`--v-rim`,
+   la lumière qui accroche l'arête), un reflet interne (`--v-inset`), et une
+   ombre large et très sombre (`--v-shadow-*`) qui sert à creuser le fond, pas
+   à éclairer l'objet. La source lumineuse est unique et implicite : en haut à
+   gauche, d'où l'angle de 160deg de `--v-sheen`, identique partout.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* — Strates — */
+  --v-surface-0: #0B0B0C; /* le sol de la page */
+  --v-surface-1: #131211; /* une section qui se détache du sol */
+  --v-surface-2: #1A1817; /* une carte posée sur la section */
+  --v-surface-3: #232120; /* ce qui flotte au-dessus des cartes */
+
+  /* — Arêtes et reflets —
+     Le liseré est plus marqué en haut qu'ailleurs : c'est là que la lumière
+     touche. `--v-rim` pour une surface qui flotte, `--v-rim-soft` pour une
+     surface simplement posée. */
+  --v-rim: rgba(255, 255, 255, 0.1);
+  --v-rim-soft: rgba(255, 255, 255, 0.06);
+  --v-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --v-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
+
+  /* — Ombres —
+     Larges, très sombres, décalées vers le bas : elles ne dessinent pas un
+     contour, elles creusent le fond sous l'objet. */
+  --v-shadow-card: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
+  --v-shadow-float: 0 40px 80px -20px rgba(0, 0, 0, 0.8);
+  --v-shadow-satellite: 0 16px 32px -8px rgba(0, 0, 0, 0.75);
+
+  /* — Halo d'accent —
+     Un ou deux par page, jamais plus : au-delà, l'orange ne désigne plus rien
+     et l'écran vire à la démonstration technique. */
+  --v-halo: rgba(249, 115, 22, 0.16);
+  --v-halo-strong: rgba(249, 115, 22, 0.3);
+  --v-halo-edge: rgba(249, 115, 22, 0.45);
+
+  /* — Dégradé des actions —
+     Même famille que l'orange de l'application, un cran plus dense pour tenir
+     sur un fond noir. L'encre posée dessus reste `--accent-on` (noire) : du
+     blanc sur cet orange tomberait à 2,9:1. */
+  --v-cta-from: #FB923C;
+  --v-cta-to: #EA580C; /* 5,6:1 avec --accent-on */
+
+  /* — Grain —
+     Ce qui empêche les grands aplats sombres de bander en dégradés de blocs.
+     À 3 %, il ne se voit pas : il se sent. */
+  --v-noise-opacity: 0.035;
+
+  /* — Rayons — */
+  --v-radius-chip: 12px;
+  --v-radius-card: 16px;
+  --v-radius-mockup: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    PASSERELLE TAILWIND
 
    `inline` est essentiel : l'utilitaire émet `var(--surface-1)` et non une

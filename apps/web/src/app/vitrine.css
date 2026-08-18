@@ -1,0 +1,285 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA VITRINE
+
+   Tout ce qui est propre aux pages publiques (`/` et `/f/*`) vit ici, et
+   NULLE PART ailleurs. La raison est simple : les classes de `globals.css`
+   (`.card`, `.btn`, `.chip`…) sont partagées avec l'application connectée.
+   Leur ajouter un halo et une grande ombre pour les besoins de la vitrine
+   repeindrait le tableau de bord d'un coach au passage. Les classes ci-dessous
+   sont donc préfixées `v-` et ne recouvrent jamais une classe existante.
+
+   Aucune couleur littérale ici non plus : tout vient des jetons `--v-*` de
+   `tokens.css`. La seule valeur brute est la texture de grain, qui n'est pas
+   une couleur — c'est un champ de bruit dont seule l'opacité compte.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* ————— Le sol —————
+     Porte `data-theme="dark"` en plus de cette classe : l'attribut apporte les
+     jetons de l'application (encre, accent, états), la classe apporte ceux de
+     la vitrine. */
+  .vitrine-root {
+    position: relative;
+    min-height: 100dvh;
+    background-color: var(--v-surface-0);
+    color: var(--text-primary);
+    color-scheme: dark;
+    /* Une carte satellite qui dépasse du mockup ne doit jamais créer de barre
+       de défilement horizontale. `clip` plutôt que `hidden` : il n'introduit
+       pas de conteneur de défilement, donc `position: sticky` continue de
+       fonctionner pour la barre de navigation. */
+    overflow-x: clip;
+  }
+
+  /* Le grain, posé sur toute la fenêtre. Fixe plutôt que défilant : un bruit
+     qui glisse avec le contenu se lit comme un artefact de compression.
+     Derrière le contenu (z-0 contre z-1) — il est là pour casser le banding
+     des aplats, pas pour salir le texte. */
+  .vitrine-root::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--v-noise-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .vitrine-root > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Le rebond élastique en haut de page se peint avec le fond du DOCUMENT, pas
+     avec celui de la vitrine : sans cette règle, un visiteur en thème clair
+     voit une bande blanche apparaître au-dessus d'une page noire dès qu'il
+     tire vers le bas. */
+  html:has(.vitrine-root) {
+    background-color: var(--v-surface-0);
+  }
+
+  /* ————— Strates —————
+     `v-surface-1` pour une section, `v-surface-2` pour une carte, `v-surface-3`
+     pour ce qui flotte. Chacune porte le même reflet directionnel : une seule
+     source de lumière, en haut à gauche. */
+  .v-surface-1,
+  .v-surface-2,
+  .v-surface-3 {
+    background-image: var(--v-sheen);
+  }
+  .v-surface-1 {
+    background-color: var(--v-surface-1);
+  }
+  .v-surface-2 {
+    background-color: var(--v-surface-2);
+  }
+  .v-surface-3 {
+    background-color: var(--v-surface-3);
+  }
+
+  /* ————— La carte —————
+     Trois choses ensemble la détachent : le liseré clair qui accroche l'arête
+     haute, le reflet interne, et l'ombre qui creuse le fond dessous. Retirez-en
+     une et la carte se recolle au fond. */
+  .v-card {
+    position: relative;
+    background-color: var(--v-surface-2);
+    background-image: var(--v-sheen);
+    border: 1px solid var(--v-rim-soft);
+    border-top-color: var(--v-rim);
+    border-radius: var(--v-radius-card);
+    box-shadow: var(--v-inset), var(--v-shadow-card);
+  }
+
+  /* Survol : la carte MONTE, elle ne grossit pas. Un `scale` déforme le texte
+     et trahit l'échelle du mockup juste à côté ; quatre pixels de translation
+     suffisent à dire « ceci répond ». */
+  .v-lift {
+    transition:
+      transform var(--dur-ui) var(--ease-app),
+      border-color var(--dur-ui) var(--ease-app),
+      box-shadow var(--dur-ui) var(--ease-app);
+  }
+  .v-lift:hover {
+    transform: translateY(-4px);
+    border-color: var(--v-halo-edge);
+    box-shadow: var(--v-inset), var(--v-shadow-float), 0 0 40px -12px var(--v-halo-strong);
+  }
+
+  /* ————— Le halo d'accent —————
+     Posé DERRIÈRE ce qu'il éclaire, jamais dessus. Sans `pointer-events: none`,
+     il intercepterait les clics du bouton qu'il est censé mettre en valeur. */
+  .v-halo {
+    position: absolute;
+    pointer-events: none;
+    border-radius: var(--radius-pill);
+    background: radial-gradient(closest-side, var(--v-halo-strong), transparent 100%);
+    filter: blur(40px);
+  }
+  .v-halo-soft {
+    background: radial-gradient(closest-side, var(--v-halo), transparent 100%);
+  }
+
+  /* ————— Actions —————
+     Le bouton plein porte de l'encre NOIRE : cet orange est clair, un libellé
+     blanc dessus tomberait sous le seuil de lisibilité. */
+  .v-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    border-radius: var(--v-radius-chip);
+    transition:
+      filter var(--dur-tap) var(--ease-app),
+      transform var(--dur-tap) var(--ease-app),
+      border-color var(--dur-ui) var(--ease-app),
+      background-color var(--dur-ui) var(--ease-app);
+  }
+  .v-btn:active {
+    transform: scale(0.97);
+  }
+  .v-btn-primary {
+    background-image: linear-gradient(180deg, var(--v-cta-from) 0%, var(--v-cta-to) 100%);
+    color: var(--accent-on);
+    box-shadow: var(--sheen-soft), 0 12px 32px -12px var(--v-halo-edge);
+  }
+  .v-btn-primary:hover {
+    filter: brightness(1.06);
+  }
+  .v-btn-ghost {
+    background-color: transparent;
+    border: 1px solid var(--v-rim);
+    color: var(--text-primary);
+  }
+  .v-btn-ghost:hover {
+    background-color: var(--v-surface-2);
+    border-color: var(--v-halo-edge);
+  }
+
+  /* ————— Pastilles ————— */
+  .v-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: var(--radius-pill);
+    background-color: var(--v-surface-3);
+    border: 1px solid var(--v-rim-soft);
+    color: var(--text-secondary);
+  }
+  .v-chip-accent {
+    background-color: var(--accent-surface);
+    border-color: var(--v-halo-edge);
+    color: var(--accent);
+  }
+
+  /* ————— Le mot mis en valeur —————
+     L'équivalent nocturne du surlignage : le mot prend le dégradé d'accent,
+     le reste de la phrase garde son encre. Un seul par page.
+     `background-clip: text` sans couleur de repli laisserait le mot INVISIBLE
+     là où il n'est pas rendu — d'où la couleur posée d'abord. */
+  .v-word {
+    color: var(--accent);
+    background-image: linear-gradient(100deg, var(--v-cta-from) 0%, var(--accent-solid-bright) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ————— Perspective —————
+     `perspective` va sur la SCÈNE, jamais sur l'élément qui pivote : porté par
+     lui-même, il ne produirait aucune profondeur (même règle que `.flip-scene`
+     de l'application). */
+  .v-scene {
+    perspective: 1400px;
+    perspective-origin: 60% 40%;
+  }
+  .v-slab {
+    transform: rotateY(-9deg) rotateX(5deg) translateZ(0);
+    transform-style: preserve-3d;
+    border-radius: var(--v-radius-mockup);
+    box-shadow: var(--v-inset), var(--v-shadow-float);
+    transition: transform var(--dur-page) var(--ease-app);
+  }
+  /* Les satellites portent leur PROPRE ombre : c'est elle qui les fait passer
+     au-dessus de la dalle plutôt que d'y être collés. */
+  .v-satellite {
+    position: absolute;
+    background-color: var(--v-surface-3);
+    background-image: var(--v-sheen);
+    border: 1px solid var(--v-rim);
+    border-radius: var(--v-radius-chip);
+    box-shadow: var(--v-inset), var(--v-shadow-satellite);
+  }
+
+  /* ————— Entrée au défilement —————
+     L'état de départ n'est posé QUE si le script a pris la main (`data-reveal`
+     est écrit par le composant au montage). Sans cette précaution, un visiteur
+     dont le JavaScript ne s'exécute pas garderait une page entièrement
+     invisible — la pire panne possible pour une page de présentation. */
+  [data-reveal="pending"] {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  [data-reveal="in"] {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* ————— Barre de navigation —————
+     Transparente en haut de page, elle ne prend son verre et son trait qu'une
+     fois le contenu passé dessous : une bordure posée d'emblée dessinerait une
+     couture en travers du héros, là où il n'y a encore rien à séparer. */
+  .v-nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 1px solid transparent;
+    transition:
+      background-color var(--dur-ui) var(--ease-app),
+      border-color var(--dur-ui) var(--ease-app);
+  }
+  .v-nav-stuck {
+    background-color: color-mix(in srgb, var(--v-surface-0) 72%, transparent);
+    border-bottom-color: var(--v-rim-soft);
+    backdrop-filter: blur(12px) saturate(1.1);
+    -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  }
+}
+
+/* ————— Mobile —————
+   Sous 768 px, la dalle se remet à plat : une perspective vue de trop près sur
+   un écran étroit ne se lit plus comme du volume, elle se lit comme un défaut
+   d'alignement. */
+@media (max-width: 767px) {
+  .v-slab {
+    transform: none;
+  }
+  .v-scene {
+    perspective: none;
+  }
+}
+
+/* ————— Mouvement réduit —————
+   Tout ce qui bouge s'arrête, et surtout : ce qui devait apparaître est déjà
+   visible. Une entrée neutralisée qui oublie de remettre l'opacité à 1 laisse
+   la page blanche. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal="pending"],
+  [data-reveal="in"] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .v-lift:hover {
+    transform: none;
+  }
+  .v-slab {
+    transition: none;
+  }
+}

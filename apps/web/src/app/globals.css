@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./vitrine.css";
 
 /* Aucune couleur littérale sous cette ligne : tout vient de `tokens.css`.
    Les composants sont écrits UNE fois ; c'est le jeu de jetons qui change. */
