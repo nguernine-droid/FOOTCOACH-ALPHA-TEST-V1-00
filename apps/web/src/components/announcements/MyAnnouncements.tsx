@@ -104,7 +104,12 @@ export function useMyAnnouncements(): MyAnnouncements {
 
   const cancel = useCallback(
     async (announcementId: string) => {
-      await api(`/announcements/${announcementId}`, { method: "DELETE" }).catch(() => undefined);
+      try {
+        await api(`/announcements/${announcementId}`, { method: "DELETE" });
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Impossible d'annuler cette annonce");
+      }
       reload();
     },
     [reload],
