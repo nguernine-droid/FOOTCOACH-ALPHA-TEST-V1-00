@@ -24,7 +24,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const districts = (await fetchDistricts()) ?? [];
 
   const entries: MetadataRoute.Sitemap = [
-    { url: `${base}/f`, changeFrequency: "daily", priority: 1 },
+    // La racine d'abord, et seule à porter la priorité maximale : c'est la page
+    // qu'on veut voir remonter sur le nom du service. `/f` la suit de près — il
+    // change tous les jours, elle presque jamais — mais un plan de site où deux
+    // pages sont « la plus importante » n'en désigne aucune.
+    { url: base, changeFrequency: "weekly", priority: 1 },
+    { url: `${base}/f`, changeFrequency: "daily", priority: 0.9 },
   ];
 
   for (const district of districts) {
