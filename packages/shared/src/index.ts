@@ -1431,6 +1431,12 @@ export interface AnnouncementDto {
   /** Renseignés quand l'annonce est matchée : le match créé et l'équipe qui a répondu */
   matchId: string | null;
   opponentTeam: TeamDto | null;
+  /**
+   * Fiabilité de l'équipe qui publie. À côté de la date et du lieu, parce que
+   * c'est une information de DÉCISION : accepter un match, c'est parier que
+   * l'adversaire sera là.
+   */
+  reliability: ReliabilityDto;
   /** Distance à vol d'oiseau entre ma ville et le LIEU DU MATCH (null si ville inconnue) */
   distanceKm: number | null;
   /** Direction du lieu du match vue de chez moi : 0 = nord, sens horaire (null si ville inconnue) */
@@ -1578,6 +1584,27 @@ export interface MatchDto {
    * deux coachs qui pourraient croire leur déplacement non comptabilisé.
    */
   plateau: { teams: number; wanted: number } | null;
+  /**
+   * ————— Confirmation en deux temps —————
+   * Convenir d'un match six semaines à l'avance ne dit pas qu'on y sera. Chaque
+   * camp reconfirme à l'approche ; celui qui ne confirme pas se voit, et son
+   * silence est une information — bien plus tôt qu'un appel le samedi soir.
+   */
+  iConfirmed: boolean;
+  opponentConfirmed: boolean;
+  /** true quand la fenêtre de confirmation est ouverte (voir CONFIRMATION_STAGES) */
+  confirmationOpen: boolean;
+  /**
+   * ————— Détails pratiques —————
+   * Qui arbitre, quels vestiaires, et l'horaire tel qu'il a été ajusté. Réglés
+   * par l'équipe qui REÇOIT — elle seule connaît son stade — et lus par les
+   * deux. C'est ce qui fait que le match se prépare ici plutôt que par SMS.
+   */
+  refereeBy: RefereeBy;
+  refereeName: string | null;
+  changingRooms: string | null;
+  /** true pour le coach de l'équipe qui reçoit : lui seul peut les modifier */
+  canEditDetails: boolean;
   /** Désistement : équipe qui a renoncé, et son motif (null si le match tient toujours) */
   withdrawnByTeamId: string | null;
   withdrawalReason: WithdrawalReason | null;
@@ -1919,6 +1946,13 @@ export interface CoachCardDto extends CoachRefDto {
   points: number;
   matchesPlayed: number;
   categories: CoachCategory[];
+  /**
+   * Fiabilité de son équipe principale. Portée par l'ÉQUIPE et non par la
+   * personne : c'est le club qui honore ou non un engagement, et un adjoint
+   * n'a pas à traîner le taux d'une équipe qu'il vient de rejoindre — ni à
+   * s'en laver en changeant de banc.
+   */
+  reliability: ReliabilityDto;
 }
 
 /** Un coach du réseau de relations : contact + contexte sportif */
@@ -2121,6 +2155,8 @@ export interface SuggestionDto {
   gender: MatchGender | null;
   /** Niveau déclaré de l'équipe d'en face, tel quel (null s'il n'est pas réglé) */
   level: DivisionLevel | null;
+  /** Sa fiabilité : entre deux équipes également disponibles, c'est ce qui départage */
+  reliability: ReliabilityDto;
   distanceKm: number | null;
   /** Qui reçoit, si les deux préférences le disent — null quand ça reste à convenir */
   host: "mine" | "theirs" | null;
@@ -2284,4 +2320,435 @@ export function withinRelayHours(now: Date): boolean {
   const hour = Number.parseInt(raw, 10);
   if (Number.isNaN(hour)) return false;
   return hour >= RELAY_HOUR_START && hour < RELAY_HOUR_END;
+}
+
+/* ─────────────────────────── Fiabilité ────────────────────────────────── */
+
+/**
+ * Fenêtre d'observation : une saison glissante. Au-delà, ce qu'a fait une
+ * équipe ne dit plus rien de celle d'aujourd'hui — les effectifs tournent, les
+ * dirigeants changent.
+ */
+export const RELIABILITY_WINDOW_DAYS = 365;
+
+/**
+ * En dessous de cinq engagements, aucun taux n'est affiché.
+ *
+ * Ce n'est pas de la prudence décorative : un désistement sur deux matchs fait
+ * « 50 % d'annulation », chiffre qui condamnerait un club sur un accident. Un
+ * indicateur qu'on ne peut pas défendre ne vaut pas mieux que pas d'indicateur.
+ */
+export const RELIABILITY_MIN_SAMPLE = 5;
+
+/**
+ * Sous ce délai, le désistement est TARDIF : plus le temps de retrouver un
+ * adversaire, les parents sont prévenus, le terrain est réservé.
+ *
+ * Quatre jours parce que c'est le cas que tout le monde connaît — être lâché le
+ * jeudi pour un match du dimanche. C'est ce chiffre-là, et non le total, qui
+ * décrit vraiment le tort causé.
+ */
+export const LATE_WITHDRAWAL_DAYS = 4;
+
+/**
+ * La fiabilité d'une équipe sur la saison glissante.
+ *
+ * `withdrawnByReason` est servi entier et affiché : un club qui a annulé trois
+ * fois pour intempéries n'est pas un club qui lâche, et un taux nu le laisserait
+ * croire. Le taux compte pourtant TOUS les désistements — du point de vue de
+ * celui qui s'est retrouvé sans match, la pluie et l'oubli se ressemblent — mais
+ * le motif reste sous les yeux pour en juger.
+ */
+export interface ReliabilityDto {
+  /** Matchs honorés : terminés, non annulés */
+  played: number;
+  /** Désistements de cette équipe (elle, pas l'adversaire) */
+  withdrawn: number;
+  /** Dont ceux survenus à moins de `LATE_WITHDRAWAL_DAYS` jours du match */
+  lateWithdrawn: number;
+  withdrawnByReason: Partial<Record<WithdrawalReason, number>>;
+  /** played + withdrawn : ce sur quoi l'équipe s'était engagée */
+  commitments: number;
+  /** `null` tant que l'échantillon est insuffisant — jamais un zéro trompeur */
+  rate: number | null;
+}
+
+export type ReliabilityTone = "unknown" | "good" | "fair" | "poor";
+
+/**
+ * Les seuils sont volontairement larges. Le football amateur annule pour la
+ * pluie, pour un terrain fermé, pour une épidémie de gastro dans un effectif de
+ * quatorze : une échelle sévère peindrait en rouge des clubs parfaitement
+ * corrects et ferait fuir ceux qu'on veut garder.
+ */
+export function reliabilityTone(r: ReliabilityDto): ReliabilityTone {
+  if (r.rate === null) return "unknown";
+  if (r.rate <= 0.1) return "good";
+  if (r.rate <= 0.25) return "fair";
+  return "poor";
+}
+
+export const RELIABILITY_TONE_LABELS: Record<ReliabilityTone, string> = {
+  unknown: "Pas encore d'historique",
+  good: "Honore ses matchs",
+  fair: "Quelques désistements",
+  poor: "Désistements fréquents",
+};
+
+/** Le taux en toutes lettres, ou ce qui en tient lieu quand il n'y en a pas */
+export function reliabilityLabel(r: ReliabilityDto): string {
+  if (r.rate === null) {
+    return r.commitments === 0
+      ? "Aucun match à son actif"
+      : `${r.commitments} match${r.commitments > 1 ? "s" : ""} — trop peu pour se prononcer`;
+  }
+  return `${Math.round(r.rate * 100)} % de désistements sur ${r.commitments} matchs`;
+}
+
+/** L'entrée « rien à raconter » — évite de recopier quatre zéros à chaque repli */
+export const NO_HISTORY: Parameters<typeof toReliability>[0] = {
+  played: 0,
+  withdrawn: 0,
+  lateWithdrawn: 0,
+  withdrawnByReason: {},
+};
+
+/**
+ * Calcule le taux à partir des comptes bruts. Isolée du SQL pour être testable,
+ * et parce que c'est ici que se décide ce qu'on ose afficher.
+ */
+export function toReliability(input: {
+  played: number;
+  withdrawn: number;
+  lateWithdrawn: number;
+  withdrawnByReason: Partial<Record<WithdrawalReason, number>>;
+}): ReliabilityDto {
+  const commitments = input.played + input.withdrawn;
+  return {
+    ...input,
+    commitments,
+    rate: commitments >= RELIABILITY_MIN_SAMPLE ? input.withdrawn / commitments : null,
+  };
+}
+
+/* ─────────────────── Confirmation d'un match convenu ──────────────────── */
+
+/**
+ * Les deux temps de la confirmation, en jours avant le coup d'envoi.
+ *
+ * Sept jours : il reste une semaine pour retrouver un adversaire si l'autre se
+ * dégonfle. Trois jours : dernier rappel, et à ce stade un silence vaut presque
+ * réponse. Au-delà de sept jours, personne ne sait encore — demander trop tôt
+ * n'obtiendrait qu'un « oui » machinal qui ne vaudrait rien.
+ *
+ * Décroissants : le balayeur prend le premier palier atteint.
+ */
+export const CONFIRMATION_STAGES = [7, 3] as const;
+
+/** Fenêtre d'ouverture de la confirmation : le premier palier */
+export const CONFIRMATION_OPENS_DAYS = CONFIRMATION_STAGES[0];
+
+/**
+ * Le palier dû pour un match dans `daysUntil` jours, ou `null` s'il n'y a rien
+ * à demander. `remindedAt` est le dernier palier déjà envoyé : on ne redescend
+ * jamais, et on ne répète pas.
+ */
+export function confirmationStageDue(daysUntil: number, remindedAt: number | null): number | null {
+  // Le jour du match, il est trop tard pour relancer : on joue ou on ne joue pas
+  if (daysUntil < 0) return null;
+  for (const stage of CONFIRMATION_STAGES) {
+    if (daysUntil <= stage && (remindedAt === null || stage < remindedAt)) return stage;
+  }
+  return null;
+}
+
+/* ───────────────────── Détails pratiques du match ─────────────────────── */
+
+/**
+ * Qui siffle. La question se pose à CHAQUE amical et se règle presque toujours
+ * la veille par SMS — c'est exactement le genre d'échange qui sort les deux
+ * coachs de l'application et ne les y ramène pas.
+ *
+ * `tbd` est le défaut et n'est pas un trou : « à définir » est un état réel du
+ * dossier, et l'afficher comme tel rappelle qu'il reste quelque chose à faire.
+ */
+export const REFEREE_BY = ["tbd", "home", "away", "official"] as const;
+export type RefereeBy = (typeof REFEREE_BY)[number];
+
+export const REFEREE_BY_LABELS: Record<RefereeBy, string> = {
+  tbd: "À définir",
+  home: "Un dirigeant de l'équipe qui reçoit",
+  away: "Un dirigeant de l'équipe qui se déplace",
+  official: "Arbitre officiel",
+};
+
+/**
+ * Ce que l'équipe qui reçoit peut régler après coup.
+ *
+ * L'heure en fait partie : un créneau se décale, et devoir annuler le match
+ * pour le republier une heure plus tard serait absurde. Elle est la seule
+ * information dont le changement ANNULE LES CONFIRMATIONS (voir la route) —
+ * avoir dit « nous serons là » à 15 h n'engage à rien pour 10 h.
+ */
+export const updateMatchDetailsSchema = z.object({
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  refereeBy: z.enum(REFEREE_BY).optional(),
+  refereeName: z.string().trim().max(80).nullable().optional(),
+  changingRooms: z.string().trim().max(200).nullable().optional(),
+});
+export type UpdateMatchDetailsInput = z.infer<typeof updateMatchDetailsSchema>;
+
+/**
+ * Rappel de la veille : l'heure, le lieu, l'arbitre et les vestiaires envoyés
+ * aux DEUX clubs, sans que personne ait à le demander.
+ *
+ * La veille et non le matin : à 7 h le jour du match, le car est déjà commandé
+ * et les parents prévenus — l'information arriverait après la décision qu'elle
+ * devait éclairer.
+ */
+export const DAY_BEFORE_REMINDER_DAYS = 1;
+
+/* ─────────────────── Liquidité par département ────────────────────────── */
+
+/**
+ * Noms des départements, pour afficher « Rhône (69) » plutôt qu'un code nu.
+ *
+ * Le DÉPARTEMENT et non le district : les districts de football ne se
+ * superposent pas exactement aux départements, et la FFF n'en publie pas le
+ * découpage réutilisable. L'approximation est assumée et l'interface ne dit
+ * jamais « district » — elle dit le nom du département, qui est vrai.
+ *
+ * Source : geo.api.gouv.fr (base officielle du Code officiel géographique).
+ */
+export const DEPARTMENT_NAMES: Record<string, string> = {
+  "01": "Ain",
+  "02": "Aisne",
+  "03": "Allier",
+  "04": "Alpes-de-Haute-Provence",
+  "05": "Hautes-Alpes",
+  "06": "Alpes-Maritimes",
+  "07": "Ardèche",
+  "08": "Ardennes",
+  "09": "Ariège",
+  "10": "Aube",
+  "11": "Aude",
+  "12": "Aveyron",
+  "13": "Bouches-du-Rhône",
+  "14": "Calvados",
+  "15": "Cantal",
+  "16": "Charente",
+  "17": "Charente-Maritime",
+  "18": "Cher",
+  "19": "Corrèze",
+  "21": "Côte-d'Or",
+  "22": "Côtes-d'Armor",
+  "23": "Creuse",
+  "24": "Dordogne",
+  "25": "Doubs",
+  "26": "Drôme",
+  "27": "Eure",
+  "28": "Eure-et-Loir",
+  "29": "Finistère",
+  "2A": "Corse-du-Sud",
+  "2B": "Haute-Corse",
+  "30": "Gard",
+  "31": "Haute-Garonne",
+  "32": "Gers",
+  "33": "Gironde",
+  "34": "Hérault",
+  "35": "Ille-et-Vilaine",
+  "36": "Indre",
+  "37": "Indre-et-Loire",
+  "38": "Isère",
+  "39": "Jura",
+  "40": "Landes",
+  "41": "Loir-et-Cher",
+  "42": "Loire",
+  "43": "Haute-Loire",
+  "44": "Loire-Atlantique",
+  "45": "Loiret",
+  "46": "Lot",
+  "47": "Lot-et-Garonne",
+  "48": "Lozère",
+  "49": "Maine-et-Loire",
+  "50": "Manche",
+  "51": "Marne",
+  "52": "Haute-Marne",
+  "53": "Mayenne",
+  "54": "Meurthe-et-Moselle",
+  "55": "Meuse",
+  "56": "Morbihan",
+  "57": "Moselle",
+  "58": "Nièvre",
+  "59": "Nord",
+  "60": "Oise",
+  "61": "Orne",
+  "62": "Pas-de-Calais",
+  "63": "Puy-de-Dôme",
+  "64": "Pyrénées-Atlantiques",
+  "65": "Hautes-Pyrénées",
+  "66": "Pyrénées-Orientales",
+  "67": "Bas-Rhin",
+  "68": "Haut-Rhin",
+  "69": "Rhône",
+  "70": "Haute-Saône",
+  "71": "Saône-et-Loire",
+  "72": "Sarthe",
+  "73": "Savoie",
+  "74": "Haute-Savoie",
+  "75": "Paris",
+  "76": "Seine-Maritime",
+  "77": "Seine-et-Marne",
+  "78": "Yvelines",
+  "79": "Deux-Sèvres",
+  "80": "Somme",
+  "81": "Tarn",
+  "82": "Tarn-et-Garonne",
+  "83": "Var",
+  "84": "Vaucluse",
+  "85": "Vendée",
+  "86": "Vienne",
+  "87": "Haute-Vienne",
+  "88": "Vosges",
+  "89": "Yonne",
+  "90": "Territoire de Belfort",
+  "91": "Essonne",
+  "92": "Hauts-de-Seine",
+  "93": "Seine-Saint-Denis",
+  "94": "Val-de-Marne",
+  "95": "Val-d'Oise",
+  "971": "Guadeloupe",
+  "972": "Martinique",
+  "973": "Guyane",
+  "974": "La Réunion",
+  "976": "Mayotte",
+};
+
+/** « 69 » → « Rhône (69) », ou le code seul s'il est inconnu */
+export function departmentLabel(code: string): string {
+  const name = DEPARTMENT_NAMES[code];
+  return name ? `${name} (${code})` : code;
+}
+
+/**
+ * La liquidité d'un département : ce qu'il faut regarder pour décider où
+ * concentrer l'effort, et pour savoir si l'on y est devenu incontournable.
+ */
+export interface DistrictStatsDto {
+  /** Code du département, ou null pour les villes absentes de l'annuaire */
+  code: string | null;
+  label: string;
+  coaches: number;
+  teams: number;
+  /** Annonces publiées sur la fenêtre observée, toutes issues confondues */
+  announcements: number;
+  /** Celles qui ont trouvé un adversaire — le seul chiffre qui dit si ça marche */
+  announcementsMatched: number;
+  /** Dates de disponibilité déclarées et encore à venir */
+  availabilities: number;
+  matchesPlayed: number;
+}
+
+/**
+ * Part des annonces qui ont trouvé preneur. `null` en dessous d'un seuil : un
+ * taux sur trois annonces ne mesure rien, et un tableau de bord qui ment fait
+ * prendre de mauvaises décisions.
+ */
+export const DISTRICT_MIN_ANNOUNCEMENTS = 5;
+
+export function matchRate(stats: DistrictStatsDto): number | null {
+  if (stats.announcements < DISTRICT_MIN_ANNOUNCEMENTS) return null;
+  return stats.announcementsMatched / stats.announcements;
+}
+
+/* ─────────────────── Couche publique indexable ────────────────────────── */
+
+/**
+ * Ce qu'une annonce montre à un visiteur SANS COMPTE.
+ *
+ * La liste est courte, et ce qui en est absent l'est délibérément :
+ *
+ * - **pas de coach.** L'identité d'un coach est celle d'une personne privée ;
+ *   elle obéit déjà à des règles strictes entre coachs (`canSeeCoachCard`) et
+ *   n'a rien à faire sur une page indexée par les moteurs.
+ * - **pas de stade.** Le nom du club et sa ville sont ceux d'une association
+ *   déclarée, publics par nature ; le terrain exact ajouté à l'heure exacte
+ *   ferait de la page un lieu de rendez-vous précis pour une équipe de mineurs.
+ * - **pas de commentaire libre.** « Informations pratiques » contient souvent un
+ *   numéro de téléphone. Publier ce champ, c'est publier des coordonnées
+ *   personnelles sans que personne l'ait voulu.
+ *
+ * Reste ce qui rend la page utile : qui cherche, où, quand, dans quelle
+ * catégorie. Assez pour donner envie de créer un compte, ce qui est le seul
+ * objet de cette page.
+ */
+export interface PublicAnnouncementDto {
+  id: string;
+  teamName: string;
+  city: string;
+  date: string;
+  time: string;
+  category: AnnouncementCategory;
+  gender: MatchGender | null;
+  level: DivisionLevel | null;
+  format: MatchFormat;
+  /** Plateau (≤ U11) : places encore libres, sinon null */
+  slotsLeft: number | null;
+  /** L'adversaire s'est désisté et l'annonce cherche à nouveau */
+  isSos: boolean;
+}
+
+/** Une catégorie présente dans un département, et son volume */
+export interface PublicCategoryCountDto {
+  category: AnnouncementCategory;
+  count: number;
+}
+
+/** Un département de la couche publique : ce que le sitemap et l'index listent */
+export interface PublicDistrictDto {
+  code: string;
+  label: string;
+  slug: string;
+  announcements: number;
+  categories: PublicCategoryCountDto[];
+}
+
+export interface PublicBoardDto {
+  district: PublicDistrictDto;
+  /** Catégorie filtrée, null pour la page du département entier */
+  category: AnnouncementCategory | null;
+  announcements: PublicAnnouncementDto[];
+}
+
+/** « 69 » → « rhone-69 ». Le code termine le slug : c'est lui qui sert à relire. */
+export function districtSlug(code: string, name: string): string {
+  const base = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${base}-${code.toLowerCase()}`;
+}
+
+/**
+ * « rhone-69 » → « 69 ». On relit le CODE et jamais le nom : un nom mal
+ * orthographié dans une URL partagée doit continuer de mener à la bonne page,
+ * et le code est la seule partie qui ne peut pas dériver.
+ */
+export function districtCodeFromSlug(slug: string): string | null {
+  const last = slug.split("-").pop();
+  if (!last) return null;
+  const code = last.toUpperCase();
+  return code in DEPARTMENT_NAMES ? code : null;
+}
+
+/** « U12-U13 » → « u12-u13 », et retour */
+export function categorySlug(category: AnnouncementCategory): string {
+  return category.toLowerCase();
+}
+
+export function categoryFromSlug(slug: string): AnnouncementCategory | null {
+  const found = ANNOUNCEMENT_CATEGORIES.find((c) => c.toLowerCase() === slug.toLowerCase());
+  return found ?? null;
 }

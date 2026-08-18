@@ -8,6 +8,9 @@ import {
   finalScoreSchema,
   isPlateauCategory,
   levelForPoints,
+  updateMatchDetailsSchema,
+  CONFIRMATION_OPENS_DAYS,
+  type RefereeBy,
   withdrawMatchSchema,
   MATCH_POINTS,
   PLATEAU_TEAMS_WANTED,
@@ -25,7 +28,13 @@ import { HttpError } from "../plugins/errors.js";
 import { cityCoords } from "../lib/cities.js";
 import { pairOnCooldown, totalPointsOf } from "../lib/points.js";
 import { tokensMatch } from "../lib/tokens.js";
-import { notifyScoreRecorded, notifySosAnnouncement, notifyWithdrawal } from "../lib/push.js";
+import {
+  notifyMatchConfirmed,
+  notifyMatchDetailsChanged,
+  notifyScoreRecorded,
+  notifySosAnnouncement,
+  notifyWithdrawal,
+} from "../lib/push.js";
 import { representativeCoachesOf } from "../lib/coachCard.js";
 import { toTeamDto } from "./auth.js";
 
@@ -59,6 +68,28 @@ function kickoffPassed(match: typeof matches.$inferSelect): boolean {
  */
 function encounterDayReached(match: typeof matches.$inferSelect): boolean {
   return new Date(`${match.date}T00:00`).getTime() <= Date.now();
+}
+
+/**
+ * Jours restants avant le coup d'envoi, arrondis vers le bas depuis MINUIT du
+ * jour du match : « demain » doit valoir 1 quelle que soit l'heure qu'il est.
+ */
+function daysUntilKickoff(match: typeof matches.$inferSelect): number {
+  const kickoff = new Date(`${match.date}T00:00:00Z`).getTime();
+  const todayUtc = new Date();
+  const start = Date.UTC(todayUtc.getUTCFullYear(), todayUtc.getUTCMonth(), todayUtc.getUTCDate());
+  return Math.floor((kickoff - start) / 86_400_000);
+}
+
+/**
+ * La confirmation n'est demandée qu'à l'approche : avant, elle n'obtiendrait
+ * qu'un « oui » machinal donné six semaines trop tôt, qui ne vaudrait rien.
+ * Elle se ferme avec le match — un match annulé ou joué ne se confirme plus.
+ */
+function confirmationOpen(match: typeof matches.$inferSelect): boolean {
+  if (match.status !== "scheduled") return false;
+  const days = daysUntilKickoff(match);
+  return days >= 0 && days <= CONFIRMATION_OPENS_DAYS;
 }
 
 /** Délai laissé pour valider la rencontre après le coup d'envoi */
@@ -141,6 +172,27 @@ function toDto(
     // alors enregistré comme celui qui a tenu l'écran.
     encounterToken: null,
     plateau: plateaus?.get(match.announcementId) ?? null,
+    iConfirmed:
+      viewerTeamId === match.homeTeamId
+        ? match.homeConfirmedAt !== null
+        : viewerTeamId === match.awayTeamId
+          ? match.awayConfirmedAt !== null
+          : false,
+    // Vu du spectateur : « l'autre camp ». Sans côté (un supporter), on montre
+    // l'état des deux plutôt que rien — d'où le ET.
+    opponentConfirmed:
+      viewerTeamId === match.homeTeamId
+        ? match.awayConfirmedAt !== null
+        : viewerTeamId === match.awayTeamId
+          ? match.homeConfirmedAt !== null
+          : match.homeConfirmedAt !== null && match.awayConfirmedAt !== null,
+    confirmationOpen: confirmationOpen(match),
+    refereeBy: match.refereeBy as RefereeBy,
+    refereeName: match.refereeName,
+    changingRooms: match.changingRooms,
+    // L'équipe qui reçoit règle les détails : elle seule connaît son stade,
+    // ses vestiaires et le créneau que le club lui a accordé.
+    canEditDetails: viewerTeamId === match.homeTeamId && match.status === "scheduled",
     withdrawnByTeamId: match.withdrawnByTeamId,
     withdrawalReason: match.withdrawalReason,
     withdrawalDetails: match.withdrawalDetails,
@@ -198,6 +250,94 @@ export function matchRoutes(app: FastifyInstance) {
       loadPlateaus([row.match.announcementId]),
     ]);
     return toDto(row, request.user.teamId, coaches, plateaus);
+  });
+
+  /**
+   * « Nous serons là. »
+   *
+   * Le geste le plus simple de l'application, et le plus utile : il ne change
+   * rien au match, il engage celui qui le fait. Ce qui compte n'est pas la
+   * confirmation reçue mais l'ABSENCE de confirmation en face, visible sept
+   * jours avant plutôt qu'un appel le samedi soir.
+   *
+   * Irréversible à dessein : se déconfirmer, c'est se désister — et le
+   * désistement, lui, demande un motif et prévient l'adversaire.
+   */
+  app.post("/matches/:id/confirm", { preHandler: requireRole("coach") }, async (request) => {
+    const { id } = idParamSchema.parse(request.params);
+    const myTeamId = request.user.teamId;
+    const { match } = await getMatchOr404(id);
+    assertCoachOfMatch(match, myTeamId);
+    if (match.status === "cancelled") throw new HttpError(400, "Ce match est annulé");
+    if (match.status !== "scheduled") throw new HttpError(400, "Ce match a déjà commencé");
+    if (!confirmationOpen(match))
+      throw new HttpError(400, `La confirmation s'ouvre ${CONFIRMATION_OPENS_DAYS} jours avant le match`);
+
+    const iAmHome = myTeamId === match.homeTeamId;
+    await db
+      .update(matches)
+      .set(iAmHome ? { homeConfirmedAt: new Date() } : { awayConfirmedAt: new Date() })
+      .where(eq(matches.id, id));
+
+    const [myTeam] = await db.select().from(teams).where(eq(teams.id, myTeamId!));
+    notifyMatchConfirmed({
+      opponentTeamId: iAmHome ? match.awayTeamId : match.homeTeamId,
+      confirmedTeamName: myTeam?.name ?? "L'équipe adverse",
+      matchId: id,
+    });
+
+    const { match: fresh, home, away } = await getMatchOr404(id);
+    return toDto({ match: fresh, home, away }, myTeamId);
+  });
+
+  /**
+   * Les détails pratiques, réglés par l'équipe qui reçoit.
+   *
+   * C'est le cœur du « posséder le match » : tant que l'heure exacte, l'arbitre
+   * et les vestiaires se règlent par SMS, les deux coachs n'ont aucune raison de
+   * revenir ici, et ils rejoueront ensemble l'an prochain sans repasser par
+   * l'application.
+   *
+   * CHANGER L'HEURE ANNULE LES DEUX CONFIRMATIONS. « Nous serons là » a été dit
+   * pour 15 h ; à 10 h, ce n'est plus la même question, et laisser la
+   * confirmation en place ferait croire à un accord qui n'a jamais été donné.
+   * L'adversaire est prévenu et doit reconfirmer.
+   */
+  app.patch("/matches/:id/details", { preHandler: requireRole("coach") }, async (request): Promise<MatchDto> => {
+    const { id } = idParamSchema.parse(request.params);
+    const input = updateMatchDetailsSchema.parse(request.body);
+    const myTeamId = request.user.teamId;
+    const { match } = await getMatchOr404(id);
+    assertCoachOfMatch(match, myTeamId);
+    if (myTeamId !== match.homeTeamId)
+      throw new HttpError(403, "Seule l'équipe qui reçoit règle les détails du match");
+    if (match.status !== "scheduled")
+      throw new HttpError(400, "Ce match n'est plus modifiable");
+
+    const timeChanged = input.time !== undefined && input.time !== match.time.slice(0, 5);
+    await db
+      .update(matches)
+      .set({
+        ...(input.time !== undefined ? { time: input.time } : {}),
+        ...(input.refereeBy !== undefined ? { refereeBy: input.refereeBy } : {}),
+        ...(input.refereeName !== undefined ? { refereeName: input.refereeName || null } : {}),
+        ...(input.changingRooms !== undefined ? { changingRooms: input.changingRooms || null } : {}),
+        // Remise à zéro des deux côtés : l'hôte aussi doit se réengager sur
+        // l'heure qu'il vient de déplacer.
+        ...(timeChanged ? { homeConfirmedAt: null, awayConfirmedAt: null, confirmationRemindedDays: null } : {}),
+      })
+      .where(eq(matches.id, id));
+
+    const [myTeam] = await db.select().from(teams).where(eq(teams.id, myTeamId!));
+    notifyMatchDetailsChanged({
+      opponentTeamId: match.awayTeamId,
+      hostTeamName: myTeam?.name ?? "L'équipe qui reçoit",
+      matchId: id,
+      newTime: timeChanged ? input.time! : null,
+    });
+
+    const fresh = await getMatchOr404(id);
+    return toDto(fresh, myTeamId);
   });
 
   /**

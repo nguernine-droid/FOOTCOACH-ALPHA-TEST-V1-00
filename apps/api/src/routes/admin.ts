@@ -5,6 +5,7 @@ import {
   ROLES,
   adminUpdateClubSchema,
   createClubSchema,
+  departmentLabel,
   mergeClubSchema,
   updateAccountEmailSchema,
   type AdminAccountDto,
@@ -12,6 +13,7 @@ import {
   type AdminClubDuplicateGroupDto,
   type AdminCreateClubResultDto,
   type AdminStatsDto,
+  type DistrictStatsDto,
   type Role,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
@@ -24,6 +26,8 @@ import {
   matches,
   passwordResetRequests,
   refreshTokens,
+  teamAvailabilities,
+  teamCoaches,
   teamEvents,
   teams,
   tournamentRegistrations,
@@ -35,6 +39,7 @@ import { HttpError } from "../plugins/errors.js";
 import { generateCode } from "../lib/codes.js";
 import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
+import { departmentOf } from "../lib/districts.js";
 import { generateTempPassword } from "../lib/passwords.js";
 import { clubById } from "../lib/declaredClubs.js";
 import { groupLookAlikeClubs } from "../lib/clubMatching.js";
@@ -283,6 +288,102 @@ export function adminRoutes(app: FastifyInstance) {
   });
 
   // ————— Gestion des clubs déclarés —————
+
+
+  /**
+   * Liquidité par département.
+   *
+   * Un marché de matchs amicaux ne devient utilisable qu'une fois DENSE : cinq
+   * critères doivent s'aligner (secteur, date, catégorie, niveau, terrain), et
+   * tant qu'un département compte dix équipes, presque rien ne s'apparie. Ce
+   * tableau existe pour choisir OÙ concentrer l'effort, puis pour savoir quand
+   * on y est devenu incontournable.
+   *
+   * Le chiffre qui décide n'est aucun des totaux, c'est le TAUX
+   * D'APPARIEMENT : cent annonces dont dix trouvent preneur décrivent un
+   * marché mort, dix annonces dont huit aboutissent décrivent un marché vivant.
+   *
+   * Le rattachement passe par la ville, jamais deviné : une commune absente de
+   * l'annuaire tombe dans une ligne « hors annuaire » plutôt que d'être versée
+   * au hasard dans un département dont elle gonflerait les chiffres.
+   */
+  app.get("/admin/districts", async (): Promise<DistrictStatsDto[]> => {
+    const [teamRows, announcementRows, availabilityRows, matchRows, coachRows] = await Promise.all([
+      db.select({ id: teams.id, city: teams.city }).from(teams),
+      db
+        .select({ teamId: matchAnnouncements.teamId, status: matchAnnouncements.status })
+        .from(matchAnnouncements),
+      db
+        .select({ teamId: teamAvailabilities.teamId })
+        .from(teamAvailabilities)
+        .where(gte(teamAvailabilities.date, sql`current_date`)),
+      db
+        .select({ homeTeamId: matches.homeTeamId, awayTeamId: matches.awayTeamId })
+        .from(matches)
+        .where(eq(matches.status, "finished")),
+      db
+        .select({ coachId: teamCoaches.coachId, teamId: teamCoaches.teamId })
+        .from(teamCoaches)
+        .innerJoin(users, eq(users.id, teamCoaches.coachId))
+        .where(and(eq(users.role, "coach"), isNull(users.disabledAt))),
+    ]);
+
+    const departmentByTeam = new Map<string, string | null>();
+    for (const team of teamRows) departmentByTeam.set(team.id, departmentOf(team.city));
+
+    const rows = new Map<string | null, DistrictStatsDto>();
+    const coachesSeen = new Map<string | null, Set<string>>();
+    const of = (code: string | null): DistrictStatsDto => {
+      let row = rows.get(code);
+      if (!row) {
+        row = {
+          code,
+          label: code === null ? "Hors annuaire" : departmentLabel(code),
+          coaches: 0,
+          teams: 0,
+          announcements: 0,
+          announcementsMatched: 0,
+          availabilities: 0,
+          matchesPlayed: 0,
+        };
+        rows.set(code, row);
+        coachesSeen.set(code, new Set());
+      }
+      return row;
+    };
+
+    for (const team of teamRows) of(departmentByTeam.get(team.id) ?? null).teams++;
+
+    for (const a of announcementRows) {
+      const row = of(departmentByTeam.get(a.teamId) ?? null);
+      row.announcements++;
+      if (a.status === "matched") row.announcementsMatched++;
+    }
+
+    for (const a of availabilityRows) of(departmentByTeam.get(a.teamId) ?? null).availabilities++;
+
+    // Un match compte pour les deux départements quand les équipes n'en
+    // partagent pas : il fait vivre l'un comme l'autre.
+    for (const m of matchRows) {
+      const home = departmentByTeam.get(m.homeTeamId) ?? null;
+      const away = departmentByTeam.get(m.awayTeamId) ?? null;
+      of(home).matchesPlayed++;
+      if (away !== home) of(away).matchesPlayed++;
+    }
+
+    // Un coach multi-équipes ne compte qu'une fois par département
+    for (const c of coachRows) {
+      const code = departmentByTeam.get(c.teamId) ?? null;
+      const seen = coachesSeen.get(code) ?? (of(code), coachesSeen.get(code)!);
+      if (!seen.has(c.coachId)) {
+        seen.add(c.coachId);
+        of(code).coaches++;
+      }
+    }
+
+    // Le plus dense d'abord : c'est là que se joue la décision
+    return [...rows.values()].sort((a, b) => b.teams - a.teams || b.announcements - a.announcements);
+  });
 
   app.get("/admin/clubs", async (request): Promise<AdminClubDto[]> => {
     const { q } = request.query as { q?: string };

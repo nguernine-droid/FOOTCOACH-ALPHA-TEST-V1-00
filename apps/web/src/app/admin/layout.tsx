@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Building2, LayoutDashboard, MessageSquareWarning, Users } from "lucide-react";
+import { Building2, LayoutDashboard, MapPinned, MessageSquareWarning, Users } from "lucide-react";
 import { RoleGuard } from "@/components/RoleGuard";
 import { AppTabs, type AppTab } from "@/components/AppTabs";
 import type { QuickAction } from "@/components/QuickActionContext";
@@ -10,6 +10,7 @@ const TABS: AppTab[] = [
   { href: "/admin", label: "Tableau de bord", shortLabel: "Board", icon: LayoutDashboard, exact: true },
   { href: "/admin/comptes", label: "Comptes", icon: Users },
   { href: "/admin/clubs", label: "Clubs", icon: Building2 },
+  { href: "/admin/districts", label: "Liquidité", shortLabel: "Liquidité", icon: MapPinned },
   { href: "/admin/signalements", label: "Signalements", icon: MessageSquareWarning },
 ];
 

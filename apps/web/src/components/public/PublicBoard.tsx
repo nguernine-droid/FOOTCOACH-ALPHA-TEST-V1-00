@@ -1,0 +1,138 @@
+import Link from "next/link";
+import {
+  categoryLabel,
+  categorySlug,
+  DIVISION_LEVEL_LABELS,
+  MATCH_GENDER_LABELS,
+  type PublicBoardDto,
+} from "@teamnexus/shared";
+
+/** « 2026-10-11 » → « dimanche 11 octobre » */
+function formatDate(iso: string): string {
+  const parsed = new Date(`${iso}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Le corps d'une page publique de département, avec ou sans catégorie.
+ *
+ * Partagé par les deux routes plutôt que recopié : la page « département » et
+ * la page « département + catégorie » montrent exactement la même chose, à un
+ * filtre près, et les laisser diverger produirait deux pages indexées qui ne se
+ * ressemblent plus.
+ *
+ * Chaque annonce mène à la connexion et non à sa fiche : la fiche exige un
+ * compte, et envoyer un visiteur sur un mur d'authentification sans le prévenir
+ * est le meilleur moyen de le perdre.
+ */
+export function PublicBoard({ board }: { board: PublicBoardDto }) {
+  const { district, category, announcements } = board;
+
+  return (
+    <div className="max-w-[900px] mx-auto space-y-6">
+      <div className="space-y-2">
+        <p className="text-xs text-ink-soft">
+          <Link href="/f" className="underline">
+            Tous les départements
+          </Link>
+          {category && (
+            <>
+              {" · "}
+              <Link href={`/f/${district.slug}`} className="underline">
+                {district.label}
+              </Link>
+            </>
+          )}
+        </p>
+        <h1 className="display text-3xl">
+          Matchs amicaux {category ? categoryLabel(category) : ""} — {district.label}
+        </h1>
+        <p className="text-sm text-ink-soft max-w-[60ch]">
+          {announcements.length === 0
+            ? "Aucune équipe ne cherche d'adversaire ici en ce moment."
+            : `${announcements.length} équipe${announcements.length > 1 ? "s" : ""} cherche${
+                announcements.length > 1 ? "nt" : ""
+              } un adversaire.`}{" "}
+          La consultation est libre ; un compte n&apos;est nécessaire que pour répondre.
+        </p>
+      </div>
+
+      {/* Les catégories du département : c'est le maillage qui fait vivre les
+          pages entre elles, et ce par quoi un moteur les découvre. */}
+      {district.categories.length > 1 && (
+        <nav className="flex flex-wrap gap-2" aria-label="Catégories du département">
+          <Link
+            href={`/f/${district.slug}`}
+            className={category === null ? "chip bg-blue text-white" : "chip bg-paper text-ink-soft"}
+          >
+            Toutes ({district.announcements})
+          </Link>
+          {district.categories.map((entry) => (
+            <Link
+              key={entry.category}
+              href={`/f/${district.slug}/${categorySlug(entry.category)}`}
+              className={
+                category === entry.category ? "chip bg-blue text-white" : "chip bg-paper text-ink-soft"
+              }
+            >
+              {categoryLabel(entry.category)} ({entry.count})
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {announcements.length > 0 && (
+        <ul className="space-y-2">
+          {announcements.map((a) => (
+            <li key={a.id} className="card p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-sm truncate">{a.teamName}</p>
+                  <p className="text-xs text-ink-soft">{a.city}</p>
+                </div>
+                {a.isSos && <span className="chip bg-coral-soft text-coral shrink-0">Place libérée</span>}
+              </div>
+
+              <p className="text-xs text-ink-soft capitalize">
+                {formatDate(a.date)} à {a.time}
+              </p>
+
+              <div className="flex flex-wrap gap-1.5">
+                <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
+                {a.gender && <span className="chip bg-paper text-ink-soft">{MATCH_GENDER_LABELS[a.gender]}</span>}
+                <span className="chip bg-paper text-ink-soft">{a.format}</span>
+                {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
+                {a.slotsLeft !== null && a.slotsLeft > 0 && (
+                  <span className="chip bg-accent-surface text-accent">
+                    Plateau · {a.slotsLeft} place{a.slotsLeft > 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="card p-5 space-y-3">
+        <p className="font-bold text-sm">Vous encadrez une équipe ?</p>
+        <p className="text-xs text-ink-soft max-w-[55ch]">
+          Créez un compte pour répondre à ces annonces, publier les vôtres, et déclarer les dates où votre équipe est
+          libre — les équipes libres en face vous sont alors proposées.
+        </p>
+        <Link
+          href="/register"
+          className="btn btn-primary inline-flex items-center justify-center gap-2 font-bold rounded-lg
+            px-6 py-3.5 text-sm min-h-13"
+        >
+          Créer un compte coach
+        </Link>
+      </div>
+    </div>
+  );
+}

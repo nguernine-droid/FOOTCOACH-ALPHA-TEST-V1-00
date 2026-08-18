@@ -21,6 +21,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
 import { TeamLogo } from "@/components/TeamLogo";
+import { ReliabilityBadge } from "@/components/ReliabilityBadge";
 import { WeekendPicker } from "@/components/availabilities/WeekendPicker";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -228,6 +229,7 @@ function SuggestionCard({ suggestion: s, onDone }: { suggestion: SuggestionDto; 
         <span className="chip bg-paper text-ink-soft">
           {s.host === "mine" ? "Chez nous" : s.host === "theirs" ? "Chez eux" : "Lieu à convenir"}
         </span>
+        <ReliabilityBadge reliability={s.reliability} />
       </div>
 
       {error && <p className="text-xs font-semibold text-coral">{error}</p>}

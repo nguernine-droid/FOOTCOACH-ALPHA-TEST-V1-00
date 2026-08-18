@@ -20,6 +20,9 @@ import {
   type CoachRefDto,
   type MatchGender,
   type RadarDto,
+  toReliability,
+  NO_HISTORY,
+  type ReliabilityDto,
   type TeamDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
@@ -34,6 +37,7 @@ import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard
 import { avatarUrlOf, toTeamDto } from "./auth.js";
 import { markRead, openConversation, postSystemMessage } from "../lib/conversations.js";
 import { teamsSharingCoachWith } from "../lib/teamScope.js";
+import { reliabilityOf } from "../lib/reliability.js";
 
 function toDto(
   row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
@@ -46,6 +50,13 @@ function toDto(
   coach?: CoachRefDto | null,
   /** Acceptées déjà comptées par l'appelant (radar) — sinon relues des propositions */
   acceptedCount?: number,
+  /**
+   * Fiabilité de l'équipe émettrice, chargée PAR LOT par l'appelant. Sans elle,
+   * une annonce fraîchement publiée n'a pas encore d'historique à montrer — ce
+   * qui est exact : `NO_HISTORY` dit « aucun match à son actif », et c'est bien
+   * ce qu'on sait d'une équipe dont on n'a rien demandé.
+   */
+  reliability?: ReliabilityDto,
 ): AnnouncementDto {
   const { announcement, team } = row;
   const plateau = isPlateauCategory(announcement.category);
@@ -83,6 +94,7 @@ function toDto(
     createdAt: announcement.createdAt.toISOString(),
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
+    reliability: reliability ?? toReliability(NO_HISTORY),
     distanceKm,
     bearingDeg: bearing,
     responses: responses ?? [],
@@ -232,9 +244,20 @@ export function announcementRoutes(app: FastifyInstance) {
     );
     const responsesByAnn = await loadResponses(rows.map((r) => r.announcement.id));
     const coaches = await representativeCoachesOf(rows.map((r) => r.team.id));
+    const reliabilities = await reliabilityOf([...new Set(rows.map((r) => r.team.id))]);
     return rows.map((r) => {
       const responses = (responsesByAnn.get(r.announcement.id) ?? []).map(({ teamId: _teamId, ...dto }) => dto);
-      return toDto(r, myTeamId, links.get(r.announcement.id), null, responses, null, coaches.get(r.team.id));
+      return toDto(
+        r,
+        myTeamId,
+        links.get(r.announcement.id),
+        null,
+        responses,
+        null,
+        coaches.get(r.team.id),
+        undefined,
+        reliabilities.get(r.team.id),
+      );
     });
   });
 
@@ -319,7 +342,17 @@ export function announcementRoutes(app: FastifyInstance) {
     const acceptedCount = all.filter((r) => r.status === "accepted").length;
     const myCoords = await loadOrigin(request.user.id, myTeamId);
     const coaches = await representativeCoachesOf([row.team.id]);
-    return toDto(row, myTeamId, links.get(id), myCoords, responses, myStatus, coaches.get(row.team.id), acceptedCount);
+    return toDto(
+      row,
+      myTeamId,
+      links.get(id),
+      myCoords,
+      responses,
+      myStatus,
+      coaches.get(row.team.id),
+      acceptedCount,
+      (await reliabilityOf([row.team.id])).get(row.team.id),
+    );
   });
 
   /**
@@ -389,6 +422,7 @@ export function announcementRoutes(app: FastifyInstance) {
     }
 
     const coaches = await representativeCoachesOf(rows.map((r) => r.team.id));
+    const reliabilities = await reliabilityOf([...new Set(rows.map((r) => r.team.id))]);
     const items: AnnouncementDto[] = [];
     let beyondRadius = 0;
     for (const row of rows) {
@@ -401,6 +435,7 @@ export function announcementRoutes(app: FastifyInstance) {
         myStatusByAnn.get(row.announcement.id) ?? null,
         coaches.get(row.team.id),
         acceptedCounts.get(row.announcement.id) ?? 0,
+        reliabilities.get(row.team.id),
       );
       if (radiusKm !== null && dto.distanceKm !== null && dto.distanceKm > radiusKm) beyondRadius++;
       else items.push(dto);

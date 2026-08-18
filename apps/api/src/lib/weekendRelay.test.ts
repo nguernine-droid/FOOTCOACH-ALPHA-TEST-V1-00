@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  confirmationStageDue,
   freeWeekendTarget,
   usualMatchDay,
   withinRelayHours,
@@ -97,4 +98,48 @@ test("les bornes horaires suivent l'heure d'hiver", () => {
   // En janvier, Paris est à UTC+1 : 08:00 UTC = 09:00 à Paris, la plage ouvre.
   assert.equal(withinRelayHours(new Date("2026-01-15T08:00:00Z")), true);
   assert.equal(withinRelayHours(new Date("2026-01-15T07:30:00Z")), false);
+});
+
+/**
+ * Paliers de confirmation. Le risque n'est pas d'oublier un rappel, c'est d'en
+ * envoyer trois : un coach relancé chaque demi-heure coupe les notifications,
+ * et on perd alors aussi celles qui comptent.
+ */
+
+test("aucun rappel tant que le match est loin", () => {
+  assert.equal(confirmationStageDue(30, null), null);
+  assert.equal(confirmationStageDue(8, null), null);
+});
+
+test("le premier palier tombe à sept jours", () => {
+  assert.equal(confirmationStageDue(7, null), 7);
+  assert.equal(confirmationStageDue(5, null), 7);
+});
+
+test("un palier déjà envoyé ne se répète pas", () => {
+  // Le balayeur repasse toutes les trente minutes : sans cette règle, le même
+  // rappel partirait quarante-huit fois par jour.
+  assert.equal(confirmationStageDue(6, 7), null);
+  assert.equal(confirmationStageDue(4, 7), null);
+});
+
+test("le second palier tombe à trois jours, une seule fois", () => {
+  assert.equal(confirmationStageDue(3, 7), 3);
+  assert.equal(confirmationStageDue(2, 3), null);
+  assert.equal(confirmationStageDue(1, 3), null);
+});
+
+test("un match tout proche n'ouvre pas les deux paliers d'un coup", () => {
+  // Match convenu à deux jours : on ne veut pas le rappel « dans une semaine »
+  // suivi du rappel « dans trois jours » à la minute suivante.
+  const first = confirmationStageDue(2, null);
+  assert.equal(first, 7);
+  assert.equal(confirmationStageDue(2, first), 3);
+  assert.equal(confirmationStageDue(2, 3), null);
+});
+
+test("le jour du match, on ne relance plus", () => {
+  assert.equal(confirmationStageDue(0, null), 7);
+  assert.equal(confirmationStageDue(-1, null), null);
+  assert.equal(confirmationStageDue(-3, 7), null);
 });

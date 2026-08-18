@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { CoachCardDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { CoachCard } from "@/components/coach/CoachCard";
+import { ReliabilityBadge } from "@/components/ReliabilityBadge";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -60,18 +61,28 @@ export function CoachCardSheet({ coachId, onClose }: { coachId: string; onClose:
         ) : !card ? (
           <Skeleton className="h-[440px] max-w-[340px] mx-auto" />
         ) : (
-          <CoachCard
-            name={card.nickname}
-            avatarUrl={card.avatarUrl}
-            clubLabel={card.clubLabel}
-            clubLogoUrl={card.clubLogoUrl}
-            teamCategory={card.teamCategory}
-            teamLevel={card.teamLevel}
-            level={card.level}
-            points={card.points}
-            matchesPlayed={card.matchesPlayed}
-            categories={card.categories}
-          />
+          <div className="space-y-4">
+            <CoachCard
+              name={card.nickname}
+              avatarUrl={card.avatarUrl}
+              clubLabel={card.clubLabel}
+              clubLogoUrl={card.clubLogoUrl}
+              teamCategory={card.teamCategory}
+              teamLevel={card.teamLevel}
+              level={card.level}
+              points={card.points}
+              matchesPlayed={card.matchesPlayed}
+              categories={card.categories}
+            />
+            {/* Sous la carte et non dessus : la carte est un portrait, ceci est
+                une information de décision. Les mêler abîmerait les deux. */}
+            <div className="max-w-[340px] mx-auto rounded-lg bg-paper px-4 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-ink-faint mb-2">
+                Son équipe sur la saison
+              </p>
+              <ReliabilityBadge reliability={card.reliability} detailed />
+            </div>
+          </div>
         )}
       </div>
     </BottomSheet>

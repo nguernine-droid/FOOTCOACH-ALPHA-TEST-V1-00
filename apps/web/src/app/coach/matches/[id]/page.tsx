@@ -28,6 +28,8 @@ import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
 import { MatchCard } from "@/components/MatchCard";
+import { ConfirmationCard } from "@/components/matches/ConfirmationCard";
+import { MatchDetailsCard } from "@/components/matches/MatchDetailsCard";
 import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
 import { QrScanner } from "@/components/matches/QrScanner";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
@@ -385,6 +387,14 @@ export default function CoachMatchPage({ params }: { params: Promise<{ id: strin
       </Link>
 
       <MatchCard match={match} />
+
+      {/* Avant tout le reste quand la fenêtre est ouverte : c'est la seule
+          chose à faire sur cet écran tant que le match n'est pas confirmé. */}
+      {!cancelled && <ConfirmationCard match={match} onConfirmed={load} />}
+
+      {/* Les détails pratiques juste après : une fois qu'on sait qui vient,
+          la question suivante est à quelle heure et qui siffle. */}
+      <MatchDetailsCard match={match} onChange={load} />
 
       {cancelled ? (
         <section className="card p-5 space-y-4" aria-label="Match annulé">

@@ -10,6 +10,7 @@ import {
 } from "@teamnexus/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { ReliabilityBadge } from "@/components/ReliabilityBadge";
 import { VenueLink } from "@/components/VenueLink";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
@@ -103,6 +104,10 @@ export function SectorAnnouncementCard({
         <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
         {a.gender && <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>}
         <span className="chip bg-pitch-soft text-primary">{a.format}</span>
+        {/* Ce qu'il faut savoir AVANT de proposer : cette équipe honore-t-elle
+            ses engagements ? La distance et la catégorie disent si le match est
+            jouable, ceci dit s'il sera joué. */}
+        <ReliabilityBadge reliability={a.reliability} />
         {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
       </div>
 

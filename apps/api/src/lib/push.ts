@@ -702,3 +702,127 @@ export function notifyFreeWeekend(input: { teamId: string; teamName: string; dat
     })(),
   );
 }
+
+/**
+ * L'adversaire a confirmé sa venue.
+ *
+ * Courte et sans action : elle rassure, elle ne demande rien. C'est son
+ * absence, sept jours avant, qui est le vrai signal.
+ */
+export function notifyMatchConfirmed(input: {
+  opponentTeamId: string;
+  confirmedTeamName: string;
+  matchId: string;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      await sendToUsers(await teamCoachesToNotify(input.opponentTeamId, "notifyResponseDecision"), {
+        title: "Match confirmé",
+        body: `${input.confirmedTeamName} confirme sa venue.`,
+        url: `/coach/matches/${input.matchId}`,
+        tag: `confirme-${input.matchId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Rappel : ce match approche et vous ne l'avez pas confirmé.
+ *
+ * Adressée à celui qui n'a PAS confirmé, jamais à l'autre — inutile d'inquiéter
+ * qui a fait sa part. Le second palier le dit plus nettement : à trois jours,
+ * un silence commence à ressembler à une réponse.
+ */
+export function notifyConfirmationDue(input: {
+  teamId: string;
+  opponentTeamName: string;
+  matchId: string;
+  daysUntil: number;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      await sendToUsers(await teamCoachesToNotify(input.teamId, "notifyResponseDecision"), {
+        // Le titre dit le VRAI délai et non le palier : un match convenu à
+        // deux jours déclenche le palier « 7 », et annoncer « dans une semaine »
+        // à qui joue après-demain décrédibilise tout le reste.
+        title: `${countdownLabel(input.daysUntil)} — à confirmer`,
+        body: `Confirmez votre venue contre ${input.opponentTeamName}. Sans réponse, l'adversaire ne sait pas s'il doit chercher ailleurs.`,
+        url: `/coach/matches/${input.matchId}`,
+        tag: `a-confirmer-${input.matchId}`,
+      });
+    })(),
+  );
+}
+
+/** « Match aujourd'hui », « Match demain », « Match dans 5 jours » */
+function countdownLabel(daysUntil: number): string {
+  if (daysUntil <= 0) return "Match aujourd'hui";
+  if (daysUntil === 1) return "Match demain";
+  return `Match dans ${daysUntil} jours`;
+}
+
+/**
+ * L'hôte a réglé ou changé les détails du match.
+ *
+ * Un changement d'HEURE est annoncé comme tel et en premier : c'est le seul qui
+ * peut faire rater le match, et c'est celui qui remet les confirmations à zéro.
+ * Les autres réglages (arbitre, vestiaires) sont une information de confort.
+ */
+export function notifyMatchDetailsChanged(input: {
+  opponentTeamId: string;
+  hostTeamName: string;
+  matchId: string;
+  /** Nouvelle heure si elle a changé, null sinon */
+  newTime: string | null;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      await sendToUsers(await teamCoachesToNotify(input.opponentTeamId, "notifyResponseDecision"), {
+        title: input.newTime ? `Nouvel horaire : ${input.newTime}` : "Détails du match mis à jour",
+        body: input.newTime
+          ? `${input.hostTeamName} a déplacé le coup d'envoi. Votre confirmation est à redonner.`
+          : `${input.hostTeamName} a précisé l'arbitre et les vestiaires.`,
+        url: `/coach/matches/${input.matchId}`,
+        tag: `details-${input.matchId}`,
+      });
+    })(),
+  );
+}
+
+/**
+ * Rappel de la veille, aux DEUX clubs.
+ *
+ * Tout ce qu'on se redemande par SMS le samedi soir, envoyé sans que personne
+ * ait à le demander : l'heure, le stade, l'arbitre, les vestiaires. C'est le
+ * moment où l'application cesse d'être l'endroit où l'on s'est trouvés pour
+ * devenir celui où le match se joue.
+ */
+export function notifyMatchTomorrow(input: {
+  teamIds: string[];
+  matchId: string;
+  time: string;
+  location: string;
+  referee: string;
+  changingRooms: string | null;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      const targets = new Set<string>();
+      for (const teamId of input.teamIds) {
+        for (const id of await teamCoachesToNotify(teamId, "notifyResponseDecision")) targets.add(id);
+      }
+      const parts = [`${input.time} · ${input.location}`, `Arbitrage : ${input.referee}`];
+      if (input.changingRooms) parts.push(`Vestiaires : ${input.changingRooms}`);
+      await sendToUsers([...targets], {
+        title: "Match demain",
+        body: parts.join(" — "),
+        url: `/coach/matches/${input.matchId}`,
+        tag: `demain-${input.matchId}`,
+      });
+    })(),
+  );
+}

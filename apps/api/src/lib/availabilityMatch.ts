@@ -8,6 +8,8 @@ import {
   AVAILABILITY_DEFAULT_TIME,
   AVAILABILITY_MAX_DAYS_AHEAD,
   hostOf,
+  toReliability,
+  NO_HISTORY,
   type AvailabilityVenue,
   type DivisionLevel,
   type SuggestionDto,
@@ -15,6 +17,7 @@ import {
 import { db } from "../db/client.js";
 import { matchAnnouncements, matches, teamAvailabilities, teamCoaches, teams, users } from "../db/schema.js";
 import { cityCoords, haversineKm } from "./cities.js";
+import { reliabilityOf } from "./reliability.js";
 import { teamsSharingCoachWith } from "./teamScope.js";
 
 /**
@@ -154,6 +157,11 @@ export async function suggestionsFor(myTeamId: string): Promise<SuggestionDto[]>
     );
   const announcementByDate = new Map(openAnnouncements.map((a) => [a.date, a.id]));
 
+  // Fiabilité de toutes les équipes candidates, en une requête : c'est ce qui
+  // départage deux équipes également disponibles, elle doit donc accompagner
+  // chaque suggestion et non se charger à l'ouverture d'une fiche.
+  const reliabilities = await reliabilityOf([...new Set(others.map((r) => r.team.id))]);
+
   const myCoords = teamCoords(myTeam);
   const myFallbackRadius = radiusByTeam.get(myTeamId) ?? null;
   const byDate = new Map<string, Row[]>();
@@ -183,6 +191,7 @@ export async function suggestionsFor(myTeamId: string): Promise<SuggestionDto[]>
         gender: asMatchGender(row.team.gender),
         level: asDivisionLevel(row.team.level),
         distanceKm,
+        reliability: reliabilities.get(row.team.id) ?? toReliability(NO_HISTORY),
         host: hostOf(mineFit.venue, theirsFit.venue),
         time: (availability.time ?? row.availability.time ?? AVAILABILITY_DEFAULT_TIME).slice(0, 5),
         announcementId: announcementByDate.get(availability.date) ?? null,

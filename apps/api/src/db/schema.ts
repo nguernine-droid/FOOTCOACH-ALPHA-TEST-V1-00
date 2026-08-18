@@ -37,6 +37,8 @@ export const availabilityVenue = pgEnum("availability_venue", ["home", "away", "
 // une date que j'ai déclarée. `free_weekend` : je n'ai rien déclaré et ce
 // week-end est vide dans mon agenda.
 export const availabilityNoticeKind = pgEnum("availability_notice_kind", ["suggestion", "free_weekend"]);
+// Qui siffle l'amical. `tbd` est un état réel du dossier, pas un trou.
+export const refereeBy = pgEnum("referee_by", ["tbd", "home", "away", "official"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
 export const matchStatus = pgEnum("match_status", [
   "scheduled",
@@ -598,6 +600,34 @@ export const matches = pgTable("matches", {
   encounterTokenCoachId: uuid("encounter_token_coach_id").references(() => users.id),
   encounterConfirmedAt: timestamp("encounter_confirmed_at", { withTimezone: true }),
   encounterConfirmedByCoachId: uuid("encounter_confirmed_by_coach_id").references(() => users.id),
+  /**
+   * ————— Confirmation en deux temps —————
+   * Chaque camp reconfirme à l'approche du match (voir CONFIRMATION_STAGES).
+   * NULL = pas encore confirmé, ce qui n'est un reproche qu'une fois la fenêtre
+   * ouverte — avant, il n'y avait rien à confirmer.
+   */
+  homeConfirmedAt: timestamp("home_confirmed_at", { withTimezone: true }),
+  awayConfirmedAt: timestamp("away_confirmed_at", { withTimezone: true }),
+  /**
+   * ————— Détails pratiques —————
+   * Réglés par l'équipe qui REÇOIT : elle seule connaît son stade. Lus par les
+   * deux, et repris dans le rappel de la veille.
+   */
+  refereeBy: refereeBy("referee_by").notNull().default("tbd"),
+  refereeName: text("referee_name"),
+  changingRooms: text("changing_rooms"),
+  /**
+   * Rappel de la veille envoyé — VERROU, comme les autres balayeurs : la
+   * colonne se pose par un UPDATE conditionnel sur son propre NULL.
+   */
+  dayBeforeRemindedAt: timestamp("day_before_reminded_at", { withTimezone: true }),
+  /**
+   * Dernier palier de rappel envoyé (7, puis 3), et VERROU du balayeur : il ne
+   * pose un palier que s'il est plus proche que le précédent, par un UPDATE
+   * conditionnel. Deux répliques qui balaient ensemble n'envoient donc qu'un
+   * rappel — le même mécanisme que `sos_widened_at`.
+   */
+  confirmationRemindedDays: integer("confirmation_reminded_days"),
   // Désistement avant le coup d'envoi : qui a renoncé, pourquoi, et quand.
   withdrawnByTeamId: uuid("withdrawn_by_team_id").references(() => teams.id),
   withdrawalReason: withdrawalReason("withdrawal_reason"),

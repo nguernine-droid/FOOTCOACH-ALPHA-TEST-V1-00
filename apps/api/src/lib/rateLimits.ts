@@ -81,6 +81,20 @@ export const registerRateLimit = {
 };
 
 /**
+ * Couche publique indexable : pages par département, ouvertes à tous.
+ *
+ * Généreux — un robot d'indexation légitime parcourt vite, et un plafond trop
+ * bas ferait échouer l'indexation qui est tout l'objet de ces pages. Mais non
+ * illimité : une route ouverte qui balaie la base est une invitation à
+ * l'aspirer, et le cache de cinq minutes absorbe déjà le trafic normal.
+ */
+export const publicBoardRateLimit = {
+  config: {
+    rateLimit: { max: off ? 100_000 : 120, timeWindow: "1 minute", keyGenerator: ipRateLimitKey },
+  },
+};
+
+/**
  * Suggestion de nom de club. Route forcément ouverte — elle sert pendant
  * l'inscription, avant tout compte — donc relayée vers un service tiers par
  * un appelant anonyme : sans plafond, l'API deviendrait un proxy gratuit vers

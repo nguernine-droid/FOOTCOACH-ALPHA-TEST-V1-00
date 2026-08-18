@@ -22,6 +22,7 @@ import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
 import { VenueLink } from "@/components/VenueLink";
+import { ReliabilityBadge } from "@/components/ReliabilityBadge";
 import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -140,6 +141,9 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
           <p className="flex items-center gap-1.5">
             <VenueLink destination={`${a.stadium}, ${a.city}`} />
           </p>
+          <div className="pt-1">
+            <ReliabilityBadge reliability={a.reliability} detailed />
+          </div>
           {a.distanceKm !== null && (
             <p className="flex items-center gap-1.5">
               <Navigation size={13} className="shrink-0" aria-hidden /> À {Math.round(a.distanceKm)} km de chez vous

@@ -1,8 +1,13 @@
-import { and, eq, gte, inArray, isNotNull, lte, ne, or } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, isNotNull, isNull, lte, ne, or } from "drizzle-orm";
 import {
+  confirmationStageDue,
   freeWeekendTarget,
   withinRelayHours,
   AVAILABILITY_MAX_DAYS_AHEAD,
+  CONFIRMATION_OPENS_DAYS,
+  DAY_BEFORE_REMINDER_DAYS,
+  REFEREE_BY_LABELS,
+  type RefereeBy,
   type SuggestionDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
@@ -15,7 +20,13 @@ import {
   teams,
 } from "../db/schema.js";
 import { suggestionsFor, today } from "./availabilityMatch.js";
-import { notifyFreeWeekend, notifySuggestionsReady, pushEnabled } from "./push.js";
+import {
+  notifyConfirmationDue,
+  notifyFreeWeekend,
+  notifyMatchTomorrow,
+  notifySuggestionsReady,
+  pushEnabled,
+} from "./push.js";
 
 /**
  * Fréquence du balayage. Trente minutes et non deux : rien ici n'est urgent.
@@ -223,6 +234,153 @@ export async function relayFreeWeekends(): Promise<number> {
   return notified;
 }
 
+
+/**
+ * Troisième volet : réclamer les confirmations qui manquent.
+ *
+ * Ce n'est pas une relance de plus, c'est la parade au vrai point de douleur —
+ * être lâché le jeudi pour un match du dimanche. Sept jours avant, puis trois,
+ * on demande à celui qui n'a rien confirmé de le faire ; l'autre voit le
+ * silence et peut chercher ailleurs pendant qu'il en est encore temps.
+ *
+ * Seul le camp SILENCIEUX est notifié. Celui qui a confirmé a fait sa part, le
+ * déranger le punirait de sa diligence.
+ */
+export async function relayConfirmationReminders(): Promise<number> {
+  const from = today();
+  const to = addDays(CONFIRMATION_OPENS_DAYS);
+
+  const rows = await db
+    .select({
+      id: matches.id,
+      date: matches.date,
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+      homeConfirmedAt: matches.homeConfirmedAt,
+      awayConfirmedAt: matches.awayConfirmedAt,
+      remindedDays: matches.confirmationRemindedDays,
+    })
+    .from(matches)
+    .where(and(eq(matches.status, "scheduled"), gte(matches.date, from), lte(matches.date, to)));
+  if (rows.length === 0) return 0;
+
+  const startOfToday = Date.parse(`${from}T00:00:00Z`);
+  let sent = 0;
+  for (const match of rows) {
+    const daysUntil = Math.floor((Date.parse(`${match.date}T00:00:00Z`) - startOfToday) / 86_400_000);
+    const stage = confirmationStageDue(daysUntil, match.remindedDays);
+    if (stage === null) continue;
+
+    // Les deux camps ont confirmé : plus rien à réclamer, mais le palier est
+    // tout de même posé pour ne pas réexaminer ce match à chaque balayage.
+    const missing: string[] = [];
+    if (!match.homeConfirmedAt) missing.push(match.homeTeamId);
+    if (!match.awayConfirmedAt) missing.push(match.awayTeamId);
+
+    // Le verrou : le palier ne se pose que s'il est plus proche que le
+    // précédent. Deux répliques qui balaient ensemble n'en posent qu'un.
+    const claimed = await db
+      .update(matches)
+      .set({ confirmationRemindedDays: stage })
+      .where(
+        and(
+          eq(matches.id, match.id),
+          or(isNull(matches.confirmationRemindedDays), gt(matches.confirmationRemindedDays, stage)),
+        ),
+      )
+      .returning({ id: matches.id });
+    if (claimed.length === 0) continue;
+    if (missing.length === 0) continue;
+
+    const names = await db
+      .select({ id: teams.id, name: teams.name })
+      .from(teams)
+      .where(inArray(teams.id, [match.homeTeamId, match.awayTeamId]));
+    const nameById = new Map(names.map((t) => [t.id, t.name]));
+
+    for (const teamId of missing) {
+      const opponentId = teamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
+      notifyConfirmationDue({
+        teamId,
+        opponentTeamName: nameById.get(opponentId) ?? "l'adversaire",
+        matchId: match.id,
+        daysUntil,
+      });
+      sent++;
+    }
+  }
+  return sent;
+}
+
+
+/**
+ * Quatrième volet : le rappel de la veille, aux deux clubs.
+ *
+ * Il n'apporte aucune information neuve — l'heure et le lieu sont sur la
+ * feuille de match depuis des semaines. Son objet est ailleurs : c'est le
+ * geste qui fait que le match SE PRÉPARE ici. Un club qui reçoit la veille
+ * l'heure, l'arbitre et le numéro des vestiaires n'a plus de raison d'envoyer
+ * le SMS qui, lui, ne repasse jamais par l'application.
+ *
+ * Un seul envoi par match, verrouillé sur `day_before_reminded_at` — un rappel
+ * reçu deux fois ferait douter de l'heure qu'il annonce.
+ */
+export async function relayDayBeforeReminders(): Promise<number> {
+  const target = addDays(DAY_BEFORE_REMINDER_DAYS);
+  const rows = await db
+    .select({
+      id: matches.id,
+      time: matches.time,
+      location: matches.location,
+      homeTeamId: matches.homeTeamId,
+      awayTeamId: matches.awayTeamId,
+      refereeBy: matches.refereeBy,
+      refereeName: matches.refereeName,
+      changingRooms: matches.changingRooms,
+    })
+    .from(matches)
+    .where(
+      and(
+        eq(matches.status, "scheduled"),
+        eq(matches.date, target),
+        isNull(matches.dayBeforeRemindedAt),
+      ),
+    );
+  if (rows.length === 0) return 0;
+
+  let sent = 0;
+  for (const match of rows) {
+    const claimed = await db
+      .update(matches)
+      .set({ dayBeforeRemindedAt: new Date() })
+      .where(and(eq(matches.id, match.id), isNull(matches.dayBeforeRemindedAt)))
+      .returning({ id: matches.id });
+    if (claimed.length === 0) continue;
+
+    // Le nom de l'arbitre s'il est connu, son rôle sinon : « Jean D. » vaut
+    // mieux que « un dirigeant de l'équipe qui reçoit », mais l'un ou l'autre
+    // vaut mieux que le silence.
+    const referee = match.refereeName?.trim() || REFEREE_BY_LABELS[match.refereeBy as RefereeBy];
+    notifyMatchTomorrow({
+      teamIds: [match.homeTeamId, match.awayTeamId],
+      matchId: match.id,
+      time: match.time.slice(0, 5),
+      location: match.location,
+      referee,
+      changingRooms: match.changingRooms,
+    });
+    sent++;
+  }
+  return sent;
+}
+
+/** Aujourd'hui + n jours, en ISO */
+function addDays(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 /** Borne haute du premier volet : la même que celle des déclarations */
 function horizonIso(): string {
   const d = new Date();
@@ -250,6 +408,10 @@ export function startWeekendRelay(log: { info: (msg: string) => void; error: (er
       if (suggested > 0) log.info(`[weekend] ${suggested} équipe(s) prévenue(s) qu'on leur répond`);
       const nudged = await relayFreeWeekends();
       if (nudged > 0) log.info(`[weekend] ${nudged} équipe(s) relancée(s) sur un week-end vide`);
+      const reminded = await relayConfirmationReminders();
+      if (reminded > 0) log.info(`[confirmation] ${reminded} rappel(s) de confirmation envoyé(s)`);
+      const tomorrow = await relayDayBeforeReminders();
+      if (tomorrow > 0) log.info(`[veille] ${tomorrow} match(s) rappelé(s) aux deux clubs`);
     } catch (err) {
       log.error(err);
     }

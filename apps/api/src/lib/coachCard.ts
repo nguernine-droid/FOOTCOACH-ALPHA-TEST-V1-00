@@ -7,7 +7,9 @@ import {
   type CoachCardDto,
   type CoachRefDto,
 } from "@teamnexus/shared";
+import { toReliability, NO_HISTORY } from "@teamnexus/shared";
 import { db } from "../db/client.js";
+import { reliabilityOfTeam } from "./reliability.js";
 import {
   announcementResponses,
   coachRelations,
@@ -238,6 +240,7 @@ export async function buildCoachCard(coachId: string): Promise<CoachCardDto | nu
   // Son équipe principale : la première qu'il encadre, celle qui le situe
   const [team] = await db
     .select({
+      id: teams.id,
       name: teams.name,
       category: teams.category,
       level: teams.level,
@@ -250,6 +253,9 @@ export async function buildCoachCard(coachId: string): Promise<CoachCardDto | nu
     .limit(1);
 
   const [points, matchesPlayed] = await Promise.all([totalPointsOf(coachId), matchesPlayedBy(coachId)]);
+  // La fiabilité suit l'équipe qui le situe, celle-là même dont la carte porte
+  // le nom et l'écusson.
+  const reliability = team?.id ? await reliabilityOfTeam(team.id) : toReliability(NO_HISTORY);
   return {
     id: coach.id,
     nickname: coach.nickname,
@@ -263,5 +269,6 @@ export async function buildCoachCard(coachId: string): Promise<CoachCardDto | nu
     points,
     matchesPlayed,
     categories: asCoachCategories(coach.coachCategories),
+    reliability,
   };
 }

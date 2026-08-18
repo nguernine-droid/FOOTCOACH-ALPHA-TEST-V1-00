@@ -4,6 +4,7 @@ import { Barlow_Condensed, Inter } from "next/font/google";
 import { InstallPromptListener } from "@/components/InstallPromptListener";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
+import { siteUrl } from "@/lib/publicApi";
 import "./globals.css";
 
 const display = Barlow_Condensed({
@@ -19,6 +20,13 @@ const body = Inter({
 });
 
 export const metadata: Metadata = {
+  /**
+   * Base des URL relatives des métadonnées. Sans elle, le `canonical` des pages
+   * publiques sort relatif (« /f/rhone-69 ») : les moteurs l'acceptent, mais
+   * une balise canonique n'a d'intérêt que si elle désigne SANS AMBIGUÏTÉ une
+   * adresse — c'est tout son objet.
+   */
+  metadataBase: new URL(siteUrl()),
   title: "TEAMNEXUS",
   description: "Gestion de matchs amicaux — coachs, joueurs, parents et supporters",
   applicationName: "TeamNexus",
