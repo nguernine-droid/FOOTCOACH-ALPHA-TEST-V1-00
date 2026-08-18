@@ -83,6 +83,7 @@ export async function getCoachTeams(coachId: string): Promise<CoachTeamDto[]> {
       category: teams.category,
       gender: teams.gender,
       stadium: teams.stadium,
+      venueId: teams.venueId,
       level: teams.level,
       logoPath: teams.logoPath,
       // Le club rattaché voyage avec l'équipe : le profil l'affiche, et le

@@ -355,6 +355,12 @@ export const teams = pgTable("teams", {
   gender: text("gender"),
   stadium: text("stadium"),
   /**
+   * Terrain retenu au recensement, quand le coach en a choisi un. Il ne
+   * remplace pas `stadium` — le nom reste libre — mais il prérremplit les
+   * annonces et il a déjà fourni les coordonnées ci-dessus.
+   */
+  venueId: uuid("venue_id"),
+  /**
    * Écusson de l'équipe — le « logo du club » tel que le coach le comprend.
    * Nom du fichier dans le volume d'uploads, comme une photo de profil, servi
    * en /api/uploads/. NULL tant qu'aucun n'a été envoyé : rien n'est deviné, et
@@ -461,6 +467,22 @@ export const matchAnnouncements = pgTable(
     time: time("time").notNull(),
     city: text("city").notNull(),
     stadium: text("stadium").notNull(),
+    /**
+     * ————— Lieu exact du match —————
+     * Terrain retenu au recensement, et ses coordonnées RECOPIÉES ici.
+     *
+     * Recopiées et non jointes, pour deux raisons. La première est le radar :
+     * il calcule une distance par annonce dans sa boucle, et une jointure de
+     * plus par ligne s'y paierait. La seconde compte davantage — le lieu d'un
+     * match déjà convenu ne doit pas se déplacer parce que le référentiel a été
+     * réimporté entre-temps.
+     *
+     * NULL quand le coach a simplement tapé l'adresse : la distance retombe
+     * alors sur le centre de la commune, comme avant.
+     */
+    venueId: uuid("venue_id"),
+    venueLat: doublePrecision("venue_lat"),
+    venueLng: doublePrecision("venue_lng"),
     category: text("category").notNull(),
     // NULL pour les annonces publiées avant l'ajout du genre : on ne devine pas
     // rétroactivement le genre d'une équipe.

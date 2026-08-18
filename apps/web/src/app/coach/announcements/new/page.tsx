@@ -24,6 +24,7 @@ import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
+import { VenueField } from "@/components/VenueField";
 import { GenderPicker } from "@/components/GenderPicker";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
@@ -116,6 +117,12 @@ function NewAnnouncementForm({
    * exactement la donnée qu'on cherchait. `null` ne subsiste que pour les
    * équipes d'avant, et il ouvre alors le panneau (voir plus bas).
    */
+  /**
+   * Terrain retenu — celui de la dernière annonce, sinon celui de l'équipe.
+   * Il n'est pas dans `form` : le formulaire porte ce que le coach écrit, et
+   * ceci est ce qu'il a choisi.
+   */
+  const [venueId, setVenueId] = useState<string | null>(defaults?.venueId ?? activeTeam?.venueId ?? null);
   const [gender, setGender] = useState<MatchGender | null>(defaults?.gender ?? activeTeam?.gender ?? null);
   // Niveau souhaité de l'adversaire — dépend de la catégorie, donc à part du
   // reste du formulaire plutôt que dans `form` (même raison que `gender`).
@@ -185,7 +192,7 @@ function NewAnnouncementForm({
     try {
       await api("/announcements", {
         method: "POST",
-        body: JSON.stringify({ ...form, gender, level, comment: form.comment || undefined }),
+        body: JSON.stringify({ ...form, gender, level, venueId, comment: form.comment || undefined }),
       });
       router.push("/coach/announcements");
     } catch (err) {
@@ -319,10 +326,23 @@ function NewAnnouncementForm({
           </button>
         )}
 
-        <div className="space-y-1.5">
-          <label htmlFor="stadium" className="text-xs font-bold text-ink-soft">Stade</label>
-          <input id="stadium" required autoComplete="off" autoCapitalize="words" enterKeyHint="next" value={form.stadium} onChange={(e) => set("stadium", e.target.value)} className="field" placeholder="Stade municipal" />
-        </div>
+        {/* Le terrain d'abord, la ville ensuite : retenir un terrain remplit la
+            ville tout seul, et l'ordre inverse ferait ressaisir ce qu'on vient
+            d'obtenir. */}
+        <VenueField
+          id="stadium"
+          label="Stade"
+          required
+          value={form.stadium}
+          onChange={(value) => set("stadium", value)}
+          onPick={(venue) => {
+            setVenueId(venue?.id ?? null);
+            // La commune du terrain fait foi : c'est elle que le serveur
+            // retiendra de toute façon.
+            if (venue) set("city", venue.city);
+          }}
+          hint="Le retenir dans la liste situe le match au terrain près — les coachs du secteur voient alors la vraie distance."
+        />
         <div className="space-y-1.5">
           <label htmlFor="city" className="text-xs font-bold text-ink-soft">Ville</label>
           <input id="city" required autoComplete="address-level2" autoCapitalize="words" enterKeyHint="next" value={form.city} onChange={(e) => set("city", e.target.value)} className="field" placeholder="Lyon" />

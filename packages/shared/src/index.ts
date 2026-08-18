@@ -816,6 +816,16 @@ export const createAnnouncementSchema = z
     time: z.string().regex(/^\d{2}:\d{2}$/),
     city: z.string().min(1).max(100),
     stadium: z.string().min(1).max(150),
+    /**
+     * Terrain retenu au recensement public. Facultatif : sans lui, le coach a
+     * simplement tapé le nom du stade, et la distance du match retombe sur le
+     * centre de la commune.
+     *
+     * Quand il est fourni, le SERVEUR reprend le nom et la commune du terrain :
+     * un client qui enverrait un identifiant et un nom discordants ne doit pas
+     * pouvoir publier un lieu qui n'existe pas.
+     */
+    venueId: z.string().uuid().nullable().optional(),
     // Groupes d'âges, pas catégories fines : une rencontre se cherche en U12-U13,
     // c'est ainsi que les districts apparient les équipes.
     category: z.enum(ANNOUNCEMENT_CATEGORIES),
@@ -1342,6 +1352,8 @@ export interface CoachTeamDto {
   category: MatchCategory | null;
   gender: MatchGender | null;
   stadium: string | null;
+  /** Terrain retenu au recensement — prérremplit le lieu des annonces */
+  venueId: string | null;
   /** Niveau réel de l'équipe (D2, R1…) — null tant qu'il n'a pas été réglé */
   level: DivisionLevel | null;
   /** Écusson de l'équipe (null tant qu'aucun n'a été envoyé) */
@@ -1441,6 +1453,12 @@ export interface AnnouncementDto {
   matchId: string | null;
   opponentTeam: TeamDto | null;
   /**
+   * Terrain retenu au recensement, `null` quand le coach a tapé l'adresse.
+   * Sert au formulaire de modification, qui doit retrouver le choix fait — et
+   * dit accessoirement que la distance affichée est exacte et non communale.
+   */
+  venueId: string | null;
+  /**
    * Fiabilité de l'équipe qui publie. À côté de la date et du lieu, parce que
    * c'est une information de DÉCISION : accepter un match, c'est parier que
    * l'adversaire sera là.
@@ -1484,6 +1502,8 @@ export interface AnnouncementDefaultsDto {
   format: MatchFormat;
   stadium: string;
   city: string;
+  /** Terrain de la dernière annonce : le lieu se reprend avec ses coordonnées */
+  venueId: string | null;
 }
 
 /**

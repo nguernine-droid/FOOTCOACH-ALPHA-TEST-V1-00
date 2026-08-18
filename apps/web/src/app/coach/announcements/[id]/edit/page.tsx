@@ -16,6 +16,7 @@ import { api } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
+import { VenueField } from "@/components/VenueField";
 import { GenderPicker } from "@/components/GenderPicker";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
@@ -65,6 +66,8 @@ export default function EditAnnouncementPage({ params }: { params: Promise<{ id:
 
 function EditAnnouncementForm({ id, announcement }: { id: string; announcement: AnnouncementDto }) {
   const router = useRouter();
+  /** Terrain de l'annonce : conservé tel quel tant que le coach n'en change pas */
+  const [venueId, setVenueId] = useState<string | null>(announcement.venueId ?? null);
   const [form, setForm] = useState({
     date: announcement.date,
     time: announcement.time,
@@ -107,7 +110,7 @@ function EditAnnouncementForm({ id, announcement }: { id: string; announcement: 
     try {
       await api(`/announcements/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ ...form, gender, level, comment: form.comment || undefined }),
+        body: JSON.stringify({ ...form, gender, level, venueId, comment: form.comment || undefined }),
       });
       router.push("/coach/announcements/mine");
     } catch (err) {
@@ -186,10 +189,23 @@ function EditAnnouncementForm({ id, announcement }: { id: string; announcement: 
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <label htmlFor="stadium" className="text-xs font-bold text-ink-soft">Stade</label>
-          <input id="stadium" required autoComplete="off" autoCapitalize="words" enterKeyHint="next" value={form.stadium} onChange={(e) => set("stadium", e.target.value)} className="field" placeholder="Stade municipal" />
-        </div>
+        {/* Le terrain d'abord, la ville ensuite : retenir un terrain remplit la
+            ville tout seul, et l'ordre inverse ferait ressaisir ce qu'on vient
+            d'obtenir. */}
+        <VenueField
+          id="stadium"
+          label="Stade"
+          required
+          value={form.stadium}
+          onChange={(value) => set("stadium", value)}
+          onPick={(venue) => {
+            setVenueId(venue?.id ?? null);
+            // La commune du terrain fait foi : c'est elle que le serveur
+            // retiendra de toute façon.
+            if (venue) set("city", venue.city);
+          }}
+          hint="Le retenir dans la liste situe le match au terrain près — les coachs du secteur voient alors la vraie distance."
+        />
         <div className="space-y-1.5">
           <label htmlFor="city" className="text-xs font-bold text-ink-soft">Ville</label>
           <input id="city" required autoComplete="address-level2" autoCapitalize="words" enterKeyHint="next" value={form.city} onChange={(e) => set("city", e.target.value)} className="field" placeholder="Lyon" />

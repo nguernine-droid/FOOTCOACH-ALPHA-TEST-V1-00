@@ -68,6 +68,7 @@ async function toCoachTeamDto(
     category: asMatchCategory(team.category),
     gender: asMatchGender(team.gender),
     stadium: team.stadium,
+    venueId: team.venueId,
     level: asDivisionLevel(team.level),
     logoUrl: teamLogoUrlOf(team.logoPath),
     club: club ? toDeclaredClubDto(club) : null,
@@ -201,6 +202,7 @@ export function registrationRoutes(app: FastifyInstance) {
         gender: input.gender,
         // À défaut de stade sur l'équipe, celui du club : c'est la même adresse
         stadium: venue?.name ?? stadiumOrNull(input.stadium) ?? club?.stadium ?? null,
+        venueId: venue ? input.venueId : null,
         level: input.level ?? null,
         clubId: club?.id ?? null,
       });
@@ -235,6 +237,7 @@ export function registrationRoutes(app: FastifyInstance) {
           gender: input.gender,
           stadium: venue?.name ?? stadiumOrNull(input.stadium),
           level: input.level ?? null,
+          venueId: venue ? input.venueId : null,
           ...(venue ? { lat: venue.lat, lng: venue.lng } : {}),
         })
         .where(eq(teams.id, id))

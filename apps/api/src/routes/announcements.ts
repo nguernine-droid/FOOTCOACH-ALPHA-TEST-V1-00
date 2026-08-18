@@ -37,6 +37,7 @@ import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard
 import { avatarUrlOf, toTeamDto } from "./auth.js";
 import { markRead, openConversation, postSystemMessage } from "../lib/conversations.js";
 import { teamsSharingCoachWith } from "../lib/teamScope.js";
+import { venueById } from "../lib/venueLookup.js";
 import { reliabilityOf } from "../lib/reliability.js";
 
 function toDto(
@@ -65,7 +66,14 @@ function toDto(
   // peut se jouer loin de la ville de l'équipe qui la publie, et c'est le
   // déplacement réel qui intéresse le coach. `null` si la ville du match est
   // absente de l'annuaire — mieux vaut ne rien annoncer qu'une fausse distance.
-  const venueCoords = team.id !== myTeamId ? cityCoords(announcement.city) : null;
+  // Le terrain retenu situe le match au mètre près ; la commune n'est qu'un
+  // repli, et c'est ce repli qui plaçait jusqu'ici tous les clubs d'une même
+  // ville au même point.
+  const exact =
+    announcement.venueLat != null && announcement.venueLng != null
+      ? { lat: announcement.venueLat, lng: announcement.venueLng }
+      : null;
+  const venueCoords = team.id !== myTeamId ? (exact ?? cityCoords(announcement.city)) : null;
   const distanceKm = myCoords && venueCoords ? haversineKm(myCoords, venueCoords) : null;
   const bearing = myCoords && venueCoords ? bearingDeg(myCoords, venueCoords) : null;
   return {
@@ -94,6 +102,7 @@ function toDto(
     createdAt: announcement.createdAt.toISOString(),
     matchId: link?.matchId ?? null,
     opponentTeam: link?.opponentTeam ?? null,
+    venueId: announcement.venueId,
     reliability: reliability ?? toReliability(NO_HISTORY),
     distanceKm,
     bearingDeg: bearing,
@@ -298,6 +307,9 @@ export function announcementRoutes(app: FastifyInstance) {
         format: last.format,
         stadium: last.stadium,
         city: last.city,
+        // Le terrain suit le lieu : republier au même endroit doit reprendre
+        // ses coordonnées, pas seulement son nom.
+        venueId: last.venueId,
       };
     },
   );
@@ -533,14 +545,20 @@ export function announcementRoutes(app: FastifyInstance) {
   app.post("/announcements", { preHandler: requireRole("coach") }, async (request, reply) => {
     if (!request.user.teamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
     const input = createAnnouncementSchema.parse(request.body);
+    // Le terrain fait foi sur le nom et la commune : accepter ceux du client à
+    // côté d'un identifiant publierait un lieu que personne ne pourrait situer.
+    const venue = await venueById(input.venueId);
     const [created] = await db
       .insert(matchAnnouncements)
       .values({
         teamId: request.user.teamId,
         date: input.date,
         time: input.time,
-        city: input.city,
-        stadium: input.stadium,
+        city: venue?.city ?? input.city,
+        stadium: venue?.name ?? input.stadium,
+        venueId: venue ? input.venueId : null,
+        venueLat: venue?.lat ?? null,
+        venueLng: venue?.lng ?? null,
         category: input.category,
         gender: input.gender,
         level: input.level,
@@ -577,13 +595,20 @@ export function announcementRoutes(app: FastifyInstance) {
     if (announcement.teamId !== request.user.teamId) throw new HttpError(403, "Cette annonce ne vous appartient pas");
     if (announcement.status !== "open") throw new HttpError(400, "Seule une annonce ouverte peut être modifiée");
 
+    // Changer de terrain déplace le match : les coordonnées suivent, et les
+    // remettre à NULL quand le coach repasse au texte libre évite de laisser
+    // l'annonce pointer un terrain qu'elle ne désigne plus.
+    const venue = await venueById(input.venueId);
     const [updated] = await db
       .update(matchAnnouncements)
       .set({
         date: input.date,
         time: input.time,
-        city: input.city,
-        stadium: input.stadium,
+        city: venue?.city ?? input.city,
+        stadium: venue?.name ?? input.stadium,
+        venueId: venue ? input.venueId : null,
+        venueLat: venue?.lat ?? null,
+        venueLng: venue?.lng ?? null,
         category: input.category,
         gender: input.gender,
         level: input.level,
