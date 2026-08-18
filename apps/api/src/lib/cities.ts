@@ -25,6 +25,7 @@ const COMMUNES: Record<string, [number, number]> = JSON.parse(
 const CITY_ALIASES: Record<string, [number, number]> = {
   caluire: [45.7953, 4.8437],
   decines: [45.7687, 4.9594],
+  valras: [43.2471, 3.2909],
 };
 
 function normalizeCity(name: string): string {
