@@ -56,6 +56,18 @@ export const metadata: Metadata = {
     description:
       "Déclarez vos dates libres, les équipes libres en face vous sont proposées.",
   },
+  /**
+   * Preuve de propriété du domaine pour la Search Console de Google.
+   *
+   * Déclarée ici plutôt qu'écrite à la main dans le `<head>` : Next pose la
+   * balise lui-même, et le `<head>` de ce fichier est réservé au script
+   * anti-flash, seul élément qui doive précéder le premier rendu.
+   *
+   * Ce jeton n'est pas un secret — il est PUBLIÉ dans le HTML de chaque page,
+   * c'est tout son objet. Il ne donne aucun accès : il atteste seulement que
+   * celui qui l'a posé dispose du domaine.
+   */
+  verification: { google: "wfrnwQhpbCXgvoyIozQR06Su_X40cKgeqM1eh88wXPQ" },
 };
 
 export const viewport: Viewport = {
