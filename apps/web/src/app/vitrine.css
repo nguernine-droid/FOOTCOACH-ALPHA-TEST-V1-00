@@ -260,14 +260,20 @@
     margin-top: 3rem;
     /* Une ancre visée depuis le sommaire ne doit pas se coller sous la barre
        collante : ce décalage lui réserve sa hauteur. */
-    scroll-margin-top: 5rem;
+    /* La barre collante grandit de la hauteur de la barre d'état sur un
+       téléphone : une réserve fixe y laisserait le titre visé depuis le
+       sommaire glisser dessous. */
+    scroll-margin-top: calc(5rem + env(safe-area-inset-top));
   }
   .v-prose h3 {
     font-weight: 700;
     font-size: 1rem;
     color: var(--text-primary);
     margin-top: 2rem;
-    scroll-margin-top: 5rem;
+    /* La barre collante grandit de la hauteur de la barre d'état sur un
+       téléphone : une réserve fixe y laisserait le titre visé depuis le
+       sommaire glisser dessous. */
+    scroll-margin-top: calc(5rem + env(safe-area-inset-top));
   }
   .v-prose b,
   .v-prose strong {

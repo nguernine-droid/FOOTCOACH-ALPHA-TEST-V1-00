@@ -29,7 +29,14 @@ export function VitrineNav() {
   return (
     <>
       <div ref={sentinel} aria-hidden className="h-px" />
-      <header className={cn("v-nav", stuck && "v-nav-stuck")}>
+      {/* `pt-[env(safe-area-inset-top)]` n'est pas une précaution : le document
+          déclare `viewport-fit=cover` et l'application installée demande une
+          barre d'état TRANSLUCIDE (`black-translucent` dans `layout.tsx`). Sur
+          un iPhone, le contenu passe donc SOUS l'heure, le wifi et la batterie.
+          Sans ce retrait, la première ligne de la vitrine est illisible — c'est
+          exactement pour cette raison que l'en-tête de l'espace coach le porte
+          déjà (`RoleGuard`). Vaut zéro partout où il n'y a rien à contourner. */}
+      <header className={cn("v-nav pt-[env(safe-area-inset-top)]", stuck && "v-nav-stuck")}>
         {/* Les trois éléments tiennent sur UNE ligne à 320 px : d'où les tailles
             resserrées sur petit écran et le `whitespace-nowrap`. Sans eux, « Se
             connecter » et « Créer un compte » se coupent chacun en deux et la
