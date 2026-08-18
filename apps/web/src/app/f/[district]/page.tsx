@@ -20,13 +20,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!board) return { title: "Département inconnu — TeamNexus" };
 
   const count = board.announcements.length;
+  const title = `Matchs amicaux de football — ${board.district.label}`;
+  const description =
+    count > 0
+      ? `${count} équipe${count > 1 ? "s" : ""} de football amateur cherche${count > 1 ? "nt" : ""} un adversaire dans le département ${board.district.label}. Consultation libre.`
+      : `Les équipes de football amateur qui cherchent un adversaire dans le département ${board.district.label}.`;
   return {
-    title: `Matchs amicaux de football — ${board.district.label} | TeamNexus`,
-    description:
-      count > 0
-        ? `${count} équipe${count > 1 ? "s" : ""} de football amateur cherche${count > 1 ? "nt" : ""} un adversaire dans le département ${board.district.label}. Consultation libre.`
-        : `Les équipes de football amateur qui cherchent un adversaire dans le département ${board.district.label}.`,
+    title: `${title} | TeamNexus`,
+    description,
     alternates: { canonical: `/f/${board.district.slug}` },
+    openGraph: { title, description },
+    twitter: { title, description },
   };
 }
 

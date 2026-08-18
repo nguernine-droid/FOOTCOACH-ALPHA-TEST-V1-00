@@ -22,13 +22,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   const count = board.announcements.length;
   const label = categoryLabel(category);
+  const title = `Matchs amicaux ${label} — ${board.district.label}`;
+  const description =
+    count > 0
+      ? `${count} équipe${count > 1 ? "s" : ""} ${label} cherche${count > 1 ? "nt" : ""} un adversaire dans le département ${board.district.label}.`
+      : `Les équipes ${label} qui cherchent un adversaire dans le département ${board.district.label}.`;
   return {
-    title: `Matchs amicaux ${label} — ${board.district.label} | TeamNexus`,
-    description:
-      count > 0
-        ? `${count} équipe${count > 1 ? "s" : ""} ${label} cherche${count > 1 ? "nt" : ""} un adversaire dans le département ${board.district.label}.`
-        : `Les équipes ${label} qui cherchent un adversaire dans le département ${board.district.label}.`,
+    title: `${title} | TeamNexus`,
+    description,
     alternates: { canonical: `/f/${board.district.slug}/${categorie.toLowerCase()}` },
+    openGraph: { title, description },
+    twitter: { title, description },
   };
 }
 

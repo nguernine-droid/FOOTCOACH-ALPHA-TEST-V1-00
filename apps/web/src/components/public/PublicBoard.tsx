@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import {
   categoryLabel,
@@ -31,11 +32,64 @@ function formatDate(iso: string): string {
  * compte, et envoyer un visiteur sur un mur d'authentification sans le prévenir
  * est le meilleur moyen de le perdre.
  */
-export function PublicBoard({ board }: { board: PublicBoardDto }) {
+export async function PublicBoard({ board }: { board: PublicBoardDto }) {
   const { district, category, announcements } = board;
+
+  /**
+   * Le nonce de la politique de contenu, posé par le proxy à chaque requête.
+   *
+   * Un bloc `application/ld+json` ne s'exécute pas, mais il reste un élément
+   * `script` : sous une politique en `strict-dynamic`, les navigateurs sont
+   * en droit de le refuser, et le balisage disparaîtrait sans bruit — le pire
+   * des cas pour une donnée dont personne ne vérifie la présence à l'œil nu.
+   */
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
+  /**
+   * Balisage schema.org des annonces.
+   *
+   * Il dit à un moteur que ces lignes sont des ÉVÉNEMENTS SPORTIFS datés et
+   * situés, ce qu'aucun paragraphe ne lui apprendra. C'est ce qui rend la page
+   * éligible aux résultats enrichis, où une date et un lieu s'affichent sous le
+   * lien.
+   *
+   * Le lieu s'arrête à la commune, comme le reste de la page : le terrain exact
+   * n'en sort pas plus ici qu'ailleurs (voir PublicAnnouncementDto).
+   */
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: announcements.map((a, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "SportsEvent",
+        name: `Match amical ${categoryLabel(a.category)} — ${a.teamName}`,
+        sport: "Football",
+        startDate: `${a.date}T${a.time}:00`,
+        eventStatus: "https://schema.org/EventScheduled",
+        eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+        location: {
+          "@type": "Place",
+          name: a.city,
+          address: { "@type": "PostalAddress", addressLocality: a.city, addressCountry: "FR" },
+        },
+        organizer: { "@type": "SportsTeam", name: a.teamName },
+      },
+    })),
+  };
 
   return (
     <div className="max-w-[900px] mx-auto space-y-6">
+      {announcements.length > 0 && (
+        <script
+          type="application/ld+json"
+          nonce={nonce}
+          // Sérialisé par nous, jamais saisi par un utilisateur : les valeurs
+          // viennent de colonnes contrôlées, et JSON.stringify échappe le reste.
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      )}
       <div className="space-y-2">
         <p className="text-xs text-ink-soft">
           <Link href="/f" className="underline">

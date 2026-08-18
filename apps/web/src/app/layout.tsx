@@ -33,6 +33,29 @@ export const metadata: Metadata = {
   // Installée sur l'écran d'accueil iOS, l'app s'ouvre sans barre Safari
   appleWebApp: { capable: true, title: "TeamNexus", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
+  /**
+   * Aperçu des liens partagés.
+   *
+   * Ce n'est pas de la décoration : le bouche-à-oreille du foot amateur passe
+   * par des groupes WhatsApp, et un lien sans titre ni image y ressemble à du
+   * spam. Défini une fois ici, chaque page publique n'a plus qu'à surcharger
+   * son titre et sa description — le reste (image, locale, nom du site) est
+   * hérité.
+   */
+  openGraph: {
+    type: "website",
+    siteName: "TeamNexus",
+    locale: "fr_FR",
+    title: "TeamNexus — trouvez un adversaire pour votre prochain match amical",
+    description:
+      "L'application des coachs de football amateur pour organiser leurs matchs amicaux. Gratuit.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TeamNexus — matchs amicaux de football",
+    description:
+      "Déclarez vos dates libres, les équipes libres en face vous sont proposées.",
+  },
 };
 
 export const viewport: Viewport = {
