@@ -1,9 +1,13 @@
 import type { FastifyInstance } from "fastify";
+import { count, eq } from "drizzle-orm";
 import {
   coachIdParamSchema,
   type CategoryCoachDto,
   type CoachCardDto,
+  type PlatformStatsDto,
 } from "@teamnexus/shared";
+import { db } from "../db/client.js";
+import { matchAnnouncements, tournaments, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { buildCoachCard, canSeeCoachCard } from "../lib/coachCard.js";
@@ -11,6 +15,21 @@ import { coachesOfTeams, teamsInMyCategory } from "../lib/categoryCoaches.js";
 
 export function coachCardRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
+
+  /**
+   * Trois chiffres à l'échelle de l'application entière — combien de coachs
+   * l'ont rejointe, combien de matchs et de tournois y ont été proposés. Sert
+   * le bandeau du tableau de bord, à côté du bandeau « ma catégorie » qui lui
+   * borne la portée au secteur.
+   */
+  app.get("/stats/platform", { preHandler: requireRole("coach") }, async (): Promise<PlatformStatsDto> => {
+    const [[{ value: coachesCount }], [{ value: matchesCount }], [{ value: tournamentsCount }]] = await Promise.all([
+      db.select({ value: count() }).from(users).where(eq(users.role, "coach")),
+      db.select({ value: count() }).from(matchAnnouncements),
+      db.select({ value: count() }).from(tournaments),
+    ]);
+    return { coachesCount, matchesCount, tournamentsCount };
+  });
 
   /**
    * Les coachs qui encadrent une équipe de MON groupe d'âges dans MON

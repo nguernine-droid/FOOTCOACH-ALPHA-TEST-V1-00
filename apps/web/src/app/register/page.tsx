@@ -11,6 +11,7 @@ import {
   type DeclaredClubDto,
   type MatchCategory,
   type MatchGender,
+  type UserDto,
 } from "@teamnexus/shared";
 import { register } from "@/lib/api";
 import { CategoryPicker } from "@/components/CategoryPicker";
@@ -24,9 +25,9 @@ import { GenderPicker } from "@/components/GenderPicker";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { CoachCategoryPicker } from "@/components/coach/CoachCategoryPicker";
 import { ProfileVisibilityPicker } from "@/components/coach/ProfileVisibilityPicker";
+import { NotificationsCard } from "@/components/coach/NotificationsCard";
 import { Button } from "@/components/ui/Button";
 import { LegalConsent } from "@/components/LegalConsent";
-import { useInstallOffer } from "@/lib/install";
 import { LEGAL_LINKS } from "@/lib/legal";
 import { cn } from "@/lib/utils";
 
@@ -128,9 +129,9 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
-  // Lu ici, et non dans l'écran final : c'est lui qui décide si cet écran a
-  // quelque chose à dire, donc s'il faut s'y arrêter.
-  const offer = useInstallOffer();
+  // Rempli à l'inscription : c'est lui qui nourrit l'écran final, notamment
+  // le réglage des notifications qui a besoin du compte tout juste créé.
+  const [newUser, setNewUser] = useState<UserDto | null>(null);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -168,7 +169,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      await register("/auth/register-coach", {
+      const created = await register("/auth/register-coach", {
         ...form,
         teamCategory,
         teamGender,
@@ -180,13 +181,11 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         acceptTerms: consent.terms,
         acceptResponsibility: consent.responsibility,
       });
-      // Le compte existe, la session est ouverte : le parcours est fini. Reste
-      // le seul moment où proposer l'installation a du sens — le coach vient
-      // de décider que l'application lui servirait. S'il n'y a rien à lui
-      // proposer (déjà installée, navigateur qui ne sait pas faire), on ne
-      // l'arrête pas sur un écran vide.
-      if (offer === "none") router.replace("/coach?bienvenue=1");
-      else setStep(DONE_STEP);
+      // Le compte existe, la session est ouverte : le parcours est fini.
+      // L'écran final le remercie, lui propose les notifications, puis
+      // l'installation si elle a un sens sur cet appareil.
+      setNewUser(created);
+      setStep(DONE_STEP);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Inscription impossible");
       setLoading(false);
@@ -204,9 +203,11 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         <div className="space-y-1">
           <h2 className="text-lg font-black">Bienvenue, {form.nickname.trim()}</h2>
           <p className="text-sm text-ink-soft">
-            Votre compte et votre équipe sont créés. Une dernière chose, puis vous y êtes.
+            Votre compte et votre équipe sont créés. TeamNexus est fait par des coachs, pour des coachs — merci de
+            nous rejoindre. Une idée pour la rendre meilleure ? Elle nous intéresse à tout moment, depuis Paramètres.
           </p>
         </div>
+        {newUser && <NotificationsCard user={newUser} onChange={setNewUser} />}
         <InstallAppCard />
         <Button type="button" size="lg" className="w-full" onClick={() => router.replace("/coach?bienvenue=1")}>
           Continuer vers mon équipe

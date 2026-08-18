@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, count, desc, eq, gte, ilike, isNull, max, ne, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNull, max, ne, or, sql } from "drizzle-orm";
 import {
   idParamSchema,
   ROLES,
@@ -19,10 +19,14 @@ import {
   clubAffiliationRequests,
   clubs,
   loginEvents,
+  matchAnnouncements,
+  matchEvents,
   matches,
   passwordResetRequests,
   refreshTokens,
+  teamEvents,
   teams,
+  tournamentRegistrations,
   tournaments,
   users,
 } from "../db/schema.js";
@@ -519,19 +523,58 @@ export function adminRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Suppression définitive — réservée aux comptes joueur/parent/supporter :
-  // un coach est référencé par son équipe et les événements qu'il a créés.
+  // Suppression définitive. Un compte club ne se supprime pas seul : il
+  // possède des équipes, et sa suppression demande de trancher leur sort — pas
+  // couvert ici. Un compte coach, lui, EST supprimé avec tout ce que porte son
+  // équipe (teams.coach_id) : matchs joués des deux côtés, annonces, tournois
+  // organisés, agenda. Choix assumé et radical — purger un compte de test ou
+  // de spam sans rien laisser derrière, pas un simple retrait d'accès (pour
+  // ça, /disable, qui est réversible).
   app.delete("/admin/accounts/:id", async (request) => {
     const { id } = idParamSchema.parse(request.params);
     const account = await getManageableAccount(id, request.user.id);
-    if (account.role === "coach") {
-      throw new HttpError(400, "Un compte coach ne peut pas être supprimé (il porte son équipe)");
-    }
     if (account.role === "club") {
       throw new HttpError(400, "Un compte club ne peut pas être supprimé (il possède des équipes)");
     }
     try {
       await db.transaction(async (tx) => {
+        if (account.role === "coach") {
+          const ownedTeams = await tx.select({ id: teams.id }).from(teams).where(eq(teams.coachId, account.id));
+          const teamIds = ownedTeams.map((t) => t.id);
+
+          if (teamIds.length > 0) {
+            // Matchs de l'équipe, hôte ou visiteuse — entraîne en cascade
+            // events/présences/covoiturage/compos/points (via match_id).
+            await tx
+              .delete(matches)
+              .where(or(inArray(matches.homeTeamId, teamIds), inArray(matches.awayTeamId, teamIds)));
+            // Annonces de l'équipe (les matchs qui en découlaient sont déjà partis)
+            await tx.delete(matchAnnouncements).where(inArray(matchAnnouncements.teamId, teamIds));
+            // Tournois organisés par l'équipe (inscriptions en cascade)
+            await tx.delete(tournaments).where(inArray(tournaments.teamId, teamIds));
+          }
+
+          // Références nullables au coach en dehors de son équipe (ex. adjoint
+          // ailleurs, ou rencontre scannée pour un tiers) : détachées plutôt
+          // que bloquantes.
+          await tx.update(matches).set({ encounterTokenCoachId: null }).where(eq(matches.encounterTokenCoachId, account.id));
+          await tx.update(matches).set({ encounterConfirmedByCoachId: null }).where(eq(matches.encounterConfirmedByCoachId, account.id));
+          await tx.update(tournaments).set({ encounterTokenCoachId: null }).where(eq(tournaments.encounterTokenCoachId, account.id));
+          await tx
+            .update(tournamentRegistrations)
+            .set({ checkedInByCoachId: null })
+            .where(eq(tournamentRegistrations.checkedInByCoachId, account.id));
+          // created_by n'est pas nullable : les événements de match ou d'agenda
+          // qu'il a créés ailleurs que sur son équipe (déjà effacée ci-dessus)
+          // s'effacent avec lui, faute de pouvoir les réattribuer.
+          await tx.delete(matchEvents).where(eq(matchEvents.createdBy, account.id));
+          await tx.delete(teamEvents).where(eq(teamEvents.createdBy, account.id));
+
+          if (teamIds.length > 0) {
+            await tx.delete(teams).where(inArray(teams.id, teamIds));
+          }
+        }
+
         // Les joueurs qui avaient ce parent assigné redeviennent sans parent
         await tx.update(users).set({ parentId: null }).where(eq(users.parentId, account.id));
         await tx.delete(users).where(eq(users.id, account.id));
