@@ -70,7 +70,7 @@ export const CONTACT = {
    * peuvent venir de quelqu'un qui n'en a pas — et le RGPD comme la LCEN
    * s'adressent à tout le monde, pas aux seuls inscrits.
    */
-  email: null as Fillable,
+  email: "contact@teamnexus.fr" as Fillable,
   /** Signalement de contenus illicites — à défaut, `email` fait l'office */
   abuseEmail: null as Fillable,
   /** Délégué à la protection des données : non désigné, non requis ici */
@@ -90,8 +90,10 @@ export const HOST = {
   name: "IONOS SARL",
   address: "7 place de la Gare, BP 70109, 57200 Sarreguemines Cedex, France",
   phone: null as Fillable,
-  /** Pays du centre de données — à confirmer dans la console IONOS */
-  country: null as Fillable,
+  /** Pays du centre de données. En France : aucun transfert hors UE au titre
+   *  de l'hébergement — les seuls transferts possibles restent ceux des
+   *  services de notification push, décrits à la section 9 de la politique. */
+  country: "en France" as Fillable,
 } as const;
 
 /**
