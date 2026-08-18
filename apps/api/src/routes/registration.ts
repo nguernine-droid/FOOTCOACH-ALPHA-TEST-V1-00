@@ -26,6 +26,7 @@ import { storeUploadedImage, removeUploadedImage } from "../lib/imageUpload.js";
 import { MAX_AVATAR_BYTES } from "../lib/images.js";
 import { registerRateLimit } from "../lib/rateLimits.js";
 import { cityCoords } from "../lib/cities.js";
+import { venueById } from "../lib/venueLookup.js";
 import { generateCode } from "../lib/codes.js";
 import { hashPassword } from "../lib/passwordHash.js";
 
@@ -187,7 +188,9 @@ export function registrationRoutes(app: FastifyInstance) {
       if (duplicate.length > 0) throw new HttpError(400, "Vous encadrez déjà une équipe de ce nom");
 
       const club = await resolveClubChoice(input);
-      const coords = cityCoords(input.city);
+      // Le terrain choisi situe l'équipe ; sa commune ne sert que de repli.
+      const venue = await venueById(input.venueId);
+      const coords = venue ?? cityCoords(input.city);
       const team = await insertTeamWithCode({
         name: input.name,
         city: input.city,
@@ -197,7 +200,7 @@ export function registrationRoutes(app: FastifyInstance) {
         category: input.category,
         gender: input.gender,
         // À défaut de stade sur l'équipe, celui du club : c'est la même adresse
-        stadium: stadiumOrNull(input.stadium) ?? club?.stadium ?? null,
+        stadium: venue?.name ?? stadiumOrNull(input.stadium) ?? club?.stadium ?? null,
         level: input.level ?? null,
         clubId: club?.id ?? null,
       });
@@ -222,13 +225,17 @@ export function registrationRoutes(app: FastifyInstance) {
 
       const assignment = await teamOfCoachOr404(id, request.user.id);
 
+      // Changer de terrain déplace l'équipe : les coordonnées suivent le stade
+      // qu'elle vient de désigner, sans quoi elle resterait située ailleurs.
+      const venue = await venueById(input.venueId);
       const [team] = await db
         .update(teams)
         .set({
           category: input.category,
           gender: input.gender,
-          stadium: stadiumOrNull(input.stadium),
+          stadium: venue?.name ?? stadiumOrNull(input.stadium),
           level: input.level ?? null,
+          ...(venue ? { lat: venue.lat, lng: venue.lng } : {}),
         })
         .where(eq(teams.id, id))
         .returning();

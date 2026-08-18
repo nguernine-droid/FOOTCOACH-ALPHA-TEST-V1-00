@@ -11,7 +11,8 @@
     "db:seed": "tsx src/seed.ts",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "db:districts": "tsx src/db/seedDistricts.ts"
+    "db:districts": "tsx src/db/seedDistricts.ts",
+    "db:venues": "tsx src/db/seedVenues.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

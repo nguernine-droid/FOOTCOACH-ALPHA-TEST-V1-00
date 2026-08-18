@@ -17,6 +17,7 @@ import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
 import { GenderPicker } from "@/components/GenderPicker";
+import { VenueField } from "@/components/VenueField";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { cn } from "@/lib/utils";
@@ -152,6 +153,7 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
   const [category, setCategory] = useState<MatchCategory | null>(team.category);
   const [gender, setGender] = useState<MatchGender | null>(team.gender);
   const [stadium, setStadium] = useState(team.stadium ?? "");
+  const [venueId, setVenueId] = useState<string | null>(null);
   // Le niveau ne survit pas à un changement de catégorie qui ne le propose
   // plus : rester sur un D2 affiché sous une catégorie U8-U9 mentirait.
   const [level, setLevel] = useState<DivisionLevel | null>(team.level);
@@ -170,7 +172,7 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
     try {
       await api<CoachTeamDto>(`/coach/teams/${team.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ category, gender, stadium: stadium.trim() || undefined, level }),
+        body: JSON.stringify({ category, gender, stadium: stadium.trim() || undefined, level, venueId }),
       });
       // La liste des équipes vit dans la session : sans ce rechargement, les
       // annonces continueraient d'être préremplies avec l'ancienne référence.
@@ -227,23 +229,14 @@ function ReferencesSheet({ team, onClose }: { team: CoachTeamDto; onClose: () =>
           hint="Proposé d'office lui aussi, et comparé à celui des équipes qui vous répondent."
         />
 
-        <div className="space-y-1.5">
-          <label htmlFor="references-stadium" className="text-xs font-bold text-ink-soft">
-            Stade habituel (optionnel)
-          </label>
-          <input
-            id="references-stadium"
-            maxLength={150}
-            autoComplete="off"
-            autoCapitalize="words"
-            enterKeyHint="done"
-            value={stadium}
-            onChange={(e) => setStadium(e.target.value)}
-            className="field"
-            placeholder="Stade municipal"
-          />
-          <p className="text-[11px] text-ink-soft">Laissez vide si vous n&apos;en avez pas d&apos;attitré.</p>
-        </div>
+        <VenueField
+          id="references-stadium"
+          label="Stade habituel (optionnel)"
+          value={stadium}
+          onChange={setStadium}
+          onPick={(venue) => setVenueId(venue?.id ?? null)}
+          hint="Laissez vide si vous n'en avez pas d'attitré. Le retenir dans la liste situe votre équipe au terrain près."
+        />
 
         {error && <p className="text-xs font-semibold text-coral bg-coral-soft rounded-xl px-3 py-2">{error}</p>}
       </div>

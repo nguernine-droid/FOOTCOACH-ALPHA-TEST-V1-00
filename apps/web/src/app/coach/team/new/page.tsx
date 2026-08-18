@@ -15,6 +15,7 @@ import {
   type ClubDeclaration,
 } from "@/components/ClubDeclarationFields";
 import { GenderPicker } from "@/components/GenderPicker";
+import { VenueField } from "@/components/VenueField";
 import { Button } from "@/components/ui/Button";
 
 /** Cible du bouton « ✓ » de la barre d'onglets (association HTML par `form`) */
@@ -39,6 +40,8 @@ export default function NewTeamPage() {
   // des annonces masculines au nom d'une équipe qui ne l'est pas.
   const [gender, setGender] = useState<MatchGender | null>(null);
   const [stadium, setStadium] = useState("");
+  /** Terrain retenu dans le recensement — il apporte ses coordonnées à l'équipe */
+  const [venueId, setVenueId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   // Le club, facultatif : ce qui distingue « l'équipe » (les U15) du « club »
@@ -68,6 +71,7 @@ export default function NewTeamPage() {
           category,
           gender,
           stadium: stadium.trim() || undefined,
+          venueId,
           ...clubPayload(club, pickedClub),
         }),
       });
@@ -151,25 +155,14 @@ export default function NewTeamPage() {
           hint="Repris lui aussi à chaque annonce. Il dit surtout aux coachs qui vous répondent — et à vous quand ils vous répondent — si les deux équipes jouent dans le même tableau."
         />
 
-        <div className="space-y-1.5">
-          <label htmlFor="team-stadium" className="text-xs font-bold text-ink-soft">
-            Stade habituel (optionnel)
-          </label>
-          <input
-            id="team-stadium"
-            maxLength={150}
-            autoComplete="off"
-            autoCapitalize="words"
-            enterKeyHint="done"
-            value={stadium}
-            onChange={(e) => setStadium(e.target.value)}
-            className="field"
-            placeholder="Stade municipal"
-          />
-          <p className="text-[11px] text-ink-soft">
-            Celui où vous recevez. Il sera proposé d&apos;office quand vous publierez une annonce.
-          </p>
-        </div>
+        <VenueField
+          id="team-stadium"
+          label="Stade habituel (optionnel)"
+          value={stadium}
+          onChange={setStadium}
+          onPick={(venue) => setVenueId(venue?.id ?? null)}
+          hint="Celui où vous recevez. Il sera proposé d'office quand vous publierez une annonce — et le retenir dans la liste situe votre équipe au terrain près plutôt qu'au centre de la commune."
+        />
 
         {/* Le club, à part de l'équipe : « AS Lyon U15 » est une équipe, « AS
             Lyon » est le club. Le déclarer permet aux autres coachs du même

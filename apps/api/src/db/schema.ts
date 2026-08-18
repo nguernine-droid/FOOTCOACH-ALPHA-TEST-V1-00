@@ -1191,3 +1191,59 @@ export const districts = pgTable(
   // Le rattachement d'une équipe passe toujours par son département
   (t) => [index("districts_departments_idx").using("gin", t.departments)],
 );
+
+/**
+ * Terrains de football, repris du recensement des équipements sportifs du
+ * ministère chargé des sports (licence ouverte).
+ *
+ * 36 000 terrains, tous géolocalisés. Deux usages, et le second compte plus
+ * que le premier :
+ *   1. le coach choisit son stade dans une liste au lieu de le taper ;
+ *   2. l'équipe hérite des COORDONNÉES RÉELLES du terrain.
+ *
+ * Jusqu'ici, une équipe était située au centre de sa commune. À Lyon, cela
+ * revenait à placer tous les clubs au même point ; en zone rurale, à deux ou
+ * trois kilomètres du terrain. Toutes les distances de l'application — rayon
+ * du radar, appariement des disponibilités, relance du secteur — en héritent.
+ *
+ * Ce n'est PAS la base de la fédération : c'est un recensement public
+ * d'équipements, qui ignore tout des clubs qui y jouent et des matchs qui s'y
+ * disputent. Il donne un lieu, pas un calendrier.
+ */
+export const venues = pgTable(
+  "venues",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Identifiant du recensement (`equip_numero`) — clé de rejeu de l'import */
+    sourceId: text("source_id").notNull().unique(),
+    /** Nom de l'installation : « Stade municipal du Calvaire » */
+    name: text("name").notNull(),
+    /** Nom du terrain dans l'installation : « Terrain d'honneur » (plusieurs par stade) */
+    pitchName: text("pitch_name"),
+    /**
+     * Nom en minuscules sans accents, pour la recherche. Colonne et non calcul
+     * à la volée : `unaccent` demande une extension, et 36 000 lignes filtrées
+     * à chaque frappe méritent un index.
+     */
+    searchName: text("search_name").notNull(),
+    address: text("address"),
+    postalCode: text("postal_code"),
+    city: text("city").notNull(),
+    department: text("department"),
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    /** « Gazon naturel », « Gazon synthétique », « Stabilisé/cendrée »… */
+    surface: text("surface"),
+    floodlit: boolean("floodlit"),
+    /** Nombre de vestiaires sportifs — l'information que le coach visiteur demande */
+    changingRooms: integer("changing_rooms"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // La recherche est toujours « ce nom, près d'ici » : un cadre géographique
+    // d'abord, le texte ensuite.
+    index("venues_lat_idx").on(t.lat),
+    index("venues_lng_idx").on(t.lng),
+    index("venues_search_idx").on(t.searchName),
+  ],
+);

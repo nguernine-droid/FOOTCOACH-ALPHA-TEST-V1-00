@@ -890,6 +890,15 @@ const teamReferencesShape = {
   category: z.enum(MATCH_CATEGORIES),
   gender: z.enum(MATCH_GENDERS),
   stadium: z.string().trim().max(150).optional(),
+  /**
+   * Terrain choisi dans le recensement public, quand le coach en a retenu un.
+   *
+   * Il ne remplace pas `stadium` — le nom reste modifiable, et un terrain absent
+   * du recensement se tape toujours à la main. Ce qu'il apporte, ce sont les
+   * COORDONNÉES : l'équipe cesse d'être située au centre de sa commune, et
+   * toutes les distances de l'application s'en trouvent justes.
+   */
+  venueId: z.string().uuid().nullable().optional(),
   // Niveau réel de l'équipe (D2, R1…) — absent tant qu'il n'a pas été réglé,
   // et jamais proposé pour les catégories qui n'en ont pas.
   level: z.enum(DIVISION_LEVELS).nullable().optional(),
@@ -2803,3 +2812,55 @@ export type UpdateDistrictInput = z.infer<typeof updateDistrictSchema>;
  * un district corse qui n'existe pas.
  */
 export const DEPARTMENTS_WITHOUT_DISTRICT = ["2A", "2B", "972", "973", "974", "976"] as const;
+
+/* ────────────────────── Référentiel des terrains ──────────────────────── */
+
+/**
+ * Un terrain proposé à la saisie, tiré du recensement public des équipements
+ * sportifs.
+ *
+ * C'est une SUGGESTION, comme pour les clubs : rien n'oblige le coach à en
+ * retenir une, et un terrain absent du recensement se tape toujours à la main.
+ * Ce qu'on retient de son choix, en revanche, ce n'est pas seulement un nom —
+ * ce sont des COORDONNÉES, et elles remplacent le centre de la commune dans
+ * tous les calculs de distance.
+ */
+export interface VenueDto {
+  id: string;
+  /** Nom de l'installation : « Stade municipal du Calvaire » */
+  name: string;
+  /** Terrain dans l'installation : « Terrain d'honneur ». Plusieurs par stade. */
+  pitchName: string | null;
+  city: string;
+  address: string | null;
+  postalCode: string | null;
+  lat: number;
+  lng: number;
+  surface: string | null;
+  /** `null` = non renseigné au recensement, et non « pas d'éclairage » */
+  floodlit: boolean | null;
+  changingRooms: number | null;
+  /** Distance depuis le point de recherche, quand il est connu */
+  distanceKm: number | null;
+}
+
+/** Rayon de la recherche de terrain. Large : un club joue parfois à deux communes de là. */
+export const VENUE_SEARCH_RADIUS_KM = 40;
+
+/** Au-delà, la liste ne se lit plus — et le bon terrain est dans les premiers */
+export const VENUE_SEARCH_LIMIT = 12;
+
+/**
+ * Le libellé d'un terrain sur une ligne : « Stade du Calvaire — Terrain
+ * d'honneur ». Le nom du terrain n'est repris que s'il ajoute quelque chose :
+ * la moitié du recensement l'appelle « Terrain de football », ce qui ne
+ * distingue rien.
+ */
+export function venueLabel(venue: Pick<VenueDto, "name" | "pitchName">): string {
+  const pitch = venue.pitchName?.trim();
+  if (!pitch) return venue.name;
+  // Les parties optionnelles portent leur espace : sans cela, « Terrain » seul
+  // n'était pas reconnu comme générique et s'affichait en double.
+  const generic = /^terrain( de)?( football| foot)?$/i.test(pitch);
+  return generic ? venue.name : `${venue.name} — ${pitch}`;
+}
