@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
-  MapPin,
   Navigation,
   UserMinus,
 } from "lucide-react";
@@ -22,6 +21,7 @@ import {
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
+import { VenueLink } from "@/components/VenueLink";
 import { CoachCardSheet } from "@/components/coach/CoachCardSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -138,7 +138,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             <CalendarDays size={13} className="shrink-0" aria-hidden /> {formatDate(a.date)} · {a.time}
           </p>
           <p className="flex items-center gap-1.5">
-            <MapPin size={13} className="shrink-0" aria-hidden /> {a.stadium}, {a.city}
+            <VenueLink destination={`${a.stadium}, ${a.city}`} />
           </p>
           {a.distanceKm !== null && (
             <p className="flex items-center gap-1.5">

@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronRight,
   LandPlot,
-  MapPin,
   Megaphone,
   Trophy,
   UserRound,
@@ -26,6 +25,7 @@ import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";
 import { Avatar } from "@/components/Avatar";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { VenueLink } from "@/components/VenueLink";
 import { MyAnnouncementCard } from "@/components/announcements/MyAnnouncementCard";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { RadarFeed } from "@/components/announcements/RadarFeed";
@@ -320,9 +320,8 @@ export default function CoachDashboard() {
                 contexte : au pouce, elle était trop haute et trop étroite. */}
             <div className="border-t border-line pt-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs text-ink-soft font-semibold flex items-center gap-1.5 min-w-0">
-                  <MapPin size={13} className="text-blue shrink-0" />
-                  <span className="truncate">{featured.location}</span>
+                <div className="text-xs text-ink-soft font-semibold flex items-center min-w-0">
+                  <VenueLink destination={featured.location} iconClassName="text-blue" />
                 </div>
                 {featured.status === "scheduled" && !featured.finalScoreDue && (
                   <div className="text-right">

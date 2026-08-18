@@ -1,8 +1,8 @@
 "use client";
 
-import { MapPin } from "lucide-react";
 import type { MatchDto, TeamDto } from "@teamnexus/shared";
 import { cn, formatDate } from "@/lib/utils";
+import { VenueLink } from "@/components/VenueLink";
 
 const STATUS = {
   scheduled: { label: "À venir", className: "bg-sky-soft text-sky" },
@@ -88,9 +88,7 @@ export function MatchCard({ match, children }: { match: MatchDto; children?: Rea
       </div>
 
       <div className="flex items-center text-xs text-ink-soft border-t border-line pt-3">
-        <span className="flex items-center gap-1.5 truncate">
-          <MapPin size={13} className="text-pitch shrink-0" /> {match.location}
-        </span>
+        <VenueLink destination={match.location} iconClassName="text-pitch" />
       </div>
 
       {children}

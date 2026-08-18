@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Clock3, MapPin, Navigation, UserMinus, Users, XCircle } from "lucide-react";
+import { CalendarDays, Clock3, Navigation, UserMinus, Users, XCircle } from "lucide-react";
 import {
   categoryLabel,
   DIVISION_LEVEL_LABELS,
@@ -10,6 +10,7 @@ import {
 } from "@teamnexus/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { VenueLink } from "@/components/VenueLink";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
 /**
@@ -109,9 +110,7 @@ export function SectorAnnouncementCard({
         <span className="flex items-center gap-1.5 capitalize">
           <CalendarDays size={13} className="text-pitch" /> {formatDate(a.date)} à {a.time}
         </span>
-        <span className="flex items-center gap-1.5">
-          <MapPin size={13} className="text-pitch" /> {a.stadium}, {a.city}
-        </span>
+        <VenueLink destination={`${a.stadium}, ${a.city}`} iconClassName="text-pitch" />
       </div>
 
       {a.comment && (

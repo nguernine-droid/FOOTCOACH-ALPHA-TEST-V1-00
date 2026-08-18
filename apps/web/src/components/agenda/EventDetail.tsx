@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, MapPin, Pencil, Repeat, Trash2 } from "lucide-react";
+import { ChevronRight, Pencil, Repeat, Trash2 } from "lucide-react";
 import type { AgendaItemDto } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
+import { VenueLink } from "@/components/VenueLink";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { EVENT_TYPE_META } from "./eventTypes";
@@ -63,16 +64,7 @@ export function EventDetail({
           )}
 
           {item.location && (
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm font-semibold text-ink bg-paper rounded-lg px-4 py-3 hover:bg-blue-faint transition"
-            >
-              <MapPin size={14} className="text-blue shrink-0" />
-              <span className="flex-1 truncate">{item.location}</span>
-              <span className="text-xs text-ink-soft shrink-0">Itinéraire</span>
-            </a>
+            <VenueLink destination={item.location} variant="row" />
           )}
 
           {item.description && (

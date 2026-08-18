@@ -7,7 +7,6 @@ import {
   ChevronDown,
   Clock3,
   Crosshair,
-  MapPin,
   Radar,
   SlidersHorizontal,
   UserMinus,
@@ -34,6 +33,7 @@ import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { VenueLink } from "@/components/VenueLink";
 import { LocationCard } from "@/components/coach/LocationCard";
 import { RADIUS_OPTIONS, RadarScope, toBlips, toTournamentBlips } from "@/components/announcements/RadarScope";
 import { SectorAnnouncementCard } from "@/components/announcements/SectorAnnouncementCard";
@@ -837,7 +837,10 @@ export function RadarFeed() {
                 {detail.time}
               </p>
               <p className="flex items-center gap-1.5">
-                <MapPin size={13} className="text-pitch shrink-0" /> {detail.stadium}, {detail.city}
+                <VenueLink
+                  destination={`${detail.stadium}, ${detail.city}`}
+                  iconClassName="text-pitch"
+                />
               </p>
             </div>
 

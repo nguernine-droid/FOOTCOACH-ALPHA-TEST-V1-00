@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Clock3,
   Eye,
-  MapPin,
   MessageCircle,
   UserMinus,
   XCircle,
@@ -22,6 +21,7 @@ import {
 import { todayIso } from "@/lib/time";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
+import { VenueLink } from "@/components/VenueLink";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button, ButtonLink } from "@/components/ui/Button";
 
@@ -116,7 +116,7 @@ export function MyAnnouncementSheet({
             <CalendarDays size={13} className="text-pitch shrink-0" aria-hidden /> {formatDate(a.date)} à {a.time}
           </p>
           <p className="flex items-center gap-1.5">
-            <MapPin size={13} className="text-pitch shrink-0" aria-hidden /> {a.stadium}, {a.city}
+            <VenueLink destination={`${a.stadium}, ${a.city}`} iconClassName="text-pitch" />
           </p>
         </div>
 

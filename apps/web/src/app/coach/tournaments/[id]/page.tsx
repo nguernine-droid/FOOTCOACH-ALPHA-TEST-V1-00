@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Clock3,
   ImagePlus,
-  MapPin,
   QrCode,
   ScanLine,
   Trophy,
@@ -30,6 +29,7 @@ import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { QrScanner } from "@/components/matches/QrScanner";
 import { QrCodeCanvas } from "@/components/QrCodeCanvas";
+import { VenueLink } from "@/components/VenueLink";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -246,7 +246,7 @@ export default function TournamentPage({ params }: { params: Promise<{ id: strin
               <CalendarDays size={13} className="shrink-0" aria-hidden /> {dates} · {TOURNAMENT_SESSION_LABELS[tournament.session]}
             </p>
             <p className="flex items-center gap-1.5">
-              <MapPin size={13} className="shrink-0" aria-hidden /> {tournament.stadium}, {tournament.city}
+              <VenueLink destination={`${tournament.stadium}, ${tournament.city}`} />
             </p>
           </div>
           {tournament.comment && (
