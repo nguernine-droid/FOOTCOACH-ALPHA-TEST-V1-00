@@ -39,6 +39,11 @@ export const availabilityVenue = pgEnum("availability_venue", ["home", "away", "
 export const availabilityNoticeKind = pgEnum("availability_notice_kind", ["suggestion", "free_weekend"]);
 // Qui siffle l'amical. `tbd` est un état réel du dossier, pas un trou.
 export const refereeBy = pgEnum("referee_by", ["tbd", "home", "away", "official"]);
+// D'où vient une ligne du référentiel des districts. `annuaire` : trouvée au
+// registre officiel des associations, nom légal et SIREN à l'appui.
+// `manuel` : saisie faute d'y figurer sous une forme trouvable — donc à
+// vérifier, et l'écran d'administration la présente comme telle.
+export const districtSource = pgEnum("district_source", ["annuaire", "manuel"]);
 export const announcementStatus = pgEnum("announcement_status", ["open", "matched", "cancelled"]);
 export const matchStatus = pgEnum("match_status", [
   "scheduled",
@@ -1142,4 +1147,47 @@ export const availabilityNotices = pgTable(
     // La contrainte qui fait le verrou : une relance par équipe, date et nature
     uniqueIndex("availability_notices_team_date_kind_idx").on(t.teamId, t.date, t.kind),
   ],
+);
+
+/**
+ * Districts de football — le découpage dans lequel les dirigeants pensent.
+ *
+ * Un district n'est PAS un département : cinq d'entre eux en couvrent deux
+ * (Alpes, Drôme-Ardèche, Doubs-Territoire de Belfort, Gard-Lozère, Alsace) et
+ * trois départements en comptent deux (Nord, Pas-de-Calais, Guadeloupe). D'où
+ * un tableau de départements et non une colonne unique — une correspondance
+ * un-pour-un aurait été fausse dans les deux sens.
+ *
+ * La Corse et quatre départements d'outre-mer n'ont pas de district : leur
+ * ligue administre directement. Ce n'est pas un trou du référentiel, c'est
+ * l'organisation réelle.
+ *
+ * Semé depuis `districtsReference.json`, rejouable — voir `seedDistricts.ts`.
+ */
+export const districts = pgTable(
+  "districts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Nom d'usage, celui qu'un dirigeant reconnaît */
+    name: text("name").notNull(),
+    /** Clé stable de l'import : c'est par elle que la remise à jour retrouve la ligne */
+    slug: text("slug").notNull().unique(),
+    /** Nom au registre des associations, NULL pour les lignes saisies à la main */
+    legalName: text("legal_name"),
+    siren: text("siren"),
+    /** Commune du siège, telle que le registre l'écrit */
+    city: text("city"),
+    /** Départements couverts — au moins un, parfois deux */
+    departments: text("departments").array().notNull(),
+    source: districtSource("source").notNull(),
+    /**
+     * Relu et confirmé par un administrateur. Les lignes `manuel` arrivent à
+     * `false` : c'est ce drapeau, et non la source, qui dit ce qui reste à
+     * faire — une ligne du registre peut aussi avoir été corrigée à la main.
+     */
+    verified: boolean("verified").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Le rattachement d'une équipe passe toujours par son département
+  (t) => [index("districts_departments_idx").using("gin", t.departments)],
 );

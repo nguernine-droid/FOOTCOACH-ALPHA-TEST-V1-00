@@ -2752,3 +2752,54 @@ export function categoryFromSlug(slug: string): AnnouncementCategory | null {
   const found = ANNOUNCEMENT_CATEGORIES.find((c) => c.toLowerCase() === slug.toLowerCase());
   return found ?? null;
 }
+
+/* ────────────────── Référentiel des districts ─────────────────────────── */
+
+/**
+ * D'où vient une ligne du référentiel.
+ *
+ * `annuaire` : trouvée au registre officiel des associations, nom légal et
+ * SIREN à l'appui. `manuel` : saisie faute d'y figurer sous une forme
+ * trouvable — la fédération ne publie pas la liste de ses districts, et une
+ * dizaine d'entre eux ne sont pas déclarés sous un nom contenant « district ».
+ */
+export const DISTRICT_SOURCES = ["annuaire", "manuel"] as const;
+export type DistrictSource = (typeof DISTRICT_SOURCES)[number];
+
+export const DISTRICT_SOURCE_LABELS: Record<DistrictSource, string> = {
+  annuaire: "Registre des associations",
+  manuel: "Saisi à la main",
+};
+
+export interface DistrictDto {
+  id: string;
+  name: string;
+  slug: string;
+  legalName: string | null;
+  siren: string | null;
+  city: string | null;
+  /** Départements couverts : cinq districts en couvrent deux */
+  departments: string[];
+  source: DistrictSource;
+  /** Relu et confirmé par un administrateur */
+  verified: boolean;
+}
+
+export const updateDistrictSchema = z.object({
+  name: z.string().trim().min(3).max(120).optional(),
+  // Le groupe n'est pas décoratif : sans lui, l'alternance porte sur toute
+  // l'expression et « 2Axyz » passerait — l'ancre finale ne s'appliquerait
+  // qu'à la dernière branche.
+  departments: z.array(z.string().regex(/^([0-9]{2,3}|2A|2B)$/)).min(1).max(5).optional(),
+  verified: z.boolean().optional(),
+});
+export type UpdateDistrictInput = z.infer<typeof updateDistrictSchema>;
+
+/**
+ * Départements sans district : leur ligue administre directement.
+ *
+ * Ce n'est PAS un trou du référentiel, c'est l'organisation réelle — et le
+ * distinguer d'un oubli évite qu'un administrateur cherche pendant une heure
+ * un district corse qui n'existe pas.
+ */
+export const DEPARTMENTS_WITHOUT_DISTRICT = ["2A", "2B", "972", "973", "974", "976"] as const;

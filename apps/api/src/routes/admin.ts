@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, count, desc, eq, gte, ilike, inArray, isNull, max, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, max, ne, or, sql } from "drizzle-orm";
 import {
   idParamSchema,
   ROLES,
@@ -13,6 +13,9 @@ import {
   type AdminClubDuplicateGroupDto,
   type AdminCreateClubResultDto,
   type AdminStatsDto,
+  updateDistrictSchema,
+  type DistrictDto,
+  type DistrictSource,
   type DistrictStatsDto,
   type Role,
 } from "@teamnexus/shared";
@@ -20,6 +23,7 @@ import { db } from "../db/client.js";
 import {
   clubAffiliationRequests,
   clubs,
+  districts,
   loginEvents,
   matchAnnouncements,
   matchEvents,
@@ -383,6 +387,68 @@ export function adminRoutes(app: FastifyInstance) {
 
     // Le plus dense d'abord : c'est là que se joue la décision
     return [...rows.values()].sort((a, b) => b.teams - a.teams || b.announcements - a.announcements);
+  });
+
+
+  /**
+   * Le référentiel des districts, et sa relecture.
+   *
+   * La fédération ne publie pas la liste de ses districts, et le registre des
+   * associations n'en rend qu'une partie : une dizaine de lignes ont été
+   * saisies à la main et attendent d'être confirmées par quelqu'un qui connaît
+   * le terrain. Cet écran existe pour ça, et c'est pourquoi il trie les
+   * non-vérifiés en tête.
+   */
+  app.get("/admin/districts-reference", async (): Promise<DistrictDto[]> => {
+    const rows = await db.select().from(districts).orderBy(asc(districts.name));
+    return rows
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        slug: d.slug,
+        legalName: d.legalName,
+        siren: d.siren,
+        city: d.city,
+        departments: d.departments,
+        source: d.source as DistrictSource,
+        verified: d.verified,
+      }))
+      // Ce qui reste à faire d'abord : un écran de relecture qui enterre les
+      // dix lignes à relire sous quatre-vingts lignes correctes ne sert à rien.
+      .sort((a, b) => Number(a.verified) - Number(b.verified) || a.name.localeCompare(b.name));
+  });
+
+  /**
+   * Corriger une ligne. Marquer `verified` protège définitivement la ligne des
+   * réimports — c'est le sens du drapeau, pas une simple décoration.
+   */
+  app.patch("/admin/districts-reference/:id", async (request): Promise<DistrictDto> => {
+    const { id } = idParamSchema.parse(request.params);
+    const input = updateDistrictSchema.parse(request.body);
+    const [current] = await db.select().from(districts).where(eq(districts.id, id));
+    if (!current) throw new HttpError(404, "District introuvable");
+
+    const [updated] = await db
+      .update(districts)
+      .set({
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.departments !== undefined ? { departments: input.departments } : {}),
+        ...(input.verified !== undefined ? { verified: input.verified } : {}),
+      })
+      .where(eq(districts.id, id))
+      .returning();
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      slug: updated.slug,
+      legalName: updated.legalName,
+      siren: updated.siren,
+      city: updated.city,
+      departments: updated.departments,
+      source: updated.source as DistrictSource,
+      verified: updated.verified,
+    };
   });
 
   app.get("/admin/clubs", async (request): Promise<AdminClubDto[]> => {

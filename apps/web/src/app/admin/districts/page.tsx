@@ -9,6 +9,7 @@ import {
 } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { DistrictReference } from "@/components/admin/DistrictReference";
 import { CardGridSkeleton } from "@/components/ui/Skeleton";
 
 /**
@@ -116,6 +117,10 @@ export default function DistrictsPage() {
           </p>
         </>
       )}
+
+      {/* Le référentiel sous les chiffres : on vient ici pour décider, et on
+          y corrige le découpage quand il fausse ce qu'on lit. */}
+      <DistrictReference />
     </div>
   );
 }

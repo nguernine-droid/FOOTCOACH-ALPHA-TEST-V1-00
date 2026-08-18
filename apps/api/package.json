@@ -10,7 +10,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/seed.ts",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:districts": "tsx src/db/seedDistricts.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

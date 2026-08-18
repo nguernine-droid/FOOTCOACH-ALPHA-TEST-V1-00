@@ -1,0 +1,1030 @@
+[
+ {
+  "name": "District de l'Ain de Football",
+  "legalName": "DISTRICT DE L AIN DE FOOTBALL",
+  "departments": [
+   "01"
+  ],
+  "siren": "318334539",
+  "city": "VIRIAT",
+  "source": "annuaire",
+  "slug": "district-de-l-ain-de-football"
+ },
+ {
+  "name": "District de l'Aisne de Football (DAF)",
+  "legalName": "DISTRICT DE L'AISNE DE FOOTBALL (DAF)",
+  "departments": [
+   "02"
+  ],
+  "siren": "780173472",
+  "city": "CHAUNY",
+  "source": "annuaire",
+  "slug": "district-de-l-aisne-de-football-daf"
+ },
+ {
+  "name": "District de l'Allier de Football",
+  "legalName": "DISTRICT DE L ALLIER DE FOOTBALL",
+  "departments": [
+   "03"
+  ],
+  "siren": "779066463",
+  "city": "COSNE-D'ALLIER",
+  "source": "annuaire",
+  "slug": "district-de-l-allier-de-football"
+ },
+ {
+  "name": "District des Alpes de Football",
+  "legalName": "DISTRICT DES ALPES DE FOOTBALL",
+  "departments": [
+   "04",
+   "05"
+  ],
+  "siren": "328409016",
+  "city": "SISTERON",
+  "source": "annuaire",
+  "slug": "district-des-alpes-de-football"
+ },
+ {
+  "name": "District de la Côte d'Azur de Football",
+  "legalName": null,
+  "departments": [
+   "06"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-de-la-cote-d-azur-de-football"
+ },
+ {
+  "name": "District Drome Ardeche de Football (DDAF)",
+  "legalName": "DISTRICT DROME ARDECHE DE FOOTBALL (DDAF)",
+  "departments": [
+   "07",
+   "26"
+  ],
+  "siren": "317049773",
+  "city": "GUILHERAND GRANGES",
+  "source": "annuaire",
+  "slug": "district-drome-ardeche-de-football-ddaf"
+ },
+ {
+  "name": "District Ardennes de Football",
+  "legalName": "DISTRICT ARDENNES DE FOOTBALL",
+  "departments": [
+   "08"
+  ],
+  "siren": "325824316",
+  "city": "BAZEILLES",
+  "source": "annuaire",
+  "slug": "district-ardennes-de-football"
+ },
+ {
+  "name": "District de l'Ariege de Football",
+  "legalName": "DISTRICT DE L'ARIEGE DE FOOTBALL",
+  "departments": [
+   "09"
+  ],
+  "siren": "319180170",
+  "city": "LA TOUR-DU-CRIEU",
+  "source": "annuaire",
+  "slug": "district-de-l-ariege-de-football"
+ },
+ {
+  "name": "District Aube Football",
+  "legalName": "DISTRICT AUBE FOOTBALL",
+  "departments": [
+   "10"
+  ],
+  "siren": "301969796",
+  "city": "TROYES",
+  "source": "annuaire",
+  "slug": "district-aube-football"
+ },
+ {
+  "name": "District de l'Aude de Football",
+  "legalName": "DISTRICT DE L AUDE DE FOOTBALL",
+  "departments": [
+   "11"
+  ],
+  "siren": "314177072",
+  "city": "CARCASSONNE",
+  "source": "annuaire",
+  "slug": "district-de-l-aude-de-football"
+ },
+ {
+  "name": "District de l'Aveyron de Football",
+  "legalName": null,
+  "departments": [
+   "12"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-de-l-aveyron-de-football"
+ },
+ {
+  "name": "District Provence Football",
+  "legalName": "DISTRICT PROVENCE FOOTBALL",
+  "departments": [
+   "13"
+  ],
+  "siren": "782813026",
+  "city": "MARSEILLE",
+  "source": "annuaire",
+  "slug": "district-provence-football"
+ },
+ {
+  "name": "District Calvados Football",
+  "legalName": "DISTRICT CALVADOS FOOTBALL",
+  "departments": [
+   "14"
+  ],
+  "siren": "319128898",
+  "city": "HEROUVILLE-SAINT-CLAIR",
+  "source": "annuaire",
+  "slug": "district-calvados-football"
+ },
+ {
+  "name": "District du Cantal de Football",
+  "legalName": "DISTRICT DU CANTAL DE FOOTBALL",
+  "departments": [
+   "15"
+  ],
+  "siren": "319492310",
+  "city": "AURILLAC",
+  "source": "annuaire",
+  "slug": "district-du-cantal-de-football"
+ },
+ {
+  "name": "District de la Charente de Football",
+  "legalName": "DISTRICT DE LA CHARENTE DE FOOTBALL",
+  "departments": [
+   "16"
+  ],
+  "siren": "781171277",
+  "city": "PUYMOYEN",
+  "source": "annuaire",
+  "slug": "district-de-la-charente-de-football"
+ },
+ {
+  "name": "District Football Charente Maritime",
+  "legalName": "DISTRICT FOOTBALL CHARENTE MARITIME",
+  "departments": [
+   "17"
+  ],
+  "siren": "781379821",
+  "city": "SAINTES",
+  "source": "annuaire",
+  "slug": "district-football-charente-maritime"
+ },
+ {
+  "name": "District du Cher de Football",
+  "legalName": "DISTRICT DU CHER DE FOOTBALL",
+  "departments": [
+   "18"
+  ],
+  "siren": "310427109",
+  "city": "SAINT-DOULCHARD",
+  "source": "annuaire",
+  "slug": "district-du-cher-de-football"
+ },
+ {
+  "name": "District Football Correze",
+  "legalName": "DISTRICT FOOTBALL CORREZE",
+  "departments": [
+   "19"
+  ],
+  "siren": "311415806",
+  "city": "BRIVE-LA-GAILLARDE",
+  "source": "annuaire",
+  "slug": "district-football-correze"
+ },
+ {
+  "name": "District de Football Cote d'Or",
+  "legalName": "DISTRICT DE FOOTBALL COTE D OR",
+  "departments": [
+   "21"
+  ],
+  "siren": "311769228",
+  "city": "QUETIGNY",
+  "source": "annuaire",
+  "slug": "district-de-football-cote-d-or"
+ },
+ {
+  "name": "District des Côtes-d'Armor de Football",
+  "legalName": null,
+  "departments": [
+   "22"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-des-cotes-d-armor-de-football"
+ },
+ {
+  "name": "District Football de la Creuse",
+  "legalName": "DISTRICT FOOTBALL DE LA CREUSE",
+  "departments": [
+   "23"
+  ],
+  "siren": "319000824",
+  "city": "GUERET",
+  "source": "annuaire",
+  "slug": "district-football-de-la-creuse"
+ },
+ {
+  "name": "District de Football Dordogne-Perigord",
+  "legalName": "DISTRICT DE FOOTBALL DORDOGNE-PERIGORD",
+  "departments": [
+   "24"
+  ],
+  "siren": "781702592",
+  "city": "MARSAC-SUR-L'ISLE",
+  "source": "annuaire",
+  "slug": "district-de-football-dordogne-perigord"
+ },
+ {
+  "name": "District de Football Doubs Territoire de Belfort (DFDTB)",
+  "legalName": "DISTRICT DE FOOTBALL DOUBS TERRITOIRE DE BELFORT (DFDTB)",
+  "departments": [
+   "25",
+   "90"
+  ],
+  "siren": "319394565",
+  "city": "ARBOUANS",
+  "source": "annuaire",
+  "slug": "district-de-football-doubs-territoire-de-belfort-dfdtb"
+ },
+ {
+  "name": "District de l'Eure de Football",
+  "legalName": "DISTRICT DE L'EURE DE FOOTBALL",
+  "departments": [
+   "27"
+  ],
+  "siren": "308897917",
+  "city": "EVREUX",
+  "source": "annuaire",
+  "slug": "district-de-l-eure-de-football"
+ },
+ {
+  "name": "District d'Eure-Et-Loir de Football A Chartres",
+  "legalName": "DISTRICT D'EURE-ET-LOIR DE FOOTBALL A CHARTRES",
+  "departments": [
+   "28"
+  ],
+  "siren": "775135262",
+  "city": "LUCE",
+  "source": "annuaire",
+  "slug": "district-d-eure-et-loir-de-football-a-chartres"
+ },
+ {
+  "name": "District de Football du Finistere",
+  "legalName": "DISTRICT DE FOOTBALL DU FINISTERE",
+  "departments": [
+   "29"
+  ],
+  "siren": "414707489",
+  "city": "CHATEAULIN",
+  "source": "annuaire",
+  "slug": "district-de-football-du-finistere"
+ },
+ {
+  "name": "District Gard Lozere de Football",
+  "legalName": "DISTRICT GARD LOZERE DE FOOTBALL",
+  "departments": [
+   "30",
+   "48"
+  ],
+  "siren": "775913734",
+  "city": "NIMES",
+  "source": "annuaire",
+  "slug": "district-gard-lozere-de-football"
+ },
+ {
+  "name": "District Haute Garonne de Football (DHGF)",
+  "legalName": "DISTRICT HAUTE GARONNE DE FOOTBALL (DHGF)",
+  "departments": [
+   "31"
+  ],
+  "siren": "776951592",
+  "city": "CUGNAUX",
+  "source": "annuaire",
+  "slug": "district-haute-garonne-de-football-dhgf"
+ },
+ {
+  "name": "District du Gers de Football",
+  "legalName": "DISTRICT DU GERS DE FOOTBALL",
+  "departments": [
+   "32"
+  ],
+  "siren": "317961167",
+  "city": "AUCH",
+  "source": "annuaire",
+  "slug": "district-du-gers-de-football"
+ },
+ {
+  "name": "District de la Gironde de Football",
+  "legalName": "DISTRICT DE LA GIRONDE DE FOOTBALL",
+  "departments": [
+   "33"
+  ],
+  "siren": "419936075",
+  "city": "CENON",
+  "source": "annuaire",
+  "slug": "district-de-la-gironde-de-football"
+ },
+ {
+  "name": "District Football Herault",
+  "legalName": "DISTRICT FOOTBALL HERAULT",
+  "departments": [
+   "34"
+  ],
+  "siren": "319713582",
+  "city": "MONTPELLIER",
+  "source": "annuaire",
+  "slug": "district-football-herault"
+ },
+ {
+  "name": "District d'I et V de Football",
+  "legalName": "DISTRICT D I ET V DE FOOTBALL",
+  "departments": [
+   "35"
+  ],
+  "siren": "777746892",
+  "city": "SAINT-GREGOIRE",
+  "source": "annuaire",
+  "slug": "district-d-i-et-v-de-football"
+ },
+ {
+  "name": "District de l'Indre du Footbal",
+  "legalName": "DISTRICT DE L INDRE DU FOOTBAL",
+  "departments": [
+   "36"
+  ],
+  "siren": "775187883",
+  "city": "CHATEAUROUX",
+  "source": "annuaire",
+  "slug": "district-de-l-indre-du-footbal"
+ },
+ {
+  "name": "District de Football d'Indre et Loire",
+  "legalName": "DISTRICT DE FOOTBALL D'INDRE ET LOIRE",
+  "departments": [
+   "37"
+  ],
+  "siren": "775345531",
+  "city": "TOURS",
+  "source": "annuaire",
+  "slug": "district-de-football-d-indre-et-loire"
+ },
+ {
+  "name": "District de l'Isere de Football",
+  "legalName": "DISTRICT DE L ISERE DE FOOTBALL",
+  "departments": [
+   "38"
+  ],
+  "siren": "304602360",
+  "city": "SASSENAGE",
+  "source": "annuaire",
+  "slug": "district-de-l-isere-de-football"
+ },
+ {
+  "name": "District du Jura Football",
+  "legalName": "DISTRICT DU JURA FOOTBALL",
+  "departments": [
+   "39"
+  ],
+  "siren": "313257826",
+  "city": "LONS-LE-SAUNIER",
+  "source": "annuaire",
+  "slug": "district-du-jura-football"
+ },
+ {
+  "name": "District des Landes Football",
+  "legalName": "DISTRICT DES LANDES FOOTBALL",
+  "departments": [
+   "40"
+  ],
+  "siren": "331025627",
+  "city": "TARTAS",
+  "source": "annuaire",
+  "slug": "district-des-landes-football"
+ },
+ {
+  "name": "District de Loir & Cher de Football",
+  "legalName": "DISTRICT DE LOIR & CHER DE FOOTBALL",
+  "departments": [
+   "41"
+  ],
+  "siren": "305901076",
+  "city": "BLOIS",
+  "source": "annuaire",
+  "slug": "district-de-loir-cher-de-football"
+ },
+ {
+  "name": "District de Loire de Football",
+  "legalName": "DISTRICT DE LOIRE DE FOOTBALL",
+  "departments": [
+   "42"
+  ],
+  "siren": "302097381",
+  "city": "SAINT-PRIEST-EN-JAREZ",
+  "source": "annuaire",
+  "slug": "district-de-loire-de-football"
+ },
+ {
+  "name": "District de Football de la Haute Loire",
+  "legalName": "DISTRICT DE FOOTBALL DE LA HAUTE LOIRE",
+  "departments": [
+   "43"
+  ],
+  "siren": "315711531",
+  "city": "LE PUY-EN-VELAY",
+  "source": "annuaire",
+  "slug": "district-de-football-de-la-haute-loire"
+ },
+ {
+  "name": "District de l'A de Football",
+  "legalName": "DISTRICT DE L A DE FOOTBALL",
+  "departments": [
+   "44"
+  ],
+  "siren": "788353506",
+  "city": "LA CHAPELLE-SUR-ERDRE",
+  "source": "annuaire",
+  "slug": "district-de-l-a-de-football"
+ },
+ {
+  "name": "District Football du Loiret",
+  "legalName": "DISTRICT FOOTBALL DU LOIRET",
+  "departments": [
+   "45"
+  ],
+  "siren": "778119545",
+  "city": "ORLEANS",
+  "source": "annuaire",
+  "slug": "district-football-du-loiret"
+ },
+ {
+  "name": "District du Lot de Football",
+  "legalName": "DISTRICT DU LOT DE FOOTBALL",
+  "departments": [
+   "46"
+  ],
+  "siren": "332536390",
+  "city": "CAHORS",
+  "source": "annuaire",
+  "slug": "district-du-lot-de-football"
+ },
+ {
+  "name": "District de Lot et Garonne Football",
+  "legalName": "DISTRICT DE LOT ET GARONNE FOOTBALL",
+  "departments": [
+   "47"
+  ],
+  "siren": "322759341",
+  "city": "AGEN",
+  "source": "annuaire",
+  "slug": "district-de-lot-et-garonne-football"
+ },
+ {
+  "name": "District de Maine et Loire de Football",
+  "legalName": "DISTRICT DE MAINE ET LOIRE DE FOOTBALL",
+  "departments": [
+   "49"
+  ],
+  "siren": "786117804",
+  "city": "LES PONTS-DE-CE",
+  "source": "annuaire",
+  "slug": "district-de-maine-et-loire-de-football"
+ },
+ {
+  "name": "District Football Manche",
+  "legalName": "DISTRICT FOOTBALL MANCHE",
+  "departments": [
+   "50"
+  ],
+  "siren": "319394276",
+  "city": "PONT-HEBERT",
+  "source": "annuaire",
+  "slug": "district-football-manche"
+ },
+ {
+  "name": "District Marne Football",
+  "legalName": "DISTRICT MARNE FOOTBALL",
+  "departments": [
+   "51"
+  ],
+  "siren": "328308937",
+  "city": "REIMS",
+  "source": "annuaire",
+  "slug": "district-marne-football"
+ },
+ {
+  "name": "District Haute Marne Football",
+  "legalName": "DISTRICT HAUTE MARNE FOOTBALL",
+  "departments": [
+   "52"
+  ],
+  "siren": "319890349",
+  "city": "CHAUMONT",
+  "source": "annuaire",
+  "slug": "district-haute-marne-football"
+ },
+ {
+  "name": "District Football Mayenne",
+  "legalName": "DISTRICT FOOTBALL MAYENNE",
+  "departments": [
+   "53"
+  ],
+  "siren": "786257865",
+  "city": "LAVAL",
+  "source": "annuaire",
+  "slug": "district-football-mayenne"
+ },
+ {
+  "name": "District Meurthe-Et-Moselle de Football",
+  "legalName": "DISTRICT MEURTHE-ET-MOSELLE DE FOOTBALL",
+  "departments": [
+   "54"
+  ],
+  "siren": "331595348",
+  "city": "VILLERS-LES-NANCY",
+  "source": "annuaire",
+  "slug": "district-meurthe-et-moselle-de-football"
+ },
+ {
+  "name": "District Meuse de Football (OMF)",
+  "legalName": "DISTRICT MEUSE DE FOOTBALL (OMF)",
+  "departments": [
+   "55"
+  ],
+  "siren": "321421539",
+  "city": "BAR-LE-DUC",
+  "source": "annuaire",
+  "slug": "district-meuse-de-football-omf"
+ },
+ {
+  "name": "District du Morbihan de Football",
+  "legalName": null,
+  "departments": [
+   "56"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-du-morbihan-de-football"
+ },
+ {
+  "name": "District Mosellan de Football",
+  "legalName": "DISTRICT MOSELLAN DE FOOTBALL",
+  "departments": [
+   "57"
+  ],
+  "siren": "321192080",
+  "city": "LONGEVILLE-LES-METZ",
+  "source": "annuaire",
+  "slug": "district-mosellan-de-football"
+ },
+ {
+  "name": "District de la Nièvre de Football",
+  "legalName": null,
+  "departments": [
+   "58"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-de-la-nievre-de-football"
+ },
+ {
+  "name": "District des Flandres de Football (DDFF)",
+  "legalName": "DISTRICT DES FLANDRES DE FOOTBALL (DDFF)",
+  "departments": [
+   "59"
+  ],
+  "siren": "412266694",
+  "city": "MONS-EN-BARŒUL",
+  "source": "annuaire",
+  "slug": "district-des-flandres-de-football-ddff"
+ },
+ {
+  "name": "District Escaut de Football",
+  "legalName": "DISTRICT ESCAUT DE FOOTBALL",
+  "departments": [
+   "59"
+  ],
+  "siren": "413088246",
+  "city": "RAISMES",
+  "source": "annuaire",
+  "slug": "district-escaut-de-football"
+ },
+ {
+  "name": "District Oise de Football",
+  "legalName": "DISTRICT OISE DE FOOTBALL",
+  "departments": [
+   "60"
+  ],
+  "siren": "780526661",
+  "city": "CAUFFRY",
+  "source": "annuaire",
+  "slug": "district-oise-de-football"
+ },
+ {
+  "name": "District de l'Orne de Football",
+  "legalName": "DISTRICT DE L'ORNE DE FOOTBALL",
+  "departments": [
+   "61"
+  ],
+  "siren": "319625950",
+  "city": "ALENCON",
+  "source": "annuaire",
+  "slug": "district-de-l-orne-de-football"
+ },
+ {
+  "name": "District Artois Football",
+  "legalName": "DISTRICT ARTOIS FOOTBALL",
+  "departments": [
+   "62"
+  ],
+  "siren": "335356366",
+  "city": "LIEVIN",
+  "source": "annuaire",
+  "slug": "district-artois-football"
+ },
+ {
+  "name": "District Côte d'Opale de Football",
+  "legalName": null,
+  "departments": [
+   "62"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-cote-d-opale-de-football"
+ },
+ {
+  "name": "District Puy de Dome Football",
+  "legalName": "DISTRICT PUY DE DOME FOOTBALL",
+  "departments": [
+   "63"
+  ],
+  "siren": "779219799",
+  "city": "COURNON-D'AUVERGNE",
+  "source": "annuaire",
+  "slug": "district-puy-de-dome-football"
+ },
+ {
+  "name": "District des Pyrénées-Atlantiques de Football",
+  "legalName": null,
+  "departments": [
+   "64"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-des-pyrenees-atlantiques-de-football"
+ },
+ {
+  "name": "District Htes Pyren Football",
+  "legalName": "DISTRICT HTES PYREN FOOTBALL",
+  "departments": [
+   "65"
+  ],
+  "siren": "328138789",
+  "city": "TARBES",
+  "source": "annuaire",
+  "slug": "district-htes-pyren-football"
+ },
+ {
+  "name": "District Po de Football",
+  "legalName": "DISTRICT PO DE FOOTBALL",
+  "departments": [
+   "66"
+  ],
+  "siren": "332036821",
+  "city": "PERPIGNAN",
+  "source": "annuaire",
+  "slug": "district-po-de-football"
+ },
+ {
+  "name": "District d'Alsace de Football (LAFA)",
+  "legalName": "DISTRICT D'ALSACE DE FOOTBALL (LAFA)",
+  "departments": [
+   "67",
+   "68"
+  ],
+  "siren": "778864090",
+  "city": "ENTZHEIM",
+  "source": "annuaire",
+  "slug": "district-d-alsace-de-football-lafa"
+ },
+ {
+  "name": "District de Lyon et du Rhone de Football (DLR)",
+  "legalName": "DISTRICT DE LYON ET DU RHONE DE FOOTBALL (DLR)",
+  "departments": [
+   "69"
+  ],
+  "siren": "327204152",
+  "city": "LYON",
+  "source": "annuaire",
+  "slug": "district-de-lyon-et-du-rhone-de-football-dlr"
+ },
+ {
+  "name": "District de la Haute-Saône de Football",
+  "legalName": null,
+  "departments": [
+   "70"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-de-la-haute-saone-de-football"
+ },
+ {
+  "name": "District Saone-Et-Loire de Football",
+  "legalName": "DISTRICT SAONE-ET-LOIRE DE FOOTBALL",
+  "departments": [
+   "71"
+  ],
+  "siren": "307300590",
+  "city": "TORCY",
+  "source": "annuaire",
+  "slug": "district-saone-et-loire-de-football"
+ },
+ {
+  "name": "District de la Sarthe de Football",
+  "legalName": null,
+  "departments": [
+   "72"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-de-la-sarthe-de-football"
+ },
+ {
+  "name": "District de Savoie de Football",
+  "legalName": "DISTRICT DE SAVOIE DE FOOTBALL",
+  "departments": [
+   "73"
+  ],
+  "siren": "424506582",
+  "city": "CHAMBERY",
+  "source": "annuaire",
+  "slug": "district-de-savoie-de-football"
+ },
+ {
+  "name": "District Football Hte Savoie Pays de Gex",
+  "legalName": "DISTRICT FOOTBALL HTE SAVOIE PAYS DE GEX",
+  "departments": [
+   "74"
+  ],
+  "siren": "324823871",
+  "city": "VILLE-LA-GRAND",
+  "source": "annuaire",
+  "slug": "district-football-hte-savoie-pays-de-gex"
+ },
+ {
+  "name": "District Parisien de Football",
+  "legalName": "DISTRICT PARISIEN DE FOOTBALL",
+  "departments": [
+   "75"
+  ],
+  "siren": "892031253",
+  "city": "PARIS",
+  "source": "annuaire",
+  "slug": "district-parisien-de-football"
+ },
+ {
+  "name": "District de Football de Seine Maritime",
+  "legalName": "DISTRICT  DE FOOTBALL DE SEINE MARITIME",
+  "departments": [
+   "76"
+  ],
+  "siren": "320182678",
+  "city": "YVETOT",
+  "source": "annuaire",
+  "slug": "district-de-football-de-seine-maritime"
+ },
+ {
+  "name": "District Seine et Marne de Football",
+  "legalName": "DISTRICT SEINE ET MARNE DE FOOTBALL",
+  "departments": [
+   "77"
+  ],
+  "siren": "322358508",
+  "city": "LE MEE-SUR-SEINE",
+  "source": "annuaire",
+  "slug": "district-seine-et-marne-de-football"
+ },
+ {
+  "name": "District Yvelines de Football",
+  "legalName": "DISTRICT YVELINES DE FOOTBALL",
+  "departments": [
+   "78"
+  ],
+  "siren": "322533670",
+  "city": "MONTIGNY-LE-BRETONNEUX",
+  "source": "annuaire",
+  "slug": "district-yvelines-de-football"
+ },
+ {
+  "name": "District du Football Deux Sevres",
+  "legalName": "DISTRICT DU FOOTBALL DEUX SEVRES",
+  "departments": [
+   "79"
+  ],
+  "siren": "781458369",
+  "city": "NIORT",
+  "source": "annuaire",
+  "slug": "district-du-football-deux-sevres"
+ },
+ {
+  "name": "District de la Somme Football",
+  "legalName": "DISTRICT DE LA SOMME FOOTBALL",
+  "departments": [
+   "80"
+  ],
+  "siren": "780610333",
+  "city": "AMIENS",
+  "source": "annuaire",
+  "slug": "district-de-la-somme-football"
+ },
+ {
+  "name": "District du Tarn de Football",
+  "legalName": "DISTRICT DU TARN DE FOOTBALL",
+  "departments": [
+   "81"
+  ],
+  "siren": "317615177",
+  "city": "GRAULHET",
+  "source": "annuaire",
+  "slug": "district-du-tarn-de-football"
+ },
+ {
+  "name": "District Tarn & Garon Football",
+  "legalName": "DISTRICT TARN & GARON FOOTBALL",
+  "departments": [
+   "82"
+  ],
+  "siren": "316916972",
+  "city": "MONTAUBAN",
+  "source": "annuaire",
+  "slug": "district-tarn-garon-football"
+ },
+ {
+  "name": "Federation Francaise de Football District du Var",
+  "legalName": "FEDERATION FRANCAISE DE FOOTBALL DISTRICT DU VAR",
+  "departments": [
+   "83"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "annuaire",
+  "slug": "federation-francaise-de-football-district-du-var"
+ },
+ {
+  "name": "District Grand Vaucluse de Football (DGVF)",
+  "legalName": "DISTRICT GRAND VAUCLUSE DE FOOTBALL (DGVF)",
+  "departments": [
+   "84"
+  ],
+  "siren": "344716410",
+  "city": "AVIGNON",
+  "source": "annuaire",
+  "slug": "district-grand-vaucluse-de-football-dgvf"
+ },
+ {
+  "name": "District de Vendee de Football",
+  "legalName": "DISTRICT DE VENDEE DE FOOTBALL",
+  "departments": [
+   "85"
+  ],
+  "siren": "786447300",
+  "city": "LA ROCHE-SUR-YON",
+  "source": "annuaire",
+  "slug": "district-de-vendee-de-football"
+ },
+ {
+  "name": "District de la Vienne Football",
+  "legalName": "DISTRICT DE LA VIENNE FOOTBALL",
+  "departments": [
+   "86"
+  ],
+  "siren": "781564893",
+  "city": "POITIERS",
+  "source": "annuaire",
+  "slug": "district-de-la-vienne-football"
+ },
+ {
+  "name": "District de Football Haute Vienne",
+  "legalName": "DISTRICT DE FOOTBALL HAUTE VIENNE",
+  "departments": [
+   "87"
+  ],
+  "siren": "778071266",
+  "city": "LIMOGES",
+  "source": "annuaire",
+  "slug": "district-de-football-haute-vienne"
+ },
+ {
+  "name": "District Vosges Football",
+  "legalName": "DISTRICT VOSGES FOOTBALL",
+  "departments": [
+   "88"
+  ],
+  "siren": "321377756",
+  "city": "EPINAL",
+  "source": "annuaire",
+  "slug": "district-vosges-football"
+ },
+ {
+  "name": "District Yonne Football",
+  "legalName": "DISTRICT YONNE FOOTBALL",
+  "departments": [
+   "89"
+  ],
+  "siren": "321863409",
+  "city": "AUXERRE",
+  "source": "annuaire",
+  "slug": "district-yonne-football"
+ },
+ {
+  "name": "District Essonne Football",
+  "legalName": "DISTRICT ESSONNE FOOTBALL",
+  "departments": [
+   "91"
+  ],
+  "siren": "321304248",
+  "city": "BRETIGNY-SUR-ORGE",
+  "source": "annuaire",
+  "slug": "district-essonne-football"
+ },
+ {
+  "name": "District Hts de Seine Football",
+  "legalName": "DISTRICT HTS DE SEINE FOOTBALL",
+  "departments": [
+   "92"
+  ],
+  "siren": "322452707",
+  "city": "COURBEVOIE",
+  "source": "annuaire",
+  "slug": "district-hts-de-seine-football"
+ },
+ {
+  "name": "District de la Seine-Saint-Denis de Football",
+  "legalName": null,
+  "departments": [
+   "93"
+  ],
+  "siren": null,
+  "city": null,
+  "source": "manuel",
+  "slug": "district-de-la-seine-saint-denis-de-football"
+ },
+ {
+  "name": "District du Val de Marne de Football",
+  "legalName": "DISTRICT DU VAL DE MARNE DE FOOTBALL",
+  "departments": [
+   "94"
+  ],
+  "siren": "322388497",
+  "city": "CHAMPIGNY-SUR-MARNE",
+  "source": "annuaire",
+  "slug": "district-du-val-de-marne-de-football"
+ },
+ {
+  "name": "District Val Oise Football",
+  "legalName": "DISTRICT VAL OISE FOOTBALL",
+  "departments": [
+   "95"
+  ],
+  "siren": "323037713",
+  "city": "BAILLET-EN-FRANCE",
+  "source": "annuaire",
+  "slug": "district-val-oise-football"
+ },
+ {
+  "name": "District Grande Terre Football (DGTF)",
+  "legalName": "DISTRICT GRANDE TERRE FOOTBALL (DGTF)",
+  "departments": [
+   "971"
+  ],
+  "siren": "379278492",
+  "city": "LES ABYMES",
+  "source": "annuaire",
+  "slug": "district-grande-terre-football-dgtf"
+ },
+ {
+  "name": "District Marie-Galantais du Football (D.M.G.F)",
+  "legalName": "DISTRICT MARIE-GALANTAIS DU FOOTBALL (D.M.G.F)",
+  "departments": [
+   "971"
+  ],
+  "siren": "343982039",
+  "city": "GRAND-BOURG",
+  "source": "annuaire",
+  "slug": "district-marie-galantais-du-football-d-m-g-f"
+ }
+]
