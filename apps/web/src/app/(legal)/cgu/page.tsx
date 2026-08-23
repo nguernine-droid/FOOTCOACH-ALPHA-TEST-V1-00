@@ -6,7 +6,7 @@ import { ContactCard, IncompleteNotice, LegalPage, SummaryBox, Value } from "@/c
 const complete = legalIsComplete();
 
 export const metadata: Metadata = {
-  title: "Conditions générales d'utilisation — TeamNexus",
+  title: "Conditions générales d'utilisation",
   description:
     "Ce que TeamNexus fait, ce qu'il ne fait pas à votre place, et ce que nous attendons de vous. La déclaration du match à votre district reste la vôtre.",
   alternates: { canonical: "/cgu" },

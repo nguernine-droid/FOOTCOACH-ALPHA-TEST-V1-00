@@ -13,7 +13,7 @@ import {
 const complete = legalIsComplete();
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité — TeamNexus",
+  title: "Politique de confidentialité",
   description:
     "Ce que TeamNexus enregistre à votre sujet, pourquoi, pendant combien de temps, qui peut le voir, et comment reprendre la main dessus.",
   alternates: { canonical: "/confidentialite" },

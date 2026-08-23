@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { categoryFromSlug, categoryLabel, districtCodeFromSlug } from "@teamnexus/shared";
-import { fetchBoard } from "@/lib/publicApi";
+import { fetchBoard, fetchDistricts } from "@/lib/publicApi";
 import { PublicBoard } from "@/components/public/PublicBoard";
 
 // Next exige une valeur LITTÉRALE ici : il lit ce champ statiquement, sans
@@ -16,9 +16,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { district, categorie } = await params;
   const code = districtCodeFromSlug(district);
   const category = categoryFromSlug(categorie);
-  if (!code || !category) return { title: "Page inconnue — TeamNexus" };
+  if (!code || !category) return { title: "Page inconnue" };
   const board = await fetchBoard(code, categorie);
-  if (!board) return { title: "Page inconnue — TeamNexus" };
+  if (!board) return { title: "Page inconnue" };
 
   const count = board.announcements.length;
   const label = categoryLabel(category);
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       ? `${count} équipe${count > 1 ? "s" : ""} ${label} cherche${count > 1 ? "nt" : ""} un adversaire dans le département ${board.district.label}.`
       : `Les équipes ${label} qui cherchent un adversaire dans le département ${board.district.label}.`;
   return {
-    title: `${title} | TeamNexus`,
+    title,
     description,
     alternates: { canonical: `/f/${board.district.slug}/${categorie.toLowerCase()}` },
     openGraph: { title, description },
@@ -47,8 +47,14 @@ export default async function DistrictCategoryPage({ params }: Params) {
   const category = categoryFromSlug(categorie);
   if (!code || !category) notFound();
 
-  const board = await fetchBoard(code, categorie);
+  // Ensemble : le maillage de bas de page ne doit pas retarder le tableau.
+  const [board, districts] = await Promise.all([fetchBoard(code, categorie), fetchDistricts()]);
   if (!board) notFound();
 
-  return <PublicBoard board={board} />;
+  return (
+    <PublicBoard
+      board={board}
+      others={(districts ?? []).filter((d) => d.code !== board.district.code)}
+    />
+  );
 }

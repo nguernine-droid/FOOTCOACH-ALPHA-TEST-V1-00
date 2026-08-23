@@ -79,6 +79,10 @@ services:
       target: dev
     environment:
       API_INTERNAL_URL: http://api:4000
+      # Racine des canoniques, du plan du site et des données structurées. Lue
+      # au DÉMARRAGE (pas de préfixe NEXT_PUBLIC_, qui serait figé au build) :
+      # changer de domaine ne demande qu'un redémarrage du conteneur.
+      SITE_URL: ${SITE_URL:-https://teamnexus.fr}
     ports:
       # 3002 côté hôte : 3000 et 3001 sont occupés par d'autres projets locaux
       - "3002:3000"

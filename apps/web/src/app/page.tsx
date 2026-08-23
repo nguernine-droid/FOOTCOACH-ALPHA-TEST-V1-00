@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import {
   BellRing,
@@ -13,6 +12,13 @@ import {
 } from "lucide-react";
 import { showcaseWorthShowing } from "@teamnexus/shared";
 import { fetchDistricts, fetchPublicStats } from "@/lib/publicApi";
+import {
+  jsonLdGraph,
+  organizationNode,
+  softwareApplicationNode,
+  webSiteNode,
+} from "@/lib/seo";
+import { JsonLd } from "@/components/JsonLd";
 import { AppPreview } from "@/components/public/AppPreview";
 import { BeforeAfter } from "@/components/public/BeforeAfter";
 import { CountUp } from "@/components/public/CountUp";
@@ -37,7 +43,15 @@ import { HomeRedirect } from "./HomeRedirect";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "TeamNexus — trouvez un adversaire pour votre prochain match amical",
+  /**
+   * `absolute` : le gabarit du layout ajoute « | TeamNexus » à tous les
+   * titres, et cette page porte déjà la marque en tête. Sans cela, l'accueil
+   * — la page qu'on veut voir remonter sur le nom du service — s'annoncerait
+   * « TeamNexus … | TeamNexus ».
+   */
+  title: {
+    absolute: "TeamNexus — trouvez un adversaire pour votre prochain match amical",
+  },
   description:
     "L'application des coachs de football amateur pour organiser leurs matchs amicaux : déclarez vos dates libres, les équipes libres en face vous sont proposées. Gratuit.",
   alternates: { canonical: "/" },
@@ -102,34 +116,37 @@ export default async function Home() {
    */
   const showStats = showcaseWorthShowing(stats);
 
-  // Nonce de la politique de contenu — sans lui, le balisage FAQ disparaîtrait
-  // sans bruit sous `strict-dynamic` (même raison que sur les pages /f).
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
-  const faqStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: FAQ.map((item) => ({
-      "@type": "Question",
-      name: item.question,
-      acceptedAnswer: { "@type": "Answer", text: item.answer },
-    })),
-  };
+  /**
+   * Tout ce qu'un moteur doit savoir du service, en un seul graphe.
+   *
+   * La page d'accueil est la seule à porter l'identité (`Organization`,
+   * `WebSite`, `SoftwareApplication`) : c'est elle que les moteurs traitent
+   * comme la racine du site, et répéter ces trois nœuds sur chaque page
+   * n'apprendrait rien de plus tout en multipliant les occasions de diverger.
+   *
+   * La FAQ les rejoint dans le même bloc plutôt que dans une balise à part :
+   * ce sont les questions que tape un coach avant de créer un compte, et
+   * groupées avec le reste, elles se rattachent explicitement au service dont
+   * elles parlent.
+   */
+  const structuredData = jsonLdGraph(
+    organizationNode(),
+    webSiteNode(),
+    softwareApplicationNode(),
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQ.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: { "@type": "Answer", text: item.answer },
+      })),
+    },
+  );
 
   return (
     <VitrineShell>
       <HomeRedirect />
-      {/* `suppressHydrationWarning` pour la même raison que le script de thème
-          de `layout.tsx` : après avoir lu la page, le navigateur VIDE
-          l'attribut `nonce` (une défense contre son exfiltration par un
-          sélecteur CSS). Le client lit donc une chaîne vide là où le serveur a
-          écrit le jeton, et React y voit une divergence. Il n'y a rien à
-          réparer — le nonce reste dans la propriété DOM. */}
-      <script
-        type="application/ld+json"
-        nonce={nonce}
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
-      />
+      <JsonLd data={structuredData} />
 
       {/* ————— La promesse ————— */}
       <Shell className="pt-12 pb-20 md:pt-20 md:pb-32">

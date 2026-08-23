@@ -226,6 +226,53 @@ Une seule courbe — `--ease-app: cubic-bezier(0.32, 0.72, 0, 1)` — et trois d
 
 Les transitions d'écran sont **sensibles au sens de navigation** (entrée dans un détail, retour, changement d'onglet). Elles n'utilisent volontairement **pas** l'API View Transitions : celle-ci fige une capture de la page jusqu'à ce que le DOM soit à jour, or l'App Router attend un aller-retour réseau — sur une connexion lente, l'écran resterait gelé. Voir `components/PageTransition.tsx`, qui documente les trois options écartées.
 
+## Se faire trouver : la vitrine et la couche publique
+
+Un service de mise en relation ne vaut que par le nombre de coachs qui y sont. Le premier d'entre eux n'arrive ni par une publicité ni par un ami : il tape « match amical U13 Rhône » dans un moteur. Trois couches de pages, **toutes consultables sans compte**, sont là pour ça :
+
+| Page | Ce qu'elle répond | Fréquence de changement |
+|---|---|---|
+| `/` — la vitrine | « C'est quoi, TeamNexus ? » | Presque jamais |
+| `/f` — l'index | « Qui cherche un match en ce moment ? » | Tous les jours |
+| `/f/[district]`, `/f/[district]/[categorie]` | « Qui cherche un U13 dans le Rhône ? » | Tous les jours |
+
+Ce sont les pages par département et par catégorie qui rapportent des visiteurs **dans la durée** : elles répondent exactement à ce qu'un coach tape, et elles se renouvellent toutes seules à mesure que les annonces se publient.
+
+### Ce qui est déclaré aux moteurs
+
+- **Plan du site** (`app/sitemap.ts`) — recalculé à chaque demande, jamais figé au build : construit une fois pour toutes, il refléterait la base du serveur d'intégration. Il ne déclare **que les départements où quelque chose se passe** — annoncer cent départements vides apprend au moteur que ce site répond mal aux questions qu'on lui pose.
+- **`robots.txt`** (`app/robots.ts`) — tout est fermé sauf `/f`, `/login` et `/register`. Les espaces coach, club et admin sont interdits explicitement : non pour la sécurité (ils sont derrière une authentification) mais pour qu'un robot n'aille pas frapper trois cents fois par jour à une porte qui lui répondra toujours « connectez-vous ».
+- **Canoniques** — chaque page publique désigne son adresse, en absolu (`metadataBase` dans `app/layout.tsx`).
+- **Titres** — un gabarit unique, `%s | TeamNexus`, posé par la racine. Une page qui n'exporte pas ses métadonnées hérite du titre de la vitrine sans rien signaler ; c'est ce qui arrivait à `/login` et `/register`, qui sont des composants client et ne PEUVENT PAS porter de `metadata` — d'où un `layout.tsx` d'une ligne pour chacun.
+- **`max-image-preview:large`** — sans cette directive, Google se limite à une vignette minuscule. Sur un service qui se partage entre coachs, un lien qui montre son image se clique ; un lien nu se saute.
+- **Image d'aperçu** (`app/opengraph-image.tsx`) — dessinée par le serveur aux couleurs de `tokens.css`, pour que le lien collé dans un groupe WhatsApp ne ressemble pas à du spam.
+
+### Données structurées (`lib/seo.ts`)
+
+Ce qu'un moteur ne devinera jamais d'un paragraphe français :
+
+- La **vitrine** porte l'identité du service — `Organization` (avec son logo, ce qui le rend affichable à côté du lien), `WebSite`, `SoftwareApplication` avec une offre à **0 €**, et la `FAQPage` reprise des accordéons de la page. Elle est la seule à la porter : répéter ces nœuds partout n'apprendrait rien de plus et multiplierait les occasions de diverger.
+- Les **pages publiques** portent un `BreadcrumbList` — qui remplace l'URL brute par `teamnexus.fr › Annonces › Rhône › U15` sous le titre du résultat — et un `ItemList` de `SportsEvent` : chaque annonce y est une rencontre **datée et située**, ce qui rend la page éligible aux résultats enrichis. Le lieu s'arrête à la commune, comme partout dans la couche publique.
+
+⚠ **Rien n'y est inventé.** Ni note moyenne, ni nombre d'avis : ce sont les propriétés qui font de jolies étoiles dans les résultats, et les premières que Google sanctionne quand la page ne les montre nulle part. Même règle que pour le texte de la vitrine — et même raison que le seuil en dessous duquel les chiffres du service ne s'affichent pas.
+
+⚠ **Le nonce n'est pas optionnel.** Un bloc `application/ld+json` ne s'exécute pas, mais c'est un élément `script` : sous la politique `strict-dynamic` de `proxy.ts`, il est refusé s'il ne porte pas le jeton de la requête, et le balisage disparaît **sans que la page change d'un pixel**. D'où `components/JsonLd.tsx`, qui le pose une fois pour toutes.
+
+### Le maillage
+
+Une page isolée ne se découvre pas. Chaque couche mène à la suivante, et chaque page de département renvoie vers **d'autres départements actifs** (`PublicBoard`, bloc « Ailleurs en ce moment ») : le robot circule au lieu de s'arrêter, et le coach qui ne trouve rien chez lui va voir à côté plutôt que de fermer l'onglet — un match amical se joue très bien à quarante kilomètres.
+
+La **page 404** (`app/not-found.tsx`) fait partie du dispositif : une annonce se termine, mais le lien collé dans un groupe WhatsApp survit des mois. Elle répond bien `404` — c'est le statut qui fait retirer l'adresse de l'index — et propose quatre chemins pour retomber sur ses pieds.
+
+### Ce qui reste à faire hors du code
+
+- `SITE_URL` doit porter le **domaine réel** : c'est de lui que sortent les canoniques, le plan du site et les URL du balisage. À défaut, `https://teamnexus.fr`. Volontairement **sans** préfixe `NEXT_PUBLIC_` — celui-ci serait figé à la compilation de l'image Docker, et le régler dans le `docker-compose` n'y changerait rien ; `SITE_URL` se lit au démarrage, donc un redémarrage suffit. L'ancienne variable reste acceptée en repli.
+- La propriété du domaine est déclarée à la **Search Console** par un jeton dans `app/layout.tsx`. Le plan du site s'y soumet ensuite à la main, une fois.
+
+### Vérification
+
+`e2e/seo.spec.ts`. Tout ce qui est testé là partage un défaut : **ça casse sans bruit**. Une canonique qui disparaît, un titre qui redevient celui de la racine, un balisage refusé faute de nonce — la page s'affiche exactement pareil, et l'on ne s'en aperçoit qu'en constatant, des semaines plus tard, que le trafic ne vient plus.
+
 ## Architecture
 
 Monorepo npm workspaces, entièrement conteneurisé :
@@ -372,6 +419,18 @@ FOOTCOACH_TEST_DATABASE_URL=postgres://footcoach:<mdp>@localhost:5433/footcoach 
 
 Ils écrivent dans la base visée (comptes `@throttle.test`) et nettoient derrière
 eux — à ne pointer que sur une base de développement.
+
+**Bout en bout**, dans un vrai moteur de rendu — Chromium *et* WebKit, celui de
+l'iPhone du terrain :
+
+```bash
+npm run test:e2e --workspace apps/web
+```
+
+Ni API ni base : ces tests ne couvrent que ce qu'un navigateur vérifie seul.
+Débordement horizontal et hauteurs de barre (`vitrine`, `matches-no-overflow`,
+`nav-bar-position`), pages légales, annonces publiques — et le **référencement**
+(`seo.spec.ts`), dont chaque régression est par nature invisible à l'écran.
 
 **Limites connues, assumées à ce stade :** pas de second facteur sur le compte
 administrateur, pas de détection de rejeu d'un jeton de rafraîchissement révoqué,

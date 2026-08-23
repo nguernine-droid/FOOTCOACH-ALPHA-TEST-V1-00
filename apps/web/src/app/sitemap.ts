@@ -31,6 +31,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // pages sont « la plus importante » n'en désigne aucune.
     { url: base, changeFrequency: "weekly", priority: 1 },
     { url: `${base}/f`, changeFrequency: "daily", priority: 0.9 },
+    // La page vers laquelle mène chaque bouton du site. Elle porte son propre
+    // titre et sa propre description depuis qu'un layout les lui donne ; la
+    // déclarer coûte une ligne et évite qu'elle ne soit découverte que par les
+    // liens internes.
+    { url: `${base}/register`, changeFrequency: "monthly", priority: 0.5 },
   ];
 
   // Les pages légales ne sont déclarées qu'une fois RENSEIGNÉES. Tant qu'il y

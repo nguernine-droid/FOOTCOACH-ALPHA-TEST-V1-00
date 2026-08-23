@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { fetchDistricts, fetchLatestAnnouncements } from "@/lib/publicApi";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbNode, jsonLdGraph, sportsEventListNode } from "@/lib/seo";
 import { PublicAnnouncementCard } from "@/components/public/PublicAnnouncementCard";
 import { VButtonLink, VCard } from "@/components/public/primitives";
 
@@ -11,7 +13,7 @@ import { VButtonLink, VCard } from "@/components/public/primitives";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Matchs amicaux de football — les annonces en cours | TeamNexus",
+  title: "Matchs amicaux de football — les annonces en cours",
   description:
     "Les équipes de football amateur qui cherchent un adversaire pour un match amical. Consultation libre, sans compte.",
   alternates: { canonical: "/f" },
@@ -42,8 +44,30 @@ export default async function PublicIndexPage() {
   const total = districts?.reduce((sum, d) => sum + d.announcements, 0) ?? 0;
   const shown = announcements?.length ?? 0;
 
+  /**
+   * Cette page montre des annonces : elle les balise, exactement comme les
+   * tableaux par département. Sans cela, l'entrée de la couche publique — celle
+   * que le plan du site déclare en « quotidienne » et que les liens partagés
+   * atteignent le plus souvent — était la seule à ne rien dire de son contenu.
+   *
+   * Le fil d'Ariane est posé même quand la liste est vide : il décrit la place
+   * de la page dans le site, ce qui reste vrai un jour sans annonce.
+   */
+  const trail = [
+    { name: "Accueil", path: "/" },
+    { name: "Annonces de matchs amicaux", path: "/f" },
+  ];
+  const structuredData =
+    shown > 0
+      ? jsonLdGraph(
+          breadcrumbNode(trail),
+          sportsEventListNode("Matchs amicaux à venir en France", announcements ?? []),
+        )
+      : jsonLdGraph(breadcrumbNode(trail));
+
   return (
     <div className="max-w-[820px] mx-auto space-y-8">
+      <JsonLd data={structuredData} />
       <div className="space-y-3">
         <h1 className="display text-3xl md:text-4xl leading-[0.95] text-primary">
           Qui cherche un match en ce moment ?

@@ -54,7 +54,27 @@ export function fetchBoard(code: string, categorySlug?: string): Promise<PublicB
   return get<PublicBoardDto>(`/public/board/${encodeURIComponent(code)}${query}`);
 }
 
-/** Adresse publique du site, pour les URL absolues du plan du site */
+/**
+ * L'ADRESSE PUBLIQUE DU SITE — la racine de tout ce qu'un moteur voit.
+ *
+ * D'elle sortent les balises canoniques, le plan du site, les URL des données
+ * structurées et l'image d'aperçu des liens partagés. Une valeur fausse ne
+ * casse rien de visible : la page s'affiche pareil, et le moteur indexe
+ * simplement un site qui n'existe pas.
+ *
+ * ── Pourquoi DEUX variables ──────────────────────────────────────────────
+ * `SITE_URL` d'abord, et c'est celle qu'il faut renseigner. Next remplace
+ * `process.env.NEXT_PUBLIC_*` par sa valeur À LA COMPILATION : dans une image
+ * Docker construite sans cette variable, elle vaut `undefined` pour toujours,
+ * et la régler dans le `docker-compose` n'y change rien — il faut reconstruire.
+ * Une variable sans préfixe est lue au démarrage du serveur, donc modifiable
+ * par un simple redémarrage. Ces valeurs ne sont lues que par le serveur (plan
+ * du site, robots, métadonnées) : le préfixe public n'apportait rien.
+ *
+ * `NEXT_PUBLIC_SITE_URL` reste acceptée pour ne pas casser un déploiement qui
+ * l'avait renseignée au build.
+ */
 export function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? "https://teamnexus.fr").replace(/\/+$/, "");
+  const configured = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL;
+  return (configured ?? "https://teamnexus.fr").replace(/\/+$/, "");
 }

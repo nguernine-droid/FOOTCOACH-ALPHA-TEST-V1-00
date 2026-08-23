@@ -27,8 +27,21 @@ export const metadata: Metadata = {
    * adresse — c'est tout son objet.
    */
   metadataBase: new URL(siteUrl()),
-  title: "TEAMNEXUS",
-  description: "Gestion de matchs amicaux — coachs, joueurs, parents et supporters",
+  /**
+   * Le titre des pages : un gabarit, pas une valeur.
+   *
+   * Chaque page publique portait sa marque à la main, avec un séparateur
+   * différent d'une page à l'autre (« | » sur les annonces, « — » sur les
+   * pages légales). Le gabarit la pose une fois : les pages n'écrivent plus
+   * que leur sujet, et celle qui oublie son titre hérite du `default` plutôt
+   * que du nom brut du service.
+   */
+  title: {
+    default: "TeamNexus — trouvez un adversaire pour votre prochain match amical",
+    template: "%s | TeamNexus",
+  },
+  description:
+    "L'application gratuite des coachs de football amateur : publiez vos dates libres, trouvez un adversaire près de chez vous et organisez le match amical.",
   applicationName: "TeamNexus",
   // Installée sur l'écran d'accueil iOS, l'app s'ouvre sans barre Safari
   appleWebApp: { capable: true, title: "TeamNexus", statusBarStyle: "black-translucent" },
@@ -68,6 +81,32 @@ export const metadata: Metadata = {
    * celui qui l'a posé dispose du domaine.
    */
   verification: { google: "wfrnwQhpbCXgvoyIozQR06Su_X40cKgeqM1eh88wXPQ" },
+  /**
+   * Ce qu'un moteur a le droit de FAIRE des pages qu'il lit — à distinguer de
+   * `robots.ts`, qui dit seulement lesquelles il a le droit de lire.
+   *
+   * Par défaut, Google se limite à un extrait court et à une vignette
+   * minuscule. Les trois directives ci-dessous lèvent ces limites : un extrait
+   * de la longueur qu'il juge utile, et surtout une image d'aperçu en GRAND
+   * format. C'est ce qui décide de la taille de la vignette dans les résultats
+   * et de l'éligibilité à Google Discover — sur un service qui se partage entre
+   * coachs, un lien qui montre son image se clique, un lien nu se saute.
+   *
+   * Les espaces privés ne sont pas concernés : `robots.ts` leur interdit
+   * l'accès, et une directive posée sur une page qu'on ne crawle pas ne se lit
+   * jamais.
+   */
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export const viewport: Viewport = {

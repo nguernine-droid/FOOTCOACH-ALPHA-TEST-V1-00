@@ -6,7 +6,7 @@ import { ContactCard, IncompleteNotice, LegalPage, Value } from "@/components/pu
 const complete = legalIsComplete();
 
 export const metadata: Metadata = {
-  title: "Mentions légales — TeamNexus",
+  title: "Mentions légales",
   description: "Éditeur, directeur de publication, hébergeur et propriété intellectuelle du site TeamNexus.",
   alternates: { canonical: "/mentions-legales" },
   // Tant que l'identification exigée par la LCEN n'est pas complète, la page
