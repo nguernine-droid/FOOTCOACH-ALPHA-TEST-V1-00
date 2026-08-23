@@ -120,32 +120,99 @@ async function candidates(
  * Une annonce vient d'être publiée : prévient les coachs dont le périmètre
  * couvre le lieu du match. Un coach sans position connue n'est pas notifié —
  * on ne peut pas affirmer que l'annonce le concerne.
+ *
+ * Deux messages, et non un : ceux qui cherchent DÉJÀ un match ce jour-là dans
+ * la même catégorie (`sameDayCoachIds`) reçoivent la mise en relation, les
+ * autres l'annonce ordinaire. Un même coach ne reçoit jamais les deux — c'est
+ * la raison d'être de cette fonction unique : deux envois séparés se seraient
+ * empilés sur l'écran de ceux que l'annonce concerne le plus.
  */
-export function notifyNewAnnouncement(input: {
+export function notifyAnnouncementPublished(input: {
   authorUserId: string;
+  announcementId: string;
   teamName: string;
   category: string;
   format: string;
   city: string;
+  date: string;
   venue: { lat: number; lng: number } | null;
+  /** Coachs qui cherchent déjà un adversaire ce jour-là, dans la même catégorie */
+  sameDayCoachIds: string[];
 }): void {
   if (!pushEnabled() || !input.venue) return;
   fireAndForget(
     (async () => {
+      const sameDay = new Set(input.sameDayCoachIds);
       const targets: string[] = [];
+      const twins: string[] = [];
       for (const { user, team } of await candidates("notifyNewAnnouncement", input.authorUserId)) {
         const origin = originOf(user, team);
         if (!origin) continue;
         const km = haversineKm(origin, input.venue!);
         // radarRadiusKm null = sans limite : tout est dans le périmètre
         if (user.radarRadiusKm !== null && km > user.radarRadiusKm) continue;
-        targets.push(user.id);
+        (sameDay.has(user.id) ? twins : targets).push(user.id);
       }
-      await sendToUsers(targets, {
-        title: `${input.teamName} cherche un adversaire`,
-        body: `${input.category} · ${input.format} · à ${input.city}`,
-        url: "/coach",
-        tag: "annonce",
+      await Promise.all([
+        sendToUsers(targets, {
+          title: `${input.teamName} cherche un adversaire`,
+          body: `${input.category} · ${input.format} · à ${input.city}`,
+          url: "/coach",
+          tag: "annonce",
+        }),
+        // Mené droit sur l'annonce, et non sur le radar : ce coach n'a plus rien
+        // à chercher, il a juste à proposer de jouer — le fil s'ouvre dans la
+        // foulée avec le confrère qui cherchait la même chose que lui.
+        sendToUsers(twins, {
+          title: "Vous cherchez tous les deux un match ce jour-là",
+          body: `${input.teamName} cherche un adversaire ${input.category} le ${formatDay(input.date)}, à ${input.city}.`,
+          url: `/coach/announcements/${input.announcementId}`,
+          tag: `meme-jour-${input.date}`,
+        }),
+      ]);
+    })(),
+  );
+}
+
+/**
+ * L'autre bout de la mise en relation : celui qui vient de publier apprend que
+ * des équipes de sa catégorie cherchent déjà un match ce jour-là.
+ *
+ * Il ne reçoit rien s'il n'y en a aucune — une notification qui dit « personne »
+ * n'apprend rien et use l'attention qu'on aura besoin d'avoir la fois d'après.
+ */
+export function notifySameDayRivals(input: {
+  authorUserId: string;
+  teams: string[];
+  category: string;
+  date: string;
+}): void {
+  if (!pushEnabled() || input.teams.length === 0) return;
+  fireAndForget(
+    (async () => {
+      const [author] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, input.authorUserId),
+            isNull(users.disabledAt),
+            eq(users.notifyNewAnnouncement, true),
+          ),
+        );
+      if (!author) return;
+      // Les noms plutôt qu'un nombre tant qu'il y en a peu : « Le Poiré et
+      // Aizenay cherchent aussi » se lit d'un coup d'œil, « 2 équipes » oblige
+      // à ouvrir pour savoir de qui il s'agit.
+      const names =
+        input.teams.length <= 2
+          ? input.teams.join(" et ")
+          : `${input.teams[0]}, ${input.teams[1]} et ${input.teams.length - 2} autre${input.teams.length > 3 ? "s" : ""}`;
+      await sendToUsers([author.id], {
+        title: "Des équipes cherchent aussi ce jour-là",
+        body: `${names} — ${input.category}, le ${formatDay(input.date)}. Proposez-leur de jouer.`,
+        url: "/coach/radar",
+        tag: `meme-jour-${input.date}`,
       });
     })(),
   );
@@ -218,9 +285,36 @@ export function notifyAnnouncementResponse(input: {
     (async () => {
       await sendToUsers(await teamCoachesToNotify(input.ownerTeamId, "notifyAnnouncementResponse"), {
         title: "Une équipe veut jouer votre annonce",
-        body: `${input.responderTeamName} propose de jouer à ${input.city}.`,
+        body: `${input.responderTeamName} propose de jouer à ${input.city}. Discutez-en et validez tous les deux.`,
         url: input.conversationId ? `/coach/messages/${input.conversationId}` : "/coach/announcements/mine",
         tag: "proposition",
+      });
+    })(),
+  );
+}
+
+/**
+ * La seconde signature vient de tomber : le match est confirmé.
+ *
+ * Distincte de `notifyResponseDecision` parce que le destinataire n'est plus
+ * forcément celui qui a proposé — depuis la double validation, l'émetteur de
+ * l'annonce peut très bien être celui qui attendait. Lui écrire « votre
+ * proposition a été acceptée » lui parlerait d'un geste qu'il n'a pas fait.
+ */
+export function notifyMatchAgreed(input: {
+  recipientTeamId: string;
+  opponentTeamName: string;
+  matchId: string;
+  plateau: boolean;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      await sendToUsers(await teamCoachesToNotify(input.recipientTeamId, "notifyResponseDecision"), {
+        title: input.plateau ? "Plateau confirmé" : "Match confirmé",
+        body: `${input.opponentTeamName} a validé de son côté : c'est convenu.`,
+        url: `/coach/matches/${input.matchId}`,
+        tag: "decision",
       });
     })(),
   );
@@ -248,8 +342,68 @@ export function notifyResponseDecision(input: {
   );
 }
 
+/**
+ * Un des deux coachs vient de valider : il ne manque plus que l'autre.
+ *
+ * Adressée à UNE personne — celle dont on attend la signature — et menée droit
+ * dans le fil, où le bouton l'attend. Sans elle, un coach qui a validé le
+ * premier attendrait une réponse que l'autre ne sait pas devoir donner.
+ */
+export function notifyValidationAwaited(input: {
+  recipientCoachId: string;
+  validatorTeamName: string;
+  conversationId: string | null;
+  plateau: boolean;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      const [recipient] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, input.recipientCoachId),
+            isNull(users.disabledAt),
+            eq(users.notifyResponseDecision, true),
+          ),
+        );
+      if (!recipient) return;
+      await sendToUsers([recipient.id], {
+        title: `${input.validatorTeamName} a validé`,
+        body: `Validez à votre tour pour confirmer ${input.plateau ? "le plateau" : "le match"}.`,
+        url: input.conversationId ? `/coach/messages/${input.conversationId}` : "/coach/announcements/mine",
+        tag: "validation",
+      });
+    })(),
+  );
+}
+
+/**
+ * L'équipe qui avait proposé se retire, après discussion : l'émetteur doit
+ * l'apprendre — son annonce repart en recherche, et il attendait une signature
+ * qui ne viendra pas.
+ */
+export function notifyResponseWithdrawn(input: {
+  ownerTeamId: string;
+  responderTeamName: string;
+  conversationId: string | null;
+}): void {
+  if (!pushEnabled()) return;
+  fireAndForget(
+    (async () => {
+      await sendToUsers(await teamCoachesToNotify(input.ownerTeamId, "notifyAnnouncementResponse"), {
+        title: "Proposition retirée",
+        body: `${input.responderTeamName} ne jouera finalement pas. Votre annonce reste en recherche.`,
+        url: input.conversationId ? `/coach/messages/${input.conversationId}` : "/coach/announcements/mine",
+        tag: "proposition",
+      });
+    })(),
+  );
+}
+
 /** Comptes coachs rattachés à ces équipes — pour les exclure d'une diffusion. */
-async function coachIdsOfTeams(teamIds: string[]): Promise<Set<string>> {
+export async function coachIdsOfTeams(teamIds: string[]): Promise<Set<string>> {
   if (teamIds.length === 0) return new Set();
   const rows = await db
     .select({ id: teamCoaches.coachId })

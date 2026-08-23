@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  announcementCategoryLabel,
   categoryLabel,
   DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
@@ -56,7 +57,7 @@ export function MyAnnouncementSheet({
         <div className="space-y-1">
           <div className="flex items-start justify-between gap-2">
             <h2 className="display text-lg capitalize">
-              {categoryLabel(a.category)}
+              {announcementCategoryLabel(a)}
               {a.gender && ` ${MATCH_GENDER_LABELS[a.gender]}`} · {a.format}
             </h2>
             {/* Combien d'AUTRES coachs ont ouvert le détail — un signal
@@ -122,6 +123,9 @@ export function MyAnnouncementSheet({
 
         <div className="flex flex-wrap gap-1.5">
           <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
+          {a.preciseCategory && (
+            <span className="chip bg-sun-soft text-sun">{categoryLabel(a.preciseCategory)} uniquement</span>
+          )}
           {a.gender && <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>}
           <span className="chip bg-pitch-soft text-primary">{a.format}</span>
           {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
@@ -179,7 +183,7 @@ export function MyAnnouncementSheet({
                   </span>
                   {r.status === "pending" ? (
                     <span className="chip bg-sun-soft text-sun shrink-0">
-                      <Clock3 size={11} aria-hidden /> À trancher
+                      <Clock3 size={11} aria-hidden /> À valider
                     </span>
                   ) : r.status === "accepted" ? (
                     <span className="chip bg-success-soft text-success shrink-0">
@@ -191,14 +195,25 @@ export function MyAnnouncementSheet({
                     </span>
                   )}
                 </div>
-                {r.status === "pending" && r.conversationId && (
-                  <Link
-                    href={`/coach/messages/${r.conversationId}`}
-                    className="flex items-center justify-center gap-1.5 min-h-9 rounded-lg bg-blue-soft
-                      text-xs font-bold text-primary transition hover:bg-blue-faint"
-                  >
-                    <MessageCircle size={14} aria-hidden /> Discuter et décider
-                  </Link>
+                {r.status === "pending" && (
+                  <>
+                    <p className="text-[11px] font-semibold text-sun">
+                      {r.ownerConfirmed && !r.responderConfirmed
+                        ? "Vous avez validé — en attente de ce coach"
+                        : r.responderConfirmed && !r.ownerConfirmed
+                          ? "Ce coach a validé — il ne manque que vous"
+                          : "À valider par vous deux"}
+                    </p>
+                    {r.conversationId && (
+                      <Link
+                        href={`/coach/messages/${r.conversationId}`}
+                        className="flex items-center justify-center gap-1.5 min-h-9 rounded-lg bg-blue-soft
+                          text-xs font-bold text-primary transition hover:bg-blue-faint"
+                      >
+                        <MessageCircle size={14} aria-hidden /> Discuter et valider
+                      </Link>
+                    )}
+                  </>
                 )}
               </div>
             ))

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   ChevronDown,
-  Clock3,
   Crosshair,
+  MessageCircle,
   Radar,
   SlidersHorizontal,
   UserMinus,
@@ -200,11 +200,23 @@ export function RadarFeed() {
     load();
   }, [load]);
 
+  /**
+   * Proposer de jouer ouvre un fil avec le coach d'en face — et l'on y va. Le
+   * match ne se confirme qu'une fois que les DEUX y auront validé : laisser le
+   * coach sur le radar lui ferait croire que sa proposition suffit.
+   */
   async function respond(id: string) {
     setResponding(id);
     setError(null);
     try {
-      await api(`/announcements/${id}/respond`, { method: "POST" });
+      const { conversationId } = await api<{ responseId: string; conversationId: string | null }>(
+        `/announcements/${id}/respond`,
+        { method: "POST" },
+      );
+      if (conversationId) {
+        router.push(`/coach/messages/${conversationId}`);
+        return;
+      }
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de répondre");
@@ -765,10 +777,16 @@ export function RadarFeed() {
           footer={
             <div className="space-y-2">
               {detail.myResponseStatus === "pending" ? (
-                <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
-                  <Clock3 size={14} className="shrink-0" />
-                  Proposition envoyée — en attente de validation du coach
-                </p>
+                /* Le fil est ouvert : c'est là que ça se décide, des deux côtés */
+                detail.myResponseConversationId ? (
+                  <ButtonLink href={`/coach/messages/${detail.myResponseConversationId}`} className="w-full">
+                    <MessageCircle size={14} /> Discuter et valider
+                  </ButtonLink>
+                ) : (
+                  <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3">
+                    Proposition envoyée — en attente du coach
+                  </p>
+                )
               ) : detail.myResponseStatus === "declined" ? (
                 <p className="text-xs font-bold text-coral bg-coral-soft rounded-lg px-4 py-3 flex items-center gap-2">
                   <XCircle size={14} className="shrink-0" />
@@ -822,6 +840,11 @@ export function RadarFeed() {
 
             <div className="flex flex-wrap gap-1.5">
               <span className="chip bg-pitch-soft text-primary">{categoryLabel(detail.category)}</span>
+              {detail.preciseCategory && (
+                <span className="chip bg-sun-soft text-sun">
+                  {categoryLabel(detail.preciseCategory)} uniquement
+                </span>
+              )}
               {detail.gender && (
                 <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[detail.gender]}</span>
               )}

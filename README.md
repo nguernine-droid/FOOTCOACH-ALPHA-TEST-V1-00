@@ -114,6 +114,31 @@ Le cœur de la V1, sur le tableau de bord du coach : un **écran de radar balay�
 
 `prefers-reduced-motion` arrête le faisceau et laisse tous les points visibles en permanence.
 
+## Convenir d'un match : le fil, et les deux signatures
+
+Un match ne se décide pas à une voix. Depuis « Proposer de jouer », **tout se passe dans un fil entre les deux coachs**, et il faut **deux validations** pour que la rencontre existe.
+
+1. **Proposer, c'est ouvrir la discussion.** Le clic crée la proposition (`announcement_responses`), **ouvre le fil** avec le coach qui a publié, y inscrit un message d'application qui rappelle de quoi il s'agit — et **mène le coach dans ce fil**. L'annonce reste ouverte et visible au radar.
+2. **Chacun valide de son côté**, depuis le fil : `announcement_responses.owner_confirmed_at` et `responder_confirmed_at`. L'ordre est libre.
+3. **Le match naît à la seconde signature** seulement. `POST /announcements/:id/responses/:responseId/accept` répond alors `{ matchId }` ; tant qu'il en manque une, `{ matchId: null }` — le fil le dit, et l'autre coach est notifié qu'on l'attend.
+4. **Décliner marche des deux côtés.** L'émetteur refuse la proposition ; **celui qui a proposé peut se retirer** après avoir vu, en discutant, que l'annonce ne lui convient pas. C'est la raison d'être de la seconde signature : avant, il se retrouvait engagé sur un match qu'il découvrait ensuite injouable.
+
+> Les propositions acceptées **avant** cette règle portent les deux dates (migration `0050`) : elles avaient bien été convenues, même si une seule signature était demandée à l'époque.
+
+### Deux coachs qui cherchent le même jour
+
+Deux annonces du **même jour** dans le **même groupe d'âges** sont, à elles deux, un match qui s'ignore : chacun attend qu'on lui réponde. À la publication, l'application **met les deux coachs en relation** (`lib/sameDayRivals.ts`) :
+
+- celui qui vient de publier reçoit la liste de ceux qui cherchent aussi ce jour-là, dans son périmètre ;
+- ceux-là reçoivent, **à la place** de l'alerte ordinaire « une équipe cherche un adversaire », une notification qui mène droit sur l'annonce — un seul message, jamais deux (`notifyAnnouncementPublished`) ;
+- « Mes annonces » porte le même chiffre sur chaque annonce ouverte (`sameDayRivals`), avec un lien vers le radar.
+
+L'appariement se fait sur le **groupe** (U14-U15), jamais sur l'âge précisé : un U14 joue très bien un U15, et resserrer la règle ne notifierait plus personne.
+
+### Préciser l'âge dans la catégorie
+
+Une annonce se publie **par paire d'âges** — c'est le défaut, et il le reste. Un coach qui n'alignera que des U14 peut le dire (`match_announcements.precise_category`, « Les deux » sélectionné par défaut dans le formulaire). La précision **s'affiche** partout où l'annonce se lit — pastille « U14 uniquement » — mais **n'entre pas dans l'appariement** : filtrer dessus couperait chaque catégorie en deux moitiés qui ne se voient plus.
+
 ## Position du coach
 
 Le radar, les distances et les alertes rayonnent depuis un point que le coach règle lui-même, dans **Mon profil → Ma position** :
@@ -461,12 +486,12 @@ Les espaces **admin** et **club** suivent les mêmes règles : barre basse, feui
 
 Deux coachs qui viennent de convenir d'un match ont aussitôt des choses à se dire : l'heure d'arrivée, la couleur des maillots, le vestiaire. La messagerie sert **cela**, et rien d'autre.
 
-**Une conversation ne se crée pas à la demande.** Elle naît de l'**acceptation d'une proposition** — quand j'accepte, ou quand la mienne est acceptée. Il n'y a donc aucun bouton « nouveau message » : on écrit aux confrères avec qui on a quelque chose à organiser, et le carnet d'adresses ne devient jamais un moyen de démarcher tous les coachs du secteur.
+**Une conversation ne se crée pas à la demande.** Elle naît d'une **proposition sur une annonce** — la mienne, ou celle qu'on m'adresse — et c'est là que le match se discute puis se valide, des deux côtés. Il n'y a donc aucun bouton « nouveau message » : on écrit aux confrères avec qui on a quelque chose à organiser, et le carnet d'adresses ne devient jamais un moyen de démarcher tous les coachs du secteur.
 
-**Chaque acceptation inscrit un message dans le fil** (`messages.kind = 'system'`, sans expéditeur) : catégorie et format, date, heure et lieu, puis qui reçoit qui — avec un lien vers la feuille de match. Sans lui, un fil ne porterait qu'un nom : impossible de savoir de quelle rencontre on parle quand deux coachs en ont plusieurs ensemble, ou quand plusieurs annonces sont acceptées le même jour. Le fil devient ainsi la **chronologie de ce que les deux coachs ont convenu**. Son texte est **figé à l'écriture** (il raconte l'accord de ce jour-là) ; `messages.match_id` renvoie, lui, à la feuille telle qu'elle est aujourd'hui. Le coach qui **accepte** ne le reçoit pas en non-lu — c'est lui qui l'a provoqué ; l'autre, si.
+**Chaque étape inscrit un message dans le fil** (la proposition, chaque validation donnée, le refus), et **le match convenu** en inscrit un dernier (`messages.kind = 'system'`, sans expéditeur) : catégorie et format, date, heure et lieu, puis qui reçoit qui — avec un lien vers la feuille de match. Sans lui, un fil ne porterait qu'un nom : impossible de savoir de quelle rencontre on parle quand deux coachs en ont plusieurs ensemble, ou quand plusieurs annonces sont acceptées le même jour. Le fil devient ainsi la **chronologie de ce que les deux coachs ont convenu**. Son texte est **figé à l'écriture** (il raconte l'accord de ce jour-là) ; `messages.match_id` renvoie, lui, à la feuille telle qu'elle est aujourd'hui. Le coach qui **accepte** ne le reçoit pas en non-lu — c'est lui qui l'a provoqué ; l'autre, si.
 
 - **Une conversation par PAIRE de coachs**, jamais une par match : deux équipes qui se retrouvent la saison suivante reprennent le même fil. `conversations.match_id` garde seulement la rencontre qui l'a ouverte. La paire est **ordonnée en base** (`coach_a_id < coach_b_id`, contrainte `conversations_paire_ordonnee`) pour qu'un index unique suffise à interdire deux fils pour les mêmes deux personnes.
-- **Deux personnes, pas deux équipes** : le coach qui accepte et celui qui a proposé (`announcement_responses.coach_id`, renseigné à la proposition ; à défaut, le coach qui représente l'équipe). Le fil naît **dans la transaction du match** — un match sans fil obligerait à s'échanger un numéro, ce que l'acceptation devait précisément éviter.
+- **Deux personnes, pas deux équipes** : celui qui a proposé (`announcement_responses.coach_id`, renseigné à la proposition) et celui qui représente l'équipe qui publie. Le fil naît **avec la proposition** et est repris tel quel quand le match se confirme — avec tout ce qui s'y est dit. Il n'est rouvert dans la transaction du match que s'il manque (proposition antérieure à cette colonne, compte disparu depuis).
 - **Non-lus** : `conversation_reads` retient jusqu'où chacun a lu. Pas de ligne = fil jamais ouvert, donc tout est non lu. Envoyer vaut lire.
 - **Rafraîchissement** : le fil ouvert se relit toutes les **10 s** (suspendu quand l'app passe à l'arrière-plan), la pastille de l'onglet toutes les **60 s** (`GET /conversations/unread`, servi à part pour que la barre n'ait pas à charger toutes les conversations). Rien n'est poussé en temps réel : une messagerie d'organisation n'en a pas besoin.
 - **Reprise de l'existant** : la migration `0029_messagerie` ouvre les fils des matchs **déjà convenus**, et `0030_message_systeme` y inscrit leur match — sans quoi la règle aurait été fausse pour tout ce qui a été accepté avant leur mise en service. ⚠ Le texte du message est écrit **deux fois** : en TypeScript (`matchSystemMessage`, `routes/announcements.ts`) et en SQL dans la migration de reprise. Les deux doivent rester identiques, sinon les anciens fils ne ressemblent pas aux nouveaux.
@@ -512,8 +537,8 @@ Tables conservées mais plus lues : `attendances`, `lineups`, `match_events`, `c
 
 1. **Coach A** règle sa position dans **Mon profil → Ma position** (« Utiliser ma position », ou une adresse), puis choisit son périmètre sur le radar.
 2. Il publie une annonce depuis le bouton « + » : catégorie, genre, stade et ville arrivent préremplis depuis son équipe, il ne reste que la date et le créneau. À la deuxième annonce, ces caractéristiques se replient derrière un résumé et « Modifier ».
-3. **Coach B** (navigation privée) voit apparaître l'annonce **sur le radar de son tableau de bord**, à sa vraie distance et dans sa vraie direction, et clique « Proposer de jouer ». S'il a activé les notifications, il a été prévenu à la publication.
-4. **Coach A** retrouve la proposition sur son **tableau de bord** (carte « Mes annonces »), ou dans **Moi › Mes annonces** ; il y lit la catégorie et le genre de l'équipe qui propose — avec l'écart signalé s'il y en a un — et l'accepte → le match est créé, et une **conversation s'ouvre entre les deux coachs**. Elle apparaît dans l'onglet **Messages** de chacun, **ouverte sur le match convenu** (catégorie, date, lieu, qui reçoit qui, et un lien vers la feuille) : c'est ce qui dit de quelle rencontre on parle. Ils y calent l'heure d'arrivée et la couleur des maillots.
+3. **Coach B** (navigation privée) voit apparaître l'annonce **sur le radar de son tableau de bord**, à sa vraie distance et dans sa vraie direction, et clique « Proposer de jouer » → **le fil s'ouvre avec coach A**, et coach B y atterrit. S'il a activé les notifications, il a été prévenu à la publication — et s'il cherchait lui aussi un match ce jour-là dans la même catégorie, c'est une notification de **mise en relation** qu'il a reçue.
+4. **Coach A** est prévenu et retrouve la proposition sur son **tableau de bord** (carte « Mes annonces »), dans **Moi › Mes annonces** ou dans son onglet **Messages** ; il y lit la catégorie et le genre de l'équipe qui propose — avec l'écart signalé s'il y en a un. Les deux discutent dans le fil, puis **chacun valide** : à la **seconde** validation, le match est créé et le fil inscrit le match convenu (catégorie, date, lieu, qui reçoit qui, et un lien vers la feuille). Si coach B se ravise entre-temps, il décline depuis le même fil et l'annonce de coach A repart en recherche.
 5. Le jour du match, les deux coachs voient **« Rencontre à valider »**. Coach A, qui reçoit, ouvre la feuille de match et clique **« Afficher le QR code »**.
 6. **Coach B** ouvre le même match, clique **« Scanner le QR code »** et vise l'écran de coach A → la rencontre est validée et chacun gagne 10 points, annoncés à coach B juste après son scan.
 7. Après le coup de sifflet final, l'un des deux saisit le score avec les compteurs : le match passe en « Terminé », l'autre en est notifié.

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Megaphone, Radar } from "lucide-react";
 import {
@@ -41,6 +41,7 @@ import { CardGridSkeleton } from "@/components/ui/Skeleton";
  * réglages de portée qui pourraient diverger seraient un piège.
  */
 function AnnouncementsPageContent() {
+  const router = useRouter();
   const [radar, setRadar] = useState<RadarDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [responding, setResponding] = useState<string | null>(null);
@@ -76,12 +77,20 @@ function AnnouncementsPageContent() {
     load();
   }, [load]);
 
+  /**
+   * Proposer ouvre un fil avec le coach d'en face, et l'on y va : c'est là que
+   * le match se discute puis se valide — des deux côtés, et pas avant.
+   */
   async function respond(id: string) {
     setResponding(id);
     setError(null);
     try {
-      await api(`/announcements/${id}/respond`, { method: "POST" });
-      await load();
+      const { conversationId } = await api<{ responseId: string; conversationId: string | null }>(
+        `/announcements/${id}/respond`,
+        { method: "POST" },
+      );
+      if (conversationId) router.push(`/coach/messages/${conversationId}`);
+      else await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de répondre");
       load();

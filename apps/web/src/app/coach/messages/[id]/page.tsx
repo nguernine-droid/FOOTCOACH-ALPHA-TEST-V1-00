@@ -115,20 +115,27 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
   }, [messageCount]);
 
   /**
-   * Accepter ou décliner une proposition, directement depuis le fil — c'est
-   * ici, et non plus dans un popup à part, que « on joue ou pas » se décide,
-   * une fois qu'on en a discuté si besoin.
+   * Valider ou décliner, directement depuis le fil — c'est ici, et non plus
+   * dans un popup à part, que « on joue ou pas » se décide, une fois qu'on en a
+   * discuté.
+   *
+   * Il faut DEUX validations pour qu'un match existe, une par coach. Celle qui
+   * arrive la première ne confirme rien : le serveur répond alors `matchId:
+   * null`, et l'on reste dans le fil à attendre l'autre. Le bouton est offert
+   * aux deux côtés — celui qui a répondu à l'annonce peut donc, après en avoir
+   * parlé, se retirer plutôt que de jouer un match qui ne lui convient pas.
    */
   async function decide(action: "accept" | "decline", response: NonNullable<MessageDto["response"]>) {
     setDeciding(response.id);
     setSendError(null);
     try {
       if (action === "accept") {
-        const { matchId } = await api<{ matchId: string }>(
+        const { matchId } = await api<{ matchId: string | null }>(
           `/announcements/${response.announcementId}/responses/${response.id}/accept`,
           { method: "POST" },
         );
-        router.push(`/coach/matches/${matchId}`);
+        if (matchId) router.push(`/coach/matches/${matchId}`);
+        else await load(false);
       } else {
         await api(`/announcements/${response.announcementId}/responses/${response.id}/decline`, { method: "POST" });
         await load(false);
@@ -259,32 +266,44 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
                         Feuille de match <ChevronRight size={13} aria-hidden />
                       </Link>
                     )}
-                    {/* La proposition se tranche ici, dans le fil : de quoi se
-                        poser des questions avant d'être sûr de jouer, plutôt
-                        qu'un « accepter » demandé sans discussion possible. */}
+                    {/* La proposition se tranche ici, dans le fil, et des DEUX
+                        côtés : chacun valide pour son équipe, et le match n'est
+                        confirmé qu'à la seconde signature. De quoi se poser des
+                        questions — et se retirer — avant d'être engagé. */}
                     {message.response &&
                       (message.response.decidable ? (
-                        <div className="flex items-center justify-center gap-2 pt-1">
-                          <Button
-                            size="sm"
-                            onClick={() => decide("accept", message.response!)}
-                            disabled={deciding === message.response.id}
-                          >
-                            {deciding === message.response.id ? "…" : "Accepter"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => decide("decline", message.response!)}
-                            disabled={deciding === message.response.id}
-                          >
-                            Décliner
-                          </Button>
+                        <div className="space-y-1.5 pt-1">
+                          {message.response.otherConfirmed && (
+                            <p className="text-[11px] font-semibold text-sun">
+                              L&apos;autre coach a validé — il ne manque que vous.
+                            </p>
+                          )}
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => decide("accept", message.response!)}
+                              disabled={deciding === message.response.id}
+                            >
+                              {deciding === message.response.id ? "…" : "Valider le match"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => decide("decline", message.response!)}
+                              disabled={deciding === message.response.id}
+                            >
+                              Décliner
+                            </Button>
+                          </div>
                         </div>
                       ) : message.response.status === "pending" ? (
-                        <p className="text-[11px] font-semibold text-sun">En attente de la décision du coach</p>
+                        <p className="text-[11px] font-semibold text-sun">
+                          {message.response.iConfirmed
+                            ? "Vous avez validé — en attente de l'autre coach"
+                            : "En attente de la décision du coach"}
+                        </p>
                       ) : message.response.status === "accepted" ? (
-                        <p className="text-[11px] font-semibold text-success">Proposition acceptée</p>
+                        <p className="text-[11px] font-semibold text-success">Match validé par les deux coachs</p>
                       ) : (
                         <p className="text-[11px] font-semibold text-ink-faint">Proposition déclinée</p>
                       ))}

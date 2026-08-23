@@ -8,10 +8,13 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  MessageCircle,
   Navigation,
   UserMinus,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
+  announcementCategoryLabel,
   categoryLabel,
   DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
@@ -37,6 +40,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
  */
 export default function AnnouncementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [announcement, setAnnouncement] = useState<AnnouncementDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -54,12 +58,21 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
     load();
   }, [load]);
 
+  /**
+   * Proposer de jouer ouvre un fil avec le coach d'en face, et l'on y va tout
+   * de suite : c'est là que le match se discute puis se valide, des deux côtés.
+   * Rester sur l'annonce laisserait croire que la proposition suffit.
+   */
   async function respond() {
     setBusy(true);
     setError(null);
     try {
-      await api(`/announcements/${id}/respond`, { method: "POST" });
-      await load();
+      const { conversationId } = await api<{ responseId: string; conversationId: string | null }>(
+        `/announcements/${id}/respond`,
+        { method: "POST" },
+      );
+      if (conversationId) router.push(`/coach/messages/${conversationId}`);
+      else await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Proposition impossible");
     } finally {
@@ -113,7 +126,7 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
 
         <div className="space-y-1">
           <h2 className="display text-xl leading-tight">
-            {categoryLabel(a.category)} · {a.format}
+            {announcementCategoryLabel(a)} · {a.format}
           </h2>
           <p className="text-xs text-ink-soft">Annonce de {a.team.name}</p>
         </div>
@@ -129,6 +142,11 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
             </span>
           )}
           <span className="chip bg-paper text-ink-soft">{categoryLabel(a.category)}</span>
+          {/* L'âge précisé a sa propre pastille : c'est une RESTRICTION, elle ne
+              doit pas se lire comme une nuance de la catégorie. */}
+          {a.preciseCategory && (
+            <span className="chip bg-sun-soft text-sun">{categoryLabel(a.preciseCategory)} uniquement</span>
+          )}
           {a.gender && <span className="chip bg-paper text-ink-soft">{MATCH_GENDER_LABELS[a.gender]}</span>}
           <span className="chip bg-paper text-ink-soft">{a.format}</span>
           {a.level && <span className="chip bg-paper text-ink-soft">{DIVISION_LEVEL_LABELS[a.level]}</span>}
@@ -214,8 +232,13 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
         ) : a.myResponseStatus === "pending" ? (
           <>
             <p className="rounded-lg bg-blue-soft px-4 py-3 text-xs font-bold text-primary flex items-center gap-2">
-              <Clock3 size={14} aria-hidden /> Votre proposition attend une réponse
+              <Clock3 size={14} aria-hidden /> Le match se décide dans votre fil avec ce coach
             </p>
+            {a.myResponseConversationId && (
+              <ButtonLink href={`/coach/messages/${a.myResponseConversationId}`} className="w-full">
+                <MessageCircle size={14} /> Discuter et valider
+              </ButtonLink>
+            )}
             <Button variant="danger" className="w-full" onClick={withdrawResponse} disabled={busy}>
               Retirer ma proposition
             </Button>
@@ -227,7 +250,8 @@ export default function AnnouncementDetailPage({ params }: { params: Promise<{ i
         ) : (
           <>
             <p className="text-xs text-ink-soft">
-              Le coach recevra votre proposition et pourra l&apos;accepter — le match sera alors confirmé.
+              Un fil s&apos;ouvre avec le coach : vous en discutez, puis vous validez tous les deux — le match
+              n&apos;est confirmé qu&apos;à ce moment-là.
             </p>
             <Button size="lg" className="w-full" onClick={respond} disabled={busy}>
               Proposer de jouer

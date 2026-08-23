@@ -4,6 +4,8 @@ import {
   idParamSchema,
   responseParamsSchema,
   announcementCategoryOf,
+  announcementCategoryLabel,
+  fineCategoriesOf,
   asDivisionLevel,
   asMatchCategory,
   asMatchGender,
@@ -20,18 +22,38 @@ import {
   type CoachRefDto,
   type MatchGender,
   type RadarDto,
+  type ResponseStatus,
   toReliability,
   NO_HISTORY,
   type ReliabilityDto,
   type TeamDto,
 } from "@teamnexus/shared";
 import { db } from "../db/client.js";
-import { announcementResponses, matchAnnouncements, matches, teamCoaches, teams, tournaments, users } from "../db/schema.js";
+import {
+  announcementResponses,
+  conversations,
+  matchAnnouncements,
+  matches,
+  teamCoaches,
+  teams,
+  tournaments,
+  users,
+} from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
 import { loadOrigin } from "../lib/coachOrigin.js";
-import { notifyNewAnnouncement, notifyAnnouncementResponse, notifyResponseDecision } from "../lib/push.js";
+import {
+  coachIdsOfTeams,
+  notifyAnnouncementPublished,
+  notifyAnnouncementResponse,
+  notifyMatchAgreed,
+  notifyResponseDecision,
+  notifyResponseWithdrawn,
+  notifySameDayRivals,
+  notifyValidationAwaited,
+} from "../lib/push.js";
+import { sameDayRivalCounts, sameDayRivalsOf, withinRadius } from "../lib/sameDayRivals.js";
 import { tournamentsInRadar } from "./tournaments.js";
 import { representativeCoachOf, representativeCoachesOf } from "../lib/coachCard.js";
 import { avatarUrlOf, toTeamDto } from "./auth.js";
@@ -40,25 +62,38 @@ import { teamsSharingCoachWith } from "../lib/teamScope.js";
 import { venueById } from "../lib/venueLookup.js";
 import { reliabilityOf } from "../lib/reliability.js";
 
-function toDto(
-  row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
-  myTeamId: string | null,
-  link?: { matchId: string; opponentTeam: TeamDto },
-  myCoords?: { lat: number; lng: number } | null,
-  responses?: AnnouncementResponseDto[],
-  myResponseStatus?: AnnouncementResponseDto["status"] | null,
+/**
+ * Ce que l'appelant a déjà chargé pour cette annonce. Un objet plutôt qu'une
+ * file d'arguments : ils sont presque tous facultatifs, et les `undefined`
+ * alignés pour atteindre le neuvième ne disaient plus lequel était lequel.
+ */
+interface DtoExtras {
+  link?: { matchId: string; opponentTeam: TeamDto };
+  myCoords?: { lat: number; lng: number } | null;
+  responses?: AnnouncementResponseDto[];
+  /** Ma proposition sur cette annonce : où elle en est, et le fil qu'elle a ouvert */
+  myResponse?: { status: ResponseStatus; conversationId: string | null } | null;
   /** Coach représentant l'équipe émettrice, quand l'appelant l'a chargé */
-  coach?: CoachRefDto | null,
+  coach?: CoachRefDto | null;
   /** Acceptées déjà comptées par l'appelant (radar) — sinon relues des propositions */
-  acceptedCount?: number,
+  acceptedCount?: number;
   /**
    * Fiabilité de l'équipe émettrice, chargée PAR LOT par l'appelant. Sans elle,
    * une annonce fraîchement publiée n'a pas encore d'historique à montrer — ce
    * qui est exact : `NO_HISTORY` dit « aucun match à son actif », et c'est bien
    * ce qu'on sait d'une équipe dont on n'a rien demandé.
    */
-  reliability?: ReliabilityDto,
+  reliability?: ReliabilityDto;
+  /** Équipes qui cherchent un match le même jour dans la même catégorie (mes annonces) */
+  sameDayRivals?: number;
+}
+
+function toDto(
+  row: { announcement: typeof matchAnnouncements.$inferSelect; team: typeof teams.$inferSelect },
+  myTeamId: string | null,
+  extras: DtoExtras = {},
 ): AnnouncementDto {
+  const { link, myCoords, responses, myResponse, coach, acceptedCount, reliability } = extras;
   const { announcement, team } = row;
   const plateau = isPlateauCategory(announcement.category);
   const teamsAccepted = acceptedCount ?? (responses ?? []).filter((r) => r.status === "accepted").length;
@@ -84,6 +119,7 @@ function toDto(
     city: announcement.city,
     stadium: announcement.stadium,
     category: announcement.category,
+    preciseCategory: asMatchCategory(announcement.preciseCategory),
     gender: announcement.gender,
     level: asDivisionLevel(announcement.level),
     format: announcement.format,
@@ -107,7 +143,9 @@ function toDto(
     distanceKm,
     bearingDeg: bearing,
     responses: responses ?? [],
-    myResponseStatus: myResponseStatus ?? null,
+    myResponseStatus: myResponse?.status ?? null,
+    myResponseConversationId: myResponse?.conversationId ?? null,
+    sameDayRivals: extras.sameDayRivals ?? 0,
     isSos: announcement.isSos,
     sosReason: announcement.sosReason,
     sosDetails: announcement.sosDetails,
@@ -170,6 +208,8 @@ async function loadResponses(announcementIds: string[]) {
       status: response.status,
       createdAt: response.createdAt.toISOString(),
       conversationId: response.conversationId,
+      ownerConfirmed: response.ownerConfirmedAt !== null,
+      responderConfirmed: response.responderConfirmedAt !== null,
       teamId: team.id,
     });
     byAnnouncement.set(response.announcementId, list);
@@ -196,6 +236,7 @@ async function loadResponses(announcementIds: string[]) {
  */
 function matchSystemMessage(input: {
   category: string;
+  preciseCategory: string | null;
   gender: MatchGender | null;
   format: string;
   date: string;
@@ -208,7 +249,7 @@ function matchSystemMessage(input: {
     day: "numeric",
     month: "long",
   });
-  const category = `${categoryLabel(input.category)}${
+  const category = `${announcementCategoryLabel(input)}${
     input.gender ? ` ${MATCH_GENDER_LABELS[input.gender]}` : ""
   }`;
   // Jusqu'aux U11 c'est un plateau qui se confirme, pas un match : le fil doit
@@ -229,6 +270,19 @@ function matchSystemMessage(input: {
  */
 function today(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * L'autre membre d'un fil. C'est lui qu'on attend quand une seule des deux
+ * validations est arrivée — le déduire du fil plutôt que de l'équipe évite de
+ * notifier un banc entier pour une signature qui n'appartient qu'à une
+ * personne.
+ */
+async function otherMemberOf(conversationId: string | null, me: string): Promise<string | null> {
+  if (!conversationId) return null;
+  const [row] = await db.select().from(conversations).where(eq(conversations.id, conversationId));
+  if (!row) return null;
+  return row.coachAId === me ? row.coachBId : row.coachAId;
 }
 
 export function announcementRoutes(app: FastifyInstance) {
@@ -254,19 +308,25 @@ export function announcementRoutes(app: FastifyInstance) {
     const responsesByAnn = await loadResponses(rows.map((r) => r.announcement.id));
     const coaches = await representativeCoachesOf(rows.map((r) => r.team.id));
     const reliabilities = await reliabilityOf([...new Set(rows.map((r) => r.team.id))]);
+    // Qui cherche un adversaire les mêmes jours que moi : un confrère à appeler
+    // vaut mieux qu'une annonce de plus en attente de réponse.
+    const rivals = await sameDayRivalCounts(
+      rows.map((r) => r.announcement),
+      await teamsSharingCoachWith(myTeamId),
+      await loadOrigin(request.user.id, myTeamId),
+      (await db.select({ radiusKm: users.radarRadiusKm }).from(users).where(eq(users.id, request.user.id)))[0]
+        ?.radiusKm ?? null,
+    );
     return rows.map((r) => {
       const responses = (responsesByAnn.get(r.announcement.id) ?? []).map(({ teamId: _teamId, ...dto }) => dto);
-      return toDto(
-        r,
-        myTeamId,
-        links.get(r.announcement.id),
-        null,
+      return toDto(r, myTeamId, {
+        link: links.get(r.announcement.id),
+        myCoords: null,
         responses,
-        null,
-        coaches.get(r.team.id),
-        undefined,
-        reliabilities.get(r.team.id),
-      );
+        coach: coaches.get(r.team.id),
+        reliability: reliabilities.get(r.team.id),
+        sameDayRivals: rivals.get(r.announcement.id) ?? 0,
+      });
     });
   });
 
@@ -302,6 +362,11 @@ export function announcementRoutes(app: FastifyInstance) {
       if (!category) return null;
       return {
         category,
+        // L'âge précisé ne se lègue que s'il appartient encore au groupe repris
+        // — sinon il désignerait une année que la catégorie ne contient pas.
+        preciseCategory: fineCategoriesOf(category).includes(asMatchCategory(last.preciseCategory)!)
+          ? asMatchCategory(last.preciseCategory)
+          : null,
         gender: last.gender,
         level: asDivisionLevel(last.level),
         format: last.format,
@@ -348,23 +413,21 @@ export function announcementRoutes(app: FastifyInstance) {
     const links = await loadMatchLinks([id]);
     const all = (await loadResponses([id])).get(id) ?? [];
     const responses = isMine ? all.map(({ teamId: _teamId, ...dto }) => dto) : [];
-    const myStatus = myTeamId ? (all.find((r) => r.teamId === myTeamId)?.status ?? null) : null;
+    const mine = myTeamId ? (all.find((r) => r.teamId === myTeamId) ?? null) : null;
     // Compté à part : un visiteur ne reçoit pas les propositions, mais les
     // places restantes d'un plateau le concernent au premier chef.
     const acceptedCount = all.filter((r) => r.status === "accepted").length;
     const myCoords = await loadOrigin(request.user.id, myTeamId);
     const coaches = await representativeCoachesOf([row.team.id]);
-    return toDto(
-      row,
-      myTeamId,
-      links.get(id),
+    return toDto(row, myTeamId, {
+      link: links.get(id),
       myCoords,
       responses,
-      myStatus,
-      coaches.get(row.team.id),
+      myResponse: mine && { status: mine.status, conversationId: mine.conversationId },
+      coach: coaches.get(row.team.id),
       acceptedCount,
-      (await reliabilityOf([row.team.id])).get(row.team.id),
-    );
+      reliability: (await reliabilityOf([row.team.id])).get(row.team.id),
+    });
   });
 
   /**
@@ -410,11 +473,17 @@ export function announcementRoutes(app: FastifyInstance) {
     // n'ont pas à quitter le serveur.
     const myResponses = myTeamId
       ? await db
-          .select({ announcementId: announcementResponses.announcementId, status: announcementResponses.status })
+          .select({
+            announcementId: announcementResponses.announcementId,
+            status: announcementResponses.status,
+            // Le fil ouvert par ma proposition : c'est là que le match se
+            // valide, et la carte du radar doit pouvoir y mener directement.
+            conversationId: announcementResponses.conversationId,
+          })
           .from(announcementResponses)
           .where(eq(announcementResponses.teamId, myTeamId))
       : [];
-    const myStatusByAnn = new Map(myResponses.map((r) => [r.announcementId, r.status]));
+    const myResponseByAnn = new Map(myResponses.map((r) => [r.announcementId, r]));
 
     // Places prises des plateaux encore ouverts : une annonce à 4 équipes reste
     // au radar après une première acceptation, il faut dire ce qui reste.
@@ -438,17 +507,13 @@ export function announcementRoutes(app: FastifyInstance) {
     const items: AnnouncementDto[] = [];
     let beyondRadius = 0;
     for (const row of rows) {
-      const dto = toDto(
-        row,
-        myTeamId,
-        undefined,
+      const dto = toDto(row, myTeamId, {
         myCoords,
-        [],
-        myStatusByAnn.get(row.announcement.id) ?? null,
-        coaches.get(row.team.id),
-        acceptedCounts.get(row.announcement.id) ?? 0,
-        reliabilities.get(row.team.id),
-      );
+        myResponse: myResponseByAnn.get(row.announcement.id) ?? null,
+        coach: coaches.get(row.team.id),
+        acceptedCount: acceptedCounts.get(row.announcement.id) ?? 0,
+        reliability: reliabilities.get(row.team.id),
+      });
       if (radiusKm !== null && dto.distanceKm !== null && dto.distanceKm > radiusKm) beyondRadius++;
       else items.push(dto);
     }
@@ -560,6 +625,7 @@ export function announcementRoutes(app: FastifyInstance) {
         venueLat: venue?.lat ?? null,
         venueLng: venue?.lng ?? null,
         category: input.category,
+        preciseCategory: input.preciseCategory ?? null,
         gender: input.gender,
         level: input.level,
         format: input.format,
@@ -570,16 +636,49 @@ export function announcementRoutes(app: FastifyInstance) {
       .returning();
     reply.code(201);
     const [team] = await db.select().from(teams).where(eq(teams.id, request.user.teamId));
+
+    /**
+     * ————— La mise en relation —————
+     * Les équipes qui cherchaient déjà un adversaire ce jour-là, dans la même
+     * catégorie. Elles sont, avec celle qui vient de publier, un match qui
+     * s'ignore : chacune attendait qu'on lui réponde. On le leur dit des deux
+     * côtés — à elles l'annonce qui vient de paraître, à l'émetteur la liste de
+     * ceux qu'il peut appeler tout de suite.
+     *
+     * Le périmètre est celui de l'émetteur : au-delà de son radar, ces annonces
+     * ne lui seraient d'aucune utilité (les destinataires, eux, sont filtrés par
+     * LEUR propre rayon dans la notification).
+     */
+    const rivals = withinRadius(
+      await sameDayRivalsOf(created, await teamsSharingCoachWith(request.user.teamId)),
+      await loadOrigin(request.user.id, request.user.teamId),
+      (await db.select({ radiusKm: users.radarRadiusKm }).from(users).where(eq(users.id, request.user.id)))[0]
+        ?.radiusKm ?? null,
+    );
+
+    // Le genre suit la catégorie : un coach d'équipe féminine doit voir en un
+    // coup d'œil si l'annonce le concerne.
+    const label = `${announcementCategoryLabel(created)}${
+      created.gender ? ` ${MATCH_GENDER_LABELS[created.gender]}` : ""
+    }`;
+
     // Alerte les coachs dont le périmètre couvre le lieu du match (sans attendre)
-    notifyNewAnnouncement({
+    notifyAnnouncementPublished({
       authorUserId: request.user.id,
+      announcementId: created.id,
       teamName: team.name,
-      // Le genre suit la catégorie : un coach d'équipe féminine doit voir en
-      // un coup d'œil si l'annonce le concerne.
-      category: created.gender ? `${created.category} ${MATCH_GENDER_LABELS[created.gender]}` : created.category,
+      category: label,
       format: created.format,
       city: created.city,
+      date: created.date,
       venue: cityCoords(created.city),
+      sameDayCoachIds: [...(await coachIdsOfTeams([...new Set(rivals.map((r) => r.teamId))]))],
+    });
+    notifySameDayRivals({
+      authorUserId: request.user.id,
+      teams: [...new Set(rivals.map((r) => r.teamName))],
+      category: label,
+      date: created.date,
     });
     return toDto({ announcement: created, team }, request.user.teamId);
   });
@@ -610,6 +709,7 @@ export function announcementRoutes(app: FastifyInstance) {
         venueLat: venue?.lat ?? null,
         venueLng: venue?.lng ?? null,
         category: input.category,
+        preciseCategory: input.preciseCategory ?? null,
         gender: input.gender,
         level: input.level,
         format: input.format,
@@ -634,8 +734,17 @@ export function announcementRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Proposer de jouer : crée une proposition en attente. L'annonce RESTE ouverte
-  // (visible au radar) tant que le coach émetteur n'a pas accepté une proposition.
+  /**
+   * Proposer de jouer — c'est-à-dire OUVRIR LA DISCUSSION, pas s'engager.
+   *
+   * La proposition crée un fil entre les deux coachs et rien d'autre : le match
+   * n'existera qu'une fois qu'ils y auront validé tous les deux. Celui qui
+   * propose garde donc le droit de se retirer s'il découvre, en discutant, que
+   * l'annonce ne lui convient pas.
+   *
+   * L'annonce RESTE ouverte (visible au radar) tant qu'aucune proposition n'a
+   * réuni les deux signatures.
+   */
   app.post("/announcements/:id/respond", { preHandler: requireRole("coach") }, async (request, reply) => {
     const { id } = idParamSchema.parse(request.params);
     const responderTeamId = request.user.teamId;
@@ -677,9 +786,15 @@ export function announcementRoutes(app: FastifyInstance) {
         await postSystemMessage(
           db,
           conversationId,
-          `${responderTeam.name} propose de jouer votre annonce ${categoryLabel(announcement.category)}${
-            announcement.gender ? ` ${MATCH_GENDER_LABELS[announcement.gender]}` : ""
-          } du ${announcement.date} à ${announcement.time.slice(0, 5)}, ${announcement.city}.`,
+          [
+            `${responderTeam.name} propose de jouer l'annonce ${announcementCategoryLabel(announcement)}${
+              announcement.gender ? ` ${MATCH_GENDER_LABELS[announcement.gender]}` : ""
+            } du ${announcement.date} à ${announcement.time.slice(0, 5)}, ${announcement.city}.`,
+            // Dit d'emblée ce qu'on attend d'eux : le message est lu par les
+            // DEUX coachs, et aucun des deux n'est engagé tant qu'il n'a pas
+            // appuyé lui-même.
+            "Discutez-en, puis validez tous les deux pour confirmer.",
+          ].join("\n"),
           null,
           created.id,
         );
@@ -699,7 +814,9 @@ export function announcementRoutes(app: FastifyInstance) {
     });
 
     reply.code(201);
-    return { responseId: created.id };
+    // Le fil part avec la réponse : c'est là que le coach doit atterrir, pas
+    // sur la carte du radar qu'il vient de quitter.
+    return { responseId: created.id, conversationId };
   });
 
   /**
@@ -725,23 +842,35 @@ export function announcementRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  // Le coach émetteur accepte une proposition : l'annonce passe en "matched",
-  // le match est créé et les autres propositions en attente sont déclinées.
+  /**
+   * ————— Valider le match, des deux côtés —————
+   *
+   * Une proposition n'est pas un engagement : elle ouvre un fil. Le match
+   * n'existe qu'une fois que LES DEUX coachs ont dit oui, dans n'importe quel
+   * ordre. Celui qui a répondu à l'annonce peut donc se raviser après en avoir
+   * discuté — c'est précisément ce qu'il ne pouvait pas faire quand la seule
+   * signature demandée était celle de l'émetteur : il se retrouvait engagé sur
+   * un match qu'il découvrait ensuite injouable.
+   *
+   * La route garde son chemin (`/accept`) : c'est toujours « je dis oui ». Ce
+   * qui change est qu'elle peut ne rien confirmer du tout — `matchId` vaut
+   * alors `null`, et l'autre coach est prévenu qu'on l'attend.
+   */
   app.post(
     "/announcements/:id/responses/:responseId/accept",
     { preHandler: requireRole("coach") },
     async (request, reply) => {
       const { id, responseId } = responseParamsSchema.parse(request.params);
+      const myTeamId = request.user.teamId;
+      if (!myTeamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
 
-      const match = await db.transaction(async (tx) => {
+      const outcome = await db.transaction(async (tx) => {
         const [announcement] = await tx
           .select()
           .from(matchAnnouncements)
           .where(eq(matchAnnouncements.id, id))
           .for("update");
         if (!announcement) throw new HttpError(404, "Annonce introuvable");
-        if (announcement.teamId !== request.user.teamId)
-          throw new HttpError(403, "Cette annonce ne vous appartient pas");
         if (announcement.status !== "open") throw new HttpError(400, "Cette annonce n'est plus ouverte");
         if (announcement.date < today())
           throw new HttpError(400, "La date de ce match est passée : l'annonce ne peut plus être confirmée");
@@ -752,13 +881,58 @@ export function announcementRoutes(app: FastifyInstance) {
           .where(and(eq(announcementResponses.id, responseId), eq(announcementResponses.announcementId, id)));
         if (!response) throw new HttpError(404, "Proposition introuvable");
         if (response.status !== "pending") throw new HttpError(400, "Cette proposition n'est plus en attente");
+
+        // De quel côté du fil je me trouve. Un tiers n'a rien à valider ici :
+        // ce n'est ni son annonce, ni sa proposition.
+        const side =
+          announcement.teamId === myTeamId ? "owner" : response.teamId === myTeamId ? "responder" : null;
+        if (!side) throw new HttpError(403, "Cette proposition ne vous concerne pas");
+
         // Dernier verrou avant que le match n'existe : une proposition reçue
         // avant que les deux équipes ne partagent un encadrant serait acceptable
         // ici alors qu'elle ne l'est plus.
         if ((await teamsSharingCoachWith(announcement.teamId)).includes(response.teamId)) {
-          throw new HttpError(400, "Vous encadrez aussi l'équipe qui a proposé : ce match ne peut pas se jouer");
+          throw new HttpError(400, "Vous encadrez aussi l'équipe d'en face : ce match ne peut pas se jouer");
         }
 
+        // Valider deux fois ne signe pas deux fois : la première date fait foi.
+        const now = new Date();
+        const ownerConfirmedAt =
+          side === "owner" ? (response.ownerConfirmedAt ?? now) : response.ownerConfirmedAt;
+        const responderConfirmedAt =
+          side === "responder" ? (response.responderConfirmedAt ?? now) : response.responderConfirmedAt;
+        await tx
+          .update(announcementResponses)
+          .set({ ownerConfirmedAt, responderConfirmedAt })
+          .where(eq(announcementResponses.id, responseId));
+
+        const [myTeam] = await tx.select().from(teams).where(eq(teams.id, myTeamId));
+        const plateau = isPlateauCategory(announcement.category);
+
+        // ————— Une seule des deux signatures : rien n'est encore convenu —————
+        if (!ownerConfirmedAt || !responderConfirmedAt) {
+          if (response.conversationId) {
+            await postSystemMessage(
+              tx,
+              response.conversationId,
+              `${myTeam.name} a validé. ${plateau ? "Le plateau sera confirmé" : "Le match sera confirmé"} dès que l'autre coach aura validé à son tour.`,
+              null,
+              response.id,
+            );
+            // Valider, c'est avoir lu : le fil ne doit pas s'allumer en non-lu
+            // chez celui qui vient d'y écrire.
+            await markRead(tx, response.conversationId, request.user.id);
+          }
+          return {
+            match: null,
+            conversationId: response.conversationId,
+            validatorTeamName: myTeam.name,
+            plateau,
+            declinedTeamIds: [] as string[],
+          };
+        }
+
+        // ————— Les deux signatures : le match naît —————
         await tx
           .update(announcementResponses)
           .set({ status: "accepted" })
@@ -771,7 +945,7 @@ export function announcementRoutes(app: FastifyInstance) {
          * plateau complet : les décliner avant reviendrait à refuser des
          * équipes qu'on cherche encore.
          */
-        const teamsWanted = isPlateauCategory(announcement.category) ? PLATEAU_TEAMS_WANTED : 1;
+        const teamsWanted = plateau ? PLATEAU_TEAMS_WANTED : 1;
         const [{ count: acceptedCount }] = await tx
           .select({ count: sql<number>`count(*)::int` })
           .from(announcementResponses)
@@ -810,79 +984,115 @@ export function announcementRoutes(app: FastifyInstance) {
           .returning();
 
         /**
-         * Le match convenu ouvre la conversation entre les deux coachs. Dans la
-         * même transaction que le match : un match sans fil obligerait à
-         * s'échanger un numéro pour convenir de l'heure exacte, ce que
-         * l'acceptation était précisément censée éviter.
+         * Le fil des deux coachs reçoit le match convenu. C'est en principe
+         * celui que la proposition a ouvert — on le reprend tel quel, avec tout
+         * ce qui s'y est dit. Il n'est rouvert que s'il manque : proposition
+         * antérieure à cette colonne, ou compte disparu depuis.
          *
-         * Deux personnes, pas deux équipes : celui qui vient d'accepter, et
-         * celui qui a proposé — à défaut (proposition antérieure à cette
-         * colonne) le coach qui représente l'équipe candidate.
+         * Deux personnes, pas deux équipes : celui qui a proposé et celui qui a
+         * publié, quel que soit celui des deux qui vient de valider en second.
          */
         const responderCoachId = response.coachId ?? (await representativeCoachOf(response.teamId))?.id ?? null;
-        if (responderCoachId) {
-          const conversationId = await openConversation(tx, request.user.id, responderCoachId, created.id);
-          if (conversationId) {
-            const [homeTeam, awayTeam] = await Promise.all([
-              tx.select({ name: teams.name }).from(teams).where(eq(teams.id, announcement.teamId)),
-              tx.select({ name: teams.name }).from(teams).where(eq(teams.id, response.teamId)),
-            ]);
-            await postSystemMessage(
-              tx,
-              conversationId,
-              matchSystemMessage({
-                category: announcement.category,
-                gender: announcement.gender,
-                format: announcement.format,
-                date: created.date,
-                time: created.time,
-                location: created.location,
-                homeTeamName: homeTeam[0].name,
-                awayTeamName: awayTeam[0].name,
-              }),
-              created.id,
-            );
-            // Celui qui accepte a déjà tout lu : c'est lui qui vient d'écrire
-            // l'histoire. Seul l'autre doit voir la pastille s'allumer.
-            await markRead(tx, conversationId, request.user.id);
-          }
+        const ownerCoachId =
+          side === "owner" ? request.user.id : ((await representativeCoachOf(announcement.teamId))?.id ?? null);
+        const conversationId =
+          response.conversationId ??
+          (ownerCoachId && responderCoachId
+            ? await openConversation(tx, ownerCoachId, responderCoachId, created.id)
+            : null);
+        if (conversationId) {
+          const [homeTeam, awayTeam] = await Promise.all([
+            tx.select({ name: teams.name }).from(teams).where(eq(teams.id, announcement.teamId)),
+            tx.select({ name: teams.name }).from(teams).where(eq(teams.id, response.teamId)),
+          ]);
+          await postSystemMessage(
+            tx,
+            conversationId,
+            matchSystemMessage({
+              category: announcement.category,
+              preciseCategory: announcement.preciseCategory,
+              gender: announcement.gender,
+              format: announcement.format,
+              date: created.date,
+              time: created.time,
+              location: created.location,
+              homeTeamName: homeTeam[0].name,
+              awayTeamName: awayTeam[0].name,
+            }),
+            created.id,
+          );
+          // Celui qui valide en second a déjà tout lu : c'est lui qui vient
+          // d'écrire l'histoire. Seul l'autre doit voir la pastille s'allumer.
+          await markRead(tx, conversationId, request.user.id);
         }
-        return { created, declinedTeamIds };
+        return {
+          match: created,
+          conversationId,
+          validatorTeamName: myTeam.name,
+          plateau,
+          declinedTeamIds,
+        };
       });
 
-      // Prévient l'équipe retenue, et celles dont la proposition VIENT de
-      // tomber — celles déclinées à la main l'ont déjà été à ce moment-là.
-      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, match.created.homeTeamId));
-      notifyResponseDecision({
-        responderTeamId: match.created.awayTeamId,
-        accepted: true,
-        opponentTeamName: ownTeam.name,
-        matchId: match.created.id,
+      // ————— Il manque encore une signature : on va la chercher —————
+      if (!outcome.match) {
+        const awaited = await otherMemberOf(outcome.conversationId, request.user.id);
+        if (awaited) {
+          notifyValidationAwaited({
+            recipientCoachId: awaited,
+            validatorTeamName: outcome.validatorTeamName,
+            conversationId: outcome.conversationId,
+            plateau: outcome.plateau,
+          });
+        }
+        return { matchId: null };
+      }
+
+      // Prévient l'équipe d'en face — celui qui vient de valider en second voit
+      // déjà le match à l'écran — et celles dont la proposition VIENT de tomber,
+      // celles déclinées à la main l'ayant déjà été à ce moment-là.
+      const [homeTeam] = await db.select().from(teams).where(eq(teams.id, outcome.match.homeTeamId));
+      const [awayTeam] = await db.select().from(teams).where(eq(teams.id, outcome.match.awayTeamId));
+      const iAmHome = outcome.match.homeTeamId === myTeamId;
+      notifyMatchAgreed({
+        recipientTeamId: iAmHome ? outcome.match.awayTeamId : outcome.match.homeTeamId,
+        opponentTeamName: iAmHome ? homeTeam.name : awayTeam.name,
+        matchId: outcome.match.id,
+        plateau: outcome.plateau,
       });
-      for (const teamId of match.declinedTeamIds) {
+      for (const teamId of outcome.declinedTeamIds) {
         notifyResponseDecision({
           responderTeamId: teamId,
           accepted: false,
-          opponentTeamName: ownTeam.name,
+          opponentTeamName: homeTeam.name,
           matchId: null,
         });
       }
 
       reply.code(201);
-      return { matchId: match.created.id };
+      return { matchId: outcome.match.id };
     },
   );
 
-  // Le coach émetteur décline une proposition ; l'annonce reste ouverte.
+  /**
+   * Décliner — des deux côtés, là aussi.
+   *
+   * L'émetteur refuse la proposition qu'il a reçue ; le répondant se retire
+   * après avoir vu, en discutant, que l'annonce ne lui convenait pas. Le
+   * résultat est le même — la proposition tombe, l'annonce reste ouverte — mais
+   * le fil et la notification ne disent pas la même chose : ce n'est pas la
+   * même personne qui renonce.
+   */
   app.post(
     "/announcements/:id/responses/:responseId/decline",
     { preHandler: requireRole("coach") },
     async (request) => {
       const { id, responseId } = responseParamsSchema.parse(request.params);
+      const myTeamId = request.user.teamId;
+      if (!myTeamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
+
       const [announcement] = await db.select().from(matchAnnouncements).where(eq(matchAnnouncements.id, id));
       if (!announcement) throw new HttpError(404, "Annonce introuvable");
-      if (announcement.teamId !== request.user.teamId)
-        throw new HttpError(403, "Cette annonce ne vous appartient pas");
 
       const [response] = await db
         .select()
@@ -891,23 +1101,46 @@ export function announcementRoutes(app: FastifyInstance) {
       if (!response) throw new HttpError(404, "Proposition introuvable");
       if (response.status !== "pending") throw new HttpError(400, "Cette proposition n'est plus en attente");
 
+      const side =
+        announcement.teamId === myTeamId ? "owner" : response.teamId === myTeamId ? "responder" : null;
+      if (!side) throw new HttpError(403, "Cette proposition ne vous concerne pas");
+
       await db
         .update(announcementResponses)
-        .set({ status: "declined" })
+        // La validation déjà donnée tombe avec la proposition : elle portait sur
+        // ce match-là, et il n'aura pas lieu.
+        .set({ status: "declined", ownerConfirmedAt: null, responderConfirmedAt: null })
         .where(eq(announcementResponses.id, responseId));
+
+      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, announcement.teamId));
+      const [responderTeam] = await db.select().from(teams).where(eq(teams.id, response.teamId));
 
       // Le fil garde la trace de la décision, là où elle a été discutée.
       if (response.conversationId) {
-        await postSystemMessage(db, response.conversationId, "Proposition déclinée.", null);
+        await postSystemMessage(
+          db,
+          response.conversationId,
+          side === "owner"
+            ? "Proposition déclinée."
+            : `${responderTeam.name} ne jouera finalement pas : la proposition est retirée.`,
+          null,
+        );
       }
 
-      const [ownTeam] = await db.select().from(teams).where(eq(teams.id, announcement.teamId));
-      notifyResponseDecision({
-        responderTeamId: response.teamId,
-        accepted: false,
-        opponentTeamName: ownTeam.name,
-        matchId: null,
-      });
+      if (side === "owner") {
+        notifyResponseDecision({
+          responderTeamId: response.teamId,
+          accepted: false,
+          opponentTeamName: ownTeam.name,
+          matchId: null,
+        });
+      } else {
+        notifyResponseWithdrawn({
+          ownerTeamId: announcement.teamId,
+          responderTeamName: responderTeam.name,
+          conversationId: response.conversationId,
+        });
+      }
       return { ok: true };
     },
   );

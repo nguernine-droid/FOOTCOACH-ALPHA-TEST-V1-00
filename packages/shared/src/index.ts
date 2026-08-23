@@ -220,6 +220,38 @@ export function fineCategoriesOf(category: string | null | undefined): MatchCate
   );
 }
 
+/**
+ * Les âges qu'une catégorie d'annonce laisse PRÉCISER (U14-U15 → U14, U15).
+ *
+ * Une annonce se publie par paire d'âges — c'est le défaut, et il le reste :
+ * un U14 joue volontiers un U15, et fermer la porte à l'année d'à côté viderait
+ * le radar de moitié. Mais un coach qui sait qu'il n'alignera que des U14 doit
+ * pouvoir le dire, plutôt que de l'écrire dans les informations pratiques où
+ * rien ne le lit.
+ *
+ * Vide quand la catégorie ne couvre qu'un âge (U20, Seniors, Vétérans) : il
+ * n'y a alors rien à préciser, et le formulaire n'affiche pas le choix.
+ */
+export function precisableCategoriesOf(category: string | null | undefined): MatchCategory[] {
+  const fine = fineCategoriesOf(announcementCategoryOf(category));
+  return fine.length > 1 ? fine : [];
+}
+
+/**
+ * Le libellé d'une annonce : son groupe d'âges, et entre parenthèses l'âge
+ * précisé quand il y en a un. La paire reste en tête — c'est elle qui dit à
+ * quel tableau appartient la rencontre ; la précision n'est qu'une restriction
+ * que son émetteur a bien voulu annoncer.
+ */
+export function announcementCategoryLabel(a: {
+  category: string;
+  preciseCategory?: string | null;
+}): string {
+  return a.preciseCategory
+    ? categoryLabel(a.category) + " (" + categoryLabel(a.preciseCategory) + ")"
+    : categoryLabel(a.category);
+}
+
 /** L'échelle des U, dans l'ordre — c'est elle qui donne un sens à « l'année d'à côté » */
 const U_SCALE = (MATCH_CATEGORIES as readonly MatchCategory[]).filter((c) => c.startsWith("U"));
 
@@ -829,6 +861,14 @@ export const createAnnouncementSchema = z
     // Groupes d'âges, pas catégories fines : une rencontre se cherche en U12-U13,
     // c'est ainsi que les districts apparient les équipes.
     category: z.enum(ANNOUNCEMENT_CATEGORIES),
+    /**
+     * Âge précisé À L'INTÉRIEUR du groupe (U14 sur une annonce U14-U15).
+     * Facultatif, et absent par défaut : la paire d'âges reste ce qu'on publie,
+     * la précision ne sert qu'à ceux qui ne peuvent pas jouer l'autre année.
+     * Elle n'entre pas dans l'appariement du radar — elle s'affiche, et c'est
+     * au coach d'en tenir compte avant de proposer.
+     */
+    preciseCategory: z.enum(MATCH_CATEGORIES).nullable().optional(),
     // Demandé à la publication : deviner le genre d'une équipe serait présumer,
     // et une annonce féminine tombée face à une équipe masculine ne se joue pas.
     gender: z.enum(MATCH_GENDERS),
@@ -842,7 +882,15 @@ export const createAnnouncementSchema = z
     // acceptResponsibility), pour tous les matchs à venir. La redemander à
     // chaque publication ne renforçait rien et faisait un obstacle de plus.
   })
-  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] });
+  .refine(levelMatchesCategory, { message: "Niveau invalide pour cette catégorie", path: ["level"] })
+  // L'âge précisé doit appartenir au groupe annoncé : un « U16 » sur une annonce
+  // U14-U15 ne voudrait rien dire, et personne ne saurait quoi en faire.
+  .refine(
+    (v) =>
+      !v.preciseCategory ||
+      (precisableCategoriesOf(v.category) as readonly string[]).includes(v.preciseCategory),
+    { message: "Cet âge n'appartient pas à la catégorie choisie", path: ["preciseCategory"] },
+  );
 export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
 
 /** Modifier une annonce déjà publiée — mêmes champs, tant qu'elle est encore ouverte */
@@ -1405,6 +1453,15 @@ export interface AnnouncementResponseDto {
   createdAt: string;
   /** Le fil ouvert entre les deux coachs pour en discuter et décider — null si aucun des deux comptes ne tient plus */
   conversationId: string | null;
+  /**
+   * ————— La double validation —————
+   * Proposer n'est pas s'engager : le match n'existe que lorsque LES DEUX
+   * coachs ont dit oui dans le fil. Celui qui a répondu à l'annonce peut donc
+   * se raviser après en avoir discuté — c'était impossible tant que la seule
+   * signature demandée était celle de l'émetteur.
+   */
+  ownerConfirmed: boolean;
+  responderConfirmed: boolean;
 }
 
 export interface AnnouncementDto {
@@ -1415,6 +1472,11 @@ export interface AnnouncementDto {
   city: string;
   stadium: string;
   category: string;
+  /**
+   * Âge précisé dans le groupe (U14 sur une annonce U14-U15), `null` quand
+   * l'annonce s'ouvre aux deux années — le cas ordinaire.
+   */
+  preciseCategory: MatchCategory | null;
   /** null pour les annonces publiées avant l'ajout du genre */
   gender: MatchGender | null;
   /** Niveau souhaité de l'adversaire (D2, R1…) — null pour les catégories qui n'en ont pas */
@@ -1473,6 +1535,18 @@ export interface AnnouncementDto {
   /** Coach visiteur : statut de ma proposition sur cette annonce (null si aucune) */
   myResponseStatus: ResponseStatus | null;
   /**
+   * Le fil ouvert par ma proposition. C'est là que le match se valide, des
+   * deux côtés : sans ce lien, le coach qui vient de proposer devrait aller
+   * chercher la conversation dans sa messagerie.
+   */
+  myResponseConversationId: string | null;
+  /**
+   * Émetteur uniquement : combien d'AUTRES équipes cherchent un match le même
+   * jour dans la même catégorie, à portée de son radar. C'est le nombre de
+   * confrères qu'il peut appeler tout de suite — 0 partout ailleurs.
+   */
+  sameDayRivals: number;
+  /**
    * L'adversaire s'est désisté et l'annonce est repartie en recherche : elle
    * remonte en tête du radar.
    */
@@ -1497,6 +1571,8 @@ export interface AnnouncementDto {
  */
 export interface AnnouncementDefaultsDto {
   category: AnnouncementCategory;
+  /** Âge précisé de la dernière annonce — presque toujours `null` */
+  preciseCategory: MatchCategory | null;
   gender: MatchGender | null;
   level: DivisionLevel | null;
   format: MatchFormat;
@@ -2043,10 +2119,23 @@ export interface MessageDto {
   matchId: string | null;
   /**
    * Proposition dont ce message `system` parle. Présent tant que ça se
-   * discute, pour porter les boutons Accepter/Décliner directement dans le
-   * fil — `decidable` dit si c'est à MOI de trancher, ici et maintenant.
+   * discute, pour porter les boutons Valider/Décliner directement dans le fil.
+   *
+   * Le match demande DEUX validations : `decidable` dit qu'il manque encore la
+   * mienne, `iConfirmed` que je l'ai donnée, `otherConfirmed` que l'autre coach
+   * a donné la sienne et n'attend plus que moi.
    */
-  response: { id: string; announcementId: string; status: ResponseStatus; decidable: boolean } | null;
+  response: {
+    id: string;
+    announcementId: string;
+    status: ResponseStatus;
+    /** Je peux valider ici et maintenant : la proposition m'attend encore */
+    decidable: boolean;
+    /** J'ai déjà donné mon accord — reste celui d'en face */
+    iConfirmed: boolean;
+    /** L'autre coach a donné le sien — c'est moi qu'on attend */
+    otherConfirmed: boolean;
+  } | null;
   createdAt: string;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Clock3, Navigation, UserMinus, Users, XCircle } from "lucide-react";
+import { CalendarDays, MessageCircle, Navigation, UserMinus, Users, XCircle } from "lucide-react";
 import {
   categoryLabel,
   DIVISION_LEVEL_LABELS,
@@ -102,6 +102,11 @@ export function SectorAnnouncementCard({
           </span>
         )}
         <span className="chip bg-pitch-soft text-primary">{categoryLabel(a.category)}</span>
+        {/* L'âge précisé a sa propre pastille : c'est une RESTRICTION annoncée,
+            pas une nuance de la catégorie — on la lit avant de proposer. */}
+        {a.preciseCategory && (
+          <span className="chip bg-sun-soft text-sun">{categoryLabel(a.preciseCategory)} uniquement</span>
+        )}
         {a.gender && <span className="chip bg-pitch-soft text-primary">{MATCH_GENDER_LABELS[a.gender]}</span>}
         <span className="chip bg-pitch-soft text-primary">{a.format}</span>
         {/* Ce qu'il faut savoir AVANT de proposer : cette équipe honore-t-elle
@@ -126,11 +131,19 @@ export function SectorAnnouncementCard({
       )}
 
       {a.myResponseStatus === "pending" ? (
+        /* La proposition est partie : elle a ouvert un fil, et c'est dans ce fil
+           que les deux coachs valident. Le bouton y mène — l'attente n'est pas
+           passive, il reste une signature à donner de chaque côté. */
         <div className="space-y-2">
-          <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3 flex items-center gap-2">
-            <Clock3 size={14} className="shrink-0" />
-            Proposition envoyée — en attente de validation du coach
-          </p>
+          {a.myResponseConversationId ? (
+            <ButtonLink href={`/coach/messages/${a.myResponseConversationId}`} className="w-full">
+              <MessageCircle size={14} /> Discuter et valider
+            </ButtonLink>
+          ) : (
+            <p className="text-xs font-bold text-sun bg-sun-soft rounded-lg px-4 py-3">
+              Proposition envoyée — en attente du coach
+            </p>
+          )}
           <Button variant="ghost" className="w-full" onClick={() => onWithdraw(a.id)} disabled={responding}>
             {responding ? "Retrait…" : "Retirer ma proposition"}
           </Button>

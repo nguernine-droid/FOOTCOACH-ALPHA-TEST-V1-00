@@ -37,10 +37,17 @@ export function activityRoutes(app: FastifyInstance) {
         id: `resp-${response.id}`,
         type: "announcement",
         actor: proposer.name,
-        detail: `propose de jouer votre annonce ${announcement.category} du ${dayMonth(announcement.date)} — à valider`,
-        // Mène à « Mes annonces », proposition en paramètre : la page ouvre la
-        // feuille de décision (accepter/décliner, carte du coach répondant).
-        href: `/coach/announcements/mine?proposition=${response.id}`,
+        // Le match demande DEUX validations : dire laquelle manque évite de
+        // croire qu'on attend l'autre quand c'est soi qu'on attend.
+        detail: response.ownerConfirmedAt
+          ? `propose de jouer votre annonce ${announcement.category} du ${dayMonth(announcement.date)} — vous avez validé, en attente de ce coach`
+          : `propose de jouer votre annonce ${announcement.category} du ${dayMonth(announcement.date)} — à valider`,
+        // Mène au fil ouvert avec ce coach : c'est là qu'on en discute et qu'on
+        // valide, chacun de son côté. À défaut — compte disparu depuis — la
+        // liste de mes annonces.
+        href: response.conversationId
+          ? `/coach/messages/${response.conversationId}`
+          : "/coach/announcements/mine",
         createdAt: response.createdAt.toISOString(),
       });
     }

@@ -10,11 +10,13 @@ import {
   MapPin,
   MessageCircle,
   Pencil,
+  Radar,
   ShieldCheck,
   Trash2,
   UserMinus,
 } from "lucide-react";
 import {
+  announcementCategoryLabel,
   categoryLabel,
   teamMatchesAnnouncement,
   MATCH_GENDER_LABELS,
@@ -69,7 +71,7 @@ export function MyAnnouncementCard({
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-bold capitalize">
-          {categoryLabel(a.category)}
+          {announcementCategoryLabel(a)}
           {a.gender && ` ${MATCH_GENDER_LABELS[a.gender]}`} · {a.format} · {formatDate(a.date)} à {a.time}
         </p>
         {/* Combien d'AUTRES coachs ont ouvert le détail — un signal d'intérêt,
@@ -89,6 +91,26 @@ export function MyAnnouncementCard({
             {a.stadium}, {a.city}
           </span>
         </p>
+      )}
+
+      {/* Deux coachs qui cherchent le même jour dans la même catégorie sont, à
+          eux deux, un match. On le dit ici pour que l'attente ne soit pas
+          passive : il y a quelqu'un à appeler, tout de suite. */}
+      {a.status === "open" && !past && a.sameDayRivals > 0 && (
+        <Link
+          href="/coach/radar"
+          className="flex items-start gap-2 rounded-lg bg-blue-soft px-3 py-2 text-xs font-bold text-primary
+            transition hover:bg-blue-faint"
+        >
+          <Radar size={13} className="shrink-0 mt-px" aria-hidden />
+          <span>
+            {a.sameDayRivals} équipe{a.sameDayRivals > 1 ? "s" : ""} cherche
+            {a.sameDayRivals > 1 ? "nt" : ""} aussi un match ce jour-là
+            <span className="block font-semibold text-ink-soft">
+              Même catégorie, dans votre secteur — proposez-leur de jouer.
+            </span>
+          </span>
+        </Link>
       )}
 
       {/* Adversaire désisté : l'annonce est repartie en tête du radar */}
@@ -184,13 +206,22 @@ export function MyAnnouncementCard({
                   </span>
                 </div>
                 <ResponseFit response={r} announcement={a} />
+                {/* Un match demande DEUX validations : dire laquelle manque
+                    évite de croire qu'on attend l'autre quand c'est soi. */}
+                <p className="text-[11px] font-semibold text-sun">
+                  {r.ownerConfirmed && !r.responderConfirmed
+                    ? "Vous avez validé — en attente de ce coach"
+                    : r.responderConfirmed && !r.ownerConfirmed
+                      ? "Ce coach a validé — il ne manque que vous"
+                      : "À valider par vous deux"}
+                </p>
                 {r.conversationId ? (
                   <Link
                     href={`/coach/messages/${r.conversationId}`}
                     className="flex items-center justify-center gap-1.5 min-h-9 rounded-lg bg-blue-soft
                       text-xs font-bold text-primary transition hover:bg-blue-faint"
                   >
-                    <MessageCircle size={14} aria-hidden /> Discuter et décider
+                    <MessageCircle size={14} aria-hidden /> Discuter et valider
                   </Link>
                 ) : (
                   <p className="text-[11px] text-ink-soft">Discussion indisponible pour cette proposition.</p>

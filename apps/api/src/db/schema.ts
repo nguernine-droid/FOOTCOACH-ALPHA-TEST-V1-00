@@ -484,6 +484,17 @@ export const matchAnnouncements = pgTable(
     venueLat: doublePrecision("venue_lat"),
     venueLng: doublePrecision("venue_lng"),
     category: text("category").notNull(),
+    /**
+     * Âge précisé À L'INTÉRIEUR du groupe (« U14 » sur une annonce U14-U15).
+     *
+     * NULL est le cas ordinaire et se lit « les deux années » : une rencontre
+     * se cherche par paire d'âges, et c'est ce qui remplit le radar. La
+     * précision n'entre donc PAS dans l'appariement — elle s'affiche, et le
+     * coach d'en face en tient compte avant de proposer. La filtrer ici
+     * reviendrait à couper les annonces en deux catégories qui ne se voient
+     * plus, alors qu'un U14 joue très bien un U15.
+     */
+    preciseCategory: text("precise_category"),
     // NULL pour les annonces publiées avant l'ajout du genre : on ne devine pas
     // rétroactivement le genre d'une équipe.
     gender: matchGender("gender"),
@@ -566,6 +577,23 @@ export const announcementResponses = pgTable(
      */
     coachId: uuid("coach_id").references(() => users.id, { onDelete: "set null" }),
     status: responseStatus("status").notNull().default("pending"),
+    /**
+     * ————— Les deux signatures —————
+     * Un match n'existe que si les DEUX coachs l'ont voulu, chacun de son
+     * côté du fil : `owner` est l'émetteur de l'annonce, `responder` celui qui
+     * a proposé de jouer. La proposition ne vaut pas signature — c'est une
+     * mise en relation, et le répondant garde le droit de se raviser une fois
+     * qu'il a vu, en discutant, que l'annonce ne lui convient pas.
+     *
+     * Le passage en `accepted` et la création du match n'ont lieu qu'à la
+     * seconde des deux, dans l'ordre où elles arrivent.
+     *
+     * Les propositions acceptées avant cette double validation portent les
+     * deux dates (reprise en migration) : elles ont bien été convenues, même
+     * si une seule signature était demandée à l'époque.
+     */
+    ownerConfirmedAt: timestamp("owner_confirmed_at", { withTimezone: true }),
+    responderConfirmedAt: timestamp("responder_confirmed_at", { withTimezone: true }),
     /**
      * Le fil ouvert entre les deux coachs dès la proposition — c'est là que se
      * discute et se décide « on joue ou pas », plus dans un popup à part.

@@ -9,6 +9,7 @@ import {
   DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
   PLATEAU_TEAMS_WANTED,
+  announcementCategoryLabel,
   announcementCategoryOf,
   categoryLabel,
   divisionLevelsFor,
@@ -17,12 +18,14 @@ import {
   type AnnouncementDefaultsDto,
   type CoachTeamDto,
   type DivisionLevel,
+  type MatchCategory,
   type MatchGender,
 } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { PreciseCategoryPicker } from "@/components/PreciseCategoryPicker";
 import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
 import { VenueField } from "@/components/VenueField";
 import { GenderPicker } from "@/components/GenderPicker";
@@ -123,6 +126,14 @@ function NewAnnouncementForm({
    * ceci est ce qu'il a choisi.
    */
   const [venueId, setVenueId] = useState<string | null>(defaults?.venueId ?? activeTeam?.venueId ?? null);
+  /**
+   * Âge précisé dans le groupe (U14 sur une annonce U14-U15). `null` par
+   * défaut, et c'est bien ainsi : la paire d'âges est ce qui remplit le radar,
+   * la précision n'est là que pour celui qui ne peut pas jouer l'autre année.
+   */
+  const [preciseCategory, setPreciseCategory] = useState<MatchCategory | null>(
+    defaults?.preciseCategory ?? null,
+  );
   const [gender, setGender] = useState<MatchGender | null>(defaults?.gender ?? activeTeam?.gender ?? null);
   // Niveau souhaité de l'adversaire — dépend de la catégorie, donc à part du
   // reste du formulaire plutôt que dans `form` (même raison que `gender`).
@@ -165,6 +176,9 @@ function NewAnnouncementForm({
   function changeCategory(category: AnnouncementCategory) {
     set("category", category);
     if (!(divisionLevelsFor(category) as readonly string[]).includes(level ?? "")) setLevel(null);
+    // L'âge précisé appartenait à l'ancien groupe : le garder ferait annoncer
+    // un U14 sous une catégorie U16-U17.
+    setPreciseCategory(null);
   }
 
   // Jusqu'aux U11 l'annonce cherche un plateau de quatre équipes, pas un
@@ -192,7 +206,14 @@ function NewAnnouncementForm({
     try {
       await api("/announcements", {
         method: "POST",
-        body: JSON.stringify({ ...form, gender, level, venueId, comment: form.comment || undefined }),
+        body: JSON.stringify({
+          ...form,
+          gender,
+          level,
+          preciseCategory,
+          venueId,
+          comment: form.comment || undefined,
+        }),
       });
       router.push("/coach/announcements");
     } catch (err) {
@@ -266,6 +287,13 @@ function NewAnnouncementForm({
               hint={inheritance}
             />
 
+            <PreciseCategoryPicker
+              category={form.category}
+              value={preciseCategory}
+              onChange={setPreciseCategory}
+              idPrefix="announcement-precise"
+            />
+
             <GenderPicker
               value={gender}
               onChange={setGender}
@@ -316,7 +344,7 @@ function NewAnnouncementForm({
             <SlidersHorizontal size={15} className="text-blue shrink-0" aria-hidden />
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-bold truncate">
-                {categoryLabel(form.category)}
+                {announcementCategoryLabel({ category: form.category, preciseCategory })}
                 {gender && ` · ${MATCH_GENDER_LABELS[gender]}`}
                 {level && ` · ${DIVISION_LEVEL_LABELS[level]}`} · {form.format}
               </span>

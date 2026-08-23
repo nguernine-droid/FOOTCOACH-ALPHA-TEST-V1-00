@@ -184,6 +184,9 @@ async function register(i) {
 const stats = {
   equipesCreees: 0,
   annonces: 0, propositions: 0, retraits: 0, acceptations: 0, refus: 0,
+  // Une signature donnée qui n'a pas encore confirmé de match : l'autre coach
+  // n'a pas validé de son côté.
+  validationsEnAttente: 0,
   desistementsInvite: 0, desistementsHote: 0, annulations: 0,
   matchsJoues: 0, sosGeneres: 0, jokers: 0,
   // Rencontres validées au QR, points distribués, et celles qui n'ont rien
@@ -252,6 +255,50 @@ async function browseAndRespond(coach) {
   }
 }
 
+/**
+ * Valider, côté coach qui a PROPOSÉ.
+ *
+ * Un match demande deux signatures et se décide dans le fil : le répondant
+ * passe donc par ses conversations, exactement comme l'application l'y mène
+ * après « Proposer de jouer ». Sans cette étape, la simulation n'aurait plus
+ * confirmé un seul match depuis la double validation.
+ */
+async function validateMyProposals(coach) {
+  const res = await call(coach, "GET", "/conversations");
+  for (const c of res.data ?? []) {
+    const thread = await call(coach, "GET", `/conversations/${c.id}`, null, [200, 404]);
+    const decidable = (thread.data?.messages ?? []).filter((m) => m.response?.decidable);
+    if (decidable.length === 0) continue;
+    const m = pick(decidable);
+    // Un répondant sur six se ravise après en avoir discuté : c'est ce que la
+    // double validation lui permet de faire.
+    if (chance(0.16)) {
+      const d = await call(
+        coach,
+        "POST",
+        `/announcements/${m.response.announcementId}/responses/${m.response.id}/decline`,
+        null,
+        [200, 400, 403, 404],
+      );
+      if (d.status === 200) stats.refus++;
+      continue;
+    }
+    const acc = await call(
+      coach,
+      "POST",
+      `/announcements/${m.response.announcementId}/responses/${m.response.id}/accept`,
+      null,
+      [200, 201, 400, 403, 404],
+    );
+    if (acc.data?.matchId) {
+      coach.matches.push(acc.data.matchId);
+      stats.acceptations++;
+    } else if (acc.status < 300) {
+      stats.validationsEnAttente++;
+    }
+  }
+}
+
 async function handleMyAnnouncements(coach) {
   const res = await call(coach, "GET", "/announcements/mine");
   const mine = res.data ?? [];
@@ -267,7 +314,10 @@ async function handleMyAnnouncements(coach) {
       }
       if (chance(0.6)) {
         const acc = await call(coach, "POST", `/announcements/${a.id}/responses/${pending[0].id}/accept`, null, [200, 201, 400, 404]);
+        // Le match ne naît qu'à la SECONDE signature : sans celle du répondant,
+        // `matchId` est nul et l'on n'a fait qu'attendre.
         if (acc.data?.matchId) { coach.matches.push(acc.data.matchId); stats.acceptations++; }
+        else if (acc.status < 300) stats.validationsEnAttente++;
       }
     } else if (a.status === "open" && chance(0.04)) {
       const c = await call(coach, "DELETE", `/announcements/${a.id}`, null, [200, 400]);
@@ -402,6 +452,7 @@ for (let day = 0; day < DAYS; day++) {
   await pool(publishers, 8, publish);
   await pool(coaches, 8, browseAndRespond);
   await pool(coaches, 8, handleMyAnnouncements);
+  await pool(coaches, 8, validateMyProposals);
   await pool(coaches, 8, playOrWithdraw);
   console.log(`  jour ${day + 1}/${DAYS} — ${Math.round((Date.now() - t0) / 1000)} s`);
 }

@@ -10,11 +10,13 @@ import {
   type AnnouncementCategory,
   type AnnouncementDto,
   type DivisionLevel,
+  type MatchCategory,
   type MatchGender,
 } from "@teamnexus/shared";
 import { api } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { PreciseCategoryPicker } from "@/components/PreciseCategoryPicker";
 import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
 import { VenueField } from "@/components/VenueField";
 import { GenderPicker } from "@/components/GenderPicker";
@@ -77,6 +79,7 @@ function EditAnnouncementForm({ id, announcement }: { id: string; announcement: 
     format: announcement.format,
     comment: announcement.comment ?? "",
   });
+  const [preciseCategory, setPreciseCategory] = useState<MatchCategory | null>(announcement.preciseCategory);
   const [gender, setGender] = useState<MatchGender | null>(announcement.gender);
   const [level, setLevel] = useState<DivisionLevel | null>(announcement.level);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +94,9 @@ function EditAnnouncementForm({ id, announcement }: { id: string; announcement: 
   function changeCategory(category: AnnouncementCategory) {
     set("category", category);
     if (!(divisionLevelsFor(category) as readonly string[]).includes(level ?? "")) setLevel(null);
+    // Même raison que sur la publication : un âge précisé ne survit pas au
+    // groupe auquel il appartenait.
+    setPreciseCategory(null);
   }
 
   const incomplete = !gender || !form.time;
@@ -110,7 +116,14 @@ function EditAnnouncementForm({ id, announcement }: { id: string; announcement: 
     try {
       await api(`/announcements/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ ...form, gender, level, venueId, comment: form.comment || undefined }),
+        body: JSON.stringify({
+          ...form,
+          gender,
+          level,
+          preciseCategory,
+          venueId,
+          comment: form.comment || undefined,
+        }),
       });
       router.push("/coach/announcements/mine");
     } catch (err) {
@@ -159,6 +172,13 @@ function EditAnnouncementForm({ id, announcement }: { id: string; announcement: 
           onChange={changeCategory}
           categories={ANNOUNCEMENT_CATEGORIES}
           idPrefix="edit-announcement-category"
+        />
+
+        <PreciseCategoryPicker
+          category={form.category}
+          value={preciseCategory}
+          onChange={setPreciseCategory}
+          idPrefix="edit-announcement-precise"
         />
 
         <GenderPicker value={gender} onChange={setGender} idPrefix="edit-announcement-gender" />

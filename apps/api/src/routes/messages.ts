@@ -214,7 +214,13 @@ export function messageRoutes(app: FastifyInstance) {
     const responseIds = [...new Set(rows.flatMap((m) => (m.responseId ? [m.responseId] : [])))];
     const responseById = new Map<
       string,
-      { status: (typeof announcementResponses.$inferSelect)["status"]; announcementId: string; decidable: boolean }
+      {
+        status: (typeof announcementResponses.$inferSelect)["status"];
+        announcementId: string;
+        decidable: boolean;
+        iConfirmed: boolean;
+        otherConfirmed: boolean;
+      }
     >();
     if (responseIds.length > 0) {
       const withAnnouncement = await db
@@ -223,13 +229,34 @@ export function messageRoutes(app: FastifyInstance) {
         .innerJoin(matchAnnouncements, eq(matchAnnouncements.id, announcementResponses.announcementId))
         .where(inArray(announcementResponses.id, responseIds));
       for (const { response, announcement } of withAnnouncement) {
+        /**
+         * De quel côté du fil je me trouve. Les DEUX ont leur mot à dire : celui
+         * qui a publié l'annonce, et celui qui a proposé de jouer. Un match ne
+         * se confirme qu'une fois les deux signatures données, et chacun ne voit
+         * de bouton que tant que la sienne manque.
+         */
+        const mineIsOwner = announcement.teamId === request.user.teamId;
+        const mineIsResponder = response.teamId === request.user.teamId;
+        const iConfirmed = mineIsOwner
+          ? response.ownerConfirmedAt !== null
+          : mineIsResponder
+            ? response.responderConfirmedAt !== null
+            : false;
+        const otherConfirmed = mineIsOwner
+          ? response.responderConfirmedAt !== null
+          : mineIsResponder
+            ? response.ownerConfirmedAt !== null
+            : false;
         responseById.set(response.id, {
           status: response.status,
           announcementId: response.announcementId,
           decidable:
-            announcement.teamId === request.user.teamId &&
+            (mineIsOwner || mineIsResponder) &&
+            !iConfirmed &&
             response.status === "pending" &&
             announcement.status === "open",
+          iConfirmed,
+          otherConfirmed,
         });
       }
     }
@@ -246,9 +273,17 @@ export function messageRoutes(app: FastifyInstance) {
           // côté d'aucun des deux coachs.
           mine: m.kind === "coach" && m.senderId === me,
           matchId: m.matchId,
-          response: response && m.responseId
-            ? { id: m.responseId, announcementId: response.announcementId, status: response.status, decidable: response.decidable }
-            : null,
+          response:
+            response && m.responseId
+              ? {
+                  id: m.responseId,
+                  announcementId: response.announcementId,
+                  status: response.status,
+                  decidable: response.decidable,
+                  iConfirmed: response.iConfirmed,
+                  otherConfirmed: response.otherConfirmed,
+                }
+              : null,
           createdAt: m.createdAt.toISOString(),
         };
       }),
