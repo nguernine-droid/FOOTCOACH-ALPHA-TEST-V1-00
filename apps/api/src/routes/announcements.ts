@@ -17,6 +17,7 @@ import {
   MATCH_GENDER_LABELS,
   type AnnouncementDefaultsDto,
   type AnnouncementDto,
+  type AnnouncementSuggestionsDto,
   type AnnouncementResponseDto,
   type CategoryStatsDto,
   type CoachRefDto,
@@ -61,6 +62,7 @@ import { markRead, openConversation, postSystemMessage } from "../lib/conversati
 import { teamsSharingCoachWith } from "../lib/teamScope.js";
 import { venueById } from "../lib/venueLookup.js";
 import { reliabilityOf } from "../lib/reliability.js";
+import { suggestionsFor } from "../lib/announcementSuggestions.js";
 
 /**
  * Ce que l'appelant a déjà chargé pour cette annonce. Un objet plutôt qu'une
@@ -604,6 +606,98 @@ export function announcementRoutes(app: FastifyInstance) {
       ).length;
 
       return { category, teamsInCategory, announcementsInCategory, tournamentsInCategory };
+    },
+  );
+
+  /**
+   * ————— Ce qui existe déjà, avant de publier —————
+   *
+   * Le coach a rempli son annonce et vient de valider. Plutôt que de
+   * l'enregistrer et de le laisser attendre qu'on la trouve, on regarde
+   * d'abord si le match qu'il cherche n'est pas DÉJÀ publié par quelqu'un
+   * d'autre — même tableau, à quelques jours près, dans son secteur.
+   *
+   * La route ne modifie RIEN. C'est une lecture, intercalée entre le clic et
+   * l'enregistrement : le client publie ensuite, qu'il ait retenu une
+   * proposition ou non. Elle prend le corps de la création tel quel, et non
+   * l'identifiant d'une annonce déjà en base — c'est tout l'intérêt, l'annonce
+   * n'existe pas encore et ne doit pas exister pour qu'on puisse aider.
+   *
+   * Une liste vide est le cas ORDINAIRE tant que la plateforme est peu dense.
+   * Le client doit alors publier sans rien afficher : on n'ajoute pas un écran
+   * pour annoncer qu'on n'a rien à dire.
+   */
+  app.post(
+    "/announcements/suggestions",
+    { preHandler: requireRole("coach") },
+    async (request): Promise<AnnouncementSuggestionsDto> => {
+      const myTeamId = request.user.teamId;
+      if (!myTeamId) throw new HttpError(400, "Aucune équipe associée à ce coach");
+      // Le même schéma que la création : ce qu'on compare doit être exactement
+      // ce qui sera publié, sinon les propositions porteraient sur autre chose.
+      const input = createAnnouncementSchema.parse(request.body);
+
+      const [myTeam] = await db.select().from(teams).where(eq(teams.id, myTeamId));
+      const [me] = await db
+        .select({ radiusKm: users.radarRadiusKm })
+        .from(users)
+        .where(eq(users.id, request.user.id));
+      const myCoords = await loadOrigin(request.user.id, myTeamId);
+
+      const { items: scored, totalFound } = await suggestionsFor({
+        draft: {
+          date: input.date,
+          category: input.category,
+          gender: input.gender,
+          // Le niveau SOUHAITÉ chez l'adversaire d'abord — c'est la demande du
+          // coach. À défaut, celui de son équipe : deux équipes de même force
+          // font un match équilibré, qu'elles l'aient demandé ou non.
+          level: input.level ?? asDivisionLevel(myTeam?.level),
+        },
+        excludeTeamIds: await teamsSharingCoachWith(myTeamId),
+        myTeamId,
+        origin: myCoords,
+        radiusKm: me?.radiusKm ?? null,
+      });
+
+      if (scored.length === 0) return { items: [], totalFound };
+
+      // Chargés pour les cinq retenues seulement, jamais pour l'ensemble des
+      // candidates : c'est ce qui garde l'écran intermédiaire instantané.
+      const teamIds = [...new Set(scored.map((c) => c.team.id))];
+      const [coaches, reliabilities, acceptedRows] = await Promise.all([
+        representativeCoachesOf(teamIds),
+        reliabilityOf(teamIds),
+        db
+          .select({ announcementId: announcementResponses.announcementId, count: sql<number>`count(*)::int` })
+          .from(announcementResponses)
+          .where(
+            and(
+              inArray(announcementResponses.announcementId, scored.map((c) => c.announcement.id)),
+              eq(announcementResponses.status, "accepted"),
+            ),
+          )
+          .groupBy(announcementResponses.announcementId),
+      ]);
+      const acceptedCounts = new Map(acceptedRows.map((r) => [r.announcementId, r.count]));
+
+      return {
+        items: scored.map((c) => ({
+          announcement: toDto(
+            { announcement: c.announcement, team: c.team },
+            myTeamId,
+            {
+              myCoords,
+              coach: coaches.get(c.team.id),
+              acceptedCount: acceptedCounts.get(c.announcement.id) ?? 0,
+              reliability: reliabilities.get(c.team.id),
+            },
+          ),
+          score: c.score,
+          breakdown: c.breakdown,
+        })),
+        totalFound,
+      };
     },
   );
 

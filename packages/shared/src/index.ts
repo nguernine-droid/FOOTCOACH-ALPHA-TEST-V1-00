@@ -1583,6 +1583,66 @@ export interface AnnouncementDefaultsDto {
 }
 
 /**
+ * ————— Les correspondances proposées à la publication —————
+ *
+ * Publier une annonce, c'est aujourd'hui la lancer dans le vide : le coach
+ * attend qu'une équipe la trouve. Ces types portent l'inverse — au moment où il
+ * valide, on va chercher pour lui les annonces déjà en base qui cherchent le
+ * même match, et on les lui montre AVANT d'enregistrer la sienne.
+ *
+ * Le raccourci ne remplace jamais la publication : une correspondance acceptée
+ * envoie une proposition ET publie l'annonce, parce que la validation est
+ * double (voir `announcementResponses`) et qu'un coach dont la proposition est
+ * déclinée ne doit pas se retrouver sans rien en ligne.
+ */
+export interface AnnouncementSuggestionDto {
+  announcement: AnnouncementDto;
+  /** Pertinence globale, 0-100 — c'est l'ordre d'affichage, pas une note à montrer telle quelle */
+  score: number;
+  /**
+   * Le détail du score, critère par critère. Il ne sert pas à décorer : c'est
+   * ce qui permet de dire au coach POURQUOI cette annonce arrive en tête (« à
+   * 12 km, le jour même »), et de rendre le classement discutable au lieu
+   * d'être un oracle.
+   */
+  breakdown: {
+    /** Écart de date, en jours signés : négatif = l'annonce est avant la date demandée */
+    dateGapDays: number;
+    /** Distance au lieu du match, `null` si la commune est absente de l'annuaire */
+    distanceKm: number | null;
+    /**
+     * Écart de niveau en crans sur l'échelle des divisions. `null` quand l'un
+     * des deux côtés n'a pas déclaré de niveau — on ne prétend pas alors que
+     * les équipes sont de force égale, on dit qu'on ne sait pas.
+     */
+    levelGap: number | null;
+    /** Âge de l'annonce en jours */
+    ageDays: number;
+  };
+}
+
+/**
+ * Ce que le serveur répond quand le coach valide son formulaire. `items` est
+ * vide dans le cas ordinaire d'une plateforme peu dense — le client publie
+ * alors directement, sans écran intermédiaire ni friction ajoutée.
+ */
+export interface AnnouncementSuggestionsDto {
+  items: AnnouncementSuggestionDto[];
+  /**
+   * Correspondances trouvées AVANT le plafond d'affichage. Cinq propositions au
+   * plus arrivent au coach — au-delà on le noie au lieu de l'aider — mais lui
+   * dire qu'il y en avait douze change ce qu'il fait ensuite.
+   */
+  totalFound: number;
+}
+
+/** Fenêtre de dates dans laquelle une annonce peut correspondre : ± 5 jours autour de celle saisie */
+export const SUGGESTION_DATE_WINDOW_DAYS = 5;
+
+/** Jamais plus de cinq propositions à l'écran : au-delà, on noie le coach au lieu de l'aider */
+export const SUGGESTION_LIMIT = 5;
+
+/**
  * Réponse du radar. Le périmètre est appliqué côté serveur — inutile d'envoyer
  * au téléphone des annonces qu'il ne montrera pas. `beyondRadius` compte celles
  * que le périmètre a écartées, pour proposer de balayer plus large sans avoir à

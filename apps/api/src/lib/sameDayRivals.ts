@@ -40,11 +40,28 @@ function genderFits(a: MatchGender | null, b: MatchGender | null): boolean {
 }
 
 /**
- * Ces deux annonces cherchent-elles le même match ?
+ * Ces deux annonces cherchent-elles le même TABLEAU ?
  *
- * Le même jour, le même GROUPE d'âges, des genres compatibles — et rien de
- * plus. L'âge précisé n'entre pas dans la comparaison : il se lit sur l'annonce
- * et se discute entre coachs, il ne doit pas empêcher la mise en relation.
+ * Le même GROUPE d'âges et des genres compatibles — la date exclue. L'âge
+ * précisé n'entre pas dans la comparaison : il se lit sur l'annonce et se
+ * discute entre coachs, il ne doit pas empêcher la mise en relation.
+ *
+ * Séparé de la date parce que deux appelants n'en demandent pas la même chose :
+ * les annonces jumelles veulent le jour EXACT (ci-dessous), les correspondances
+ * proposées à la publication acceptent une fenêtre de quelques jours
+ * (`announcementSuggestions.ts`). La règle de catégorie et de genre, elle, est
+ * la même pour les deux et n'a donc à vivre qu'ici.
+ */
+export function announcementsFit(
+  a: { category: string; gender: MatchGender | null },
+  b: { category: string; gender: MatchGender | null },
+): boolean {
+  const group = announcementCategoryOf(a.category);
+  return group !== null && announcementCategoryOf(b.category) === group && genderFits(a.gender, b.gender);
+}
+
+/**
+ * Ces deux annonces cherchent-elles le même match, le même jour ?
  *
  * Seule règle d'appariement du module : les deux fonctions ci-dessous s'y
  * réfèrent, pour qu'un ajustement n'ait jamais à être fait deux fois.
@@ -53,17 +70,11 @@ export function announcementsPairUp(
   a: { date: string; category: string; gender: MatchGender | null },
   b: { date: string; category: string; gender: MatchGender | null },
 ): boolean {
-  const group = announcementCategoryOf(a.category);
-  return (
-    group !== null &&
-    a.date === b.date &&
-    announcementCategoryOf(b.category) === group &&
-    genderFits(a.gender, b.gender)
-  );
+  return a.date === b.date && announcementsFit(a, b);
 }
 
 /** Le lieu d'une annonce : son terrain s'il est retenu, sinon sa commune. */
-function coordsOf(a: Pick<Announcement, "venueLat" | "venueLng" | "city">) {
+export function coordsOf(a: Pick<Announcement, "venueLat" | "venueLng" | "city">) {
   if (a.venueLat != null && a.venueLng != null) return { lat: a.venueLat, lng: a.venueLng };
   return cityCoords(a.city);
 }

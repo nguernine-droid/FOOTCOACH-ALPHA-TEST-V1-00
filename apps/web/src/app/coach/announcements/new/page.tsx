@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Megaphone, SlidersHorizontal, Users } from "lucide-react";
 import {
@@ -16,6 +16,7 @@ import {
   isPlateauCategory,
   type AnnouncementCategory,
   type AnnouncementDefaultsDto,
+  type AnnouncementSuggestionsDto,
   type CoachTeamDto,
   type DivisionLevel,
   type MatchCategory,
@@ -28,6 +29,7 @@ import { CategoryPicker } from "@/components/CategoryPicker";
 import { PreciseCategoryPicker } from "@/components/PreciseCategoryPicker";
 import { DivisionLevelPicker } from "@/components/DivisionLevelPicker";
 import { VenueField } from "@/components/VenueField";
+import { SuggestedOpponents } from "@/components/announcements/SuggestedOpponents";
 import { GenderPicker } from "@/components/GenderPicker";
 import { Button } from "@/components/ui/Button";
 import { DateField } from "@/components/ui/DateField";
@@ -47,6 +49,17 @@ function enumerate(items: string[]): string {
 }
 
 const FORMATS = ["5v5", "8v8", "11v11"] as const;
+
+/**
+ * Au-delà, on publie sans attendre les correspondances.
+ *
+ * Le raccourci s'intercale entre un clic et un enregistrement : un coach qui
+ * patiente trois secondes après avoir appuyé sur « Publier » croit que
+ * l'application a planté, pas qu'elle cherche à l'aider. Passé ce délai, la
+ * recherche est abandonnée et la publication se fait comme avant — perdre une
+ * mise en relation coûte moins cher que rendre la publication poussive.
+ */
+const SUGGESTIONS_TIMEOUT_MS = 2_500;
 
 /**
  * Publier une annonce. La page attend de savoir ce que la DERNIÈRE annonce du
@@ -151,6 +164,22 @@ function NewAnnouncementForm({
   const [showAll, setShowAll] = useState(defaults === null || (defaults.gender ?? activeTeam?.gender) == null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /**
+   * ————— L'étape intercalée entre « Valider » et l'enregistrement —————
+   * Non nul = l'écran des correspondances a pris la place du formulaire. Il ne
+   * s'affiche que s'il a trouvé quelque chose : sans correspondance, la
+   * publication suit son cours sans qu'aucun écran ne s'interpose.
+   */
+  const [suggestions, setSuggestions] = useState<AnnouncementSuggestionsDto | null>(null);
+  /** Ce qui est en cours sur cet écran : l'id d'une annonce, "publish", ou rien */
+  const [busy, setBusy] = useState<string | null>(null);
+  /**
+   * L'annonce une fois partie en base. Une référence et non un état : elle sert
+   * de GARDE — publier deux fois la même annonce parce qu'une proposition a
+   * échoué et que le coach a réessayé laisserait un doublon sur le radar, que
+   * personne ne saurait ensuite lequel retirer.
+   */
+  const publishedId = useRef<string | null>(null);
 
   // Ce qui a RÉELLEMENT été repris de l'équipe — annoncer un stade qu'elle n'a
   // pas ferait douter du reste du formulaire. La ville en fait toujours partie
@@ -190,36 +219,154 @@ function NewAnnouncementForm({
   // préremplis, soit `required` et pris en charge par le navigateur.
   const incomplete = !gender || !form.time;
 
-  // Le « + » de la barre d'onglets devient un « ✓ » qui publie cette annonce
+  // Le « + » de la barre d'onglets devient un « ✓ » qui publie cette annonce.
+  // Éteint pendant l'écran des correspondances : le formulaire y est démonté,
+  // et un bouton qui ne fait rien vaut moins qu'un bouton grisé.
   useQuickActionOverride({
     kind: "submit",
     formId: FORM_ID,
     label: "Publier l'annonce",
-    disabled: loading || incomplete,
+    disabled: loading || incomplete || suggestions !== null,
   });
 
+  /** Ce qui part au serveur — identique pour la recherche et pour la publication */
+  function payload() {
+    return {
+      ...form,
+      gender,
+      level,
+      preciseCategory,
+      venueId,
+      comment: form.comment || undefined,
+    };
+  }
+
+  /**
+   * Publie l'annonce, une fois et une seule.
+   *
+   * Idempotente par construction : les deux chemins de l'écran des
+   * correspondances y mènent (« publier » et « proposer de jouer », qui publie
+   * aussi en filet), et un coach qui réessaie après un échec ne doit pas se
+   * retrouver avec deux annonces identiques sur le radar.
+   */
+  async function publishOnce(): Promise<void> {
+    if (publishedId.current) return;
+    const created = await api<{ id: string }>("/announcements", {
+      method: "POST",
+      body: JSON.stringify(payload()),
+    });
+    publishedId.current = created.id;
+  }
+
+  /**
+   * Valider ne publie plus directement : on regarde d'abord si le match cherché
+   * n'est pas DÉJÀ publié par une autre équipe.
+   *
+   * La recherche est au mieux — jamais bloquante. Si elle échoue, si elle
+   * dépasse son délai, ou si elle ne trouve rien, la publication se fait
+   * exactement comme avant. C'est la règle qui prime sur toutes les autres :
+   * un raccourci ne doit jamais empêcher le geste qu'il prétend raccourcir.
+   */
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
     setError(null);
     try {
-      await api("/announcements", {
-        method: "POST",
-        body: JSON.stringify({
-          ...form,
-          gender,
-          level,
-          preciseCategory,
-          venueId,
-          comment: form.comment || undefined,
-        }),
-      });
+      // Une course plutôt qu'un `AbortSignal.timeout` : celui-ci manque sur les
+      // Safari d'avant iOS 16, et une méthode absente lèverait ici même — ce
+      // qui empêcherait de publier au lieu de simplement chercher moins bien.
+      // La requête abandonnée continue côté réseau, sans conséquence : elle ne
+      // modifie rien.
+      const found = await Promise.race([
+        api<AnnouncementSuggestionsDto>("/announcements/suggestions", {
+          method: "POST",
+          body: JSON.stringify(payload()),
+        }).catch(() => null),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), SUGGESTIONS_TIMEOUT_MS)),
+      ]);
+      if (found && found.items.length > 0) {
+        setSuggestions(found);
+        setLoading(false);
+        return;
+      }
+      await publishOnce();
       router.push("/coach/announcements");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Création impossible");
       setLoading(false);
     }
+  }
+
+  /**
+   * Retenir une correspondance : on publie SON annonce, puis on propose de
+   * jouer sur celle d'en face.
+   *
+   * Dans cet ordre, et les deux : le match n'est convenu qu'une fois que les
+   * deux coachs ont validé dans le fil (voir la double validation des
+   * propositions). Une proposition déclinée laisserait sinon le coach sans rien
+   * en ligne, à tout ressaisir — l'annonce publiée est son filet.
+   */
+  async function acceptSuggestion(announcementId: string) {
+    setBusy(announcementId);
+    setError(null);
+    try {
+      await publishOnce();
+      const { conversationId } = await api<{ responseId: string; conversationId: string | null }>(
+        `/announcements/${announcementId}/respond`,
+        { method: "POST" },
+      );
+      // Le fil est l'endroit où le match se décide : y déposer le coach vaut
+      // mieux que de le renvoyer à une liste d'annonces.
+      router.push(conversationId ? `/coach/messages/${conversationId}` : "/coach/announcements");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Impossible de proposer ce match";
+      // Dire exactement où l'on en est. Une annonce publiée dont la proposition
+      // a échoué n'est pas un échec complet, et laisser croire le contraire
+      // ferait republier par-dessus.
+      setError(
+        publishedId.current
+          ? `Votre annonce est bien publiée, mais la proposition n'est pas partie : ${message}`
+          : message,
+      );
+      setBusy(null);
+    }
+  }
+
+  /** Publier sans retenir aucune correspondance — le geste que le coach venait faire */
+  async function publishOnly() {
+    setBusy("publish");
+    setError(null);
+    try {
+      await publishOnce();
+      router.push("/coach/announcements");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Création impossible");
+      setBusy(null);
+    }
+  }
+
+  if (suggestions) {
+    return (
+      <SuggestedOpponents
+        items={suggestions.items}
+        totalFound={suggestions.totalFound}
+        busy={busy}
+        error={error}
+        onAccept={acceptSuggestion}
+        onPublish={publishOnly}
+        // Revenir au formulaire n'a plus de sens une fois l'annonce en base :
+        // ce qu'on y modifierait ne serait jamais republié.
+        onBack={
+          publishedId.current
+            ? undefined
+            : () => {
+                setSuggestions(null);
+                setError(null);
+              }
+        }
+      />
+    );
   }
 
   return (
