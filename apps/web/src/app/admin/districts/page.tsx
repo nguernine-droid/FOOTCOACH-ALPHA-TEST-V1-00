@@ -99,6 +99,7 @@ export default function DistrictsPage() {
                   <th className="px-3 py-3 text-right">Équipes</th>
                   <th className="px-3 py-3 text-right">Annonces</th>
                   <th className="px-3 py-3 text-right">Appariées</th>
+                  <th className="px-3 py-3 text-right">Joués</th>
                   <th className="px-3 py-3 text-right">Dispos</th>
                   <th className="px-4 py-3 text-right">Taux</th>
                 </tr>
@@ -141,6 +142,9 @@ function Row({ row }: { row: DistrictStatsDto }) {
       <td className="px-3 py-3 text-right tabular-nums font-bold">{row.teams}</td>
       <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{row.announcements}</td>
       <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{row.announcementsMatched}</td>
+      {/* Ce que les appariements ont réellement donné : une annonce appariée
+          dont le match n'a jamais été joué ne prouve rien du département. */}
+      <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{row.matchesPlayed}</td>
       <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{row.availabilities}</td>
       <td className="px-4 py-3 text-right">
         {rate === null ? (
