@@ -13,6 +13,7 @@ import {
   setActiveTeamId,
 } from "@/lib/api";
 import { AccountSheet } from "@/components/AccountSheet";
+import { InstallInvite } from "@/components/InstallInvite";
 import { TabBadgesContext } from "@/components/TabBadgesContext";
 import { ActiveTeamContext } from "@/components/ActiveTeamContext";
 import { Avatar } from "@/components/Avatar";
@@ -255,6 +256,17 @@ export function RoleGuard({
             )}
           </PageTransition>
         </div>
+
+        {/* Ouverte dans un onglet plutôt que depuis l'écran d'accueil : on le
+            dit une fois, puis on se tait (voir InstallInvite). Montée ici, et
+            non sur les pages publiques, parce qu'elle s'adresse à quelqu'un qui
+            SE SERT de FootCoach — sur la vitrine, la seule chose à demander est
+            de créer un compte.
+
+            Aux coachs seulement : ce sont eux qui reçoivent des alertes de
+            match, donc les seuls à qui l'installation apporte quelque chose. Un
+            administrateur devant son ordinateur n'a rien à y gagner. */}
+        {role === "coach" && <InstallInvite />}
 
         {sheetOpen && (
           <AccountSheet
