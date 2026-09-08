@@ -7,7 +7,7 @@ const complete = legalIsComplete();
 
 export const metadata: Metadata = {
   title: "Mentions légales",
-  description: "Éditeur, directeur de publication, hébergeur et propriété intellectuelle du site TeamNexus.",
+  description: "Éditeur, directeur de publication, hébergeur et propriété intellectuelle du site FootCoach.",
   alternates: { canonical: "/mentions-legales" },
   // Tant que l'identification exigée par la LCEN n'est pas complète, la page
   // reste accessible mais n'est pas proposée aux moteurs : une mention légale
@@ -30,7 +30,7 @@ export default function MentionsLegales() {
     <LegalPage
       eyebrow="Informations légales"
       title="Mentions légales"
-      lede="Qui édite ce site et l'application TeamNexus, qui l'héberge, et comment nous joindre."
+      lede="Qui édite ce site et l'application FootCoach, qui l'héberge, et comment nous joindre."
       updated={LEGAL_VERSIONS.mentions.updated}
       version={LEGAL_VERSIONS.mentions.version}
       toc={TOC}
@@ -39,11 +39,11 @@ export default function MentionsLegales() {
 
       <h2 id="editeur">1. Éditeur du site et de l&apos;application</h2>
       <p>
-        Le site <b>teamnexus.fr</b> et l&apos;application TeamNexus sont édités par <b>{EDITOR.name}</b>,
+        Le site <b>teamnexus.fr</b> et l&apos;application FootCoach sont édités par <b>{EDITOR.name}</b>,
         personne physique, à titre non professionnel.
       </p>
       <p>
-        TeamNexus est un service <b>gratuit</b>{" "}qui ne tire aucun revenu de son activité : ni abonnement, ni
+        FootCoach est un service <b>gratuit</b>{" "}qui ne tire aucun revenu de son activité : ni abonnement, ni
         publicité, ni revente de données. À ce titre, l&apos;article 6 III 2° de la loi n° 2004-575 du 21 juin
         2004 pour la confiance dans l&apos;économie numérique dispense l&apos;éditeur de publier son adresse
         postale et son immatriculation, sous deux conditions que nous remplissons : ses éléments
@@ -85,7 +85,7 @@ export default function MentionsLegales() {
 
       <h2 id="propriete">4. Propriété intellectuelle</h2>
       <p>
-        La marque TeamNexus, son logo, la charte graphique, les textes de ce site et le code de
+        La marque FootCoach, son logo, la charte graphique, les textes de ce site et le code de
         l&apos;application sont la propriété de l&apos;éditeur, sauf mention contraire. Toute reproduction ou
         représentation, totale ou partielle, sans autorisation écrite préalable, est interdite.
       </p>

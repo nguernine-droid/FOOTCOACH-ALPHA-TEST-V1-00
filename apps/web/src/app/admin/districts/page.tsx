@@ -6,7 +6,7 @@ import {
   matchRate,
   DISTRICT_MIN_ANNOUNCEMENTS,
   type DistrictStatsDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { DistrictReference } from "@/components/admin/DistrictReference";

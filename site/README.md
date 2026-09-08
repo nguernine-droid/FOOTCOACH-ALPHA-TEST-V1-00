@@ -1,4 +1,4 @@
-# Site vitrine TeamNexus
+# Site vitrine FootCoach
 
 Page publique de présentation de l'application, **entièrement statique** : un seul
 fichier HTML, ses fontes et le logo. Aucun build, aucune dépendance, aucune
@@ -57,7 +57,7 @@ Trois pages, dans la même charte que le site :
 |---|---|
 | `mentions-legales.html` | **Obligatoire** — LCEN art. 6 III : identification de l'éditeur et de l'hébergeur. |
 | `confidentialite.html` | **Obligatoire** — RGPD : l'application traite email, nom, téléphone, photo, position, abonnements push. Le contenu factuel (catégories, bases légales, sécurité, destinataires) est aligné sur le code : `apps/api/src/db/schema.ts` et les routes. |
-| `cgu.html` | Non obligatoire, mais c'est là que se dit l'essentiel : TeamNexus met en relation, **ne déclare rien au district**, ne vérifie ni licences ni assurances ni terrain, et un score validé n'a pas de valeur fédérale. |
+| `cgu.html` | Non obligatoire, mais c'est là que se dit l'essentiel : FootCoach met en relation, **ne déclare rien au district**, ne vérifie ni licences ni assurances ni terrain, et un score validé n'a pas de valeur fédérale. |
 
 **Rien n'est publiable en l'état.** Chaque information manquante est marquée
 dans le texte par un encadré rouge `[À COMPLÉTER]`, impossible à rater à

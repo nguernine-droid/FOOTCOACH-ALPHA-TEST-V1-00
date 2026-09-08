@@ -12,7 +12,7 @@ import {
   type DivisionLevel,
   type MatchCategory,
   type MatchGender,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { CategoryPicker } from "@/components/CategoryPicker";

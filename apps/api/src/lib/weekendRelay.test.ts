@@ -7,7 +7,7 @@ import {
   withinRelayHours,
   FREE_WEEKEND_LEAD_MAX_DAYS,
   FREE_WEEKEND_LEAD_MIN_DAYS,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 
 /**
  * Règles de la relance des week-ends libres. Elles décident QUAND on dérange un

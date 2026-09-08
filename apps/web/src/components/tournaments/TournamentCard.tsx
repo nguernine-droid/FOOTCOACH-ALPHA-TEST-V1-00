@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, CalendarDays, MapPin, Trophy, Users } from "lucide-react";
-import { categoryLabel, MATCH_GENDER_LABELS, TOURNAMENT_SESSION_LABELS, type TournamentDto } from "@teamnexus/shared";
+import { categoryLabel, MATCH_GENDER_LABELS, TOURNAMENT_SESSION_LABELS, type TournamentDto } from "@footcoach/shared";
 import { cn, formatDate } from "@/lib/utils";
 
 /**

@@ -305,7 +305,7 @@ export const coachFeedback = pgTable(
     // Réponse courte de l'admin, visible de l'auteur : pourquoi refusé, ce qui a été fait…
     adminNote: text("admin_note"),
     /**
-     * Fil ouvert entre le contributeur et l'équipe TeamNexus à l'envoi. C'est là
+     * Fil ouvert entre le contributeur et l'équipe FootCoach à l'envoi. C'est là
      * que la conversation se poursuit : l'admin répond depuis son inbox, le
      * contributeur lit et relance depuis sa messagerie, au même endroit que ses
      * échanges avec les autres coachs.

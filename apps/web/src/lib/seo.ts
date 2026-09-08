@@ -1,4 +1,4 @@
-import { categoryLabel, type PublicAnnouncementDto } from "@teamnexus/shared";
+import { categoryLabel, type PublicAnnouncementDto } from "@footcoach/shared";
 import { CONTACT } from "@/lib/legal";
 import { siteUrl } from "@/lib/publicApi";
 
@@ -46,8 +46,8 @@ export function organizationNode() {
   return {
     "@type": "Organization",
     "@id": orgId(),
-    name: "TeamNexus",
-    alternateName: "TeamNexus — matchs amicaux",
+    name: "FootCoach",
+    alternateName: "FootCoach — matchs amicaux",
     url: base,
     description: TAGLINE,
     // 512 × 512, servi par `app/icon.png` : Google demande une image d'au
@@ -67,7 +67,7 @@ export function webSiteNode() {
     "@type": "WebSite",
     "@id": siteId(),
     url: siteUrl(),
-    name: "TeamNexus",
+    name: "FootCoach",
     description: TAGLINE,
     inLanguage: "fr-FR",
     publisher: { "@id": orgId() },
@@ -86,7 +86,7 @@ export function softwareApplicationNode() {
   const base = siteUrl();
   return {
     "@type": "SoftwareApplication",
-    name: "TeamNexus",
+    name: "FootCoach",
     url: base,
     applicationCategory: "SportsApplication",
     applicationSubCategory: "Organisation de matchs amicaux de football",

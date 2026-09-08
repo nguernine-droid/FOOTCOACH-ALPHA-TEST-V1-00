@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Camera, Shield, Trash2 } from "lucide-react";
-import type { CoachTeamDto } from "@teamnexus/shared";
+import type { CoachTeamDto } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { TeamLogo } from "@/components/TeamLogo";

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { categorySlug } from "@teamnexus/shared";
+import { categorySlug } from "@footcoach/shared";
 import { fetchDistricts, siteUrl } from "@/lib/publicApi";
 import { legalIsComplete } from "@/lib/legal";
 

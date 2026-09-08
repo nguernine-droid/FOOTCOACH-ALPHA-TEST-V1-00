@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronRight, Pencil, Repeat, Trash2 } from "lucide-react";
-import type { AgendaItemDto } from "@teamnexus/shared";
+import type { AgendaItemDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { VenueLink } from "@/components/VenueLink";

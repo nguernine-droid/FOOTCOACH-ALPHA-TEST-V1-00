@@ -24,7 +24,7 @@ import {
   type EncounterResultDto,
   type TournamentDetailDto,
   type WithdrawalReason,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { QrScanner } from "@/components/matches/QrScanner";

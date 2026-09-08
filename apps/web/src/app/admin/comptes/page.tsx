@@ -8,7 +8,7 @@ import type {
   AdminCreateClubResultDto,
   DeclaredClubDto,
   Role,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { timeAgo, useNow } from "@/lib/time";

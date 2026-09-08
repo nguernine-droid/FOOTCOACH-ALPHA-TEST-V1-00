@@ -35,7 +35,7 @@ export function AppPreview() {
       <div className="rounded-[var(--v-radius-mockup)] border-[6px] border-[var(--v-surface-3)] bg-[var(--v-surface-1)] overflow-hidden">
         <div className="bg-[var(--v-surface-0)] px-4 pt-3 pb-4">
           <p className="display text-sm text-primary">
-            TEAM<span className="text-accent">NEXUS</span>
+            FOOT<span className="text-accent">COACH</span>
           </p>
         </div>
 

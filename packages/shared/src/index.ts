@@ -480,7 +480,7 @@ export const COACH_CATEGORY_DESCRIPTIONS: Record<CoachCategory, string> = {
   joker:
     "Vous acceptez d'être alerté quand un coach de votre secteur se retrouve sans adversaire. Ces alertes SOS ne partent qu'aux jokers.",
   contributeur:
-    "Vous faites vivre le projet : vous partagez les informations du secteur (poules, intempéries, plateaux annulés), vous le faites connaître autour de vous, et vous avez la ligne directe avec l'équipe TeamNexus — vos signalements de bugs et vos idées d'amélioration ouvrent une discussion avec elle.",
+    "Vous faites vivre le projet : vous partagez les informations du secteur (poules, intempéries, plateaux annulés), vous le faites connaître autour de vous, et vous avez la ligne directe avec l'équipe FootCoach — vos signalements de bugs et vos idées d'amélioration ouvrent une discussion avec elle.",
 };
 
 /**
@@ -756,9 +756,11 @@ const FORBIDDEN_PASSWORDS = [
   "123456", "1234567890", "0123456789", "iloveyou", "admin", "administrateur",
   "welcome", "bienvenue", "letmein", "changeme", "secret", "abc", "abcdef",
   "monmotdepasse", "soleil", "bonjour", "coucou", "chouchou", "doudou",
-  // Propres à ce produit : les premiers essais d'un attaquant qui sait où il est
-  "teamnexus", "football", "foot", "coach", "entraineur", "equipe", "match",
-  "stade", "ballon", "gardien", "champion", "victoire", "demo", "test",
+  // Propres à ce produit : les premiers essais d'un attaquant qui sait où il est.
+  // « teamnexus » y reste : c'est l'ancien nom de l'application, et il porte
+  // encore le domaine public — deux raisons de le tenter avant tout autre mot.
+  "footcoach", "teamnexus", "football", "foot", "coach", "entraineur", "equipe",
+  "match", "stade", "ballon", "gardien", "champion", "victoire", "demo", "test",
 ];
 
 /** Réduit un mot de passe à son ossature, pour le comparer à la liste noire. */
@@ -1221,20 +1223,29 @@ export const createPublicationSchema = z.object({
 export type CreatePublicationInput = z.infer<typeof createPublicationSchema>;
 
 /**
- * Préfixe du QR code d'un coach : `TEAMNEXUS:COACH:<code>`. Il permet au
- * scanner de reconnaître un code TeamNexus et d'écarter tout autre QR.
+ * Préfixe du QR code d'un coach : `FOOTCOACH:COACH:<code>`. Il permet au
+ * scanner de reconnaître un code FootCoach et d'écarter tout autre QR.
  */
-export const COACH_QR_PREFIX = "TEAMNEXUS:COACH:";
+export const COACH_QR_PREFIX = "FOOTCOACH:COACH:";
+
+/**
+ * Préfixe de l'époque où l'application s'appelait TeamNexus. Une carte de coach
+ * se photographie, s'imprime, se partage : celles qui circulent déjà portent
+ * l'ancien préfixe pour toujours. Le scanner les accepte encore — il n'en émet
+ * plus.
+ */
+const LEGACY_COACH_QR_PREFIX = "TEAMNEXUS:COACH:";
 
 export function coachQrPayload(code: string): string {
   return `${COACH_QR_PREFIX}${code}`;
 }
 
-/** Extrait le code d'un QR scanné ; null si ce n'est pas un QR coach TeamNexus */
+/** Extrait le code d'un QR scanné ; null si ce n'est pas un QR coach FootCoach */
 export function parseCoachQr(payload: string): string | null {
   const trimmed = payload.trim();
-  if (!trimmed.startsWith(COACH_QR_PREFIX)) return null;
-  const code = trimmed.slice(COACH_QR_PREFIX.length).toUpperCase();
+  const prefix = [COACH_QR_PREFIX, LEGACY_COACH_QR_PREFIX].find((p) => trimmed.startsWith(p));
+  if (!prefix) return null;
+  const code = trimmed.slice(prefix.length).toUpperCase();
   return /^[A-Z0-9]{4,12}$/.test(code) ? code : null;
 }
 
@@ -1979,7 +1990,7 @@ export interface AdminClubDuplicateGroupDto {
  * Un signalement (bug ou suggestion), réservé aux coachs contributeurs.
  *
  * Le statut et la note de triage restent à l'admin ; ce que le contributeur
- * retrouve, lui, c'est le FIL ouvert avec l'équipe TeamNexus au moment de
+ * retrouve, lui, c'est le FIL ouvert avec l'équipe FootCoach au moment de
  * l'envoi — c'est là que la réponse arrive, dans sa messagerie, et non dans un
  * écran « mes signalements » qu'il faudrait aller consulter.
  */
@@ -1991,7 +2002,7 @@ export interface FeedbackDto {
   adminNote: string | null;
   createdAt: string;
   handledAt: string | null;
-  /** Fil ouvert avec l'équipe TeamNexus — null si aucun compte admin n'existe */
+  /** Fil ouvert avec l'équipe FootCoach — null si aucun compte admin n'existe */
   conversationId: string | null;
 }
 

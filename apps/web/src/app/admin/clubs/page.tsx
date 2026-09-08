@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Building2, Check, GitMerge, Pencil, Search, Trash2, TriangleAlert, Users, X } from "lucide-react";
-import type { AdminClubDto, AdminClubDuplicateGroupDto } from "@teamnexus/shared";
+import type { AdminClubDto, AdminClubDuplicateGroupDto } from "@footcoach/shared";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BottomSheet } from "@/components/ui/BottomSheet";

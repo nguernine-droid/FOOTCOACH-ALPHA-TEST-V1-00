@@ -44,7 +44,7 @@ test.describe("Référencement — page d'accueil", () => {
     );
 
     const org = nodes.find((n) => n["@type"] === "Organization")!;
-    expect(org.name).toBe("TeamNexus");
+    expect(org.name).toBe("FootCoach");
     // Le logo est ce qui rend l'éditeur affichable à côté du lien : une URL
     // absolue, sur une image que le site sert vraiment.
     expect((org.logo as { url: string }).url).toMatch(/^https?:\/\/.+\/icon\.png$/);
@@ -112,7 +112,7 @@ test.describe("Référencement — la couche publique", () => {
       const title = await page.title();
       expect(title, `titre hérité sur ${path}`).not.toBe(home);
       // La marque est posée une fois, par le gabarit du layout.
-      expect(title).toMatch(/\| TeamNexus$/);
+      expect(title).toMatch(/\| FootCoach$/);
     }
   });
 });

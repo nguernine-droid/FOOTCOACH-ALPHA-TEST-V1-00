@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CoachCardDto } from "@teamnexus/shared";
+import type { CoachCardDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { CoachCard } from "@/components/coach/CoachCard";
 import { ReliabilityBadge } from "@/components/ReliabilityBadge";

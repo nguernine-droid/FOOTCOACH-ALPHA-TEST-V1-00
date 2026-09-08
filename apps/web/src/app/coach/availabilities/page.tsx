@@ -15,7 +15,7 @@ import {
   type AvailabilityVenue,
   type DivisionLevel,
   type SuggestionDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api, ApiError } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { useActiveTeam } from "@/components/ActiveTeamContext";

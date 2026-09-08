@@ -3,7 +3,7 @@ import type {
   PublicBoardDto,
   PublicDistrictDto,
   PublicStatsDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 
 /**
  * Appels de la couche publique, faits DEPUIS LE SERVEUR.

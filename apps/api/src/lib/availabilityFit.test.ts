@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { availabilitiesFit, hostOf, venuesFit, type AvailabilityVenue } from "@teamnexus/shared";
+import { availabilitiesFit, hostOf, venuesFit, type AvailabilityVenue } from "@footcoach/shared";
 
 /**
  * Appariement de deux disponibilités déclarées. À la différence de

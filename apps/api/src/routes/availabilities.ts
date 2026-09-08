@@ -11,7 +11,7 @@ import {
   type AvailabilityVenue,
   type DivisionLevel,
   type SuggestionDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matchAnnouncements, teamAvailabilities, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

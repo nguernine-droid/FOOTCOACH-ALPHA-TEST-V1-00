@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { teamMatchesAnnouncement } from "@teamnexus/shared";
+import { teamMatchesAnnouncement } from "@footcoach/shared";
 
 /**
  * Appariement d'une équipe qui propose avec l'annonce qu'elle vise. Rien n'est

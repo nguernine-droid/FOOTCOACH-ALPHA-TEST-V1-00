@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { DEPARTMENT_NAMES, DEPARTMENTS_WITHOUT_DISTRICT } from "@teamnexus/shared";
+import { DEPARTMENT_NAMES, DEPARTMENTS_WITHOUT_DISTRICT } from "@footcoach/shared";
 
 /**
  * Intégrité du référentiel des districts.

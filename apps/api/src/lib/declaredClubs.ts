@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { DeclaredClubDto } from "@teamnexus/shared";
+import type { DeclaredClubDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { clubs } from "../db/schema.js";
 import { cityCoords } from "./cities.js";

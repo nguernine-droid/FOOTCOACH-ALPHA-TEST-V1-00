@@ -16,11 +16,11 @@ import {
   type PublicDistrictDto,
   type PublicStatsDto,
   type DivisionLevel,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { announcementResponses, matchAnnouncements, matches, teams, users } from "../db/schema.js";
 import { HttpError } from "../plugins/errors.js";
-import { asDivisionLevel, asMatchGender } from "@teamnexus/shared";
+import { asDivisionLevel, asMatchGender } from "@footcoach/shared";
 import { departmentOf } from "../lib/districts.js";
 import { publicBoardRateLimit } from "../lib/rateLimits.js";
 

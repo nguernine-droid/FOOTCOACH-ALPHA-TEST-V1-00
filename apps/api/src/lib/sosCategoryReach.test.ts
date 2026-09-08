@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fineCategoriesOf, sosCategoryReach } from "@teamnexus/shared";
+import { fineCategoriesOf, sosCategoryReach } from "@footcoach/shared";
 
 /**
  * Tranche d'âge réveillée par un SOS : les catégories visées, plus l'année de

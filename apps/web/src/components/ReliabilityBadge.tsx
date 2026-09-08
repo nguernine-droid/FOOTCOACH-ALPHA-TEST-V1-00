@@ -7,7 +7,7 @@ import {
   WITHDRAWAL_REASON_LABELS,
   RELIABILITY_TONE_LABELS,
   type ReliabilityDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { cn } from "@/lib/utils";
 
 const TONES = {

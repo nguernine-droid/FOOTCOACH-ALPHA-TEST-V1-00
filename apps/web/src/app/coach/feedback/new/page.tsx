@@ -7,7 +7,7 @@ import {
   FEEDBACK_TYPE_LABELS,
   type FeedbackDto,
   type FeedbackType,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api, getStoredUser } from "@/lib/api";
 import { useQuickActionOverride } from "@/components/QuickActionContext";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -74,7 +74,7 @@ export default function NewFeedbackPage() {
         <p className="text-sm font-bold">Réservé aux coachs contributeurs</p>
         <p className="text-xs text-ink-soft">
           Signaler un bug ou proposer une amélioration fait partie de ce qu&apos;engage la casquette
-          contributeur : chaque retour ouvre une discussion avec l&apos;équipe TeamNexus, qui se suit dans le
+          contributeur : chaque retour ouvre une discussion avec l&apos;équipe FootCoach, qui se suit dans le
           temps. Vous pouvez la prendre depuis votre profil.
         </p>
         <ButtonLink href="/coach/profile" variant="soft" className="w-full">
@@ -93,8 +93,8 @@ export default function NewFeedbackPage() {
         <p className="text-sm font-bold">Signalement envoyé</p>
         <p className="text-xs text-ink-soft">
           {conversationId
-            ? "Il ouvre une discussion avec l'équipe TeamNexus : sa réponse arrivera dans votre messagerie, et vous pouvez y ajouter des précisions."
-            : "Transmis à l'équipe TeamNexus, qui s'en occupe."}
+            ? "Il ouvre une discussion avec l'équipe FootCoach : sa réponse arrivera dans votre messagerie, et vous pouvez y ajouter des précisions."
+            : "Transmis à l'équipe FootCoach, qui s'en occupe."}
         </p>
         {conversationId && (
           <ButtonLink href={`/coach/messages/${conversationId}`} className="w-full">
@@ -126,7 +126,7 @@ export default function NewFeedbackPage() {
         <div>
           <h2 className="display text-lg">Signaler un bug ou une idée</h2>
           <p className="text-xs text-white/85">
-            Votre retour ouvre une discussion avec l&apos;équipe TeamNexus.
+            Votre retour ouvre une discussion avec l&apos;équipe FootCoach.
           </p>
         </div>
       </div>

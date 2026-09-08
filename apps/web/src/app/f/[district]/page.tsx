@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { districtCodeFromSlug } from "@teamnexus/shared";
+import { districtCodeFromSlug } from "@footcoach/shared";
 import { fetchBoard, fetchDistricts } from "@/lib/publicApi";
 import { PublicBoard } from "@/components/public/PublicBoard";
 

@@ -8,7 +8,7 @@ const complete = legalIsComplete();
 export const metadata: Metadata = {
   title: "Conditions générales d'utilisation",
   description:
-    "Ce que TeamNexus fait, ce qu'il ne fait pas à votre place, et ce que nous attendons de vous. La déclaration du match à votre district reste la vôtre.",
+    "Ce que FootCoach fait, ce qu'il ne fait pas à votre place, et ce que nous attendons de vous. La déclaration du match à votre district reste la vôtre.",
   alternates: { canonical: "/cgu" },
   robots: { index: complete, follow: true },
 };
@@ -44,7 +44,7 @@ export default function Cgu() {
       <SummaryBox title="L'essentiel">
         <ul>
           <li>
-            TeamNexus <b>met des coachs en relation</b>. Il n&apos;organise pas la rencontre à votre place.
+            FootCoach <b>met des coachs en relation</b>. Il n&apos;organise pas la rencontre à votre place.
           </li>
           <li>
             La <b>déclaration du match à votre district reste la vôtre</b>{" "}: l&apos;application ne l&apos;envoie
@@ -70,11 +70,11 @@ export default function Cgu() {
 
       <h2 id="objet">1. Objet</h2>
       <p>
-        Les présentes conditions régissent l&apos;utilisation de l&apos;application TeamNexus et du site
+        Les présentes conditions régissent l&apos;utilisation de l&apos;application FootCoach et du site
         teamnexus.fr, édités par <b>{EDITOR.name}</b>{" "}(« nous »).
       </p>
       <p>
-        TeamNexus est un outil de <b>mise en relation entre coachs</b>{" "}pour l&apos;organisation de matchs
+        FootCoach est un outil de <b>mise en relation entre coachs</b>{" "}pour l&apos;organisation de matchs
         amicaux et de tournois : publier une annonce, répondre à celle d&apos;un confrère, fixer la rencontre,
         attester au stade qu&apos;elle a bien eu lieu, puis enregistrer le score final.
       </p>
@@ -120,7 +120,7 @@ export default function Cgu() {
 
       <h2 id="perimetre">5. Ce que le service fait — et ne fait pas</h2>
       <p>
-        TeamNexus vous aide à <b>trouver un adversaire et à vous entendre avec lui</b>. Tout ce qui relève de la
+        FootCoach vous aide à <b>trouver un adversaire et à vous entendre avec lui</b>. Tout ce qui relève de la
         tenue effective du match reste de votre responsabilité et de celle de votre club.
       </p>
       <h3>La déclaration à la fédération</h3>
@@ -247,7 +247,7 @@ export default function Cgu() {
 
       <h2 id="propriete">11. Propriété intellectuelle</h2>
       <p>
-        La marque, le logo, l&apos;interface et le code de TeamNexus sont protégés. L&apos;accès au service ne
+        La marque, le logo, l&apos;interface et le code de FootCoach sont protégés. L&apos;accès au service ne
         vous confère qu&apos;un droit d&apos;usage personnel, non exclusif et non transférable, pour la durée de
         votre inscription.
       </p>

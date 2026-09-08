@@ -6,8 +6,8 @@ import {
   levelForPoints,
   type CoachCardDto,
   type CoachRefDto,
-} from "@teamnexus/shared";
-import { toReliability, NO_HISTORY } from "@teamnexus/shared";
+} from "@footcoach/shared";
+import { toReliability, NO_HISTORY } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { reliabilityOfTeam } from "./reliability.js";
 import {

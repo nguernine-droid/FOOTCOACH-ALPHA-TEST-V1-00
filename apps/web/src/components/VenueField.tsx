@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Lightbulb, MapPin, Search } from "lucide-react";
-import { venueLabel, type VenueDto } from "@teamnexus/shared";
+import { venueLabel, type VenueDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 

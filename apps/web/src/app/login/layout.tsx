@@ -6,7 +6,7 @@ import type { Metadata } from "next";
  * `login/page.tsx` est un composant client (`"use client"`), et un composant
  * client ne peut pas exporter de `metadata` — Next lit ce champ sur le serveur,
  * avant de rendre quoi que ce soit. Faute de ce fichier, l'écran de connexion
- * héritait du titre et de la description de la racine : « TeamNexus — trouvez
+ * héritait du titre et de la description de la racine : « FootCoach — trouvez
  * un adversaire… », c'est-à-dire la promesse de la vitrine servie à quelqu'un
  * qui cherche à entrer chez lui.
  *
@@ -16,7 +16,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Se connecter",
   description:
-    "Connectez-vous à votre compte coach TeamNexus pour publier une annonce, répondre à celles de votre secteur et organiser vos matchs amicaux.",
+    "Connectez-vous à votre compte coach FootCoach pour publier une annonce, répondre à celles de votre secteur et organiser vos matchs amicaux.",
   alternates: { canonical: "/login" },
 };
 

@@ -5,7 +5,7 @@ import {
   type CategoryCoachDto,
   type CoachCardDto,
   type PlatformStatsDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matchAnnouncements, tournaments, users } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

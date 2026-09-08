@@ -18,7 +18,7 @@ import {
   type DistrictSource,
   type DistrictStatsDto,
   type Role,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
   clubAffiliationRequests,

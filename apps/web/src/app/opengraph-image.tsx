@@ -15,7 +15,7 @@ import { ImageResponse } from "next/og";
  */
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "TeamNexus — matchs amicaux de football amateur";
+export const alt = "FootCoach — matchs amicaux de football amateur";
 
 // Recopiées de tokens.css, section « Structure » : le même dégradé que
 // l'en-tête de l'application — une masse noire qui s'ouvre sur la brique à son
@@ -43,8 +43,8 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", fontSize: 44, fontWeight: 800, letterSpacing: "-0.02em" }}>
-          <span>TEAM</span>
-          <span style={{ color: ACCENT }}>NEXUS</span>
+          <span>FOOT</span>
+          <span style={{ color: ACCENT }}>COACH</span>
         </div>
         <div
           style={{

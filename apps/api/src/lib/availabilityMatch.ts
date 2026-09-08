@@ -13,7 +13,7 @@ import {
   type AvailabilityVenue,
   type DivisionLevel,
   type SuggestionDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matchAnnouncements, matches, teamAvailabilities, teamCoaches, teams, users } from "../db/schema.js";
 import { cityCoords, haversineKm } from "./cities.js";

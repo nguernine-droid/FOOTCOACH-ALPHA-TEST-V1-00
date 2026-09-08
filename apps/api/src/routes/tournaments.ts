@@ -13,7 +13,7 @@ import {
   type TournamentDto,
   type TournamentRegistrationDto,
   type TournamentSession,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { coachPoints, teamCoaches, teams, tournamentRegistrations, tournaments } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

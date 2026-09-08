@@ -15,7 +15,7 @@ const complete = legalIsComplete();
 export const metadata: Metadata = {
   title: "Politique de confidentialité",
   description:
-    "Ce que TeamNexus enregistre à votre sujet, pourquoi, pendant combien de temps, qui peut le voir, et comment reprendre la main dessus.",
+    "Ce que FootCoach enregistre à votre sujet, pourquoi, pendant combien de temps, qui peut le voir, et comment reprendre la main dessus.",
   alternates: { canonical: "/confidentialite" },
   robots: { index: complete, follow: true },
 };
@@ -38,7 +38,7 @@ export default function Confidentialite() {
     <LegalPage
       eyebrow="Données personnelles"
       title="Politique de confidentialité"
-      lede="Ce que TeamNexus enregistre à votre sujet, pourquoi, pendant combien de temps, qui peut le voir, et comment reprendre la main dessus."
+      lede="Ce que FootCoach enregistre à votre sujet, pourquoi, pendant combien de temps, qui peut le voir, et comment reprendre la main dessus."
       updated={LEGAL_VERSIONS.privacy.updated}
       version={LEGAL_VERSIONS.privacy.version}
       toc={TOC}
@@ -48,7 +48,7 @@ export default function Confidentialite() {
       <SummaryBox title="En résumé">
         <ul>
           <li>
-            TeamNexus ne réunit que des <b>coachs adultes</b>{" "}: aucune donnée de joueur, donc aucune donnée de
+            FootCoach ne réunit que des <b>coachs adultes</b>{" "}: aucune donnée de joueur, donc aucune donnée de
             mineur.
           </li>
           <li>
@@ -83,7 +83,7 @@ export default function Confidentialite() {
 
       <h2 id="donnees">2. Les données traitées, et pourquoi</h2>
       <p>
-        TeamNexus ne demande que ce dont le service a besoin pour fonctionner : trouver un adversaire,
+        FootCoach ne demande que ce dont le service a besoin pour fonctionner : trouver un adversaire,
         organiser la rencontre, en valider le score.
       </p>
 
@@ -261,7 +261,7 @@ export default function Confidentialite() {
         </li>
         <li>
           Vos <b>publications</b> et vos <b>signalements</b>, si vous portez la casquette contributeur. Un
-          signalement ouvre une discussion avec l&apos;équipe TeamNexus, qui lit ce que vous y écrivez.
+          signalement ouvre une discussion avec l&apos;équipe FootCoach, qui lit ce que vous y écrivez.
         </li>
       </ul>
       <p>Base légale : exécution du contrat.</p>
@@ -284,7 +284,7 @@ export default function Confidentialite() {
       </ul>
       <p>Base légale : intérêt légitime (sécurité du service et amélioration du produit).</p>
 
-      <h2 id="jamais">3. Ce que TeamNexus ne collecte pas</h2>
+      <h2 id="jamais">3. Ce que FootCoach ne collecte pas</h2>
       <ul>
         <li>
           <b>Aucune donnée de joueur, donc aucune donnée de mineur.</b>{" "}L&apos;application n&apos;a ni comptes

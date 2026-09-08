@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AVAILABILITY_MAX_DATES, AVAILABILITY_MAX_DAYS_AHEAD } from "@teamnexus/shared";
+import { AVAILABILITY_MAX_DATES, AVAILABILITY_MAX_DAYS_AHEAD } from "@footcoach/shared";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];

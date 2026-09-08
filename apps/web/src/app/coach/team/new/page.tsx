@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Users } from "lucide-react";
-import type { CoachTeamDto, DeclaredClubDto, MatchCategory, MatchGender } from "@teamnexus/shared";
+import type { CoachTeamDto, DeclaredClubDto, MatchCategory, MatchGender } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";

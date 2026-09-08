@@ -10,7 +10,7 @@ import {
   type RadarDto,
   type AnnouncementDto,
   type TournamentDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useMyAnnouncements } from "@/components/announcements/MyAnnouncements";

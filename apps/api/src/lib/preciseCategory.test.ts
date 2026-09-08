@@ -5,7 +5,7 @@ import {
   announcementCategoryOf,
   createAnnouncementSchema,
   precisableCategoriesOf,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 
 /**
  * L'âge précisé dans une annonce (U14 sur une annonce U14-U15).

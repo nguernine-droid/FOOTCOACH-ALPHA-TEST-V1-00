@@ -16,8 +16,8 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "TeamNexus — matchs amicaux",
-    short_name: "TeamNexus",
+    name: "FootCoach — matchs amicaux",
+    short_name: "FootCoach",
     description: "Trouvez un adversaire, organisez le match amical et validez le score entre coachs.",
     lang: "fr",
     // "/" redirige déjà vers l'espace du rôle connecté (ou /login)

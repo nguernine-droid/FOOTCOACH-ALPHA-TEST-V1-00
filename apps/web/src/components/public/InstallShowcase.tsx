@@ -9,7 +9,7 @@ import { promptInstall, useInstallOffer } from "@/lib/install";
  *
  * L'écoute de `beforeinstallprompt` vit à la racine (InstallPromptListener),
  * donc l'événement est déjà attrapé quand ce composant se monte — un visiteur
- * Android peut installer TeamNexus AVANT MÊME d'avoir un compte, en une touche,
+ * Android peut installer FootCoach AVANT MÊME d'avoir un compte, en une touche,
  * depuis la page d'accueil. C'est le chemin le plus court qui existe entre
  * « je découvre » et « c'est sur mon téléphone ».
  *
@@ -27,7 +27,7 @@ export function InstallShowcase() {
     return (
       <p className="text-sm font-bold text-success flex items-center gap-2">
         <CircleCheck size={16} className="shrink-0" aria-hidden />
-        TeamNexus est sur votre écran d&apos;accueil.
+        FootCoach est sur votre écran d&apos;accueil.
       </p>
     );
   }

@@ -68,7 +68,7 @@ export function BeforeAfter() {
           {/* La colonne de droite porte le liseré d'accent : c'est la seule des
               deux qu'on veut lire en entier. */}
           <VCard className="p-6 md:p-8 h-full border-[var(--v-halo-edge)]">
-            <h3 className="display text-xl text-primary">Avec TeamNexus</h3>
+            <h3 className="display text-xl text-primary">Avec FootCoach</h3>
             <ul className="mt-6 space-y-4">
               {AFTER.map((line) => (
                 <li key={line} className="flex items-start gap-3 text-sm text-primary leading-relaxed">

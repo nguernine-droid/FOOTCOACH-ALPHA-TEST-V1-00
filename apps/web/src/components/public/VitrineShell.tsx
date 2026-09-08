@@ -32,7 +32,7 @@ export function VitrineShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-[var(--v-rim-soft)]">
         <div className="max-w-[1100px] mx-auto px-5 py-10 space-y-4 text-xs text-muted">
           <p className="max-w-[65ch] leading-relaxed">
-            TeamNexus met en relation les coachs de football amateur pour organiser des matchs amicaux. Les
+            FootCoach met en relation les coachs de football amateur pour organiser des matchs amicaux. Les
             annonces sont publiées par les clubs eux-mêmes.
           </p>
           <p className="max-w-[65ch] leading-relaxed">

@@ -21,7 +21,7 @@ import {
   type DivisionLevel,
   type MatchCategory,
   type MatchGender,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";

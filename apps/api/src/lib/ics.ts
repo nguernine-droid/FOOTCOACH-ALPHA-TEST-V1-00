@@ -1,11 +1,11 @@
-import type { AgendaItemDto } from "@teamnexus/shared";
+import type { AgendaItemDto } from "@footcoach/shared";
 
 /**
  * Génération du flux iCalendar (RFC 5545) auquel s'abonne le calendrier du
  * téléphone. Format texte simple : pas de dépendance, on écrit les lignes.
  *
  * Les horaires sont émis en heure locale « flottante » (sans TZID ni Z) : les
- * heures de TeamNexus sont celles du terrain, saisies et lues en France. Un
+ * heures de FootCoach sont celles du terrain, saisies et lues en France. Un
  * VTIMEZONE Europe/Paris serait plus rigoureux mais n'apporterait une
  * différence que pour un coach qui consulte son calendrier depuis un autre
  * fuseau — et il ferait 40 lignes de plus à maintenir (règles d'heure d'été).
@@ -62,12 +62,12 @@ export function buildIcsFeed(entries: CalendarEntry[]): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//TeamNexus//Agenda//FR",
+    "PRODID:-//FootCoach//Agenda//FR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     // Nom du calendrier tel qu'il apparaît dans l'app du téléphone
-    "X-WR-CALNAME:TeamNexus",
-    "X-WR-CALDESC:Matchs\\, entraînements et tournois de vos équipes TeamNexus",
+    "X-WR-CALNAME:FootCoach",
+    "X-WR-CALDESC:Matchs\\, entraînements et tournois de vos équipes FootCoach",
     // Suggestion d'intervalle de relecture (respectée par certains clients)
     "X-PUBLISHED-TTL:PT1H",
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H",

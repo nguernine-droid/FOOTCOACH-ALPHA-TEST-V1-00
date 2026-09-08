@@ -14,7 +14,7 @@ import {
   type AuthResponseDto,
   type CoachTeamDto,
   type TeamCoachRole,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { teamCoaches, teams, users } from "../db/schema.js";
 import { requireAuth, requireRole, signAccessToken } from "../plugins/auth.js";

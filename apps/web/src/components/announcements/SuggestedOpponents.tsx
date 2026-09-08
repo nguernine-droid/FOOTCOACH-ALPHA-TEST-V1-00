@@ -6,7 +6,7 @@ import {
   MATCH_GENDER_LABELS,
   categoryLabel,
   type AnnouncementSuggestionDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { teamColor, teamInitials } from "@/components/MatchCard";
 import { ReliabilityBadge } from "@/components/ReliabilityBadge";

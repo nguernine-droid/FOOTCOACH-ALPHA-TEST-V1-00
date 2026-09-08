@@ -1,6 +1,6 @@
 "use client";
 
-import { categoryLabel, precisableCategoriesOf, type MatchCategory } from "@teamnexus/shared";
+import { categoryLabel, precisableCategoriesOf, type MatchCategory } from "@footcoach/shared";
 import { cn } from "@/lib/utils";
 
 /**

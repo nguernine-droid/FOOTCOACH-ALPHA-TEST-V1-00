@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { departmentLabel, matchRate, DISTRICT_MIN_ANNOUNCEMENTS } from "@teamnexus/shared";
+import { departmentLabel, matchRate, DISTRICT_MIN_ANNOUNCEMENTS } from "@footcoach/shared";
 import { cityCoords } from "./cities.js";
 import { departmentOf } from "./districts.js";
 

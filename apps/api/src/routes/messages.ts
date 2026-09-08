@@ -6,7 +6,7 @@ import {
   type ConversationDto,
   type ConversationThreadDto,
   type MessageDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
   announcementResponses,
@@ -23,7 +23,7 @@ import { HttpError } from "../plugins/errors.js";
 import { conversationForMember, markRead } from "../lib/conversations.js";
 import { notifyNewMessage } from "../lib/push.js";
 import { avatarUrlOf } from "./auth.js";
-import { TEAMNEXUS_TEAM_NAME } from "./feedback.js";
+import { FOOTCOACH_TEAM_NAME } from "./feedback.js";
 
 type ConversationRow = typeof conversations.$inferSelect;
 
@@ -116,11 +116,11 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
         id: row.id,
         coach: {
           id: other.id,
-          // Un fil peut avoir l'équipe TeamNexus en face — celui qu'ouvre le
+          // Un fil peut avoir l'équipe FootCoach en face — celui qu'ouvre le
           // signalement d'un contributeur. Ce n'est pas un confrère, et le
           // surnom du compte admin n'apprendrait rien à personne : le fil porte
           // le nom de l'équipe.
-          nickname: other.role === "admin" ? TEAMNEXUS_TEAM_NAME : other.nickname,
+          nickname: other.role === "admin" ? FOOTCOACH_TEAM_NAME : other.nickname,
           avatarUrl: avatarUrlOf(other.avatarPath),
         },
         teamName: teamByCoach.get(other.id) ?? null,

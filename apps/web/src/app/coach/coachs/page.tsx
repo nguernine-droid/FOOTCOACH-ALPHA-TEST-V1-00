@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, EyeOff, Megaphone, Users } from "lucide-react";
-import { categoryLabel, type CategoryCoachDto, type CategoryStatsDto } from "@teamnexus/shared";
+import { categoryLabel, type CategoryCoachDto, type CategoryStatsDto } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { Avatar } from "@/components/Avatar";
 import { LevelBadge } from "@/components/LevelBadge";

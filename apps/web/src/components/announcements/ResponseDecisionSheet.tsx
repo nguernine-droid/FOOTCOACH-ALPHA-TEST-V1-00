@@ -9,7 +9,7 @@ import {
   type AnnouncementDto,
   type AnnouncementResponseDto,
   type CoachCardDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { CoachCard } from "@/components/coach/CoachCard";

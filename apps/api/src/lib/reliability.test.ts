@@ -5,7 +5,7 @@ import {
   reliabilityTone,
   toReliability,
   RELIABILITY_MIN_SAMPLE,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 
 /**
  * Le calcul de fiabilité affiche un jugement sur un club, à d'autres clubs. Ce

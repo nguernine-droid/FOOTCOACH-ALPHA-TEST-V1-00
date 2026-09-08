@@ -8,7 +8,7 @@ import {
   type AnnouncementSuggestionDto,
   type DivisionLevel,
   type MatchGender,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { announcementResponses, matchAnnouncements, teams } from "../db/schema.js";
 import { haversineKm } from "./cities.js";

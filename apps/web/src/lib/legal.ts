@@ -25,7 +25,7 @@ export type Fillable = string | null;
 /**
  * ÉDITEUR — personne physique, service non professionnel.
  *
- * TeamNexus est édité par des particuliers et ne tire aucun revenu de son
+ * FootCoach est édité par des particuliers et ne tire aucun revenu de son
  * activité. L'article 6 III 2° de la LCEN dispense l'éditeur non professionnel
  * personne physique de publier son adresse postale, À LA CONDITION d'avoir
  * communiqué ses éléments d'identification à son hébergeur — ce que le contrat

@@ -5,7 +5,7 @@ import { Shell, VButtonLink } from "@/components/public/primitives";
 
 /**
  * Le titre reste utile même si aucun moteur ne l'indexera : c'est ce que lit
- * un visiteur dans son onglet et dans son historique, là où « TeamNexus —
+ * un visiteur dans son onglet et dans son historique, là où « FootCoach —
  * trouvez un adversaire » lui promettrait le contraire de ce qu'il voit.
  */
 export const metadata: Metadata = {

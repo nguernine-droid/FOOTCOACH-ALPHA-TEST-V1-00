@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Building2, Check, MapPin } from "lucide-react";
-import type { DeclaredClubDto } from "@teamnexus/shared";
+import type { DeclaredClubDto } from "@footcoach/shared";
 import { ClubNameField } from "@/components/ClubNameField";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";

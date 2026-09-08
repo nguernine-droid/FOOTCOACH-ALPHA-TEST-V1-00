@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bug, ChevronRight, CircleUserRound, Palette, Settings } from "lucide-react";
-import type { UserDto } from "@teamnexus/shared";
+import type { UserDto } from "@footcoach/shared";
 import { api, getStoredUser, updateStoredUser } from "@/lib/api";
 import { CalendarSyncCard } from "@/components/coach/CalendarSyncCard";
 import { NotificationsCard } from "@/components/coach/NotificationsCard";
@@ -90,7 +90,7 @@ export default function CoachSettingsPage() {
           href="/coach/feedback/new"
           icon={<Bug size={18} />}
           title="Signaler un bug ou une suggestion"
-          hint="Ça ouvre une discussion avec l'équipe TeamNexus, dans votre messagerie."
+          hint="Ça ouvre une discussion avec l'équipe FootCoach, dans votre messagerie."
         />
       )}
     </div>

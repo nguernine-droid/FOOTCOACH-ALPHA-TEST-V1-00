@@ -3,7 +3,7 @@ import {
   DIVISION_LEVEL_LABELS,
   MATCH_GENDER_LABELS,
   type PublicAnnouncementDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { Pill, VCard } from "@/components/public/primitives";
 
 /** « 2026-10-11 » → « dimanche 11 octobre » */

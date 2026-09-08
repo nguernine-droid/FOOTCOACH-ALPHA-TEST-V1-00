@@ -44,7 +44,7 @@ export function VitrineNav() {
             lien partagé. */}
         <div className="max-w-[1100px] mx-auto px-4 min-[420px]:px-5 h-16 flex items-center justify-between gap-2 min-[420px]:gap-4">
           <Link href="/" className="display text-lg min-[420px]:text-xl text-primary shrink-0">
-            TEAM<span className="text-accent">NEXUS</span>
+            FOOT<span className="text-accent">COACH</span>
           </Link>
           <nav className="flex items-center gap-1" aria-label="Accès au compte">
             {/* Sous 400 px, les trois éléments ne tiennent plus : c'est « Se

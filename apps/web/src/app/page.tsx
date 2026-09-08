@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   Siren,
 } from "lucide-react";
-import { showcaseWorthShowing } from "@teamnexus/shared";
+import { showcaseWorthShowing } from "@footcoach/shared";
 import { fetchDistricts, fetchPublicStats } from "@/lib/publicApi";
 import {
   jsonLdGraph,
@@ -44,13 +44,13 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   /**
-   * `absolute` : le gabarit du layout ajoute « | TeamNexus » à tous les
+   * `absolute` : le gabarit du layout ajoute « | FootCoach » à tous les
    * titres, et cette page porte déjà la marque en tête. Sans cela, l'accueil
    * — la page qu'on veut voir remonter sur le nom du service — s'annoncerait
-   * « TeamNexus … | TeamNexus ».
+   * « FootCoach … | FootCoach ».
    */
   title: {
-    absolute: "TeamNexus — trouvez un adversaire pour votre prochain match amical",
+    absolute: "FootCoach — trouvez un adversaire pour votre prochain match amical",
   },
   description:
     "L'application des coachs de football amateur pour organiser leurs matchs amicaux : déclarez vos dates libres, les équipes libres en face vous sont proposées. Gratuit.",
@@ -165,7 +165,7 @@ export default async function Home() {
             <Reveal delay={160}>
               <p className="text-base md:text-lg text-secondary max-w-[58ch] leading-relaxed">
                 Fini les vingt coups de fil du jeudi soir. Déclarez les dates où votre équipe est libre :
-                TeamNexus vous présente les équipes libres en face — bonne catégorie, bon niveau, vraie distance
+                FootCoach vous présente les équipes libres en face — bonne catégorie, bon niveau, vraie distance
                 jusqu&apos;au terrain. Il ne reste qu&apos;à appuyer sur « Prévenir ».
               </p>
             </Reveal>
@@ -256,7 +256,7 @@ export default async function Home() {
       </div>
 
       {/* ————— Ce que ça remplace ————— */}
-      <Section label="Avant et après TeamNexus">
+      <Section label="Avant et après FootCoach">
         <BeforeAfter />
       </Section>
 
@@ -268,12 +268,12 @@ export default async function Home() {
       </div>
 
       {/* ————— Ce qu'on ne trouve nulle part ailleurs ————— */}
-      <Section label="Ce qui rend TeamNexus différent">
+      <Section label="Ce qui rend FootCoach différent">
         <Reveal>
           <SectionHeading
             eyebrow="Le détail qui compte"
             title="Pensé pour ce qui fait vraiment mal"
-            lead="Trouver un adversaire n'est que la moitié du problème. L'autre moitié, c'est le désistement du jeudi soir, l'heure qui change, le numéro de vestiaire qu'on redemande — et c'est là que TeamNexus travaille le plus."
+            lead="Trouver un adversaire n'est que la moitié du problème. L'autre moitié, c'est le désistement du jeudi soir, l'heure qui change, le numéro de vestiaire qu'on redemande — et c'est là que FootCoach travaille le plus."
           />
         </Reveal>
         <div className="grid gap-5 min-[640px]:grid-cols-2 min-[900px]:grid-cols-3 mt-12">
@@ -326,7 +326,7 @@ export default async function Home() {
                 <SectionHeading
                   eyebrow="Sur l'écran d'accueil"
                   title="Installez-la comme une vraie application"
-                  lead="TeamNexus s'installe sur l'écran d'accueil directement depuis le navigateur — sans passer par un magasin d'applications. Plein écran, alertes de match même fermée, et l'icône à côté de WhatsApp, là où se décident les matchs."
+                  lead="FootCoach s'installe sur l'écran d'accueil directement depuis le navigateur — sans passer par un magasin d'applications. Plein écran, alertes de match même fermée, et l'icône à côté de WhatsApp, là où se décident les matchs."
                 />
                 <InstallShowcase />
               </div>
@@ -407,7 +407,7 @@ export default async function Home() {
               </h2>
               <p className="text-base md:text-lg text-secondary max-w-[48ch] mx-auto leading-relaxed">
                 Deux minutes pour créer le compte, trente secondes pour déclarer vos dates. Le reste, c&apos;est
-                TeamNexus qui s&apos;en charge.
+                FootCoach qui s&apos;en charge.
               </p>
               <div className="flex justify-center pt-1">
                 <VButtonLink href="/register" size="lg">

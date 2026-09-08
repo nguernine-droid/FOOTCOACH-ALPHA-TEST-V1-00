@@ -13,7 +13,7 @@ import type { Metadata } from "next";
  */
 export const metadata: Metadata = {
   title: "Mot de passe oublié",
-  description: "Recevez un lien pour choisir un nouveau mot de passe sur votre compte TeamNexus.",
+  description: "Recevez un lien pour choisir un nouveau mot de passe sur votre compte FootCoach.",
   robots: { index: false, follow: true },
 };
 

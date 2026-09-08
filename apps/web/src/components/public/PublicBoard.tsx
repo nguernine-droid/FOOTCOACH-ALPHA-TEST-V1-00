@@ -4,7 +4,7 @@ import {
   categorySlug,
   type PublicBoardDto,
   type PublicDistrictDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { JsonLd } from "@/components/JsonLd";
 import { breadcrumbNode, jsonLdGraph, sportsEventListNode } from "@/lib/seo";
 import { PublicAnnouncementCard } from "@/components/public/PublicAnnouncementCard";

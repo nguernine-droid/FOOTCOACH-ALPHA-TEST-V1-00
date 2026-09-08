@@ -19,7 +19,7 @@ import {
   type PlatformStatsDto,
   type PublicationDto,
   type TournamentDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { formatCountdown, kickoffDate, timeAgo, todayIso, useNow } from "@/lib/time";
@@ -136,7 +136,7 @@ export default function CoachDashboard() {
       {/* Bandeau : l'application en trois chiffres, avant même d'ouvrir le
           radar. Chaque carré mène à l'écran qu'il annonce. */}
       {platformStats && (
-        <section className="grid grid-cols-3 gap-2.5 animate-rise-in" aria-label="TeamNexus en chiffres">
+        <section className="grid grid-cols-3 gap-2.5 animate-rise-in" aria-label="FootCoach en chiffres">
           <Link
             href="/coach/coachs"
             className="card p-3 flex flex-col items-center text-center gap-1.5 transition hover:border-accent/40 active:bg-accent-surface"

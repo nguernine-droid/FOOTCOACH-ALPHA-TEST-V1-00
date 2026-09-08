@@ -5,7 +5,7 @@ import {
   RELIABILITY_WINDOW_DAYS,
   type ReliabilityDto,
   type WithdrawalReason,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matches } from "../db/schema.js";
 

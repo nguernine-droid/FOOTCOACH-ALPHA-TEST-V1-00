@@ -29,7 +29,7 @@ export function MatchingDetail() {
               Deux calendriers qui <span className="v-word">se croisent</span>.
             </>
           }
-          lead="Vous cochez vos dimanches libres. En face, un autre coach coche les siens. Là où les deux se superposent, TeamNexus propose le match — sans que personne n'ait rien cherché."
+          lead="Vous cochez vos dimanches libres. En face, un autre coach coche les siens. Là où les deux se superposent, FootCoach propose le match — sans que personne n'ait rien cherché."
         />
       </Reveal>
 

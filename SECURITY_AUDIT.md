@@ -1,8 +1,8 @@
-# Audit de sécurité — TEAMNEXUS V1
+# Audit de sécurité — FOOTCOACH V1
 
 | | |
 |---|---|
-| **Dépôt** | `TEAMNEXUS-ALPHA-TEST-V1-00` |
+| **Dépôt** | `FOOTCOACH-ALPHA-TEST-V1-00` |
 | **Branche auditée** | `v1` — commit `d435b45` |
 | **Date** | 30 juillet 2026 |
 | **Périmètre** | `apps/api`, `apps/web`, `packages/shared`, `tools/`, fichiers Docker et de configuration |
@@ -967,7 +967,7 @@ inscrits des autres. Le plafond est de 5 tentatives par 10 minutes — **sauf qu
 FC-01 le rend inopérant**, ce qui transforme une fuite marginale en énumération
 de masse. La correction de FC-01 réduit à elle seule la portée de celle-ci.
 
-L'information obtenue reste limitée : « cette adresse a un compte TeamNexus ».
+L'information obtenue reste limitée : « cette adresse a un compte FootCoach ».
 
 **Correction proposée**
 
@@ -1301,7 +1301,7 @@ d'expédition et en tests de délivrabilité — pas en code.
 
 **Tant que ce circuit n'existe pas, FC-14 reste ouverte et documentée comme
 acceptée.** Sa portée est faible : elle révèle « cette adresse a un compte
-TeamNexus », et la correction de FC-01 lui a retiré la possibilité d'énumérer en
+FootCoach », et la correction de FC-01 lui a retiré la possibilité d'énumérer en
 masse.
 
 ### Vérifications effectuées
@@ -1431,7 +1431,7 @@ correctifs mineurs ont tout de même été appliqués.
 ### TN-01 — Jeton de calendrier en clair dans les journaux
 
 Le flux ICS est public au sens « sans session » : le jeton dans le chemin de
-l'URL (`/calendar/<jeton>/teamnexus.ics`) est son seul secret, et il n'expire
+l'URL (`/calendar/<jeton>/footcoach.ics`) est son seul secret, et il n'expire
 pas. Or Fastify journalise `req.url` à chaque requête, et la redaction ne
 couvrait que des en-têtes et champs de corps. Chaque relecture d'un calendrier
 abonné écrivait donc le jeton en clair dans les journaux — quiconque les lit
@@ -1489,3 +1489,36 @@ Docker `footcoach`, l'utilisateur/base Postgres, et les variables d'environnemen
 `FOOTCOACH_*` (les renommer aurait cassé le volume de données et les `.env`
 existants). L'entrée de liste noire de mots de passe suit la marque : `teamnexus`
 est désormais refusé à l'inscription.
+
+## Retour à la marque FootCoach (8 septembre 2026)
+
+Le renommage décrit plus haut est défait : l'application reprend le nom
+**FootCoach**. Même partage qu'à l'aller entre ce qui est la marque et ce qui
+est un identifiant. Ont suivi la marque : l'interface et ses titres, le
+manifeste, le mot-repère scindé `FOOT`/`COACH`, la vitrine et les documents
+légaux, le scope npm `@teamnexus/*` → `@footcoach/*`, le fichier ICS
+`footcoach.ics`, le préfixe des QR `FOOTCOACH:COACH:`, la clé de thème de la
+vitrine et l'étiquette des notifications push.
+
+**Les domaines publics ne suivent pas** : `teamnexus.fr`, `app.teamnexus.fr` et
+`contact@teamnexus.fr` restent tels quels, sur décision explicite. En
+conséquence `SITE_URL`, les canoniques, le plan du site et le lien de
+signalement sont inchangés. Restent également en place les identifiants
+d'infrastructure (réseau et base Docker `footcoach`, variables `FOOTCOACH_*`),
+qui n'avaient déjà pas bougé à l'aller.
+
+Deux surfaces continuent d'accepter l'ancien nom, parce qu'elles sont sorties de
+l'application et qu'on ne peut plus les rappeler :
+
+| Surface | Pourquoi |
+|---|---|
+| `GET /calendar/<jeton>/teamnexus.ics` | Un abonnement ICS est posé une fois dans le calendrier du téléphone et n'est jamais remis à jour. Retirer le chemin ferait taire, sans un mot, tous les agendas liés avant le changement. Les deux chemins servent le même flux ; seul `footcoach.ics` est distribué. |
+| Préfixe QR `TEAMNEXUS:COACH:` | Une carte de coach se photographie, s'imprime, se partage : celles qui circulent portent l'ancien préfixe pour toujours. `parseCoachQr` les lit encore, `coachQrPayload` n'en émet plus. |
+
+La liste noire de mots de passe garde **les deux** noms : `footcoach` parce que
+c'est la marque, `teamnexus` parce que c'est encore le domaine sur lequel arrive
+un visiteur — donc le premier mot que tenterait quelqu'un qui sait où il est.
+
+**Vérifications :** typecheck des trois workspaces sans erreur ; 197 tests, 195
+verts et 2 ignorés (ceux qui exigent un vrai Postgres), dont le nouveau cas de
+liste noire sur l'ancienne marque.

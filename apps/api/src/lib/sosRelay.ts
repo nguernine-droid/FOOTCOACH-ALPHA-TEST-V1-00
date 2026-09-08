@@ -5,7 +5,7 @@ import {
   PLATEAU_MIN_TEAMS_ACCEPTED,
   SOS_WIDEN_MIN_MINUTES,
   sosWidenDelayMinutes,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
   announcementResponses,

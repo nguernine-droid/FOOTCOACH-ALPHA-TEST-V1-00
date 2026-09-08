@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { venueLabel } from "@teamnexus/shared";
+import { venueLabel } from "@footcoach/shared";
 
 /**
  * Libellé d'un terrain. Le recensement nomme la moitié de ses terrains

@@ -1,5 +1,5 @@
 import { and, eq, gte, inArray, ne, notInArray } from "drizzle-orm";
-import { announcementCategoryOf, type MatchGender } from "@teamnexus/shared";
+import { announcementCategoryOf, type MatchGender } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matchAnnouncements, teams } from "../db/schema.js";
 import { cityCoords, haversineKm } from "./cities.js";

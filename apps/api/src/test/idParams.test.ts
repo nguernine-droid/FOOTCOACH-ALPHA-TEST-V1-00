@@ -5,7 +5,7 @@ import {
   idParamSchema,
   responseParamsSchema,
   teamCoachParamsSchema,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 
 /**
  * Non-régression FC-11 — identifiants d'objet non validés.

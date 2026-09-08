@@ -4,7 +4,7 @@ import {
   VENUE_SEARCH_LIMIT,
   VENUE_SEARCH_RADIUS_KM,
   type VenueDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { venues } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

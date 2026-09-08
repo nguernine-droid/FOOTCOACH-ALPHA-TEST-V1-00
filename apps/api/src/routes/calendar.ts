@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { teams, users } from "../db/schema.js";
@@ -9,7 +9,7 @@ import { getCoachTeamIds, requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 
 /**
- * Liaison de l'agenda TeamNexus au calendrier du téléphone, par abonnement ICS.
+ * Liaison de l'agenda FootCoach au calendrier du téléphone, par abonnement ICS.
  *
  * Le coach lie une fois depuis les paramètres : on lui génère un jeton secret,
  * et son téléphone s'abonne à l'URL du flux. Ensuite le calendrier relit le
@@ -29,14 +29,14 @@ const FEED_FUTURE_DAYS = 150;
 
 /** Chemin public du flux pour un jeton donné (le front le préfixe de l'origine) */
 function feedPath(token: string): string {
-  return `/api/calendar/${token}/teamnexus.ics`;
+  return `/api/calendar/${token}/footcoach.ics`;
 }
 
 export function calendarRoutes(app: FastifyInstance) {
   // ————— Flux ICS, consulté par les calendriers sans session —————
   // Le nom de fichier en fin d'URL donne un libellé propre aux clients qui
   // l'affichent, et marque l'intention : ceci est un fichier calendrier.
-  app.get("/calendar/:token/teamnexus.ics", async (request, reply) => {
+  const serveFeed = async (request: FastifyRequest, reply: FastifyReply) => {
     const { token } = request.params as { token: string };
     // Forme d'un jeton base64url à nous : évite une requête pour les scans fantaisistes
     if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) throw new HttpError(404, "Flux introuvable");
@@ -79,12 +79,19 @@ export function calendarRoutes(app: FastifyInstance) {
 
     reply
       .header("Content-Type", "text/calendar; charset=utf-8")
-      .header("Content-Disposition", 'inline; filename="teamnexus.ics"')
+      .header("Content-Disposition", 'inline; filename="footcoach.ics"')
       // Les clients calendrier relisent d'eux-mêmes ; un petit cache absorbe
       // les relectures rapprochées sans retarder personne.
       .header("Cache-Control", "private, max-age=300");
     return buildIcsFeed(entries);
-  });
+  };
+
+  app.get("/calendar/:token/footcoach.ics", serveFeed);
+  // Ancien nom de fichier, du temps où l'application s'appelait TeamNexus. Un
+  // abonnement ICS est posé une fois dans le calendrier du téléphone et n'est
+  // jamais remis à jour : retirer ce chemin ferait taire, sans un mot, tous les
+  // agendas liés avant le changement de marque.
+  app.get("/calendar/:token/teamnexus.ics", serveFeed);
 
   // ————— Gestion de la liaison, depuis les paramètres du coach —————
   app.register((coach) => {

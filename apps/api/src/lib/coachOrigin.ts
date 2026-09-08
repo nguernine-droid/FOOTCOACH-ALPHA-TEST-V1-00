@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { CoachLocationDto } from "@teamnexus/shared";
+import type { CoachLocationDto } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { teams, users } from "../db/schema.js";
 import { cityCoords } from "./cities.js";

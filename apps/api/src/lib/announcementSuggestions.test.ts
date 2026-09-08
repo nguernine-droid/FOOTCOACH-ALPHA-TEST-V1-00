@@ -3,7 +3,7 @@
 import "../test/env.setup.js";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SUGGESTION_DATE_WINDOW_DAYS, SUGGESTION_LIMIT } from "@teamnexus/shared";
+import { SUGGESTION_DATE_WINDOW_DAYS, SUGGESTION_LIMIT } from "@footcoach/shared";
 import {
   SUGGESTION_WEIGHTS,
   dateProximityScore,

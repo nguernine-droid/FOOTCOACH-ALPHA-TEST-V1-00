@@ -1,6 +1,6 @@
 "use client";
 
-import type { MatchDto, TeamDto } from "@teamnexus/shared";
+import type { MatchDto, TeamDto } from "@footcoach/shared";
 import { cn, formatDate } from "@/lib/utils";
 import { VenueLink } from "@/components/VenueLink";
 

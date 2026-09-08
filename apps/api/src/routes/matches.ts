@@ -20,7 +20,7 @@ import {
   type MatchDetailDto,
   type MatchDto,
   type PointReason,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { announcementResponses, coachPoints, matchAnnouncements, matches, teams } from "../db/schema.js";
 import { requireAuth, requireRole } from "../plugins/auth.js";

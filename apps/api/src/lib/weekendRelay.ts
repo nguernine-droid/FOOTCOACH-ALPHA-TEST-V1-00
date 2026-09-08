@@ -9,7 +9,7 @@ import {
   REFEREE_BY_LABELS,
   type RefereeBy,
   type SuggestionDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
   availabilityNotices,

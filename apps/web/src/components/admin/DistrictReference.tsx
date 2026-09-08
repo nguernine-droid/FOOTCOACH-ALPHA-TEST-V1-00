@@ -7,7 +7,7 @@ import {
   DEPARTMENTS_WITHOUT_DISTRICT,
   DISTRICT_SOURCE_LABELS,
   type DistrictDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";

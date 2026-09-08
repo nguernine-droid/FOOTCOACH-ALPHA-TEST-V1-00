@@ -1,4 +1,4 @@
-# TEAMNEXUS v1 — Gestion de matchs amicaux
+# FOOTCOACH v1 — Gestion de matchs amicaux
 
 La **V1 est volontairement restreinte à la gestion des matchs amicaux entre coachs**. Seuls deux rôles accèdent à l'application :
 
@@ -71,7 +71,7 @@ Le différé vit en base (`match_announcements.sos_alerted_at` / `sos_widened_at
 
 Les casquettes s'affichent sur les fiches de relations, à côté du palier.
 
-**Paliers.** Nouveau → Bronze 30 → Argent 100 → Or 250 → Platine 500 (`COACH_LEVELS` dans `@teamnexus/shared`). Le palier s'affiche sur les fiches de relations, comme repère de fiabilité avant de proposer un match à quelqu'un qu'on ne connaît pas. Le **total chiffré** ne se lit que sur la **carte du coach** — la sienne dans **Mon profil**, celle d'un confrère quand on a le droit de l'ouvrir (voir plus bas).
+**Paliers.** Nouveau → Bronze 30 → Argent 100 → Or 250 → Platine 500 (`COACH_LEVELS` dans `@footcoach/shared`). Le palier s'affiche sur les fiches de relations, comme repère de fiabilité avant de proposer un match à quelqu'un qu'on ne connaît pas. Le **total chiffré** ne se lit que sur la **carte du coach** — la sienne dans **Mon profil**, celle d'un confrère quand on a le droit de l'ouvrir (voir plus bas).
 
 **Le score, lui, ne se contre-signe plus.** Il est saisi par l'un ou l'autre coach et clôt le match ; l'adversaire en est notifié et peut le corriger. C'est la rencontre qui est attestée, pas le résultat — un désaccord sur un but se règle entre coachs, pas par un refus de validation qui laissait le match ouvert indéfiniment.
 
@@ -232,7 +232,7 @@ Un service de mise en relation ne vaut que par le nombre de coachs qui y sont. L
 
 | Page | Ce qu'elle répond | Fréquence de changement |
 |---|---|---|
-| `/` — la vitrine | « C'est quoi, TeamNexus ? » | Presque jamais |
+| `/` — la vitrine | « C'est quoi, FootCoach ? » | Presque jamais |
 | `/f` — l'index | « Qui cherche un match en ce moment ? » | Tous les jours |
 | `/f/[district]`, `/f/[district]/[categorie]` | « Qui cherche un U13 dans le Rhône ? » | Tous les jours |
 
@@ -243,7 +243,7 @@ Ce sont les pages par département et par catégorie qui rapportent des visiteur
 - **Plan du site** (`app/sitemap.ts`) — recalculé à chaque demande, jamais figé au build : construit une fois pour toutes, il refléterait la base du serveur d'intégration. Il ne déclare **que les départements où quelque chose se passe** — annoncer cent départements vides apprend au moteur que ce site répond mal aux questions qu'on lui pose.
 - **`robots.txt`** (`app/robots.ts`) — tout est fermé sauf `/f`, `/login` et `/register`. Les espaces coach, club et admin sont interdits explicitement : non pour la sécurité (ils sont derrière une authentification) mais pour qu'un robot n'aille pas frapper trois cents fois par jour à une porte qui lui répondra toujours « connectez-vous ».
 - **Canoniques** — chaque page publique désigne son adresse, en absolu (`metadataBase` dans `app/layout.tsx`).
-- **Titres** — un gabarit unique, `%s | TeamNexus`, posé par la racine. Une page qui n'exporte pas ses métadonnées hérite du titre de la vitrine sans rien signaler ; c'est ce qui arrivait à `/login` et `/register`, qui sont des composants client et ne PEUVENT PAS porter de `metadata` — d'où un `layout.tsx` d'une ligne pour chacun.
+- **Titres** — un gabarit unique, `%s | FootCoach`, posé par la racine. Une page qui n'exporte pas ses métadonnées hérite du titre de la vitrine sans rien signaler ; c'est ce qui arrivait à `/login` et `/register`, qui sont des composants client et ne PEUVENT PAS porter de `metadata` — d'où un `layout.tsx` d'une ligne pour chacun.
 - **`max-image-preview:large`** — sans cette directive, Google se limite à une vignette minuscule. Sur un service qui se partage entre coachs, un lien qui montre son image se clique ; un lien nu se saute.
 - **Image d'aperçu** (`app/opengraph-image.tsx`) — dessinée par le serveur aux couleurs de `tokens.css`, pour que le lien collé dans un groupe WhatsApp ne ressemble pas à du spam.
 

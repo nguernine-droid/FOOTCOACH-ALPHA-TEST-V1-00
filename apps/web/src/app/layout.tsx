@@ -37,14 +37,14 @@ export const metadata: Metadata = {
    * que du nom brut du service.
    */
   title: {
-    default: "TeamNexus — trouvez un adversaire pour votre prochain match amical",
-    template: "%s | TeamNexus",
+    default: "FootCoach — trouvez un adversaire pour votre prochain match amical",
+    template: "%s | FootCoach",
   },
   description:
     "L'application gratuite des coachs de football amateur : publiez vos dates libres, trouvez un adversaire près de chez vous et organisez le match amical.",
-  applicationName: "TeamNexus",
+  applicationName: "FootCoach",
   // Installée sur l'écran d'accueil iOS, l'app s'ouvre sans barre Safari
-  appleWebApp: { capable: true, title: "TeamNexus", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "FootCoach", statusBarStyle: "black-translucent" },
   formatDetection: { telephone: false },
   /**
    * Aperçu des liens partagés.
@@ -57,15 +57,15 @@ export const metadata: Metadata = {
    */
   openGraph: {
     type: "website",
-    siteName: "TeamNexus",
+    siteName: "FootCoach",
     locale: "fr_FR",
-    title: "TeamNexus — trouvez un adversaire pour votre prochain match amical",
+    title: "FootCoach — trouvez un adversaire pour votre prochain match amical",
     description:
       "L'application des coachs de football amateur pour organiser leurs matchs amicaux. Gratuit.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "TeamNexus — matchs amicaux de football",
+    title: "FootCoach — matchs amicaux de football",
     description:
       "Déclarez vos dates libres, les équipes libres en face vous sont proposées.",
   },

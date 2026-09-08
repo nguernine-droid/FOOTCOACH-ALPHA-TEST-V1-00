@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckCircle2, Clock3, ShieldAlert } from "lucide-react";
-import type { MatchDto } from "@teamnexus/shared";
+import type { MatchDto } from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { Button } from "@/components/ui/Button";
 

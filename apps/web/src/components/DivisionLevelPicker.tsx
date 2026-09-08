@@ -1,6 +1,6 @@
 "use client";
 
-import { DIVISION_LEVEL_LABELS, divisionLevelsFor, type DivisionLevel } from "@teamnexus/shared";
+import { DIVISION_LEVEL_LABELS, divisionLevelsFor, type DivisionLevel } from "@footcoach/shared";
 import { cn } from "@/lib/utils";
 
 /**

@@ -7,7 +7,7 @@ import {
   WITHDRAWAL_REASON_LABELS,
   type CoachCategory,
   type WithdrawalReason,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { env } from "../env.js";
 import { db } from "../db/client.js";
 import { pushSubscriptions, teamCoaches, teams, users } from "../db/schema.js";
@@ -703,7 +703,7 @@ export function notifyCoachCategoriesAdopted(input: {
             ? "Vous serez alerté des SOS de votre secteur en premier, et vos publications seront lues par tous les coachs."
             : input.adopted.includes("joker")
               ? "Vous serez alerté en premier quand un coach de votre secteur se retrouve sans adversaire."
-              : "Vos informations seront lues par tous les coachs du secteur, et vous avez la ligne directe avec l'équipe TeamNexus.",
+              : "Vos informations seront lues par tous les coachs du secteur, et vous avez la ligne directe avec l'équipe FootCoach.",
         url: "/coach/profile",
         tag: "casquette",
       });

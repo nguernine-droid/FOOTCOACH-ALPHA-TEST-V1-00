@@ -23,7 +23,7 @@ import {
   type EncounterResultDto,
   type MatchDetailDto,
   type WithdrawalReason,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";

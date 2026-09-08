@@ -3,7 +3,7 @@ import {
   announcementCategoryOf,
   levelForPoints,
   type CategoryCoachDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { matchAnnouncements, teamCoaches, teams, users } from "../db/schema.js";
 import { cityCoords, haversineKm } from "./cities.js";

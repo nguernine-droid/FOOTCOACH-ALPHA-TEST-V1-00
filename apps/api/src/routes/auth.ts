@@ -19,7 +19,7 @@ import {
   type CoachTeamDto,
   type TeamDto,
   type UserDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
   clubs,
@@ -247,7 +247,7 @@ export async function resolveTeamId(user: typeof users.$inferSelect): Promise<st
 
 /** V1 : seuls coach et admin accèdent à l'application */
 const V1_ROLE_MESSAGE =
-  "Cet espace n'est pas disponible dans la version 1 de TeamNexus, réservée aux coachs.";
+  "Cet espace n'est pas disponible dans la version 1 de FootCoach, réservée aux coachs.";
 
 
 export function authRoutes(app: FastifyInstance) {

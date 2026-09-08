@@ -15,7 +15,7 @@ import {
   type MatchCategory,
   type MatchGender,
   type TournamentSession,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { useActiveTeam } from "@/components/ActiveTeamContext";
 import { useQuickActionOverride } from "@/components/QuickActionContext";

@@ -6,7 +6,7 @@ import {
   PROFILE_PRIVATE_LABEL,
   PROFILE_PUBLIC_DESCRIPTION,
   PROFILE_PUBLIC_LABEL,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { cn } from "@/lib/utils";
 
 /**

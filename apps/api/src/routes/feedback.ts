@@ -11,7 +11,7 @@ import {
   type FeedbackDto,
   type FeedbackStatus,
   type FeedbackThreadMessageDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import { coachFeedback, conversations, messages, users } from "../db/schema.js";
 import { requireAuth, requireCoachCategory, requireRole } from "../plugins/auth.js";
@@ -21,7 +21,7 @@ import { notifyNewMessage } from "../lib/push.js";
 import { avatarUrlOf } from "./auth.js";
 
 /** Nom sous lequel l'équipe apparaît dans le fil, côté coach comme en notification */
-export const TEAMNEXUS_TEAM_NAME = "Équipe TeamNexus";
+export const FOOTCOACH_TEAM_NAME = "Équipe FootCoach";
 
 function toDto(row: typeof coachFeedback.$inferSelect): FeedbackDto {
   return {
@@ -51,7 +51,7 @@ function isFeedbackStatus(value: unknown): value is FeedbackStatus {
  * (voir `POST /admin/feedback/:id/reply`) : c'est l'équipe qui répond, pas une
  * personne.
  */
-async function teamnexusAdminId(): Promise<string | null> {
+async function footcoachAdminId(): Promise<string | null> {
   const [admin] = await db
     .select({ id: users.id })
     .from(users)
@@ -83,7 +83,7 @@ export function feedbackRoutes(app: FastifyInstance) {
    * parce qu'un retour utile demande de suivre ce qu'on a signalé, et que c'est
    * précisément ce à quoi le contributeur s'est engagé.
    *
-   * L'envoi ouvre (ou retrouve) le fil avec l'équipe TeamNexus et y inscrit le
+   * L'envoi ouvre (ou retrouve) le fil avec l'équipe FootCoach et y inscrit le
    * signalement : la réponse arrivera là, dans la messagerie du contributeur,
    * et non dans un écran « mes signalements » qu'il faudrait aller consulter.
    */
@@ -95,7 +95,7 @@ export function feedbackRoutes(app: FastifyInstance) {
 
       // Sans compte admin, le signalement est tout de même enregistré : il sera
       // lu à la première connexion d'un admin, fil ou pas.
-      const adminId = await teamnexusAdminId();
+      const adminId = await footcoachAdminId();
       const conversationId = adminId
         ? await openConversation(db, request.user.id, adminId, null)
         : null;
@@ -228,7 +228,7 @@ export function feedbackRoutes(app: FastifyInstance) {
 
       notifyNewMessage({
         recipientCoachId: existing.authorId,
-        senderName: TEAMNEXUS_TEAM_NAME,
+        senderName: FOOTCOACH_TEAM_NAME,
         preview: body,
         conversationId,
       });

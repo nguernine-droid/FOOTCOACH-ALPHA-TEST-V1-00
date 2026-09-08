@@ -28,7 +28,7 @@ import {
   NO_HISTORY,
   type ReliabilityDto,
   type TeamDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
   announcementResponses,

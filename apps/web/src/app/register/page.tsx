@@ -12,7 +12,7 @@ import {
   type MatchCategory,
   type MatchGender,
   type UserDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { register } from "@/lib/api";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { ClubNameField } from "@/components/ClubNameField";
@@ -203,7 +203,7 @@ function CoachWizard({ onBack }: { onBack: () => void }) {
         <div className="space-y-1">
           <h2 className="text-lg font-black">Bienvenue, {form.nickname.trim()}</h2>
           <p className="text-sm text-ink-soft">
-            Votre compte et votre équipe sont créés. TeamNexus est fait par des coachs, pour des coachs — merci de
+            Votre compte et votre équipe sont créés. FootCoach est fait par des coachs, pour des coachs — merci de
             nous rejoindre. Une idée pour la rendre meilleure ? Elle nous intéresse à tout moment, depuis Paramètres.
           </p>
         </div>
@@ -443,7 +443,7 @@ function RegisterContent() {
       <div className="w-full max-w-md space-y-4">
         <div className="text-center space-y-1">
           <p className="display text-xl text-primary leading-none">
-            TEAM<span className="text-pitch">NEXUS</span>
+            FOOT<span className="text-pitch">COACH</span>
           </p>
           <h1 className="text-2xl font-black">Créer un compte coach</h1>
         </div>

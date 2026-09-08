@@ -7,7 +7,7 @@ import {
   REFEREE_BY_LABELS,
   type MatchDto,
   type RefereeBy,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { VenueLink } from "@/components/VenueLink";

@@ -7,7 +7,7 @@ import {
   type CoachCategory,
   type CoachLevelDto,
   type DivisionLevel,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { Avatar } from "@/components/Avatar";
 
 /**

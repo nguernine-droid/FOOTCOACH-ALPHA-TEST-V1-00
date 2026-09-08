@@ -9,7 +9,7 @@ import {
   type AdminFeedbackDto,
   type FeedbackStatus,
   type FeedbackThreadMessageDto,
-} from "@teamnexus/shared";
+} from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { timeAgo, useNow } from "@/lib/time";
