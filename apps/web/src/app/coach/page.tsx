@@ -16,6 +16,7 @@ import {
   type ActivityDto,
   type AnnouncementDto,
   type MatchDto,
+  type PendingDecisionDto,
   type PlatformStatsDto,
   type PublicationDto,
   type TournamentDto,
@@ -52,6 +53,7 @@ export default function CoachDashboard() {
   const [activity, setActivity] = useState<ActivityDto[] | null>(null);
   const [publications, setPublications] = useState<PublicationDto[]>([]);
   const [platformStats, setPlatformStats] = useState<PlatformStatsDto | null>(null);
+  const [decisions, setDecisions] = useState<PendingDecisionDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const loadAll = useCallback(() => {
@@ -68,8 +70,12 @@ export default function CoachDashboard() {
       // Le bandeau du haut — jamais bloquant : trois chiffres d'ambiance, pas
       // une donnée dont dépend le reste de l'écran.
       api<PlatformStatsDto>("/stats/platform").catch(() => null),
+      // Les validations qui m'attendent. En repli silencieux comme les autres
+      // compléments : le tableau de bord doit s'afficher même si ce rappel
+      // manque, il ne doit jamais être la raison d'un écran vide.
+      api<PendingDecisionDto[]>("/announcements/decisions").catch(() => [] as PendingDecisionDto[]),
     ])
-      .then(([m, a, act, t, pubs, stats]) => {
+      .then(([m, a, act, t, pubs, stats, pending]) => {
         setMatches(m);
         // En cours seulement : une annonce matchée devient un match, déjà
         // montré par la carte du prochain match — la répéter ici ferait doublon.
@@ -84,6 +90,7 @@ export default function CoachDashboard() {
         // l'onglet Annonces garde le panneau entier.
         setPublications(pubs.slice(0, 5));
         setPlatformStats(stats);
+        setDecisions(pending);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Erreur de chargement"));
   }, []);
@@ -133,6 +140,52 @@ export default function CoachDashboard() {
 
   return (
     <div className="space-y-4">
+      {/* ————— Ce qui n'attend que vous —————
+
+          En tête, avant les chiffres d'ambiance et avant le prochain match : ce
+          sont les seules lignes de cet écran où un geste transforme une
+          discussion en match. Elles vivaient jusqu'ici au fond d'un fil de
+          messagerie, où plus personne n'allait les chercher. */}
+      {decisions.length > 0 && (
+        <section
+          className="card p-4 space-y-2.5 border-accent/40 animate-rise-in"
+          aria-label="Propositions à valider"
+        >
+          <h2 className="text-sm font-black flex items-center gap-1.5">
+            <CalendarCheck size={15} className="text-accent shrink-0" aria-hidden />
+            {decisions.length === 1
+              ? "Un match n'attend que votre validation"
+              : `${decisions.length} matchs n'attendent que votre validation`}
+          </h2>
+          <div className="space-y-2">
+            {decisions.map((d) => (
+              <Link
+                key={d.responseId}
+                href={d.conversationId ? `/coach/messages/${d.conversationId}` : "/coach/announcements/mine"}
+                className="flex items-center gap-3 rounded-lg bg-accent-surface p-3 transition
+                  hover:brightness-95 active:scale-[0.995]"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-black text-ink truncate">{d.opponentTeamName}</span>
+                  <span className="block text-[11px] text-ink-soft font-semibold truncate">
+                    {formatDate(d.date)} à {d.time} — {d.city} · {d.category}
+                  </span>
+                  {d.otherConfirmed && (
+                    <span className="block text-[11px] font-black text-accent">
+                      L&apos;autre coach a validé — il ne manque que vous.
+                    </span>
+                  )}
+                </span>
+                <ChevronRight size={16} className="text-accent shrink-0" aria-hidden />
+              </Link>
+            ))}
+          </div>
+          <p className="text-[11px] text-ink-soft">
+            Le match n&apos;existe qu&apos;une fois validé par les deux coachs.
+          </p>
+        </section>
+      )}
+
       {/* Bandeau : l'application en trois chiffres, avant même d'ouvrir le
           radar. Chaque carré mène à l'écran qu'il annonce. */}
       {platformStats && (

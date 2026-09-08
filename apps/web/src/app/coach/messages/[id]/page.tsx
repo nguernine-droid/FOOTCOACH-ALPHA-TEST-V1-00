@@ -202,6 +202,9 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
   }
 
   const { coach, teamName } = thread.conversation;
+  // Ce qui attend MA signature dans ce fil. Deux coachs peuvent avoir plusieurs
+  // rencontres en cours ensemble : on les porte toutes, pas seulement la première.
+  const toSign = thread.messages.flatMap((m) => (m.response?.decidable ? [m.response] : []));
   let previousDay: string | null = null;
 
   return (
@@ -266,42 +269,41 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
                         Feuille de match <ChevronRight size={13} aria-hidden />
                       </Link>
                     )}
-                    {/* La proposition se tranche ici, dans le fil, et des DEUX
-                        côtés : chacun valide pour son équipe, et le match n'est
-                        confirmé qu'à la seconde signature. De quoi se poser des
-                        questions — et se retirer — avant d'être engagé. */}
+                    {/* L'ÉTAT de la proposition se lit ici ; le geste, lui, est
+                        adossé au composeur, en bas de l'écran. Deux boutons pour
+                        la même décision, l'un au début du fil et l'autre à sa
+                        fin, se liraient comme deux décisions différentes. */}
                     {message.response &&
-                      (message.response.decidable ? (
-                        <div className="space-y-1.5 pt-1">
-                          {message.response.otherConfirmed && (
-                            <p className="text-[11px] font-semibold text-sun">
-                              L&apos;autre coach a validé — il ne manque que vous.
+                      (message.response.decidable ? null : message.response.status === "pending" ? (
+                        message.response.blockedReason ? (
+                          // Le serveur refuserait la validation : le dire ici
+                          // vaut mieux qu'un bouton qui échoue à chaque appui.
+                          // Et puisque `decline` reste ouvert, lui, on donne la
+                          // sortie — annoncer une impasse sans porte est pire
+                          // que le bouton qui échouait.
+                          <div className="space-y-1.5 pt-1">
+                            <p className="text-[11px] font-semibold text-ink-faint">
+                              {message.response.blockedReason === "expired"
+                                ? "La date de ce match est passée : cette proposition ne peut plus être confirmée."
+                                : "L'annonce n'est plus ouverte : cette proposition ne peut plus être confirmée."}
                             </p>
-                          )}
-                          <div className="flex items-center justify-center gap-2">
                             <Button
-                              size="sm"
-                              onClick={() => decide("accept", message.response!)}
-                              disabled={deciding === message.response.id}
-                            >
-                              {deciding === message.response.id ? "…" : "Valider le match"}
-                            </Button>
-                            <Button
+                              type="button"
                               size="sm"
                               variant="ghost"
                               onClick={() => decide("decline", message.response!)}
                               disabled={deciding === message.response.id}
                             >
-                              Décliner
+                              {deciding === message.response.id ? "…" : "Retirer cette proposition"}
                             </Button>
                           </div>
-                        </div>
-                      ) : message.response.status === "pending" ? (
-                        <p className="text-[11px] font-semibold text-sun">
-                          {message.response.iConfirmed
-                            ? "Vous avez validé — en attente de l'autre coach"
-                            : "En attente de la décision du coach"}
-                        </p>
+                        ) : (
+                          <p className="text-[11px] font-semibold text-sun">
+                            {message.response.iConfirmed
+                              ? "Vous avez validé — en attente de l'autre coach"
+                              : "En attente de la décision du coach"}
+                          </p>
+                        )
                       ) : message.response.status === "accepted" ? (
                         <p className="text-[11px] font-semibold text-success">Match validé par les deux coachs</p>
                       ) : (
@@ -347,14 +349,61 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
         )}
       </div>
 
-      {/* Zone d'écriture collée au-dessus de la barre d'onglets : sur un fil, on
-          répond depuis n'importe où dans l'historique, pas seulement une fois
-          descendu tout en bas. */}
-      <form
-        onSubmit={send}
+      {/* Le bas de l'écran, collé au-dessus de la barre d'onglets : la décision
+          d'abord, la zone d'écriture ensuite.
+
+          La validation vivait sur le PREMIER message du fil, celui que le
+          défilement automatique emporte hors de l'écran dès qu'on a échangé
+          trois phrases — on discutait, puis on repartait sans conclure. Elle se
+          prend à la fin d'une conversation : elle est donc désormais à la fin,
+          et elle y reste tant qu'elle n'est pas prise. */}
+      <div
         className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] min-[960px]:bottom-4 z-10
-          surface rounded-2xl border border-line shadow-pop p-2 space-y-2"
+          space-y-2"
       >
+        {toSign.map((response) => (
+          <div
+            key={response.id}
+            className="surface rounded-2xl border border-accent/40 shadow-pop p-3 space-y-2"
+            role="group"
+            aria-label="Décision sur la proposition de match"
+          >
+            <p className="text-xs font-black text-ink flex items-center gap-1.5">
+              <CalendarCheck2 size={14} className="text-accent shrink-0" aria-hidden />
+              {response.otherConfirmed
+                ? "L'autre coach a validé — il ne manque que vous."
+                : "Vous jouez ce match ?"}
+            </p>
+            <p className="text-[11px] text-ink-soft">
+              Le match n&apos;existe qu&apos;une fois validé par les deux coachs.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                className="flex-1"
+                onClick={() => decide("accept", response)}
+                disabled={deciding === response.id}
+              >
+                {deciding === response.id ? "…" : "Valider le match"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => decide("decline", response)}
+                disabled={deciding === response.id}
+              >
+                Décliner
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        <form
+          onSubmit={send}
+          className="surface rounded-2xl border border-line shadow-pop p-2 space-y-2"
+        >
         <div className="flex items-end gap-2">
           <label htmlFor="message" className="sr-only">
             Votre message
@@ -387,8 +436,9 @@ export default function CoachConversationPage({ params }: { params: Promise<{ id
             <SendHorizontal size={16} />
           </Button>
         </div>
-        {sendError && <p className="text-xs font-semibold text-coral px-1">{sendError}</p>}
-      </form>
+          {sendError && <p className="text-xs font-semibold text-coral px-1">{sendError}</p>}
+        </form>
+      </div>
 
       {cardOpen && <CoachCardSheet coachId={coach.id} onClose={() => setCardOpen(false)} />}
     </div>

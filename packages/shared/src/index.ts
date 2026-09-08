@@ -2287,6 +2287,16 @@ export interface ConversationDto {
   lastMessage: { body: string; createdAt: string; mine: boolean; kind: MessageKind } | null;
   /** Messages de l'autre coach reçus depuis ma dernière lecture */
   unread: number;
+  /**
+   * Une proposition de ce fil attend MA signature.
+   *
+   * Distinct des non-lus : un fil entièrement lu peut très bien réclamer une
+   * décision, et c'est précisément le cas qui se perdait — on lit, on discute,
+   * et le geste qui crée le match reste à faire sans que rien ne le rappelle.
+   */
+  awaitingMyDecision: boolean;
+  /** J'ai signé, c'est l'autre coach qu'on attend */
+  awaitingOtherDecision: boolean;
   /** Dernier message, ou création du fil : ce qui ordonne la liste */
   updatedAt: string;
 }
@@ -2326,8 +2336,40 @@ export interface MessageDto {
     iConfirmed: boolean;
     /** L'autre coach a donné le sien — c'est moi qu'on attend */
     otherConfirmed: boolean;
+    /**
+     * Pourquoi cette proposition ne peut PLUS être validée, le cas échéant.
+     *
+     * `closed` : l'annonce n'est plus ouverte. `expired` : sa date est passée.
+     * Ce sont exactement les deux refus de `POST .../accept` — les exposer
+     * évite d'offrir un bouton que le serveur rejettera, ce qui laissait le
+     * coach appuyer dans le vide sans comprendre.
+     */
+    blockedReason: "closed" | "expired" | null;
   } | null;
   createdAt: string;
+}
+
+/**
+ * Une décision qui m'attend, vue de l'extérieur du fil.
+ *
+ * Elle existe pour une seule raison : la validation qui fait naître un match se
+ * prend à la FIN d'une discussion, alors qu'elle était rangée au début. Ce DTO
+ * la porte là où le coach passe — sa liste de messages et son tableau de bord —
+ * plutôt que d'attendre qu'il remonte un fil jusqu'en haut.
+ */
+export interface PendingDecisionDto {
+  responseId: string;
+  announcementId: string;
+  /** Le fil où la trancher (null si l'un des deux comptes a disparu) */
+  conversationId: string | null;
+  /** L'équipe d'en face */
+  opponentTeamName: string;
+  date: string;
+  time: string;
+  city: string;
+  category: string;
+  /** L'autre coach a déjà signé : il ne manque que moi */
+  otherConfirmed: boolean;
 }
 
 /** Une conversation ouverte : son en-tête et ses messages, du plus ancien au plus récent */

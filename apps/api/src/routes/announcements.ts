@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq, gte, inArray, ne, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, notInArray, or, sql } from "drizzle-orm";
 import {
   idParamSchema,
   responseParamsSchema,
@@ -19,6 +19,7 @@ import {
   type AnnouncementDto,
   type AnnouncementSuggestionsDto,
   type AnnouncementResponseDto,
+  type PendingDecisionDto,
   type CategoryStatsDto,
   type CoachRefDto,
   type MatchGender,
@@ -43,6 +44,7 @@ import {
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { bearingDeg, cityCoords, haversineKm } from "../lib/cities.js";
+import { decisionState, todayKey } from "../lib/responseDecision.js";
 import { loadOrigin } from "../lib/coachOrigin.js";
 import {
   coachIdsOfTeams,
@@ -934,6 +936,83 @@ export function announcementRoutes(app: FastifyInstance) {
 
     await db.delete(announcementResponses).where(eq(announcementResponses.id, response.id));
     return { ok: true };
+  });
+
+  /**
+   * ————— Ce qui attend ma signature, vu de l'extérieur —————
+   *
+   * La validation qui fait naître un match se prend à la FIN d'une discussion,
+   * mais elle était portée par le PREMIER message du fil — celui que la page
+   * fait défiler hors de l'écran dès qu'on a échangé trois phrases. Résultat
+   * mesuré : des conversations nourries, et pas une signature.
+   *
+   * Cette route sort la décision du fil pour que le tableau de bord et la liste
+   * des messages puissent la rappeler là où le coach passe déjà.
+   */
+  app.get("/announcements/decisions", async (request): Promise<PendingDecisionDto[]> => {
+    const myTeamId = request.user.teamId;
+    if (!myTeamId) return [];
+    const today = todayKey();
+
+    const rows = await db
+      .select({ response: announcementResponses, announcement: matchAnnouncements })
+      .from(announcementResponses)
+      .innerJoin(matchAnnouncements, eq(matchAnnouncements.id, announcementResponses.announcementId))
+      .where(
+        and(
+          eq(announcementResponses.status, "pending"),
+          // Les deux côtés du fil : mon annonce, ou ma proposition
+          or(eq(matchAnnouncements.teamId, myTeamId), eq(announcementResponses.teamId, myTeamId)),
+        ),
+      )
+      .orderBy(matchAnnouncements.date);
+
+    const decisions = rows.flatMap(({ response, announcement }) => {
+      const decision = decisionState({
+        myTeamId,
+        announcementTeamId: announcement.teamId,
+        announcementStatus: announcement.status,
+        announcementDate: announcement.date,
+        responseTeamId: response.teamId,
+        responseStatus: response.status,
+        ownerConfirmedAt: response.ownerConfirmedAt,
+        responderConfirmedAt: response.responderConfirmedAt,
+        today,
+      });
+      // Seul ce que je peux réellement trancher : rappeler un geste impossible
+      // ferait perdre du temps, et perdre confiance dans le rappel lui-même.
+      if (!decision.decidable) return [];
+      return [{ response, announcement, decision }];
+    });
+    if (decisions.length === 0) return [];
+
+    // L'équipe d'en face, qui n'est pas du même côté selon mon rôle dans le fil
+    const opponentIds = [
+      ...new Set(
+        decisions.map(({ response, announcement }) =>
+          announcement.teamId === myTeamId ? response.teamId : announcement.teamId,
+        ),
+      ),
+    ];
+    const opponentRows = await db
+      .select({ id: teams.id, name: teams.name })
+      .from(teams)
+      .where(inArray(teams.id, opponentIds));
+    const nameById = new Map(opponentRows.map((t) => [t.id, t.name]));
+
+    return decisions.map(({ response, announcement, decision }) => ({
+      responseId: response.id,
+      announcementId: announcement.id,
+      conversationId: response.conversationId,
+      opponentTeamName:
+        nameById.get(announcement.teamId === myTeamId ? response.teamId : announcement.teamId) ??
+        "Équipe inconnue",
+      date: announcement.date,
+      time: announcement.time.slice(0, 5),
+      city: announcement.city,
+      category: announcementCategoryLabel(announcement),
+      otherConfirmed: decision.otherConfirmed,
+    }));
   });
 
   /**

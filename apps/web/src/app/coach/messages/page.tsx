@@ -113,6 +113,21 @@ export default function CoachMessagesPage() {
                     le nom est juste au-dessus. Un match inscrit par
                     l'application s'annonce par son icône — sans elle, « Match
                     confirmé — U13… » se lirait comme une phrase du confrère. */}
+                {/* Une décision qui attend passe DEVANT l'aperçu du dernier
+                    message. Un fil entièrement lu ne se distinguait plus de rien
+                    — or c'est exactement l'état d'un match dont on a discuté
+                    sans le conclure, et c'est celui qu'on perdait. */}
+                {c.awaitingMyDecision ? (
+                  <p className="text-[11px] font-black text-accent flex items-center gap-1 truncate">
+                    <CalendarCheck2 size={12} className="shrink-0" aria-hidden />
+                    Votre validation est attendue
+                  </p>
+                ) : c.awaitingOtherDecision ? (
+                  <p className="text-[11px] font-semibold text-ink-faint flex items-center gap-1 truncate">
+                    <CalendarCheck2 size={12} className="shrink-0" aria-hidden />
+                    Vous avez validé — en attente de l&apos;autre coach
+                  </p>
+                ) : null}
                 <p
                   className={cn(
                     "truncate text-xs flex items-center gap-1",
@@ -129,7 +144,15 @@ export default function CoachMessagesPage() {
                   </span>
                 </p>
               </div>
-              {c.unread > 0 ? (
+              {c.awaitingMyDecision ? (
+                <span
+                  className="shrink-0 h-5 px-2 rounded-full bg-accent-solid text-accent-on text-[10px] font-black
+                    tracking-wide flex items-center justify-center"
+                  aria-label="Une proposition attend votre validation"
+                >
+                  À VALIDER
+                </span>
+              ) : c.unread > 0 ? (
                 <span
                   className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-alert text-white text-[11px] font-black
                     flex items-center justify-center"

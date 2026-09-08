@@ -21,6 +21,7 @@ import {
 import { requireAuth, requireRole } from "../plugins/auth.js";
 import { HttpError } from "../plugins/errors.js";
 import { conversationForMember, markRead } from "../lib/conversations.js";
+import { decisionState, todayKey } from "../lib/responseDecision.js";
 import { notifyNewMessage } from "../lib/push.js";
 import { avatarUrlOf } from "./auth.js";
 import { FOOTCOACH_TEAM_NAME } from "./feedback.js";
@@ -42,7 +43,11 @@ const notFromMe = (me: string) => or(isNull(messages.senderId), ne(messages.send
  * conversations est un écran qu'on ouvre souvent, et une requête par ligne y
  * serait une requête par confrère.
  */
-async function toDtos(rows: ConversationRow[], me: string): Promise<ConversationDto[]> {
+async function toDtos(
+  rows: ConversationRow[],
+  me: string,
+  myTeamId: string | null,
+): Promise<ConversationDto[]> {
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.id);
   const otherIdOf = (r: ConversationRow) => (r.coachAId === me ? r.coachBId : r.coachAId);
@@ -99,6 +104,46 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
       .groupBy(messages.conversationId),
   ]);
 
+  /**
+   * Ce qui attend une signature dans ces fils.
+   *
+   * La liste des conversations ne montrait que les non-lus, et un fil lu de
+   * bout en bout ne se distinguait plus — alors que c'est exactement l'état
+   * d'un match dont on a discuté sans le conclure. Une quatrième requête pour
+   * l'ensemble des fils, jamais une par ligne.
+   */
+  const today = todayKey();
+  const awaitingMine = new Set<string>();
+  const awaitingOther = new Set<string>();
+  const pendingRows = await db
+    .select({ response: announcementResponses, announcement: matchAnnouncements })
+    .from(announcementResponses)
+    .innerJoin(matchAnnouncements, eq(matchAnnouncements.id, announcementResponses.announcementId))
+    .where(
+      and(
+        inArray(announcementResponses.conversationId, ids),
+        eq(announcementResponses.status, "pending"),
+      ),
+    );
+  for (const { response, announcement } of pendingRows) {
+    if (!response.conversationId) continue;
+    const decision = decisionState({
+      myTeamId,
+      announcementTeamId: announcement.teamId,
+      announcementStatus: announcement.status,
+      announcementDate: announcement.date,
+      responseTeamId: response.teamId,
+      responseStatus: response.status,
+      ownerConfirmedAt: response.ownerConfirmedAt,
+      responderConfirmedAt: response.responderConfirmedAt,
+      today,
+    });
+    if (decision.decidable) awaitingMine.add(response.conversationId);
+    // « J'ai signé, on attend l'autre » : à ne signaler que si c'est encore possible
+    else if (decision.iConfirmed && decision.blockedReason === null)
+      awaitingOther.add(response.conversationId);
+  }
+
   const coachById = new Map(coachRows.map((c) => [c.id, c]));
   const teamByCoach = new Map<string, string>();
   for (const row of teamRows) if (!teamByCoach.has(row.coachId)) teamByCoach.set(row.coachId, row.name);
@@ -133,6 +178,8 @@ async function toDtos(rows: ConversationRow[], me: string): Promise<Conversation
             }
           : null,
         unread: unreadByConversation.get(row.id) ?? 0,
+        awaitingMyDecision: awaitingMine.has(row.id),
+        awaitingOtherDecision: awaitingOther.has(row.id),
         updatedAt: row.lastMessageAt.toISOString(),
       },
     ];
@@ -158,7 +205,7 @@ export function messageRoutes(app: FastifyInstance) {
       .from(conversations)
       .where(or(eq(conversations.coachAId, me), eq(conversations.coachBId, me)))
       .orderBy(desc(conversations.lastMessageAt));
-    return toDtos(rows, me);
+    return toDtos(rows, me, request.user.teamId);
   });
 
   /**
@@ -200,7 +247,7 @@ export function messageRoutes(app: FastifyInstance) {
     if (!row) throw new HttpError(404, "Conversation introuvable");
 
     const [[conversation], rows] = await Promise.all([
-      toDtos([row], me),
+      toDtos([row], me, request.user.teamId),
       db
         .select()
         .from(messages)
@@ -220,8 +267,10 @@ export function messageRoutes(app: FastifyInstance) {
         decidable: boolean;
         iConfirmed: boolean;
         otherConfirmed: boolean;
+        blockedReason: "closed" | "expired" | null;
       }
     >();
+    const today = todayKey();
     if (responseIds.length > 0) {
       const withAnnouncement = await db
         .select({ response: announcementResponses, announcement: matchAnnouncements })
@@ -229,34 +278,27 @@ export function messageRoutes(app: FastifyInstance) {
         .innerJoin(matchAnnouncements, eq(matchAnnouncements.id, announcementResponses.announcementId))
         .where(inArray(announcementResponses.id, responseIds));
       for (const { response, announcement } of withAnnouncement) {
-        /**
-         * De quel côté du fil je me trouve. Les DEUX ont leur mot à dire : celui
-         * qui a publié l'annonce, et celui qui a proposé de jouer. Un match ne
-         * se confirme qu'une fois les deux signatures données, et chacun ne voit
-         * de bouton que tant que la sienne manque.
-         */
-        const mineIsOwner = announcement.teamId === request.user.teamId;
-        const mineIsResponder = response.teamId === request.user.teamId;
-        const iConfirmed = mineIsOwner
-          ? response.ownerConfirmedAt !== null
-          : mineIsResponder
-            ? response.responderConfirmedAt !== null
-            : false;
-        const otherConfirmed = mineIsOwner
-          ? response.responderConfirmedAt !== null
-          : mineIsResponder
-            ? response.ownerConfirmedAt !== null
-            : false;
+        // De quel côté du fil je me trouve, et si ma signature est encore
+        // recevable : une seule règle, partagée avec la liste des fils et le
+        // tableau de bord (voir `decisionState`).
+        const decision = decisionState({
+          myTeamId: request.user.teamId,
+          announcementTeamId: announcement.teamId,
+          announcementStatus: announcement.status,
+          announcementDate: announcement.date,
+          responseTeamId: response.teamId,
+          responseStatus: response.status,
+          ownerConfirmedAt: response.ownerConfirmedAt,
+          responderConfirmedAt: response.responderConfirmedAt,
+          today,
+        });
         responseById.set(response.id, {
           status: response.status,
           announcementId: response.announcementId,
-          decidable:
-            (mineIsOwner || mineIsResponder) &&
-            !iConfirmed &&
-            response.status === "pending" &&
-            announcement.status === "open",
-          iConfirmed,
-          otherConfirmed,
+          decidable: decision.decidable,
+          iConfirmed: decision.iConfirmed,
+          otherConfirmed: decision.otherConfirmed,
+          blockedReason: decision.blockedReason,
         });
       }
     }
@@ -282,6 +324,7 @@ export function messageRoutes(app: FastifyInstance) {
                   decidable: response.decidable,
                   iConfirmed: response.iConfirmed,
                   otherConfirmed: response.otherConfirmed,
+                  blockedReason: response.blockedReason,
                 }
               : null,
           createdAt: m.createdAt.toISOString(),
