@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Shield, UserCheck, Users, X } from "lucide-react";
+import { Gauge, KeyRound, Shield, UserCheck, Users, X } from "lucide-react";
 import type { AdminStatsDto, Role } from "@footcoach/shared";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { AdminInsights } from "@/components/admin/AdminInsights";
 import { BarChart } from "@/components/admin/BarChart";
 import { DateField } from "@/components/ui/DateField";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -158,6 +159,20 @@ export default function AdminDashboardPage() {
         </div>
         <BarChart data={perHour} ariaLabel={`Connexions heure par heure le ${stats.hourlyDate}`} />
       </section>
+
+      {/* ————— L'analyse ————— */}
+      <div className="hero-pitch p-5 flex items-center gap-4">
+        <span className="w-12 h-12 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+          <Gauge size={22} />
+        </span>
+        <div>
+          <h2 className="display text-lg">Où en est le service</h2>
+          <p className="text-xs text-white/80">
+            Ce que les compteurs ne disent pas : ce qui passe chaque marche, et ce qui s&apos;y perd.
+          </p>
+        </div>
+      </div>
+      <AdminInsights />
     </div>
   );
 }

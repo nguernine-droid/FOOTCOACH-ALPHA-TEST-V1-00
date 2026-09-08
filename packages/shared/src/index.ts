@@ -1938,6 +1938,126 @@ export interface AdminStatsDto {
   hourlyDate: string;
 }
 
+/* ─────────────────── Ce que le tableau de bord admin cherche à savoir ─────
+
+   Les compteurs disent combien d'objets existent. Ils ne disent pas si le
+   service fonctionne : trente annonces et zéro match, c'est trente déceptions.
+   Ce qui suit mesure des PASSAGES — ce qui franchit chaque marche, et ce qui
+   s'y perd. C'est de là que sort une décision : où pousser, quoi réparer.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * En dessous de ce nombre d'observations, un taux n'est pas montré.
+ *
+ * Un « 33 % de conversion » calculé sur trois annonces n'est pas une mesure,
+ * c'est un accident de division — et lu comme une mesure, il fait prendre de
+ * mauvaises décisions. Même règle que `DISTRICT_MIN_ANNOUNCEMENTS`, appliquée
+ * partout où l'on divise.
+ */
+export const INSIGHT_MIN_BASE = 5;
+
+/** Part de `part` dans `whole`, ou `null` si la base est trop mince pour en tirer un taux */
+export function insightRate(part: number, whole: number): number | null {
+  if (whole < INSIGHT_MIN_BASE || whole <= 0) return null;
+  return part / whole;
+}
+
+/**
+ * Une marche d'entonnoir. `count` est ce qui ATTEINT la marche, pas ce qui s'y
+ * arrête : les marches sont donc décroissantes par construction.
+ */
+export interface FunnelStepDto {
+  key: string;
+  label: string;
+  count: number;
+  /** Ce que la perte depuis la marche précédente veut dire, en une ligne */
+  lossHint?: string;
+}
+
+/** Une modalité et son volume — catégorie, format, genre… */
+export interface BreakdownDto {
+  key: string;
+  label: string;
+  count: number;
+  /** Combien, parmi elles, ont abouti à un match (quand la notion a un sens) */
+  matched?: number;
+}
+
+export interface AdminInsightsDto {
+  /**
+   * Le parcours d'une ANNONCE : publiée → a reçu une proposition → a obtenu une
+   * première signature → a donné un match → match joué. C'est l'entonnoir qui
+   * compte, parce qu'il part de l'intention d'un coach et va jusqu'au terrain.
+   */
+  announcementFunnel: FunnelStepDto[];
+  /** Le même parcours vu de la PROPOSITION : reçue → 1 signature → 2 → jouée */
+  responseFunnel: FunnelStepDto[];
+
+  timing: {
+    /** Heures médianes entre la publication d'une annonce et sa première proposition */
+    hoursToFirstResponse: number | null;
+    /** Heures médianes entre la première signature et la seconde — le temps de décider */
+    hoursBetweenSignatures: number | null;
+    /** Propositions sans la moindre signature depuis plus d'une semaine */
+    stalePending: number;
+    /**
+     * Propositions qui ne pourront PLUS aboutir : leur annonce est annulée, ou
+     * sa date est passée. Elles restent `pending` en base et occupent un fil
+     * de discussion qui ne mène nulle part.
+     */
+    deadPending: number;
+  };
+
+  /** Combien de coachs franchissent chaque usage — et non combien d'actions ont eu lieu */
+  activation: {
+    /** Coachs non désactivés : la base de tous les taux de cette section */
+    coaches: number;
+    published: number;
+    responded: number;
+    signed: number;
+    played: number;
+    /** Inscrits qui ne sont jamais revenus après leurs premières 24 heures */
+    neverReturned: number;
+  };
+
+  /** Ce qui est disponible MAINTENANT : sans stock, aucun appariement n'est possible */
+  liquidity: {
+    openUpcoming: number;
+    openUpcomingTeams: number;
+    upcomingAvailabilities: number;
+    availabilityTeams: number;
+    departments: number;
+    /** Départements comptant au moins deux équipes — il en faut deux pour un match */
+    denseDepartments: number;
+    /** Équipes seules dans leur département : personne à qui jouer sur place */
+    isolatedTeams: number;
+  };
+
+  /** Ce que le terrain demande réellement, par opposition à ce qu'on imaginait */
+  demand: {
+    byCategory: BreakdownDto[];
+    byFormat: BreakdownDto[];
+    byGender: BreakdownDto[];
+    /** Annonces republiées après un désistement : la demande qu'on a failli perdre */
+    sos: number;
+  };
+
+  /** 12 semaines, ordre chronologique. `week` est le lundi, en YYYY-MM-DD */
+  growth: { week: string; signups: number; active: number }[];
+
+  /** Ce qui grippe : chaque ligne est une réparation possible */
+  friction: {
+    announcementsCancelled: number;
+    /** Date passée sans qu'une seule proposition n'arrive : de la demande jamais servie */
+    expiredUnanswered: number;
+    matchesCancelled: number;
+    /** Signalements encore ouverts (nouveau ou en cours) */
+    openReports: number;
+    conversations: number;
+    messages: number;
+  };
+}
+
 export interface AdminAccountDto {
   id: string;
   nickname: string;

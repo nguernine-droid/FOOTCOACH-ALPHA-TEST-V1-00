@@ -12,6 +12,7 @@ import {
   type AdminClubDto,
   type AdminClubDuplicateGroupDto,
   type AdminCreateClubResultDto,
+  type AdminInsightsDto,
   type AdminStatsDto,
   updateDistrictSchema,
   type DistrictDto,
@@ -21,13 +22,17 @@ import {
 } from "@footcoach/shared";
 import { db } from "../db/client.js";
 import {
+  announcementResponses,
   clubAffiliationRequests,
   clubs,
+  coachFeedback,
+  conversations,
   districts,
   loginEvents,
   matchAnnouncements,
   matchEvents,
   matches,
+  messages,
   passwordResetRequests,
   refreshTokens,
   teamAvailabilities,
@@ -44,6 +49,7 @@ import { generateCode } from "../lib/codes.js";
 import { toClubDto } from "./club.js";
 import { cityCoords } from "../lib/cities.js";
 import { departmentOf } from "../lib/districts.js";
+import { computeInsights } from "../lib/adminInsights.js";
 import { generateTempPassword } from "../lib/passwords.js";
 import { clubById } from "../lib/declaredClubs.js";
 import { groupLookAlikeClubs } from "../lib/clubMatching.js";
@@ -51,6 +57,8 @@ import { revokeAllSessions } from "../lib/sessions.js";
 import { hashPassword } from "../lib/passwordHash.js";
 
 const DAY_MS = 24 * 3600 * 1000;
+/** Fenêtre de la courbe de croissance : 12 semaines pleines */
+const GROWTH_WINDOW_DAYS = 84;
 
 function localDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -205,6 +213,124 @@ export function adminRoutes(app: FastifyInstance) {
       loginsPerHour: perHour.map((c, hour) => ({ hour, count: c })),
       hourlyDate,
     };
+  });
+
+  /**
+   * ————— Ce que les compteurs ne disent pas —————
+   *
+   * Les tuiles de la vue d'ensemble comptent des objets. Cette route mesure des
+   * PASSAGES, et ne sert qu'une question : sur quoi appuyer ensuite. Trente
+   * annonces et zéro match, ce n'est pas « trente annonces », c'est trente
+   * déceptions — seul l'entonnoir le dit.
+   *
+   * Route séparée de `/admin/stats` à dessein : la vue d'ensemble doit
+   * s'afficher tout de suite, l'analyse peut se faire attendre une seconde.
+   *
+   * Les lignes sont lues entières puis agrégées en mémoire, comme le fait déjà
+   * `/admin/districts` : à l'échelle d'un service qui compte ses équipes par
+   * dizaines, une lecture simple et relisible vaut mieux que dix agrégats SQL
+   * qu'il faudrait vérifier un à un. Tout le calcul vit dans `adminInsights`,
+   * où il s'éprouve sans base.
+   */
+  app.get("/admin/insights", async (): Promise<AdminInsightsDto> => {
+    const now = new Date();
+    const today = localDateKey(now);
+    const growthSince = new Date(now.getTime() - GROWTH_WINDOW_DAYS * DAY_MS);
+
+    const [
+      announcementRows,
+      responseRows,
+      matchRows,
+      teamRows,
+      coachRows,
+      teamCoachRows,
+      loginRows,
+      lastLoginRows,
+      availabilityRows,
+      conversationCount,
+      messageCount,
+      openReportCount,
+    ] = await Promise.all([
+      db
+        .select({
+          id: matchAnnouncements.id,
+          teamId: matchAnnouncements.teamId,
+          status: matchAnnouncements.status,
+          date: matchAnnouncements.date,
+          category: matchAnnouncements.category,
+          format: matchAnnouncements.format,
+          gender: matchAnnouncements.gender,
+          isSos: matchAnnouncements.isSos,
+          viewCount: matchAnnouncements.viewCount,
+          createdAt: matchAnnouncements.createdAt,
+        })
+        .from(matchAnnouncements),
+      db
+        .select({
+          id: announcementResponses.id,
+          announcementId: announcementResponses.announcementId,
+          teamId: announcementResponses.teamId,
+          status: announcementResponses.status,
+          ownerConfirmedAt: announcementResponses.ownerConfirmedAt,
+          responderConfirmedAt: announcementResponses.responderConfirmedAt,
+          createdAt: announcementResponses.createdAt,
+        })
+        .from(announcementResponses),
+      db
+        .select({
+          announcementId: matches.announcementId,
+          homeTeamId: matches.homeTeamId,
+          awayTeamId: matches.awayTeamId,
+          status: matches.status,
+        })
+        .from(matches),
+      db.select({ id: teams.id, city: teams.city }).from(teams),
+      db
+        .select({ id: users.id, createdAt: users.createdAt })
+        .from(users)
+        .where(and(eq(users.role, "coach"), isNull(users.disabledAt))),
+      db.select({ coachId: teamCoaches.coachId, teamId: teamCoaches.teamId }).from(teamCoaches),
+      db
+        .select({ userId: loginEvents.userId, createdAt: loginEvents.createdAt })
+        .from(loginEvents)
+        .where(gte(loginEvents.createdAt, growthSince)),
+      // Dernière connexion de chaque compte, SANS fenêtre : « jamais revenu »
+      // se juge sur toute la vie du compte, pas sur les douze dernières semaines
+      db
+        .select({ userId: loginEvents.userId, lastAt: max(loginEvents.createdAt) })
+        .from(loginEvents)
+        .groupBy(loginEvents.userId),
+      db
+        .select({ teamId: teamAvailabilities.teamId })
+        .from(teamAvailabilities)
+        .where(gte(teamAvailabilities.date, sql`current_date`)),
+      db.select({ value: count() }).from(conversations),
+      db.select({ value: count() }).from(messages),
+      db
+        .select({ value: count() })
+        .from(coachFeedback)
+        .where(inArray(coachFeedback.status, ["nouveau", "en_cours"])),
+    ]);
+
+    return computeInsights({
+      now,
+      today,
+      announcements: announcementRows,
+      responses: responseRows,
+      matches: matchRows,
+      teams: teamRows,
+      coaches: coachRows,
+      teamCoaches: teamCoachRows,
+      logins: loginRows,
+      // `max()` ne rend `null` que sur un groupe vide, impossible avec un
+      // GROUP BY : le filtre est là pour le typage, pas pour un cas réel.
+      lastLogins: lastLoginRows.flatMap((r) => (r.lastAt ? [{ userId: r.userId, lastAt: r.lastAt }] : [])),
+      upcomingAvailabilities: availabilityRows,
+      departmentOf,
+      conversations: conversationCount[0].value,
+      messages: messageCount[0].value,
+      openReports: openReportCount[0].value,
+    });
   });
 
   // Création d'un compte club : le club + son compte de connexion (role=club).
